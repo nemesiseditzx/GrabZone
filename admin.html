@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GRABZONE — Admin Control Center</title><link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div id="loginBox" class="login-page"><div class="login-card">
+  <div class="logo-badge">G</div><div class="eyebrow">GRABZONE</div><h1>Admin Control Center</h1>
+  <p>Manage your store without touching code.</p>
+  <input id="email" type="email" placeholder="Admin email"><input id="password" type="password" placeholder="Password">
+  <button class="primary wide" onclick="login()">Sign in</button><div id="loginMsg" class="message"></div>
+</div></div>
+
+<div id="app" class="hidden">
+<header class="topbar"><div class="brand"><div class="brand-badge">G</div><div><strong>GRABZONE</strong><small>Website Control Center</small></div></div>
+<div class="top-actions"><a class="view-store" href="index.html" target="_blank">↗ View Store</a><button class="ghost" onclick="logout()">Log out</button></div></header>
+
+<div class="layout">
+<aside class="sidebar">
+<button class="side-link active" data-tab="dashboard">⌂ <span>Overview</span></button>
+<button class="side-link" data-tab="appearance">◈ <span>Website Design</span></button>
+<button class="side-link" data-tab="content">✎ <span>Text & Links</span></button>
+<button class="side-link" data-tab="products">▣ <span>Products</span></button>
+<button class="side-link" data-tab="notices">⚑ <span>Notice Board</span></button>
+<div class="side-help"><b>Easy mode</b><p>Change something → Save → refresh your store.</p></div>
+</aside>
+
+<main class="content">
+<section id="tab-dashboard" class="tab active">
+<div class="page-title"><div><div class="eyebrow">WELCOME BACK</div><h1>Store overview</h1><p>Everything you need to control GRABZONE from one place.</p></div><a class="primary" href="index.html" target="_blank">View live website ↗</a></div>
+<div class="stats"><div class="stat"><span>🛍️</span><b id="statProducts">—</b><small>Products</small></div><div class="stat"><span>📢</span><b id="statNotices">—</b><small>Active notices</small></div><div class="stat"><span>●</span><b>Live</b><small>Store status</small></div></div>
+<div class="quick-grid"><button class="quick" data-tab-target="products"><b>＋ Add a product</b><span>Upload image, set price and publish.</span></button><button class="quick" data-tab-target="appearance"><b>🎨 Change website look</b><span>Logo, hero image, colors and sections.</span></button><button class="quick" data-tab-target="content"><b>✎ Edit website text</b><span>Titles, buttons, links and social pages.</span></button><button class="quick" data-tab-target="notices"><b>📢 Manage offers</b><span>Add and control scrolling notices.</span></button></div>
+</section>
+
+<section id="tab-appearance" class="tab">
+<div class="page-title"><div><div class="eyebrow">WEBSITE DESIGN</div><h1>Make it look your way.</h1><p>Upload images and choose colors. Your selected images are previewed here before saving.</p></div><button class="primary" onclick="saveSettings()">Save design changes</button></div>
+<div class="panel"><div class="panel-head"><div><h2>Brand</h2><p>Store identity and visual style.</p></div></div>
+<div class="form-grid">
+<label>Store name<input id="s_store_name" placeholder="GRABZONE"></label><label>Tagline<input id="s_tagline" placeholder="Grab What's Trending."></label>
+<div class="upload-field"><label>Store logo</label><div class="upload-row"><input id="s_logo" type="file" accept="image/*" onchange="previewFile(this,'logoPreview')"><div class="image-preview small" id="logoPreview"><span>No image selected</span></div></div></div>
+<div class="upload-field"><label>Hero / banner image</label><div class="upload-row"><input id="s_hero" type="file" accept="image/*" onchange="previewFile(this,'heroPreview')"><div class="image-preview hero-preview" id="heroPreview"><span>No image selected</span></div></div></div>
+<label>Primary color<div class="color-row"><input id="s_primary" type="color"><span id="primaryHex">#111111</span></div></label>
+<label>Page background<div class="color-row"><input id="s_bg" type="color"><span id="bgHex">#ffffff</span></div></label>
+</div></div>
+<div class="panel"><div class="panel-head"><div><h2>Show / hide sections</h2><p>Choose which sections customers can see.</p></div></div>
+<div class="toggle-grid"><label><span>📢 Notice board</span><select id="s_show_notice"><option value="true">Show</option><option value="false">Hide</option></select></label><label><span>🎁 Offer section</span><select id="s_show_offer"><option value="true">Show</option><option value="false">Hide</option></select></label><label><span>🧾 How to Order</span><select id="s_show_how"><option value="true">Show</option><option value="false">Hide</option></select></label><label><span>🤝 Referral section</span><select id="s_show_ref"><option value="true">Show</option><option value="false">Hide</option></select></label></div></div>
+<div id="settingsMsg" class="save-message"></div>
+</section>
+
+<section id="tab-content" class="tab">
+<div class="page-title"><div><div class="eyebrow">TEXT & LINKS</div><h1>Edit what customers read.</h1><p>Every field below changes a specific part of the live store.</p></div><button class="primary" onclick="saveSettings()">Save website changes</button></div>
+
+<div class="panel"><div class="panel-head"><div><h2>Hero section</h2><p>The first thing customers see.</p></div></div>
+<div class="form-grid"><label>Small heading<input id="s_hero_eyebrow"></label><label>Main heading<input id="s_hero_title"></label><label>Highlighted heading<input id="s_hero_title_em"></label><label>Button text<input id="s_hero_button_text"></label><label class="full">Description<textarea id="s_hero_description"></textarea></label><label>Button link<input id="s_hero_button_link" placeholder="#shop or https://..."></label><label>How it works text<input id="s_how_button_text"></label><label>How it works link<input id="s_how_button_link"></label></div></div>
+
+<div class="panel"><div class="panel-head"><div><h2>Header navigation</h2><p>Change menu names and destinations.</p></div></div>
+<div class="link-grid"><div class="link-card"><b>Menu 1</b><input id="s_header_link1_label" placeholder="Shop"><input id="s_header_link1_url" placeholder="#shop"></div><div class="link-card"><b>Menu 2</b><input id="s_header_link2_label" placeholder="Offers"><input id="s_header_link2_url" placeholder="#offers"></div><div class="link-card"><b>Menu 3</b><input id="s_header_link3_label" placeholder="How to Order"><input id="s_header_link3_url" placeholder="#how"></div></div></div>
+
+<div class="panel"><div class="panel-head"><div><h2>Offers</h2><p>Control the promotional strip.</p></div></div><div class="form-grid"><label>Offer title<input id="s_offer_title"></label><label>Offer code / badge<input id="s_offer_code"></label><label class="full">Offer message<textarea id="s_offer_message"></textarea></label></div></div>
+
+<div class="panel"><div class="panel-head"><div><h2>How to Order</h2><p>Edit the three customer steps.</p></div></div>
+<div class="steps-grid"><div><b>01</b><input id="s_step1_title"><textarea id="s_step1_body"></textarea></div><div><b>02</b><input id="s_step2_title"><textarea id="s_step2_body"></textarea></div><div><b>03</b><input id="s_step3_title"><textarea id="s_step3_body"></textarea></div></div><label>Section title<input id="s_how_title"></label></div>
+
+<div class="panel"><div class="panel-head"><div><h2>Referral</h2><p>Explain your partner referral system.</p></div></div><div class="form-grid"><label>Referral title<input id="s_referral_title"></label><label>Button text<input id="s_referral_button_text"></label><label class="full">Referral text<textarea id="s_referral_body"></textarea></label></div></div>
+
+<div class="panel"><div class="panel-head"><div><h2>Social & contact</h2><p>Links customers can use to contact you.</p></div></div><div class="form-grid"><label>WhatsApp link<input id="s_whatsapp" placeholder="https://wa.me/..."></label><label>Instagram link<input id="s_instagram" placeholder="https://instagram.com/..."></label><label>Messenger link<input id="s_messenger" placeholder="https://m.me/..."></label><label>Footer text<input id="s_footer_text"></label></div></div>
+
+<div class="panel advanced"><details><summary>Advanced — Custom CSS</summary><textarea id="s_custom_css" placeholder="Optional CSS overrides"></textarea></details></div>
+<div id="contentMsg" class="save-message"></div>
+</section>
+
+<section id="tab-products" class="tab">
+<div class="page-title"><div><div class="eyebrow">CATALOG</div><h1>Products</h1><p>Add products with an instant image preview. Publish or hide them anytime.</p></div></div>
+<div class="panel"><div class="panel-head"><div><h2>＋ Add new product</h2><p>Customers will see the image you select below.</p></div></div>
+<div class="product-create"><div class="product-form"><label>Product name<input id="name" placeholder="Portable Electric Kettle"></label>
+<div class="form-grid"><label>Category<input id="category" placeholder="Smart Gadgets"></label><label>Price<input id="price" type="number" placeholder="500"></label><label>Old price <small>optional</small><input id="oldPrice" type="number" placeholder="700"></label><label>Tag <small>optional</small><input id="tag" placeholder="New / Hot Deal"></label></div>
+<label>Description<textarea id="description" placeholder="Tell customers what this product does..."></textarea></label><label>Publish<select id="published"><option value="true">Yes — show on website</option><option value="false">No — save hidden</option></select></label></div>
+<div class="product-image-upload"><div class="big-image-preview" id="productPreview"><span>Product image<br><small>Your selected image appears here</small></span></div><label class="file-button">📷 Choose product image<input id="image" type="file" accept="image/*" onchange="previewFile(this,'productPreview')"></label><button class="primary wide" onclick="addProduct()">Upload & Save Product</button></div></div>
+<div id="productMsg" class="save-message"></div></div>
+<div class="panel"><div class="panel-head"><div><h2>Your products</h2><p>Manage the products already in your catalog.</p></div><button class="ghost" onclick="loadProducts()">↻ Refresh</button></div><div id="products" class="product-list"></div></div>
+</section>
+
+<section id="tab-notices" class="tab">
+<div class="page-title"><div><div class="eyebrow">NOTICE BOARD</div><h1>Notices & offers</h1><p>Active notices automatically scroll across the customer website.</p></div></div>
+<div class="panel"><div class="panel-head"><div><h2>＋ Add notice</h2><p>Keep notices short and clear.</p></div></div><div class="form-grid"><label>Notice title<input id="noticeTitle" placeholder="Special Offer"></label><label>Display order<input id="noticeOrder" type="number" value="0"></label><label class="full">Notice message<textarea id="noticeMessage" placeholder="৳100 OFF this week — DM us to order."></textarea></label></div><button class="primary" onclick="addNotice()">Add notice</button></div>
+<div class="panel"><div class="panel-head"><div><h2>Current notices</h2><p>Hide a notice without deleting it.</p></div></div><div id="notices" class="notice-list"></div></div>
+</section>
+</main></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="admin.js"></script>
+</body></html>
