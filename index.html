@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GRABZONE — Shop Smart</title>
+<meta name="description" content="GRABZONE online store — shop products and order by DM.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="notice-wrap"><div class="notice-label">NOTICE</div><div id="noticeTrack" class="notice-track"></div></div>
+
+<header class="header">
+  <a class="brand" href="index.html"><span class="brand-mark">N</span><span id="storeName">GRABZONE</span></a>
+  <nav><a href="#shop">Shop</a><a href="#offers">Offers</a><a href="#how">How to Order</a></nav>
+  <div class="header-actions"><button class="icon-btn" onclick="focusSearch()">⌕</button><a id="headerDm" class="btn btn-dark" target="_blank">DM to Order</a></div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="hero-copy">
+    <div class="eyebrow">CURATED • VERIFIED • DM ORDER</div>
+    <h1>Good products.<br><em>Better deals.</em></h1>
+    <p>Browse our latest products, choose your favorite, and message us to place your order. No complicated checkout.</p>
+    <div class="hero-buttons"><a href="#shop" class="btn btn-dark btn-lg">Shop now</a><a href="#how" class="text-link">How it works →</a></div>
+    <div class="trust"><span>✓ DM order support</span><span>✓ Referral coupons</span><span>✓ Fresh offers</span></div>
+  </div>
+  <div class="hero-card">
+    <div class="hero-card-top"><span>THIS WEEK</span><span>LIMITED</span></div>
+    <div class="hero-product-shape">N</div>
+    <div class="hero-card-bottom"><strong>New drops</strong><span>Updated regularly</span></div>
+  </div>
+</section>
+
+<section id="offers" class="offer-strip">
+  <div><span class="dot"></span><strong>Referral offer</strong><span>Bring a customer through an approved partner referral and get a coupon through DM verification.</span></div>
+  <div class="offer-code">৳10–৳20 OFF</div>
+</section>
+
+<section id="shop" class="shop-section">
+  <div class="section-head">
+    <div><div class="eyebrow">OUR COLLECTION</div><h2>Shop products</h2></div>
+    <div class="shop-tools"><input id="search" placeholder="Search products..." oninput="renderProducts()"><div id="categories" class="chips"></div></div>
+  </div>
+  <div id="products" class="product-grid"></div>
+  <div id="empty" class="empty hidden">No products found.</div>
+</section>
+
+<section id="how" class="how-section">
+  <div class="eyebrow">SIMPLE ORDERING</div><h2>Order in 3 steps.</h2>
+  <div class="steps">
+    <div class="step"><b>01</b><h3>Pick a product</h3><p>Open the product and check the details, price and current offer.</p></div>
+    <div class="step"><b>02</b><h3>Send a DM</h3><p>Tap the order button. Your product details and referral code can be included in the message.</p></div>
+    <div class="step"><b>03</b><h3>We verify & confirm</h3><p>Our team verifies the order/referral and confirms the final price and delivery details in DM.</p></div>
+  </div>
+</section>
+
+<section class="ref-section">
+  <div><div class="eyebrow">REFERRAL PROGRAM</div><h2>Have a referral code?</h2><p>If a store partner gave you a referral code, include it in your DM. We’ll verify it and apply the eligible ৳10–৳20 coupon.</p></div>
+  <a id="refDm" class="btn btn-dark btn-lg" target="_blank">Verify by DM</a>
+</section>
+</main>
+
+<footer><div class="brand"><span class="brand-mark">N</span><span id="footerName">GRABZONE</span></div><span>© <span id="year"></span> GRABZONE. All rights reserved.</span><div class="footer-links"><a id="ig" target="_blank">Instagram</a><a id="wa" target="_blank">WhatsApp</a><a id="ms" target="_blank">Messenger</a></div></footer>
+
+<script src="config.js"></script><script src="store.js"></script>
+</body></html>
