@@ -1,4 +1,3 @@
-
 /* =========================================================
    GRABZONE ADVANCED MOTION V4
    Premium interactive motion — CSS + vanilla JS only
@@ -364,96 +363,238 @@ body.gz-motion-on::before{
 }
 
 /* =====================================================
-   GRABZONE — MOBILE SCROLL REVEAL STABILITY FIX
+   GRABZONE — MOBILE / TOUCH STABILITY
+   Keeps the premium motion but removes the effects
+   that commonly cause mobile blur, jumping and flicker.
 ===================================================== */
 
-@media (max-width: 600px) {
+/* Phones / touch devices */
+@media (max-width: 760px), (hover: none) and (pointer: coarse) {
 
-  /* Prevent reveal animations from causing horizontal overflow */
   html,
   body {
     overflow-x: hidden;
   }
 
-  /* Keep revealed elements inside the viewport */
-  [data-scroll-reveal],
-  .scroll-reveal,
-  .reveal,
-  .gz-reveal {
+  /* The cursor light is a desktop effect.
+     Do not keep a huge fixed filtered layer over mobile. */
+  body.gz-motion-on::before {
+    display: none !important;
+  }
+
+  /* Mobile page-load motion */
+  .gz-motion-on .hero-copy {
+    animation: gzMobileHeroCopy .65s var(--gz-ease) both;
+  }
+
+  .gz-motion-on .hero-card {
+    animation: gzMobileHeroCard .75s .05s var(--gz-ease) both;
+  }
+
+  @keyframes gzMobileHeroCopy {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 16px, 0);
+      filter: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  @keyframes gzMobileHeroCard {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 18px, 0) scale(.98);
+      filter: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  /* =================================================
+     SCROLL REVEAL — IMPORTANT FIX
+
+     Desktop uses blur + scale + clip-path.
+     Mobile uses only a small vertical fade.
+     This prevents the "blurred / stuck / jumping"
+     state visible during fast phone scrolling.
+  ================================================= */
+
+  .gz-reveal-target {
+    opacity: 0 !important;
+    transform: translate3d(0, 14px, 0) !important;
+    filter: none !important;
+    clip-path: none !important;
+
     will-change: opacity, transform;
     backface-visibility: hidden;
-    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
   }
 
-  /* Mobile reveal should travel only a tiny distance */
-  .scroll-reveal:not(.is-visible),
-  .reveal:not(.is-visible),
-  .gz-reveal:not(.is-visible) {
-    transform: translate3d(0, 14px, 0) !important;
-    opacity: 0;
-  }
-
-  .scroll-reveal.is-visible,
-  .reveal.is-visible,
-  .gz-reveal.is-visible {
+  .gz-motion-on .gz-reveal-target.gz-visible {
+    opacity: 1 !important;
     transform: translate3d(0, 0, 0) !important;
-    opacity: 1;
+    filter: none !important;
+    clip-path: none !important;
+
+    transition:
+      opacity .45s var(--gz-ease2),
+      transform .45s var(--gz-ease2) !important;
   }
 
-  /* Disable expensive horizontal/parallax movement on phones */
-  [data-scroll-reveal="left"],
-  [data-scroll-reveal="right"],
-  [data-reveal="left"],
-  [data-reveal="right"] {
+  /* =================================================
+     PRODUCT CARDS
+
+     Do not let scroll-reveal and 3D hover fight over
+     the same transform on a phone.
+  ================================================= */
+
+  .gz-motion-on .product-card {
+    transform-style: flat;
+    will-change: opacity, transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .gz-motion-on .product-card.gz-reveal-target {
     transform: translate3d(0, 14px, 0) !important;
   }
 
-  /* Smoother mobile timing */
-  .scroll-reveal,
-  .reveal,
-  .gz-reveal {
-    transition:
-      opacity .45s ease,
-      transform .45s cubic-bezier(.22,1,.36,1) !important;
+  .gz-motion-on .product-card.gz-reveal-target.gz-visible {
+    transform: translate3d(0, 0, 0) !important;
   }
 
-  /* Don't animate huge sections */
-  .hero,
-  .shop-section,
-  .how-section,
-  .ref-section,
-  footer {
+  .gz-motion-on .product-card::before,
+  .gz-motion-on .product-card::after {
+    display: none;
+  }
+
+  .gz-motion-on .product-card img {
+    transform: none !important;
+    filter: none !important;
+    transition: opacity .25s ease !important;
+  }
+
+  /* Never run desktop hover animation on touch */
+  .gz-motion-on .product-card:hover {
+    transform: none;
+    box-shadow: 0 12px 28px rgba(0,0,0,.08);
+  }
+
+  .gz-motion-on .product-card:hover img {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  /* Disable magnetic-style hover transforms on touch */
+  .gz-motion-on .btn:hover,
+  .gz-motion-on .text-link:hover,
+  .gz-motion-on .chip:hover,
+  .gz-motion-on .lang-btn:hover {
+    transform: none;
+  }
+
+  /* Keep buttons visually responsive without movement */
+  .gz-motion-on .btn:active,
+  .gz-motion-on .chip:active {
+    transform: scale(.97);
+  }
+
+  /* Hero card effects are simplified on mobile */
+  .gz-motion-on .hero-card {
+    transform-style: flat;
+  }
+
+  .gz-motion-on .hero-card::before {
+    animation-duration: 11s;
+    opacity: .55;
+  }
+
+  .gz-motion-on .hero-card::after {
+    width: 180px;
+    height: 180px;
+    right: -75px;
+    top: -75px;
+    animation-duration: 6s;
+  }
+
+  /* Smaller orbit so it cannot overflow the card */
+  .gz-motion-on .hero-product-shape::before {
+    inset: -10px;
+    animation-duration: 7s;
+  }
+
+  .gz-motion-on .hero-product-shape::after {
+    inset: -18px;
+    animation-duration: 10s;
+  }
+
+  /* Floating offer animation is lighter on phones */
+  .gz-motion-on .offer-code {
+    animation-duration: 3.5s;
+  }
+
+  /* Avoid animated transform on large page sections */
+  .gz-motion-on .hero,
+  .gz-motion-on .shop-section,
+  .gz-motion-on .how-section,
+  .gz-motion-on .ref-section,
+  .gz-motion-on footer {
     transform: none !important;
   }
 
-  /* Prevent image animation from creating visual jumps */
-  .product-card,
-  .product-image,
-  .hero-card {
-    backface-visibility: hidden;
+  /* Scroll progress stays lightweight */
+  .gz-scroll-progress {
+    height: 2px;
+  }
+
+  /* Particles are unnecessary on small screens */
+  .gz-particle {
+    display: none !important;
   }
 }
 
 
-/* Very small phones */
+/* =====================================================
+   VERY SMALL PHONES
+===================================================== */
+
 @media (max-width: 380px) {
 
-  .scroll-reveal,
-  .reveal,
-  .gz-reveal {
+  .gz-reveal-target {
+    transform: translate3d(0, 10px, 0) !important;
+  }
+
+  .gz-motion-on .gz-reveal-target.gz-visible {
+    transform: translate3d(0, 0, 0) !important;
     transition-duration: .4s !important;
   }
 
-  .scroll-reveal:not(.is-visible),
-  .reveal:not(.is-visible),
-  .gz-reveal:not(.is-visible) {
-    transform: translate3d(0, 10px, 0) !important;
+  .gz-motion-on .hero-copy {
+    animation-duration: .55s;
+  }
+
+  .gz-motion-on .hero-card {
+    animation-duration: .65s;
   }
 }
 
 
-/* Accessibility */
+/* =====================================================
+   REDUCED MOTION
+===================================================== */
+
 @media (prefers-reduced-motion: reduce) {
+
+  html {
+    scroll-behavior: auto !important;
+  }
 
   *,
   *::before,
@@ -461,6 +602,10 @@ body.gz-motion-on::before{
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
-    scroll-behavior: auto !important;
+  }
+
+  body.gz-motion-on::before,
+  .gz-particle {
+    display: none !important;
   }
 }
