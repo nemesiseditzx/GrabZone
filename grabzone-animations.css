@@ -1,0 +1,364 @@
+
+/* =========================================================
+   GRABZONE ADVANCED MOTION V4
+   Premium interactive motion — CSS + vanilla JS only
+   ========================================================= */
+
+:root{
+  --gz-ease:cubic-bezier(.16,1,.3,1);
+  --gz-ease2:cubic-bezier(.22,1,.36,1);
+  --gz-duration:.85s;
+  --gz-accent:#ff6a00;
+  --gz-cursor-x:50vw;
+  --gz-cursor-y:50vh;
+  --gz-scroll:0;
+}
+
+/* Cursor ambient light */
+body.gz-motion-on::before{
+  content:"";
+  position:fixed;
+  z-index:9990;
+  pointer-events:none;
+  width:520px;height:520px;
+  left:calc(var(--gz-cursor-x) - 260px);
+  top:calc(var(--gz-cursor-y) - 260px);
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,106,0,.10),rgba(255,106,0,.025) 32%,transparent 68%);
+  filter:blur(12px);
+  transition:left .18s ease-out,top .18s ease-out;
+  mix-blend-mode:multiply;
+}
+
+/* Top scroll progress */
+.gz-scroll-progress{
+  position:fixed;
+  z-index:10001;
+  left:0;top:0;
+  width:100%;
+  height:3px;
+  pointer-events:none;
+  background:transparent;
+}
+.gz-scroll-progress i{
+  display:block;
+  height:100%;
+  width:calc(var(--gz-scroll) * 100%);
+  transform-origin:left;
+  background:linear-gradient(90deg,#ff6a00,#ff9d45,#111);
+  box-shadow:0 0 14px rgba(255,106,0,.45);
+}
+
+/* Cinematic page veil */
+.gz-page-veil{
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  background:#fff;
+  pointer-events:none;
+  transform-origin:top;
+  animation:gzVeil .95s var(--gz-ease) forwards;
+}
+@keyframes gzVeil{
+  0%{transform:scaleY(1)}
+  100%{transform:scaleY(0)}
+}
+
+/* Ambient floating particles */
+.gz-particle{
+  position:fixed;
+  z-index:-1;
+  width:5px;height:5px;
+  border-radius:50%;
+  background:rgba(255,106,0,.28);
+  pointer-events:none;
+  animation:gzParticle linear infinite;
+}
+@keyframes gzParticle{
+  0%{transform:translate3d(0,35vh,0) scale(.5);opacity:0}
+  15%{opacity:.65}
+  85%{opacity:.35}
+  100%{transform:translate3d(var(--px),-45vh,0) scale(1.4);opacity:0}
+}
+
+/* Hero depth / scroll parallax */
+.gz-motion-on .hero{
+  perspective:1200px;
+}
+.gz-motion-on .hero-copy{
+  animation:gzHeroCopy .95s var(--gz-ease) both;
+  will-change:transform,opacity;
+}
+.gz-motion-on .hero-card{
+  animation:gzHeroCard 1.1s .08s var(--gz-ease) both;
+  will-change:transform;
+}
+@keyframes gzHeroCopy{
+  from{opacity:0;transform:translate3d(-60px,25px,0);filter:blur(12px)}
+  to{opacity:1;transform:none;filter:none}
+}
+@keyframes gzHeroCard{
+  from{opacity:0;transform:perspective(1100px) rotateY(-24deg) rotateX(12deg) translate3d(65px,20px,0) scale(.84);filter:blur(8px)}
+  to{opacity:1;transform:none;filter:none}
+}
+
+/* Hero card animated glass rim */
+.gz-motion-on .hero-card{
+  position:relative;
+  overflow:hidden;
+  transform-style:preserve-3d;
+  transition:transform .12s ease-out,box-shadow .45s ease;
+}
+.gz-motion-on .hero-card::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  padding:2px;
+  border-radius:inherit;
+  background:conic-gradient(from 0deg,transparent,#ff6a00,transparent 24%,#111,transparent 52%,#ff6a00,transparent 78%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  animation:gzConic 7s linear infinite;
+  pointer-events:none;
+}
+.gz-motion-on .hero-card::after{
+  content:"";
+  position:absolute;
+  width:260px;height:260px;
+  right:-100px;top:-100px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,106,0,.48),transparent 68%);
+  animation:gzHeroOrb 4s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes gzConic{to{transform:rotate(360deg)}}
+@keyframes gzHeroOrb{
+  0%,100%{transform:scale(.8);opacity:.45}
+  50%{transform:scale(1.25);opacity:.95}
+}
+
+/* Hero mark orbit */
+.gz-motion-on .hero-product-shape{
+  position:relative;
+  animation:gzMarkFloat 4s ease-in-out infinite;
+}
+.gz-motion-on .hero-product-shape::before,
+.gz-motion-on .hero-product-shape::after{
+  content:"";
+  position:absolute;
+  inset:-18px;
+  border:1px solid rgba(255,106,0,.3);
+  border-radius:50%;
+  transform:rotateX(65deg);
+  animation:gzOrbit 5s linear infinite;
+  pointer-events:none;
+}
+.gz-motion-on .hero-product-shape::after{
+  inset:-30px;
+  opacity:.45;
+  animation-duration:8s;
+  animation-direction:reverse;
+}
+@keyframes gzMarkFloat{
+  0%,100%{transform:translateY(0) rotate(-2deg)}
+  50%{transform:translateY(-15px) rotate(3deg) scale(1.04)}
+}
+@keyframes gzOrbit{to{transform:rotateX(65deg) rotateZ(360deg)}}
+
+/* Scroll reveal — repeatable */
+.gz-reveal-target{
+  opacity:0;
+  transform:translate3d(0,70px,0) scale(.94);
+  filter:blur(10px);
+  clip-path:inset(0 0 10% 0 round 18px);
+}
+.gz-motion-on .gz-reveal-target.gz-visible{
+  opacity:1;
+  transform:none;
+  filter:none;
+  clip-path:inset(0 0 0 0 round 0);
+  transition:
+    opacity var(--gz-duration) var(--gz-ease),
+    transform var(--gz-duration) var(--gz-ease),
+    filter var(--gz-duration) var(--gz-ease),
+    clip-path var(--gz-duration) var(--gz-ease);
+}
+
+/* Section title reveal line */
+.gz-title-reveal{
+  position:relative;
+  overflow:hidden;
+}
+.gz-title-reveal::after{
+  content:"";
+  position:absolute;
+  left:0;bottom:0;
+  width:100%;height:2px;
+  background:linear-gradient(90deg,#ff6a00,transparent);
+  transform:scaleX(0);
+  transform-origin:left;
+}
+.gz-motion-on .gz-title-reveal.gz-visible::after{
+  transform:scaleX(1);
+  transition:transform 1s .25s var(--gz-ease);
+}
+
+/* Product cards: 3D + spotlight + lift */
+.gz-motion-on .product-card{
+  position:relative;
+  overflow:hidden;
+  transform-style:preserve-3d;
+  will-change:transform;
+  transition:transform .16s ease-out,box-shadow .45s ease;
+}
+.gz-motion-on .product-card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:5;
+  pointer-events:none;
+  background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.28),transparent 55%);
+  opacity:0;
+  transition:opacity .25s ease;
+}
+.gz-motion-on .product-card::after{
+  content:"";
+  position:absolute;
+  z-index:6;
+  top:-30%;left:-90%;
+  width:55%;height:160%;
+  background:linear-gradient(105deg,transparent,rgba(255,255,255,.38),transparent);
+  transform:skewX(-18deg);
+  pointer-events:none;
+}
+.gz-motion-on .product-card:hover{
+  box-shadow:0 30px 70px rgba(0,0,0,.18);
+}
+.gz-motion-on .product-card:hover::before{opacity:1}
+.gz-motion-on .product-card:hover::after{animation:gzSweep .85s var(--gz-ease)}
+@keyframes gzSweep{to{left:145%}}
+.gz-motion-on .product-card img{
+  transition:transform .65s var(--gz-ease),filter .5s ease;
+}
+.gz-motion-on .product-card:hover img{
+  transform:scale(1.1);
+  filter:saturate(1.12) contrast(1.03);
+}
+
+/* Card badges shimmer */
+.gz-motion-on .product-card [class*="tag"],
+.gz-motion-on .product-card .badge{
+  position:relative;
+  overflow:hidden;
+}
+.gz-motion-on .product-card [class*="tag"]::after,
+.gz-motion-on .product-card .badge::after{
+  content:"";
+  position:absolute;
+  top:0;left:-120%;
+  width:70%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);
+  transform:skewX(-18deg);
+  animation:gzBadge .0s linear;
+}
+.gz-motion-on .product-card:hover [class*="tag"]::after,
+.gz-motion-on .product-card:hover .badge::after{
+  animation:gzBadge .7s ease;
+}
+@keyframes gzBadge{to{left:140%}}
+
+/* Offer code magnetic pulse */
+.gz-motion-on .offer-code{
+  animation:gzOfferPulse 2.4s ease-in-out infinite;
+}
+@keyframes gzOfferPulse{
+  0%,100%{transform:scale(1);box-shadow:none}
+  50%{transform:scale(1.06);box-shadow:0 8px 30px rgba(255,106,0,.13)}
+}
+
+/* Steps: number orbit */
+.gz-motion-on .step b{
+  display:inline-block;
+  transition:transform .45s var(--gz-ease);
+}
+.gz-motion-on .step:hover b{
+  transform:translateY(-4px) rotate(-8deg) scale(1.12);
+}
+
+/* Magnetic controls */
+.gz-motion-on .btn,
+.gz-motion-on .text-link,
+.gz-motion-on .chip,
+.gz-motion-on .lang-btn{
+  transition:transform .2s var(--gz-ease),box-shadow .25s ease;
+  will-change:transform;
+}
+.gz-motion-on .btn:hover{
+  box-shadow:0 15px 35px rgba(0,0,0,.18);
+}
+
+/* Nav line */
+.gz-motion-on nav a{position:relative}
+.gz-motion-on nav a::after{
+  content:"";
+  position:absolute;
+  left:50%;bottom:-7px;
+  width:0;height:2px;
+  border-radius:8px;
+  background:currentColor;
+  transform:translateX(-50%);
+  transition:width .4s var(--gz-ease);
+}
+.gz-motion-on nav a:hover::after{width:100%}
+
+/* Search focus */
+.gz-motion-on #search{
+  transition:transform .3s var(--gz-ease),box-shadow .3s ease;
+}
+.gz-motion-on #search:focus{
+  transform:translateY(-2px) scale(1.015);
+  box-shadow:0 14px 35px rgba(0,0,0,.11);
+}
+
+/* Click ripple */
+.gz-ripple{
+  position:fixed;
+  z-index:10002;
+  width:12px;height:12px;
+  border-radius:50%;
+  background:rgba(255,106,0,.38);
+  pointer-events:none;
+  transform:translate(-50%,-50%) scale(1);
+  animation:gzRipple .7s ease-out forwards;
+}
+@keyframes gzRipple{
+  to{transform:translate(-50%,-50%) scale(14);opacity:0}
+}
+
+/* Language toggle pop */
+.gz-motion-on .lang-btn.active{animation:gzLang .3s var(--gz-ease)}
+@keyframes gzLang{from{transform:scale(.78)}to{transform:scale(1)}}
+
+/* OFF */
+.gz-motion-off::before,.gz-motion-off::after{display:none!important}
+.gz-motion-off *{
+  animation:none!important;
+  transition:none!important;
+}
+.gz-motion-off .gz-reveal-target{
+  opacity:1!important;
+  transform:none!important;
+  filter:none!important;
+  clip-path:none!important;
+}
+
+/* Accessibility */
+@media(prefers-reduced-motion:reduce){
+  body::before{display:none!important}
+  .gz-motion-on *{animation:none!important;transition:none!important}
+}
+@media(max-width:760px){
+  body::before{width:280px;height:280px;opacity:.06}
+  .gz-motion-on .product-card:hover{box-shadow:0 15px 35px rgba(0,0,0,.13)}
+}
