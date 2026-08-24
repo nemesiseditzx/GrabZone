@@ -1,0 +1,128 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GRABZONE — Policy Manager</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f5f2;color:#111;font-family:Inter,system-ui,sans-serif}.top{position:sticky;top:0;background:rgba(245,245,242,.9);backdrop-filter:blur(16px);border-bottom:1px solid #ddd;z-index:10}.topin{max-width:1200px;margin:auto;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}.brand{font-weight:950}.wrap{max-width:1200px;margin:auto;padding:30px 20px 80px}.hero{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:22px}h1{font-size:42px;letter-spacing:-.05em;margin:5px 0}h2{margin-top:0}.muted{color:#666}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:#fff;border:1px solid #e1e1dc;border-radius:22px;padding:22px;margin-bottom:18px;box-shadow:0 10px 35px rgba(0,0,0,.04)}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}label{font-size:12px;font-weight:850;color:#555}input,textarea,select{font:inherit;border:1px solid #d9d9d4;border-radius:12px;padding:11px 12px;background:#fff;outline:none}input:focus,textarea:focus,select:focus{border-color:#ff6a00;box-shadow:0 0 0 4px rgba(255,106,0,.1)}textarea{min-height:95px;resize:vertical}.actions{display:flex;gap:9px;flex-wrap:wrap}button,a.btn{border:0;border-radius:999px;padding:11px 16px;font-weight:900;cursor:pointer;text-decoration:none;font-size:13px}.primary{background:#111;color:#fff}.orange{background:#ff6a00;color:#fff}.light{background:#eee}.status{margin-top:10px;font-weight:800}.swatches{display:flex;gap:14px;align-items:center}.swatches input{padding:3px;width:58px;height:42px}.section-title{border-top:1px solid #eee;padding-top:18px;margin-top:18px}@media(max-width:760px){.grid{grid-template-columns:1fr}.hero{display:block}h1{font-size:34px}.wrap{padding:22px 14px}}
+</style></head><body>
+<header class="top"><div class="topin"><div class="brand">GRABZONE • Policy Manager</div><div class="actions"><a class="btn light" href="admin.html">← Admin</a><a class="btn orange" href="policies.html" target="_blank">Preview ↗</a></div></div></header>
+<main class="wrap"><div class="hero"><div><div class="muted">CUSTOMER EXPERIENCE</div><h1>Policies Control Center</h1><p class="muted">Edit every policy text in বাংলা + English and control the visual style without touching code.</p></div><button class="primary" id="save">Save all changes</button></div>
+<div class="panel"><h2>Policy appearance</h2><div class="grid"><div class="field"><label>Enabled</label><select id="enabled"><option value="true">Show policy page</option><option value="false">Hide policy page</option></select></div><div class="field"><label>Animations</label><select id="animation"><option value="true">ON</option><option value="false">OFF</option></select></div><div class="field"><label>Primary accent</label><input id="accent" type="color"></div><div class="field"><label>Secondary accent</label><input id="accent2" type="color"></div><div class="field"><label>Page background</label><input id="bg" type="color"></div><div class="field"><label>Policy card color</label><input id="card" type="color"></div></div></div>
+<div class="panel"><h2>বাংলা content</h2><div class="grid"><div class="field"><label>Backbtn</label><input id="bn_backBtn"></div>
+<div class="field"><label>Cancelp1</label><textarea id="bn_cancelP1" rows="3"></textarea>
+<div class="field"><label>Cancelp2</label><textarea id="bn_cancelP2" rows="3"></textarea>
+<div class="field"><label>Canceltitle</label><input id="bn_cancelTitle"></div>
+<div class="field"><label>Contactbtn</label><input id="bn_contactBtn"></div>
+<div class="field"><label>Contactp</label><textarea id="bn_contactP" rows="3"></textarea>
+<div class="field"><label>Contacttitle</label><input id="bn_contactTitle"></div>
+<div class="field"><label>Eyebrow</label><input id="bn_eyebrow"></div>
+<div class="field"><label>Footer</label><input id="bn_footer"></div>
+<div class="field"><label>Intro</label><textarea id="bn_intro" rows="3"></textarea>
+<div class="field"><label>Lastupdate</label><input id="bn_lastUpdate"></div>
+<div class="field"><label>Newbadge</label><input id="bn_newBadge"></div>
+<div class="field"><label>Orderingh1</label><input id="bn_orderingH1"></div>
+<div class="field"><label>Orderingh2</label><input id="bn_orderingH2"></div>
+<div class="field"><label>Orderingp1</label><textarea id="bn_orderingP1" rows="3"></textarea>
+<div class="field"><label>Orderingp2</label><textarea id="bn_orderingP2" rows="3"></textarea>
+<div class="field"><label>Orderingp3</label><textarea id="bn_orderingP3" rows="3"></textarea>
+<div class="field"><label>Orderingtitle</label><input id="bn_orderingTitle"></div>
+<div class="field"><label>Privacyh1</label><input id="bn_privacyH1"></div>
+<div class="field"><label>Privacyh2</label><input id="bn_privacyH2"></div>
+<div class="field"><label>Privacyp1</label><textarea id="bn_privacyP1" rows="3"></textarea>
+<div class="field"><label>Privacyp2</label><textarea id="bn_privacyP2" rows="3"></textarea>
+<div class="field"><label>Privacyp3</label><textarea id="bn_privacyP3" rows="3"></textarea>
+<div class="field"><label>Privacytitle</label><input id="bn_privacyTitle"></div>
+<div class="field"><label>Returnsh1</label><input id="bn_returnsH1"></div>
+<div class="field"><label>Returnsh2</label><input id="bn_returnsH2"></div>
+<div class="field"><label>Returnsnotice</label><textarea id="bn_returnsNotice" rows="3"></textarea>
+<div class="field"><label>Returnsp1</label><textarea id="bn_returnsP1" rows="3"></textarea>
+<div class="field"><label>Returnsp2</label><textarea id="bn_returnsP2" rows="3"></textarea>
+<div class="field"><label>Returnsp3</label><textarea id="bn_returnsP3" rows="3"></textarea>
+<div class="field"><label>Returnstitle</label><input id="bn_returnsTitle"></div>
+<div class="field"><label>Shippingh1</label><input id="bn_shippingH1"></div>
+<div class="field"><label>Shippingh2</label><input id="bn_shippingH2"></div>
+<div class="field"><label>Shippingp1</label><textarea id="bn_shippingP1" rows="3"></textarea>
+<div class="field"><label>Shippingp2</label><textarea id="bn_shippingP2" rows="3"></textarea>
+<div class="field"><label>Shippingp3</label><textarea id="bn_shippingP3" rows="3"></textarea>
+<div class="field"><label>Shippingtitle</label><input id="bn_shippingTitle"></div>
+<div class="field"><label>Supportbadge</label><input id="bn_supportBadge"></div>
+<div class="field"><label>Terms1</label><textarea id="bn_terms1" rows="3"></textarea>
+<div class="field"><label>Terms2</label><textarea id="bn_terms2" rows="3"></textarea>
+<div class="field"><label>Terms3</label><textarea id="bn_terms3" rows="3"></textarea>
+<div class="field"><label>Terms4</label><textarea id="bn_terms4" rows="3"></textarea>
+<div class="field"><label>Terms5</label><textarea id="bn_terms5" rows="3"></textarea>
+<div class="field"><label>Terms6</label><textarea id="bn_terms6" rows="3"></textarea>
+<div class="field"><label>Termsnotice</label><textarea id="bn_termsNotice" rows="3"></textarea>
+<div class="field"><label>Termstitle</label><input id="bn_termsTitle"></div>
+<div class="field"><label>Title</label><input id="bn_title"></div>
+<div class="field"><label>Toccancellation</label><input id="bn_tocCancellation"></div>
+<div class="field"><label>Toccontact</label><input id="bn_tocContact"></div>
+<div class="field"><label>Tocordering</label><input id="bn_tocOrdering"></div>
+<div class="field"><label>Tocprivacy</label><input id="bn_tocPrivacy"></div>
+<div class="field"><label>Tocreturns</label><input id="bn_tocReturns"></div>
+<div class="field"><label>Tocshipping</label><input id="bn_tocShipping"></div>
+<div class="field"><label>Tocterms</label><input id="bn_tocTerms"></div>
+<div class="field"><label>Updated</label><input id="bn_updated"></div></div></div>
+<div class="panel"><h2>English content</h2><div class="grid"><div class="field"><label>Backbtn</label><input id="en_backBtn"></div>
+<div class="field"><label>Cancelp1</label><textarea id="en_cancelP1" rows="3"></textarea>
+<div class="field"><label>Cancelp2</label><textarea id="en_cancelP2" rows="3"></textarea>
+<div class="field"><label>Canceltitle</label><input id="en_cancelTitle"></div>
+<div class="field"><label>Contactbtn</label><input id="en_contactBtn"></div>
+<div class="field"><label>Contactp</label><textarea id="en_contactP" rows="3"></textarea>
+<div class="field"><label>Contacttitle</label><input id="en_contactTitle"></div>
+<div class="field"><label>Eyebrow</label><input id="en_eyebrow"></div>
+<div class="field"><label>Footer</label><input id="en_footer"></div>
+<div class="field"><label>Intro</label><textarea id="en_intro" rows="3"></textarea>
+<div class="field"><label>Lastupdate</label><input id="en_lastUpdate"></div>
+<div class="field"><label>Newbadge</label><input id="en_newBadge"></div>
+<div class="field"><label>Orderingh1</label><input id="en_orderingH1"></div>
+<div class="field"><label>Orderingh2</label><input id="en_orderingH2"></div>
+<div class="field"><label>Orderingp1</label><textarea id="en_orderingP1" rows="3"></textarea>
+<div class="field"><label>Orderingp2</label><textarea id="en_orderingP2" rows="3"></textarea>
+<div class="field"><label>Orderingp3</label><textarea id="en_orderingP3" rows="3"></textarea>
+<div class="field"><label>Orderingtitle</label><input id="en_orderingTitle"></div>
+<div class="field"><label>Privacyh1</label><input id="en_privacyH1"></div>
+<div class="field"><label>Privacyh2</label><input id="en_privacyH2"></div>
+<div class="field"><label>Privacyp1</label><textarea id="en_privacyP1" rows="3"></textarea>
+<div class="field"><label>Privacyp2</label><textarea id="en_privacyP2" rows="3"></textarea>
+<div class="field"><label>Privacyp3</label><textarea id="en_privacyP3" rows="3"></textarea>
+<div class="field"><label>Privacytitle</label><input id="en_privacyTitle"></div>
+<div class="field"><label>Returnsh1</label><input id="en_returnsH1"></div>
+<div class="field"><label>Returnsh2</label><input id="en_returnsH2"></div>
+<div class="field"><label>Returnsnotice</label><textarea id="en_returnsNotice" rows="3"></textarea>
+<div class="field"><label>Returnsp1</label><textarea id="en_returnsP1" rows="3"></textarea>
+<div class="field"><label>Returnsp2</label><textarea id="en_returnsP2" rows="3"></textarea>
+<div class="field"><label>Returnsp3</label><textarea id="en_returnsP3" rows="3"></textarea>
+<div class="field"><label>Returnstitle</label><input id="en_returnsTitle"></div>
+<div class="field"><label>Shippingh1</label><input id="en_shippingH1"></div>
+<div class="field"><label>Shippingh2</label><input id="en_shippingH2"></div>
+<div class="field"><label>Shippingp1</label><textarea id="en_shippingP1" rows="3"></textarea>
+<div class="field"><label>Shippingp2</label><textarea id="en_shippingP2" rows="3"></textarea>
+<div class="field"><label>Shippingp3</label><textarea id="en_shippingP3" rows="3"></textarea>
+<div class="field"><label>Shippingtitle</label><input id="en_shippingTitle"></div>
+<div class="field"><label>Supportbadge</label><input id="en_supportBadge"></div>
+<div class="field"><label>Terms1</label><input id="en_terms1"></div>
+<div class="field"><label>Terms2</label><textarea id="en_terms2" rows="3"></textarea>
+<div class="field"><label>Terms3</label><textarea id="en_terms3" rows="3"></textarea>
+<div class="field"><label>Terms4</label><textarea id="en_terms4" rows="3"></textarea>
+<div class="field"><label>Terms5</label><textarea id="en_terms5" rows="3"></textarea>
+<div class="field"><label>Terms6</label><textarea id="en_terms6" rows="3"></textarea>
+<div class="field"><label>Termsnotice</label><textarea id="en_termsNotice" rows="3"></textarea>
+<div class="field"><label>Termstitle</label><input id="en_termsTitle"></div>
+<div class="field"><label>Title</label><input id="en_title"></div>
+<div class="field"><label>Toccancellation</label><input id="en_tocCancellation"></div>
+<div class="field"><label>Toccontact</label><input id="en_tocContact"></div>
+<div class="field"><label>Tocordering</label><input id="en_tocOrdering"></div>
+<div class="field"><label>Tocprivacy</label><input id="en_tocPrivacy"></div>
+<div class="field"><label>Tocreturns</label><input id="en_tocReturns"></div>
+<div class="field"><label>Tocshipping</label><input id="en_tocShipping"></div>
+<div class="field"><label>Tocterms</label><input id="en_tocTerms"></div>
+<div class="field"><label>Updated</label><input id="en_updated"></div></div></div>
+<div class="panel"><div class="actions"><button class="primary" id="save2">Save all changes</button><a class="btn light" href="policies.html" target="_blank">Open customer page</a></div><div id="status" class="status"></div></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script>
+const C=window.GRABZONE_CONFIG||{};let sb=null;const $=id=>document.getElementById(id);
+const FALLBACK={"id": 1, "enabled": true, "accent_color": "#ff6a00", "accent_color_2": "#ff3d00", "background_color": "#f7f7f4", "card_color": "#ffffff", "animation_enabled": true, "content": {"bn": {"eyebrow": "স্টোর নীতিমালা", "title": "আপনার কেনাকাটা, পরিষ্কার নিয়মে।", "intro": "GRABZONE-এ অর্ডার, পেমেন্ট, ডেলিভারি, রিটার্ন, রিফান্ড, গোপনীয়তা এবং যোগাযোগ সম্পর্কে গুরুত্বপূর্ণ তথ্য এখানে একসাথে দেওয়া হয়েছে।", "updated": "সর্বশেষ আপডেট:", "orderingTitle": "অর্ডার ও পেমেন্ট", "orderingP1": "আপনি পণ্য নির্বাচন করে DM-এর মাধ্যমে অর্ডারের অনুরোধ পাঠাতে পারবেন। অর্ডার গ্রহণের আগে পণ্যের মূল্য, প্রাপ্যতা, ডেলিভারি তথ্য এবং প্রযোজ্য চার্জ নিশ্চিত করা হবে।", "orderingH1": "অর্ডার নিশ্চিতকরণ", "orderingP2": "শুধু DM পাঠানো মানেই অর্ডার সম্পূর্ণ নিশ্চিত হয়েছে এমন নয়। আমাদের পক্ষ থেকে confirmation পাওয়ার পর অর্ডার final হিসেবে বিবেচিত হবে।", "orderingH2": "পেমেন্ট", "orderingP3": "আপনার অর্ডারের জন্য যে payment method গ্রহণ করা হবে তা order confirmation-এর সময় জানানো হবে। কোনো ব্যক্তিগত payment information আমাদের DM-এ অপ্রয়োজনীয়ভাবে পাঠাবেন না।", "shippingTitle": "ডেলিভারি ও শিপিং", "shippingP1": "ডেলিভারি সময় পণ্য, অবস্থান, courier availability এবং supplier-এর fulfillment-এর ওপর নির্ভর করতে পারে। সম্ভাব্য delivery timeline অর্ডার confirmation-এর সময় জানানো হবে।", "shippingH1": "ঠিকানা", "shippingP2": "অর্ডার নিশ্চিত করার আগে সঠিক নাম, ফোন নম্বর এবং delivery address দিন। ভুল তথ্যের কারণে delay বা additional delivery cost হলে তার দায় customer-এর হতে পারে।", "shippingH2": "Delay", "shippingP3": "Courier, weather, supplier বা অন্যান্য পরিস্থিতির কারণে delay হতে পারে। এমন হলে আমরা available information অনুযায়ী customer-কে update দেওয়ার চেষ্টা করব।", "returnsTitle": "রিটার্ন ও রিফান্ড", "returnsP1": "ভুল, damaged বা materially defective product পাওয়া গেলে যত দ্রুত সম্ভব আমাদের সাথে যোগাযোগ করুন এবং product-এর ছবি/ভিডিওসহ সমস্যাটি জানান।", "returnsH1": "যোগ্যতা", "returnsP2": "রিটার্ন বা replacement product-এর condition, সমস্যার ধরন এবং supplier/courier-এর applicable rules-এর ওপর নির্ভর করতে পারে। ব্যবহৃত, customer-damaged বা পরিবর্তিত পণ্য সাধারণত গ্রহণযোগ্য নাও হতে পারে।", "returnsH2": "রিফান্ড", "returnsP3": "রিফান্ড অনুমোদিত হলে কোন মাধ্যমে এবং কত সময়ে প্রদান করা হবে তা confirmation-এর সময় জানানো হবে। Courier/processing charge সব ক্ষেত্রে refundable নাও হতে পারে।", "returnsNotice": "গুরুত্বপূর্ণ: কোনো return বা refund পাঠানোর আগে আমাদের confirmation নিন। অনুমোদন ছাড়া পণ্য পাঠালে processing delay হতে পারে।", "cancelTitle": "অর্ডার ক্যানসেলেশন", "cancelP1": "অর্ডার fulfillment বা shipment-এর আগে cancellation request করা যেতে পারে। shipment শুরু হয়ে গেলে cancellation সব ক্ষেত্রে সম্ভব নাও হতে পারে।", "cancelP2": "ক্যানসেল করতে আপনার order information উল্লেখ করে আমাদের DM করুন। আমরা order status দেখে available option জানাব।", "privacyTitle": "Privacy Policy", "privacyP1": "অর্ডার process করার জন্য প্রয়োজনীয় তথ্য—যেমন নাম, ফোন নম্বর, delivery address এবং order details—শুধু order fulfillment, customer support এবং সংশ্লিষ্ট service-এর জন্য ব্যবহার করা হতে পারে।", "privacyH1": "তথ্য সুরক্ষা", "privacyP2": "আমরা reasonable administrative and technical measures ব্যবহার করে customer information সুরক্ষিত রাখার চেষ্টা করি। তবে internet transmission বা third-party service সম্পূর্ণ risk-free হওয়ার নিশ্চয়তা দেওয়া যায় না।", "privacyH2": "Third parties", "privacyP3": "Courier, payment provider, supplier বা অন্য service provider-এর সাথে fulfillment-এর জন্য প্রয়োজনীয় তথ্য share হতে পারে।", "termsTitle": "Terms & Conditions", "terms1": "Product availability, price এবং offer পরিবর্তন হতে পারে।", "terms2": "Product image illustrative হতে পারে; actual product-এর minor variation থাকতে পারে।", "terms3": "অর্ডার confirmation-এর আগে final price ও delivery details যাচাই করুন।", "terms4": "ভুল customer information-এর কারণে হওয়া সমস্যা customer-এর দায় হতে পারে।", "terms5": "Fraudulent, abusive বা misleading order activity হলে order বাতিল করার অধিকার GRABZONE সংরক্ষণ করে।", "terms6": "এই policy-এর কোনো অংশ আপনার ক্ষেত্রে প্রযোজ্য আইনগত অধিকার সীমিত করার উদ্দেশ্যে লেখা নয়।", "termsNotice": "এই পেজটি GRABZONE-এর operational store policy হিসেবে তৈরি করা হয়েছে। আপনার business structure, trade license, tax setup এবং local legal requirements অনুযায়ী এটি একজন qualified professional দিয়ে review করানো ভালো।", "contactTitle": "যোগাযোগ", "contactP": "অর্ডার, return, refund বা যেকোনো customer support-এর জন্য আমাদের official contact channel ব্যবহার করুন।", "contactBtn": "WhatsApp-এ যোগাযোগ", "backBtn": "স্টোরে ফিরে যান", "footer": "Store Policies • Privacy • Terms", "tocOrdering": "অর্ডার ও পেমেন্ট", "tocShipping": "ডেলিভারি", "tocReturns": "রিটার্ন ও রিফান্ড", "tocCancellation": "ক্যানসেলেশন", "tocPrivacy": "প্রাইভেসি", "tocTerms": "শর্তাবলি", "tocContact": "যোগাযোগ", "newBadge": "নিরাপদ ও পরিষ্কার শপিং", "supportBadge": "কাস্টমার সাপোর্ট", "lastUpdate": "আপডেট করা হয়েছে"}, "en": {"eyebrow": "STORE POLICIES", "title": "A clearer shopping experience, with clear policies.", "intro": "This page brings together important information about ordering, payment, delivery, returns, refunds, privacy and customer support at GRABZONE.", "updated": "Last updated:", "orderingTitle": "Ordering & Payment", "orderingP1": "You can request an order by selecting a product and contacting us through DM. Before an order is accepted, we will confirm the product price, availability, delivery information and any applicable charges.", "orderingH1": "Order Confirmation", "orderingP2": "Sending a DM does not by itself mean that an order is fully confirmed. An order becomes final after confirmation from our team.", "orderingH2": "Payment", "orderingP3": "The payment method available for your order will be communicated during order confirmation. Do not send unnecessary sensitive payment information through DM.", "shippingTitle": "Shipping & Delivery", "shippingP1": "Delivery time may depend on the product, destination, courier availability and supplier fulfillment. An estimated delivery timeline will be communicated during order confirmation.", "shippingH1": "Address", "shippingP2": "Provide an accurate name, phone number and delivery address before confirming your order. Delays or additional delivery costs caused by incorrect information may be the customer's responsibility.", "shippingH2": "Delays", "shippingP3": "Courier, weather, supplier or other circumstances may cause delays. When possible, we will provide updates based on the information available to us.", "returnsTitle": "Returns & Refunds", "returnsP1": "If you receive an incorrect, damaged or materially defective product, contact us as soon as possible and provide photos or video showing the issue.", "returnsH1": "Eligibility", "returnsP2": "Return or replacement eligibility may depend on the product condition, type of issue and applicable supplier/courier rules. Used, customer-damaged or modified products may not be eligible.", "returnsH2": "Refunds", "returnsP3": "If a refund is approved, the method and expected processing time will be communicated during confirmation. Courier or processing charges may not be refundable in every case.", "returnsNotice": "Important: Contact us and receive confirmation before sending any product back. Unauthorized returns may cause processing delays.", "cancelTitle": "Order Cancellation", "cancelP1": "A cancellation request may be possible before fulfillment or shipment begins. Once shipment has started, cancellation may not be possible in every case.", "cancelP2": "To request cancellation, send us your order information by DM. We will check the order status and explain the available option.", "privacyTitle": "Privacy Policy", "privacyP1": "Information needed to process an order—such as your name, phone number, delivery address and order details—may be used for order fulfillment, customer support and related services.", "privacyH1": "Information Security", "privacyP2": "We use reasonable administrative and technical measures to help protect customer information. However, no internet transmission or third-party service can be guaranteed to be completely risk-free.", "privacyH2": "Third Parties", "privacyP3": "Information necessary for fulfillment may be shared with courier, payment, supplier or other service providers.", "termsTitle": "Terms & Conditions", "terms1": "Product availability, prices and offers may change.", "terms2": "Product images may be illustrative and minor variations may occur in the actual product.", "terms3": "Review the final price and delivery details before confirming an order.", "terms4": "Problems caused by incorrect customer information may be the customer's responsibility.", "terms5": "GRABZONE reserves the right to cancel fraudulent, abusive or misleading orders.", "terms6": "Nothing in this policy is intended to remove or limit rights that cannot lawfully be excluded.", "termsNotice": "This page is an operational store-policy template for GRABZONE. It is recommended that you have it reviewed by a qualified professional based on your business structure, trade license, tax setup and applicable local requirements.", "contactTitle": "Contact", "contactP": "For orders, returns, refunds or customer support, please use our official contact channel.", "contactBtn": "Contact us on WhatsApp", "backBtn": "Back to Store", "footer": "Store Policies • Privacy • Terms", "tocOrdering": "Ordering & Payment", "tocShipping": "Shipping & Delivery", "tocReturns": "Returns & Refunds", "tocCancellation": "Cancellation", "tocPrivacy": "Privacy", "tocTerms": "Terms", "tocContact": "Contact", "newBadge": "Clear & customer-friendly", "supportBadge": "Customer support", "lastUpdate": "Updated"}}};
+if(C.supabaseUrl&&!C.supabaseUrl.includes('PASTE_'))sb=supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
+function fill(lang,obj){Object.keys(obj||{}).forEach(k=>{const e=$(`${lang}_${k}`);if(e)e.value=obj[k]??''})}
+async function load(){if(!sb)return;const {data,error}=await sb.auth.getSession();if(error||!data.session){location.href='admin.html';return}const r=await sb.from('store_policies').select('*').eq('id',1).maybeSingle();const p=r.data||FALLBACK;$('enabled').value=String(p.enabled!==false);$('animation').value=String(p.animation_enabled!==false);$('accent').value=p.accent_color||'#ff6a00';$('accent2').value=p.accent_color_2||'#ff3d00';$('bg').value=p.background_color||'#f7f7f4';$('card').value=p.card_color||'#ffffff';fill('bn',p.content?.bn||FALLBACK.content.bn);fill('en',p.content?.en||FALLBACK.content.en)}
+async function save(){try{const get=(lang)=>Object.fromEntries(Object.keys(FALLBACK.content[lang]).map(k=>[k,$(`${lang}_${k}`)?.value??'']));const payload={id:1,enabled:$('enabled').value==='true',animation_enabled:$('animation').value==='true',accent_color:$('accent').value,accent_color_2:$('accent2').value,background_color:$('bg').value,card_color:$('card').value,content:{bn:get('bn'),en:get('en')},updated_at:new Date().toISOString()};const {error}=await sb.from('store_policies').upsert(payload,{onConflict:'id'});if(error)throw error;$('status').textContent='✓ Saved successfully. Open Preview to see the live result.'}catch(e){$('status').textContent='✕ '+e.message}}
+$('save').onclick=save;$('save2').onclick=save;load();
+</script></body></html>
