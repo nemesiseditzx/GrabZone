@@ -362,3 +362,105 @@ body.gz-motion-on::before{
   body::before{width:280px;height:280px;opacity:.06}
   .gz-motion-on .product-card:hover{box-shadow:0 15px 35px rgba(0,0,0,.13)}
 }
+
+/* =====================================================
+   GRABZONE — MOBILE SCROLL REVEAL STABILITY FIX
+===================================================== */
+
+@media (max-width: 600px) {
+
+  /* Prevent reveal animations from causing horizontal overflow */
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Keep revealed elements inside the viewport */
+  [data-scroll-reveal],
+  .scroll-reveal,
+  .reveal,
+  .gz-reveal {
+    will-change: opacity, transform;
+    backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* Mobile reveal should travel only a tiny distance */
+  .scroll-reveal:not(.is-visible),
+  .reveal:not(.is-visible),
+  .gz-reveal:not(.is-visible) {
+    transform: translate3d(0, 14px, 0) !important;
+    opacity: 0;
+  }
+
+  .scroll-reveal.is-visible,
+  .reveal.is-visible,
+  .gz-reveal.is-visible {
+    transform: translate3d(0, 0, 0) !important;
+    opacity: 1;
+  }
+
+  /* Disable expensive horizontal/parallax movement on phones */
+  [data-scroll-reveal="left"],
+  [data-scroll-reveal="right"],
+  [data-reveal="left"],
+  [data-reveal="right"] {
+    transform: translate3d(0, 14px, 0) !important;
+  }
+
+  /* Smoother mobile timing */
+  .scroll-reveal,
+  .reveal,
+  .gz-reveal {
+    transition:
+      opacity .45s ease,
+      transform .45s cubic-bezier(.22,1,.36,1) !important;
+  }
+
+  /* Don't animate huge sections */
+  .hero,
+  .shop-section,
+  .how-section,
+  .ref-section,
+  footer {
+    transform: none !important;
+  }
+
+  /* Prevent image animation from creating visual jumps */
+  .product-card,
+  .product-image,
+  .hero-card {
+    backface-visibility: hidden;
+  }
+}
+
+
+/* Very small phones */
+@media (max-width: 380px) {
+
+  .scroll-reveal,
+  .reveal,
+  .gz-reveal {
+    transition-duration: .4s !important;
+  }
+
+  .scroll-reveal:not(.is-visible),
+  .reveal:not(.is-visible),
+  .gz-reveal:not(.is-visible) {
+    transform: translate3d(0, 10px, 0) !important;
+  }
+}
+
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
