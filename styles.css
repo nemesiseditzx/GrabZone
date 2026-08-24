@@ -475,3 +475,53 @@
     font-size: 11px;
   }
 }
+
+/* =========================================================
+   GRABZONE POLICY LINK
+========================================================= */
+
+.grabzone-policy-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  text-decoration: none;
+
+  color: inherit;
+
+  font-size: inherit;
+  font-weight: inherit;
+
+  transition:
+    color .25s ease,
+    transform .25s ease,
+    opacity .25s ease;
+}
+
+.grabzone-policy-link:hover {
+  opacity: .7;
+  transform: translateY(-1px);
+}
+
+
+/* Footer */
+
+.footer-links .grabzone-policy-link {
+  margin-left: 14px;
+}
+
+
+/* Mobile */
+
+@media (max-width: 700px) {
+
+  .grabzone-policy-link {
+    font-size: 12px;
+  }
+
+  .footer-links .grabzone-policy-link {
+    margin-left: 8px;
+  }
+
+}
