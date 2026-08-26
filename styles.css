@@ -128,32 +128,33 @@ button {
   It never begins in the middle.
 */
 .notice-loop {
-  position: absolute;
-  z-index: 1;
+  position: absolute !important;
 
   top: 50%;
   left: 100%;
 
-  display: inline-flex;
-  align-items: center;
+  display: inline-flex !important;
+  align-items: center !important;
 
-  width: max-content;
-  min-width: max-content;
-  height: max-content;
+  width: max-content !important;
+  min-width: max-content !important;
 
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
 
-  white-space: nowrap;
+  white-space: nowrap !important;
 
+  /*
+    Start immediately at the right edge.
+    No extra waiting.
+  */
   transform: translate3d(0, -50%, 0);
 
-  animation: grabzoneNoticeMarquee 34s linear infinite;
+  animation: grabzoneNoticeFast 18s linear infinite !important;
 
   will-change: transform;
   backface-visibility: hidden;
 }
-
 .notice-content {
   display: inline-flex;
   align-items: center;
