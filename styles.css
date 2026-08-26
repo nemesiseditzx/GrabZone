@@ -716,85 +716,150 @@
 }
 
 /* =========================================================
-   GRABZONE — FINAL NOTICE MARQUEE
+   GRABZONE — NOTICE MARQUEE — FINAL
    ========================================================= */
 
 .notice-track {
   position: relative !important;
-  flex: 1 1 auto !important;
+  display: block !important;
+
+  width: 100% !important;
   min-width: 0 !important;
+
   overflow: hidden !important;
-  display: flex !important;
+  white-space: nowrap !important;
+
+  height: 100% !important;
+}
+
+
+/* Moving notice */
+.notice-loop {
+  position: absolute !important;
+
+  left: 100% !important;
+  top: 50% !important;
+
+  display: inline-flex !important;
   align-items: center !important;
+
+  width: max-content !important;
+  min-width: max-content !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  flex: none !important;
+
+  white-space: nowrap !important;
+
+  /*
+    Start exactly outside the RIGHT edge.
+    Then travel completely through the bar
+    and disappear outside the LEFT edge.
+  */
+  animation: grabzoneNoticeMarquee 32s linear infinite !important;
+
+  will-change: transform !important;
+}
+
+
+/* Notice content */
+.notice-content {
+  display: inline-flex !important;
+  align-items: center !important;
+
+  width: max-content !important;
+  min-width: max-content !important;
+
+  flex: none !important;
+
   white-space: nowrap !important;
 }
 
-/* Start completely outside the right side */
-.notice-loop {
-  display: flex !important;
-  align-items: center !important;
-  width: max-content !important;
-  min-width: max-content !important;
-  flex-shrink: 0 !important;
 
-  animation: grabzoneNoticeRun 42s linear infinite !important;
-
-  will-change: transform;
-}
-
-.notice-content {
-  display: flex !important;
-  align-items: center !important;
-  width: max-content !important;
-  flex-shrink: 0 !important;
-}
-
+/* Individual notice */
 .notice-item {
   display: inline-flex !important;
   align-items: center !important;
-  flex-shrink: 0 !important;
-  white-space: nowrap !important;
 
-  margin-right: 100px !important;
+  width: max-content !important;
+  min-width: max-content !important;
+
+  flex: none !important;
+
+  margin: 0 100px 0 0 !important;
+  padding: 0 !important;
+
+  white-space: nowrap !important;
 }
 
+
+/* Notice title */
 .notice-item b {
   display: inline-block !important;
-  margin-right: 14px !important;
+
+  margin: 0 14px 0 0 !important;
+
+  white-space: nowrap !important;
 }
 
+
+/* Notice message */
 .notice-message {
   display: inline-block !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  white-space: nowrap !important;
 }
 
-/* Separator */
+
+/* Absolutely NO separator/dot */
 .notice-item::after {
   content: none !important;
   display: none !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
+
 /*
-  IMPORTANT:
-  Start from completely outside the right edge.
-  Move all the way left.
+  START:
+    left edge of notice = right edge of screen
+
+  END:
+    move its complete width
+    + complete screen width
+
+  Therefore the notice starts completely outside
+  the right side and finishes completely outside
+  the left side.
 */
-@keyframes grabzoneNoticeSingle {
+@keyframes grabzoneNoticeMarquee {
 
   0% {
-    transform: translateX(calc(100vw + 40px));
+    transform: translate3d(0, -50%, 0);
   }
 
   100% {
-    transform: translateX(calc(-100% - 40px));
+    transform: translate3d(
+      calc(-100% - 100vw),
+      -50%,
+      0
+    );
   }
 
 }
+
 
 /* Mobile */
 @media (max-width: 600px) {
 
   .notice-loop {
-    animation-duration: 34s !important;
+    animation-duration: 30s !important;
   }
 
   .notice-item {
@@ -806,18 +871,18 @@
     margin-right: 8px !important;
   }
 
-  .notice-item::after {
-    margin-left: 60px;
-  }
-
 }
 
-/* Accessibility */
+
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
 
   .notice-loop {
     animation: none !important;
-    transform: none !important;
+
+    left: 0 !important;
+
+    transform: translateY(-50%) !important;
   }
 
 }
