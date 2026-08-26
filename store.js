@@ -155,7 +155,33 @@ function applySiteSettings() {
   setText("referralTitle", SITE.referral_title);
   setText("referralBody", SITE.referral_body);
   setText("refDm", SITE.referral_button_text);
+/* REFERRAL VERIFY BY DM */
 
+const referralButton = document.getElementById("refDm");
+
+const referralUrl =
+  SITE.whatsapp ||
+  C?.whatsapp ||
+  "";
+
+if (referralButton && referralUrl) {
+
+  referralButton.style.cursor = "pointer";
+
+  referralButton.onclick = function (event) {
+
+    event.preventDefault();
+
+    window.open(
+      referralUrl,
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+  };
+
+}
+  
   setText("footerText", SITE.footer_text);
 
   setText("nav1", SITE.header_link1_label);
