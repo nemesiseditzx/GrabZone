@@ -46,6 +46,450 @@ function dmLink(text) {
 }
 
 /* =========================================================
+   SOCIAL LINKS — USE ADMIN PANEL SETTINGS
+========================================================= */
+
+function getSocialUrl(type) {
+  if (type === "whatsapp") {
+    return (
+      SITE.whatsapp ||
+      SITE.whatsapp_url ||
+      SITE.whatsapp_link ||
+      C?.whatsapp ||
+      ""
+    );
+  }
+
+  if (type === "instagram") {
+    return (
+      SITE.instagram ||
+      SITE.instagram_url ||
+      SITE.instagram_link ||
+      C?.instagram ||
+      ""
+    );
+  }
+
+  if (type === "facebook") {
+    return (
+      SITE.facebook ||
+      SITE.facebook_url ||
+      SITE.facebook_link ||
+      SITE.messenger ||
+      C?.facebook ||
+      C?.messenger ||
+      ""
+    );
+  }
+
+  return "";
+}
+
+/* =========================================================
+   FAVICON — USE THE SAME LOGO FROM ADMIN PANEL
+========================================================= */
+
+function applyFavicon() {
+  const logo =
+    SITE.logo_url ||
+    C?.logoUrl ||
+    "";
+
+  if (!logo) return;
+
+  let favicon =
+    document.querySelector('link[data-grabzone-favicon]');
+
+  if (!favicon) {
+    favicon = document.createElement("link");
+    favicon.rel = "icon";
+    favicon.type = "image/png";
+    favicon.setAttribute(
+      "data-grabzone-favicon",
+      "true"
+    );
+    document.head.appendChild(favicon);
+  }
+
+  favicon.href = logo;
+
+  let appleIcon =
+    document.querySelector(
+      'link[data-grabzone-apple-icon]'
+    );
+
+  if (!appleIcon) {
+    appleIcon = document.createElement("link");
+    appleIcon.rel = "apple-touch-icon";
+    appleIcon.setAttribute(
+      "data-grabzone-apple-icon",
+      "true"
+    );
+    document.head.appendChild(appleIcon);
+  }
+
+  appleIcon.href = logo;
+}
+
+/* =========================================================
+   DM ORDER CHOOSER
+========================================================= */
+
+function ensureDMChooser() {
+  if (document.getElementById("gzOrderChooser")) return;
+
+  const style = document.createElement("style");
+
+  style.id = "gzOrderChooserStyle";
+
+  style.textContent = `
+    #gzOrderChooser {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+    }
+
+    #gzOrderChooser.gz-show {
+      display: flex;
+    }
+
+    .gz-order-box {
+      position: relative;
+      width: min(390px, 100%);
+      padding: 28px;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 25px 80px rgba(0,0,0,.25);
+      animation: gzOrderIn .18s ease-out;
+    }
+
+    @keyframes gzOrderIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .gz-order-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 50%;
+      background: #f1f1f1;
+      color: #111;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .gz-order-title {
+      margin: 0 40px 7px 0;
+      font-size: 22px;
+      font-weight: 800;
+      color: #111;
+    }
+
+    .gz-order-subtitle {
+      margin: 0 0 20px;
+      color: #777;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .gz-order-options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .gz-order-option {
+      width: 100%;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 8px 14px;
+      border: 1px solid #e5e5e5;
+      border-radius: 15px;
+      background: #fff;
+      color: #111;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+      transition: transform .15s ease, background .15s ease,
+                  border-color .15s ease;
+    }
+
+    .gz-order-option:hover {
+      transform: translateY(-1px);
+      background: #f7f7f7;
+      border-color: #ccc;
+    }
+
+    .gz-order-icon {
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 38px;
+      border-radius: 11px;
+      background: #111;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .gz-order-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .gz-order-text strong {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .gz-order-text small {
+      margin-top: 2px;
+      color: #888;
+      font-size: 11px;
+    }
+
+    .gz-order-arrow {
+      color: #999;
+      font-size: 18px;
+    }
+
+    @media (max-width: 600px) {
+      #gzOrderChooser {
+        align-items: flex-end;
+        padding: 12px;
+      }
+
+      .gz-order-box {
+        width: 100%;
+        padding: 24px 18px;
+        border-radius: 22px;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+
+  const modal = document.createElement("div");
+
+  modal.id = "gzOrderChooser";
+
+  modal.innerHTML = `
+    <div class="gz-order-box" role="dialog" aria-modal="true">
+
+      <button
+        type="button"
+        class="gz-order-close"
+        aria-label="Close"
+        id="gzOrderClose"
+      >×</button>
+
+      <h2 class="gz-order-title">
+        Where would you like to order?
+      </h2>
+
+      <p class="gz-order-subtitle">
+        Choose your preferred platform to message GrabZone.
+      </p>
+
+      <div class="gz-order-options">
+
+        <button
+          type="button"
+          class="gz-order-option"
+          id="gzWhatsApp"
+        >
+          <span class="gz-order-icon">WA</span>
+          <span class="gz-order-text">
+            <strong>WhatsApp</strong>
+            <small>Chat with us on WhatsApp</small>
+          </span>
+          <span class="gz-order-arrow">→</span>
+        </button>
+
+        <button
+          type="button"
+          class="gz-order-option"
+          id="gzInstagram"
+        >
+          <span class="gz-order-icon">IG</span>
+          <span class="gz-order-text">
+            <strong>Instagram</strong>
+            <small>Message us on Instagram</small>
+          </span>
+          <span class="gz-order-arrow">→</span>
+        </button>
+
+        <button
+          type="button"
+          class="gz-order-option"
+          id="gzFacebook"
+        >
+          <span class="gz-order-icon">FB</span>
+          <span class="gz-order-text">
+            <strong>Facebook</strong>
+            <small>Message us on Facebook</small>
+          </span>
+          <span class="gz-order-arrow">→</span>
+        </button>
+
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const close = () => {
+    modal.classList.remove("gz-show");
+    document.body.style.overflow = "";
+  };
+
+  const open = () => {
+    modal.classList.add("gz-show");
+    document.body.style.overflow = "hidden";
+  };
+
+  const go = type => {
+    const url = getSocialUrl(type);
+
+    if (!url) {
+      alert(
+        "This contact option is not available right now."
+      );
+      return;
+    }
+
+    /*
+      WhatsApp gets the current product/referral message
+      through the existing order button href.
+    */
+    let finalUrl = url;
+
+    if (
+      type === "whatsapp" &&
+      window.__grabzoneOrderMessage
+    ) {
+      finalUrl =
+        url +
+        (url.includes("?") ? "&" : "?") +
+        "text=" +
+        encodeURIComponent(
+          window.__grabzoneOrderMessage
+        );
+    }
+
+    window.open(
+      finalUrl,
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+    close();
+  };
+
+  document
+    .getElementById("gzOrderClose")
+    ?.addEventListener("click", close);
+
+  document
+    .getElementById("gzWhatsApp")
+    ?.addEventListener("click", () => go("whatsapp"));
+
+  document
+    .getElementById("gzInstagram")
+    ?.addEventListener("click", () => go("instagram"));
+
+  document
+    .getElementById("gzFacebook")
+    ?.addEventListener("click", () => go("facebook"));
+
+  modal.addEventListener("click", event => {
+    if (event.target === modal) close();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (
+      event.key === "Escape" &&
+      modal.classList.contains("gz-show")
+    ) {
+      close();
+    }
+  });
+
+  window.__grabzoneOpenDMChooser = open;
+}
+
+/* =========================================================
+   INTERCEPT ALL DM / ORDER BUTTONS
+   Capture phase stops old direct-WhatsApp handlers.
+========================================================= */
+
+function bindDMChooser(id) {
+  const button = document.getElementById(id);
+
+  if (!button || button.dataset.gzDmBound === "1") return;
+
+  button.dataset.gzDmBound = "1";
+
+  button.addEventListener(
+    "click",
+    event => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      if (window.__grabzoneOpenDMChooser) {
+        window.__grabzoneOpenDMChooser();
+      } else {
+        ensureDMChooser();
+        window.__grabzoneOpenDMChooser?.();
+      }
+    },
+    true
+  );
+}
+
+function setupDMChooser() {
+  ensureDMChooser();
+
+  /*
+    Header button
+  */
+  bindDMChooser("headerDm");
+
+  /*
+    Homepage referral / Verify by DM
+  */
+  bindDMChooser("refDm");
+
+  /*
+    Product page order button
+  */
+  bindDMChooser("orderBtn");
+}
+
+/* =========================================================
    MAIN LOAD
 ========================================================= */
 
@@ -87,6 +531,8 @@ async function loadSettings() {
   }
 
   if (data) SITE = data;
+
+  applyFavicon();
 }
 
 /* =========================================================
@@ -155,33 +601,6 @@ function applySiteSettings() {
   setText("referralTitle", SITE.referral_title);
   setText("referralBody", SITE.referral_body);
   setText("refDm", SITE.referral_button_text);
-/* REFERRAL VERIFY BY DM */
-
-const referralButton = document.getElementById("refDm");
-
-const referralUrl =
-  SITE.whatsapp ||
-  C?.whatsapp ||
-  "";
-
-if (referralButton && referralUrl) {
-
-  referralButton.style.cursor = "pointer";
-
-  referralButton.onclick = function (event) {
-
-    event.preventDefault();
-
-    window.open(
-      referralUrl,
-      "_blank",
-      "noopener,noreferrer"
-    );
-
-  };
-
-}
-  
   setText("footerText", SITE.footer_text);
 
   setText("nav1", SITE.header_link1_label);
@@ -219,13 +638,32 @@ if (referralButton && referralUrl) {
     });
   }
 
+  /*
+    Social footer links still use the Admin Panel settings.
+    DM buttons are intentionally NOT assigned an href here,
+    because setupDMChooser() controls them.
+  */
   [
-    ["headerDm", SITE.whatsapp || C?.whatsapp],
     ["wa", SITE.whatsapp || C?.whatsapp],
     ["ig", SITE.instagram || C?.instagram],
-    ["ms", SITE.messenger || C?.messenger]
+    ["ms", SITE.messenger || SITE.facebook || C?.messenger || C?.facebook]
   ].forEach(([id, url]) => {
     setHref(id, url || "#");
+  });
+
+  /*
+    Remove any old direct destination from DM buttons.
+    This prevents accidental direct WhatsApp navigation.
+  */
+  ["headerDm", "refDm", "orderBtn"].forEach(id => {
+    const element = document.getElementById(id);
+
+    if (!element) return;
+
+    element.removeAttribute("href");
+    element.removeAttribute("target");
+    element.removeAttribute("rel");
+    element.style.cursor = "pointer";
   });
 
   if (SITE.hero_image_url) {
@@ -940,8 +1378,18 @@ async function renderDetail() {
         ` | Referral code: ${referral}`;
     }
 
-    orderButton.href =
-      dmLink(message);
+    /*
+      Store the message globally for the social chooser.
+      WhatsApp uses it; Instagram/Facebook use their Admin
+      Panel destination directly.
+    */
+    window.__grabzoneOrderMessage = message;
+
+    /*
+      Keep a harmless href for accessibility/fallback, but
+      the click chooser intercepts the actual navigation.
+    */
+    orderButton.href = "#";
   }
 
   if (orderButton) {
@@ -954,6 +1402,12 @@ async function renderDetail() {
       updateOrderLink
     );
   }
+
+  /*
+    Product-page DM button is rendered after the initial
+    DOM-ready setup, so bind it now.
+  */
+  setupDMChooser();
 }
 
 /* =========================================================
@@ -1005,6 +1459,7 @@ document.addEventListener(
   "DOMContentLoaded",
   () => {
     setupSearch();
+    setupDMChooser();
     load();
   }
 );
