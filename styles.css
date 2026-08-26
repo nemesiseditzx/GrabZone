@@ -769,9 +769,8 @@
 
 /* Separator */
 .notice-item::after {
-  content: "•";
-  margin-left: 100px;
-  opacity: .45;
+  content: none !important;
+  display: none !important;
 }
 
 /*
@@ -779,14 +778,14 @@
   Start from completely outside the right edge.
   Move all the way left.
 */
-@keyframes grabzoneNoticeRun {
+@keyframes grabzoneNoticeSingle {
 
   0% {
-    transform: translateX(100vw);
+    transform: translateX(calc(100vw + 40px));
   }
 
   100% {
-    transform: translateX(-100%);
+    transform: translateX(calc(-100% - 40px));
   }
 
 }
