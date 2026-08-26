@@ -447,66 +447,41 @@ async function loadNotices() {
     return;
   }
 
-  /* =====================================================
-     BUILD NOTICE
-  ===================================================== */
-
   const html = notices.map(n => `
-    <span class="notice-item">
+    <span class="gz-notice-item">
       <b>${esc(n.title)}</b>
-      <span class="notice-message">
-        ${esc(n.message)}
-      </span>
+      <span>${esc(n.message)}</span>
     </span>
   `).join("");
 
   track.innerHTML = `
-    <div class="notice-js-loop">
-
-      <div class="notice-js-group">
-        ${html}
-      </div>
-
-      <div
-        class="notice-js-group"
-        aria-hidden="true"
-      >
-        ${html}
-      </div>
-
+    <div class="gz-notice-moving">
+      <div class="gz-notice-group">${html}</div>
+      <div class="gz-notice-group">${html}</div>
     </div>
   `;
 
-  /* =====================================================
-     COMPLETELY REMOVE OLD NOTICE CSS
-  ===================================================== */
-
-  document
-    .getElementById("grabzoneNoticeJS")
-    ?.remove();
+  /* Kill EVERY old notice animation */
+  const oldStyle = document.getElementById("grabzoneNoticeFinal");
+  if (oldStyle) oldStyle.remove();
 
   const style = document.createElement("style");
 
-  style.id = "grabzoneNoticeJS";
+  style.id = "grabzoneNoticeJSFinal";
 
   style.textContent = `
-
     .notice-track {
       position: relative !important;
       overflow: hidden !important;
-
-      width: 100% !important;
+      width: auto !important;
       min-width: 0 !important;
       height: 100% !important;
-
       display: block !important;
-
       white-space: nowrap !important;
     }
 
-    .notice-js-loop {
+    .gz-notice-moving {
       position: absolute !important;
-
       left: 0 !important;
       top: 50% !important;
 
@@ -516,20 +491,7 @@ async function loadNotices() {
       width: max-content !important;
       min-width: max-content !important;
 
-      height: max-content !important;
-
-      margin: 0 !important;
-      padding: 0 !important;
-
-      white-space: nowrap !important;
-
       transform: translate3d(0, -50%, 0) !important;
-
-      /*
-        IMPORTANT:
-        No CSS animation.
-        JavaScript controls movement.
-      */
 
       animation: none !important;
       transition: none !important;
@@ -537,7 +499,7 @@ async function loadNotices() {
       will-change: transform !important;
     }
 
-    .notice-js-group {
+    .gz-notice-group {
       display: flex !important;
       align-items: center !important;
 
@@ -546,23 +508,19 @@ async function loadNotices() {
 
       flex: 0 0 auto !important;
 
-      margin: 0 !important;
-      padding: 0 !important;
-
       white-space: nowrap !important;
     }
 
-    .notice-item {
+    .gz-notice-item {
       display: inline-flex !important;
       align-items: center !important;
+
+      flex: 0 0 auto !important;
 
       width: max-content !important;
       min-width: max-content !important;
 
-      flex: 0 0 auto !important;
-
-      margin: 0 80px 0 0 !important;
-      padding: 0 !important;
+      margin-right: 100px !important;
 
       white-space: nowrap !important;
 
@@ -570,85 +528,49 @@ async function loadNotices() {
       line-height: 1 !important;
     }
 
-    .notice-item b {
-      display: inline-block !important;
-
-      margin: 0 12px 0 0 !important;
-
+    .gz-notice-item b {
+      margin-right: 12px !important;
       font-weight: 900 !important;
-
-      white-space: nowrap !important;
     }
 
-    .notice-message {
-      display: inline-block !important;
-
-      margin: 0 !important;
-      padding: 0 !important;
-
-      white-space: nowrap !important;
-    }
-
-    .notice-item::before,
-    .notice-item::after {
-      content: none !important;
+    .gz-notice-item::before,
+    .gz-notice-item::after {
       display: none !important;
+      content: none !important;
     }
 
-    @media (max-width: 600px) {
-
-      .notice-item {
+    @media(max-width:600px) {
+      .gz-notice-item {
+        margin-right: 60px !important;
         font-size: 10px !important;
-        margin-right: 55px !important;
       }
 
-      .notice-item b {
+      .gz-notice-item b {
         margin-right: 8px !important;
       }
-
     }
-
   `;
 
   document.head.appendChild(style);
 
-  /* =====================================================
-     ELEMENTS
-  ===================================================== */
-
-  const loop =
-    track.querySelector(".notice-js-loop");
+  const moving =
+    track.querySelector(".gz-notice-moving");
 
   const group =
-    track.querySelector(".notice-js-group");
+    track.querySelector(".gz-notice-group");
 
-  if (!loop || !group) return;
+  if (!moving || !group) return;
 
-  /*
-    Force browser to calculate dimensions.
-  */
-
-  void loop.offsetWidth;
-
-  /* =====================================================
-     JAVASCRIPT MARQUEE
-  ===================================================== */
-
-  let position = 0;
+  let x = 0;
   let groupWidth = 0;
 
-  /*
-    Pixels per second.
-    Increase this number if you want it faster.
-  */
-
-  const desktopSpeed = 120;
-  const mobileSpeed = 105;
+  const speedDesktop = 120;
+  const speedMobile = 100;
 
   let speed =
     window.innerWidth <= 600
-      ? mobileSpeed
-      : desktopSpeed;
+      ? speedMobile
+      : speedDesktop;
 
   function measure() {
     groupWidth =
@@ -657,116 +579,100 @@ async function loadNotices() {
     if (!groupWidth) return;
 
     /*
-      Always begin from the first notice.
+      Start immediately.
+      No delay.
+      No left:100%.
     */
+    x = 0;
 
-    position = 0;
-
-    loop.style.transform =
-      "translate3d(0, -50%, 0)";
+    moving.style.transform =
+      "translate3d(0,-50%,0)";
   }
-
-  measure();
 
   /*
-    Wait for fonts/images/layout to settle.
+    Wait one frame so the browser has
+    calculated the real text width.
   */
+  requestAnimationFrame(() => {
+    measure();
 
-  if (document.fonts?.ready) {
-    document.fonts.ready.then(measure);
-  }
+    requestAnimationFrame(() => {
+      measure();
+    });
+  });
 
-  let lastTime = performance.now();
+  let last =
+    performance.now();
 
-  function animateNotice(now) {
-
+  function move(now) {
     const delta =
-      Math.min(
-        now - lastTime,
-        50
-      );
+      Math.min(now - last, 50);
 
-    lastTime = now;
+    last = now;
 
     if (groupWidth > 0) {
 
-      position -=
+      x -=
         speed * (delta / 1000);
 
       /*
-        When the first copy has completely
-        passed, jump exactly one group width.
-
-        Because the second copy is identical,
-        the customer sees NO jump.
+        Move exactly one complete group.
+        The second group is identical,
+        so the reset is invisible.
       */
-
-      if (Math.abs(position) >= groupWidth) {
-        position += groupWidth;
+      if (Math.abs(x) >= groupWidth) {
+        x += groupWidth;
       }
 
-      loop.style.transform =
-        `translate3d(${position}px, -50%, 0)`;
+      moving.style.transform =
+        `translate3d(${x}px,-50%,0)`;
     }
 
-    window.__grabzoneNoticeRAF =
-      requestAnimationFrame(
-        animateNotice
-      );
+    window.__grabzoneNoticeAnimation =
+      requestAnimationFrame(move);
   }
 
   /*
-    Cancel any previous notice animation.
+    Stop any previous animation.
   */
-
-  if (window.__grabzoneNoticeRAF) {
+  if (window.__grabzoneNoticeAnimation) {
     cancelAnimationFrame(
-      window.__grabzoneNoticeRAF
+      window.__grabzoneNoticeAnimation
     );
   }
 
   /*
-    Start immediately.
+    START IMMEDIATELY.
   */
+  last = performance.now();
 
-  lastTime = performance.now();
+  window.__grabzoneNoticeAnimation =
+    requestAnimationFrame(move);
 
-  window.__grabzoneNoticeRAF =
-    requestAnimationFrame(
-      animateNotice
-    );
+  /*
+    Resize handling.
+  */
+  let resizeTimer;
 
-  /* =====================================================
-     RESPONSIVE SPEED
-  ===================================================== */
+  window.addEventListener(
+    "resize",
+    () => {
+      clearTimeout(resizeTimer);
 
-  if (!window.__grabzoneNoticeResize) {
+      resizeTimer = setTimeout(() => {
 
-    window.__grabzoneNoticeResize = true;
+        speed =
+          window.innerWidth <= 600
+            ? speedMobile
+            : speedDesktop;
 
-    let resizeTimer;
+        measure();
 
-    window.addEventListener(
-      "resize",
-      () => {
-
-        clearTimeout(resizeTimer);
-
-        resizeTimer = setTimeout(() => {
-
-          speed =
-            window.innerWidth <= 600
-              ? mobileSpeed
-              : desktopSpeed;
-
-          measure();
-
-        }, 150);
-
-      }
-    );
-  }
+      }, 100);
+    }
+  );
 }
+
 /* =========================================================
    PRODUCT DETAIL
 ========================================================= */
