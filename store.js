@@ -901,64 +901,133 @@ function setupSearch() {
 
 async function loadNotices() {
 
-  const element =
-    document.getElementById(
-      "noticeTrack"
-    );
+async function loadNotices() {
+  const track = document.getElementById("noticeTrack");
 
-  if (!element) return;
+  if (!track || !sb) return;
 
-
-  const {
-    data,
-    error
-  } = await sb
+  const { data, error } = await sb
     .from("notices")
     .select("*")
     .eq("active", true)
-    .order(
-      "sort_order"
-    );
-
+    .order("sort_order");
 
   if (error) {
-
-    console.error(
-      "Notice error:",
-      error
-    );
-
-    element.innerHTML = "";
-
+    console.error("Notice error:", error);
+    track.innerHTML = "";
     return;
   }
 
+  const notices = data || [];
 
-  element.innerHTML =
-    (data || [])
-      .map(
-        notice => `
+  if (!notices.length) {
+    track.innerHTML = "";
+    return;
+  }
 
-          <span
-            class="notice-item"
-          >
+  const content = notices.map(notice => `
+    <span class="notice-item">
+      <b>${esc(notice.title)}</b>
+      <span class="notice-message">${esc(notice.message)}</span>
+    </span>
+  `).join("");
 
-            <b>
-              ${esc(
-                notice.title
-              )}
-            </b>
+  track.innerHTML = `
+    <div class="notice-loop">
+      <div class="notice-content">${content}</div>
+      <div class="notice-content">${content}</div>
+    </div>
+  `;
 
-            ${esc(
-              notice.message
-            )}
+  const style = document.createElement("style");
 
-          </span>
+  style.textContent = `
+    .notice-track {
+      flex: 1 !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+      position: relative !important;
+      display: flex !important;
+      align-items: center !important;
+      white-space: nowrap !important;
+    }
 
-        `
-      )
-      .join("");
+    .notice-loop {
+      display: flex !important;
+      width: max-content !important;
+      flex-shrink: 0 !important;
+      animation: grabzoneNoticeLoop 35s linear infinite !important;
+      will-change: transform;
+    }
 
+    .notice-content {
+      display: flex !important;
+      align-items: center !important;
+      flex-shrink: 0 !important;
+      width: max-content !important;
+    }
+
+    .notice-item {
+      display: inline-flex !important;
+      align-items: center !important;
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      margin-right: 110px !important;
+      font-size: 13px;
+    }
+
+    .notice-item b {
+      margin-right: 12px !important;
+      font-weight: 800 !important;
+    }
+
+    .notice-message {
+      display: inline-block !important;
+    }
+
+    .notice-item::after {
+      content: "•";
+      margin-left: 110px;
+      opacity: .45;
+    }
+
+    @keyframes grabzoneNoticeLoop {
+      from {
+        transform: translateX(0);
+      }
+
+      to {
+        transform: translateX(-50%);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .notice-loop {
+        animation-duration: 28s !important;
+      }
+
+      .notice-item {
+        font-size: 10px;
+        margin-right: 60px !important;
+      }
+
+      .notice-item b {
+        margin-right: 8px !important;
+      }
+
+      .notice-item::after {
+        margin-left: 60px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .notice-loop {
+        animation: none !important;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
 }
 
 
