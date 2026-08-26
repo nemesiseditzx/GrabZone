@@ -447,72 +447,64 @@ async function loadNotices() {
     return;
   }
 
-  /*
-    Build the notice once.
-    The FIRST copy is visible immediately.
-    The second copy creates the seamless loop.
-  */
+  /* =====================================================
+     BUILD NOTICE
+  ===================================================== */
 
-  const html = notices.map(notice => `
+  const html = notices.map(n => `
     <span class="notice-item">
-      <b>${esc(notice.title)}</b>
+      <b>${esc(n.title)}</b>
       <span class="notice-message">
-        ${esc(notice.message)}
+        ${esc(n.message)}
       </span>
     </span>
   `).join("");
 
   track.innerHTML = `
-    <div class="notice-loop">
-      <div class="notice-content">
+    <div class="notice-js-loop">
+
+      <div class="notice-js-group">
         ${html}
       </div>
 
-      <div class="notice-content" aria-hidden="true">
+      <div
+        class="notice-js-group"
+        aria-hidden="true"
+      >
         ${html}
       </div>
+
     </div>
   `;
 
-  /*
-    Completely remove previous notice CSS.
-  */
+  /* =====================================================
+     COMPLETELY REMOVE OLD NOTICE CSS
+  ===================================================== */
 
   document
-    .getElementById("grabzoneNoticeFinal")
+    .getElementById("grabzoneNoticeJS")
     ?.remove();
 
   const style = document.createElement("style");
 
-  style.id = "grabzoneNoticeFinal";
+  style.id = "grabzoneNoticeJS";
 
   style.textContent = `
 
     .notice-track {
       position: relative !important;
+      overflow: hidden !important;
 
       width: 100% !important;
       min-width: 0 !important;
       height: 100% !important;
-
-      overflow: hidden !important;
 
       display: block !important;
 
       white-space: nowrap !important;
     }
 
-
-    /*
-      IMPORTANT:
-
-      NO left:100%.
-      NO translateX(100%).
-
-      The first notice is visible immediately.
-    */
-
-    .notice-loop {
+    .notice-js-loop {
       position: absolute !important;
 
       left: 0 !important;
@@ -533,19 +525,19 @@ async function loadNotices() {
 
       transform: translate3d(0, -50%, 0) !important;
 
-      animation:
-        grabzoneNoticeImmediate
-        var(--notice-time, 14s)
-        linear
-        infinite !important;
+      /*
+        IMPORTANT:
+        No CSS animation.
+        JavaScript controls movement.
+      */
+
+      animation: none !important;
+      transition: none !important;
 
       will-change: transform !important;
-
-      backface-visibility: hidden !important;
     }
 
-
-    .notice-content {
+    .notice-js-group {
       display: flex !important;
       align-items: center !important;
 
@@ -554,9 +546,11 @@ async function loadNotices() {
 
       flex: 0 0 auto !important;
 
+      margin: 0 !important;
+      padding: 0 !important;
+
       white-space: nowrap !important;
     }
-
 
     .notice-item {
       display: inline-flex !important;
@@ -576,7 +570,6 @@ async function loadNotices() {
       line-height: 1 !important;
     }
 
-
     .notice-item b {
       display: inline-block !important;
 
@@ -587,7 +580,6 @@ async function loadNotices() {
       white-space: nowrap !important;
     }
 
-
     .notice-message {
       display: inline-block !important;
 
@@ -597,54 +589,17 @@ async function loadNotices() {
       white-space: nowrap !important;
     }
 
-
-    /*
-      NO DOT.
-    */
-
     .notice-item::before,
     .notice-item::after {
       content: none !important;
       display: none !important;
     }
 
-
-    /*
-      Seamless movement.
-
-      First copy moves exactly the width of itself.
-      Second copy is already directly behind it.
-    */
-
-    @keyframes grabzoneNoticeImmediate {
-
-      from {
-        transform:
-          translate3d(0, -50%, 0);
-      }
-
-      to {
-        transform:
-          translate3d(
-            calc(-50%),
-            -50%,
-            0
-          );
-      }
-
-    }
-
-
     @media (max-width: 600px) {
 
-      .notice-loop {
-        animation-duration:
-          var(--notice-mobile-time, 11s) !important;
-      }
-
       .notice-item {
-        margin-right: 55px !important;
         font-size: 10px !important;
+        margin-right: 55px !important;
       }
 
       .notice-item b {
@@ -653,127 +608,165 @@ async function loadNotices() {
 
     }
 
-
-    @media (prefers-reduced-motion: reduce) {
-
-      .notice-loop {
-        animation: none !important;
-
-        left: 0 !important;
-
-        transform:
-          translate3d(0, -50%, 0) !important;
-      }
-
-    }
-
   `;
 
   document.head.appendChild(style);
 
-
-  /*
-    Wait until the browser has actually rendered
-    the notice before measuring it.
-  */
+  /* =====================================================
+     ELEMENTS
+  ===================================================== */
 
   const loop =
-    track.querySelector(".notice-loop");
+    track.querySelector(".notice-js-loop");
 
-  const firstGroup =
-    track.querySelector(".notice-content");
+  const group =
+    track.querySelector(".notice-js-group");
 
-  if (!loop || !firstGroup) return;
-
-
-  const calculateSpeed = () => {
-
-    const width =
-      firstGroup.getBoundingClientRect().width;
-
-    if (!width) return;
-
-
-    /*
-      95 pixels/second desktop.
-      85 pixels/second mobile.
-    */
-
-    const desktopSpeed = 95;
-    const mobileSpeed = 85;
-
-
-    const desktopTime =
-      Math.max(
-        7,
-        width / desktopSpeed
-      );
-
-
-    const mobileTime =
-      Math.max(
-        6,
-        width / mobileSpeed
-      );
-
-
-    loop.style.setProperty(
-      "--notice-time",
-      `${desktopTime}s`
-    );
-
-
-    loop.style.setProperty(
-      "--notice-mobile-time",
-      `${mobileTime}s`
-    );
-
-  };
-
+  if (!loop || !group) return;
 
   /*
-    Force browser layout first.
+    Force browser to calculate dimensions.
   */
 
   void loop.offsetWidth;
 
-  calculateSpeed();
+  /* =====================================================
+     JAVASCRIPT MARQUEE
+  ===================================================== */
 
+  let position = 0;
+  let groupWidth = 0;
 
   /*
-    Recalculate after fonts load.
+    Pixels per second.
+    Increase this number if you want it faster.
+  */
+
+  const desktopSpeed = 120;
+  const mobileSpeed = 105;
+
+  let speed =
+    window.innerWidth <= 600
+      ? mobileSpeed
+      : desktopSpeed;
+
+  function measure() {
+    groupWidth =
+      group.getBoundingClientRect().width;
+
+    if (!groupWidth) return;
+
+    /*
+      Always begin from the first notice.
+    */
+
+    position = 0;
+
+    loop.style.transform =
+      "translate3d(0, -50%, 0)";
+  }
+
+  measure();
+
+  /*
+    Wait for fonts/images/layout to settle.
   */
 
   if (document.fonts?.ready) {
-
-    document.fonts.ready.then(
-      calculateSpeed
-    );
-
+    document.fonts.ready.then(measure);
   }
 
+  let lastTime = performance.now();
 
-  /*
-    Recalculate on screen resize.
-  */
+  function animateNotice(now) {
 
-  let resizeTimer;
-
-  window.addEventListener(
-    "resize",
-    () => {
-
-      clearTimeout(resizeTimer);
-
-      resizeTimer = setTimeout(
-        calculateSpeed,
-        150
+    const delta =
+      Math.min(
+        now - lastTime,
+        50
       );
 
-    }
-  );
-}
+    lastTime = now;
 
+    if (groupWidth > 0) {
+
+      position -=
+        speed * (delta / 1000);
+
+      /*
+        When the first copy has completely
+        passed, jump exactly one group width.
+
+        Because the second copy is identical,
+        the customer sees NO jump.
+      */
+
+      if (Math.abs(position) >= groupWidth) {
+        position += groupWidth;
+      }
+
+      loop.style.transform =
+        `translate3d(${position}px, -50%, 0)`;
+    }
+
+    window.__grabzoneNoticeRAF =
+      requestAnimationFrame(
+        animateNotice
+      );
+  }
+
+  /*
+    Cancel any previous notice animation.
+  */
+
+  if (window.__grabzoneNoticeRAF) {
+    cancelAnimationFrame(
+      window.__grabzoneNoticeRAF
+    );
+  }
+
+  /*
+    Start immediately.
+  */
+
+  lastTime = performance.now();
+
+  window.__grabzoneNoticeRAF =
+    requestAnimationFrame(
+      animateNotice
+    );
+
+  /* =====================================================
+     RESPONSIVE SPEED
+  ===================================================== */
+
+  if (!window.__grabzoneNoticeResize) {
+
+    window.__grabzoneNoticeResize = true;
+
+    let resizeTimer;
+
+    window.addEventListener(
+      "resize",
+      () => {
+
+        clearTimeout(resizeTimer);
+
+        resizeTimer = setTimeout(() => {
+
+          speed =
+            window.innerWidth <= 600
+              ? mobileSpeed
+              : desktopSpeed;
+
+          measure();
+
+        }, 150);
+
+      }
+    );
+  }
+}
 /* =========================================================
    PRODUCT DETAIL
 ========================================================= */
