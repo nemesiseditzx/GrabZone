@@ -630,22 +630,34 @@ async function loadNotices() {
   /*
     Put notice at the right edge.
   */
-  moving.style.transform =
-    `translate3d(${startX}px,-50%,0)`;
+ moving.style.transform =
+  `translate3d(${startX}px, 0, 0)`;
 
-  /*
-    ONE notice sequence.
-    No duplicate.
-  */
-  const animation = moving.animate(
-    [
-      {
-        transform:
-          `translate3d(${startX}px,-50%,0)`
-      },
-      {
-        transform:
-          `translate3d(${endX}px,-50%,0)`
+/*
+  ONE notice sequence.
+  No duplicate.
+*/
+const animation = moving.animate(
+  [
+    {
+      transform:
+        `translate3d(${startX}px, 0, 0)`
+    },
+    {
+      transform:
+        `translate3d(${endX}px, 0, 0)`
+    }
+  ],
+  {
+    duration: duration,
+    iterations: 1,
+    easing: "linear",
+    fill: "forwards"
+  }
+);
+
+window.__grabzoneNoticeAnimation =
+  animation;
       }
     ],
     {
