@@ -955,5 +955,516 @@
   <script src="grabzone-animations.js"></script>
   <script src="grabzone-animation-loader.js"></script>
   <script src="policy-link.js"></script>
+
+  <!-- =========================================================
+     GRABZONE — DM ORDER PLATFORM CHOOSER
+     Paste this BEFORE </body>
+========================================================= -->
+
+<style>
+  #gzOrderChooser {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+
+    display: none;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+    background: rgba(0,0,0,.55);
+
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+  }
+
+  #gzOrderChooser.gz-show {
+    display: flex;
+  }
+
+  .gz-order-box {
+    position: relative;
+
+    width: min(390px, 100%);
+    padding: 28px;
+
+    background: #fff;
+    border-radius: 24px;
+
+    box-shadow:
+      0 25px 80px rgba(0,0,0,.25);
+
+    animation: gzOrderIn .2s ease-out;
+  }
+
+  @keyframes gzOrderIn {
+    from {
+      opacity: 0;
+      transform: translateY(15px) scale(.97);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .gz-order-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+
+    width: 34px;
+    height: 34px;
+
+    border: 0;
+    border-radius: 50%;
+
+    background: #f1f1f1;
+    color: #111;
+
+    font-size: 22px;
+    line-height: 1;
+
+    cursor: pointer;
+  }
+
+  .gz-order-title {
+    margin: 0 40px 7px 0;
+
+    font-size: 22px;
+    font-weight: 800;
+    color: #111;
+  }
+
+  .gz-order-subtitle {
+    margin: 0 0 20px;
+
+    color: #777;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .gz-order-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .gz-order-option {
+    width: 100%;
+    min-height: 56px;
+
+    display: flex;
+    align-items: center;
+    gap: 13px;
+
+    padding: 8px 14px;
+
+    border: 1px solid #e5e5e5;
+    border-radius: 15px;
+
+    background: #fff;
+    color: #111;
+
+    cursor: pointer;
+
+    font-family: inherit;
+    text-align: left;
+
+    transition:
+      transform .15s ease,
+      background .15s ease,
+      border-color .15s ease;
+  }
+
+  .gz-order-option:hover {
+    transform: translateY(-1px);
+    background: #f7f7f7;
+    border-color: #ccc;
+  }
+
+  .gz-order-icon {
+    width: 38px;
+    height: 38px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex: 0 0 38px;
+
+    border-radius: 11px;
+
+    background: #111;
+    color: #fff;
+
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  .gz-order-text {
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+  }
+
+  .gz-order-text strong {
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .gz-order-text small {
+    margin-top: 2px;
+
+    color: #888;
+    font-size: 11px;
+  }
+
+  .gz-order-arrow {
+    color: #999;
+    font-size: 18px;
+  }
+
+  @media (max-width: 600px) {
+    #gzOrderChooser {
+      align-items: flex-end;
+      padding: 12px;
+    }
+
+    .gz-order-box {
+      width: 100%;
+      padding: 24px 18px;
+      border-radius: 22px;
+    }
+  }
+</style>
+
+
+<!-- ORDER CHOOSER -->
+<div id="gzOrderChooser">
+
+  <div
+    class="gz-order-box"
+    role="dialog"
+    aria-modal="true"
+  >
+
+    <button
+      type="button"
+      class="gz-order-close"
+      id="gzOrderClose"
+    >
+      ×
+    </button>
+
+    <h2 class="gz-order-title">
+      Where would you like to order?
+    </h2>
+
+    <p class="gz-order-subtitle">
+      Choose your preferred platform to message GrabZone.
+    </p>
+
+    <div class="gz-order-options">
+
+      <!-- WHATSAPP -->
+      <button
+        type="button"
+        class="gz-order-option"
+        id="gzWhatsApp"
+      >
+        <span class="gz-order-icon">
+          WA
+        </span>
+
+        <span class="gz-order-text">
+          <strong>WhatsApp</strong>
+          <small>Chat with us on WhatsApp</small>
+        </span>
+
+        <span class="gz-order-arrow">
+          →
+        </span>
+      </button>
+
+
+      <!-- INSTAGRAM -->
+      <button
+        type="button"
+        class="gz-order-option"
+        id="gzInstagram"
+      >
+        <span class="gz-order-icon">
+          IG
+        </span>
+
+        <span class="gz-order-text">
+          <strong>Instagram</strong>
+          <small>Message us on Instagram</small>
+        </span>
+
+        <span class="gz-order-arrow">
+          →
+        </span>
+      </button>
+
+
+      <!-- FACEBOOK -->
+      <button
+        type="button"
+        class="gz-order-option"
+        id="gzFacebook"
+      >
+        <span class="gz-order-icon">
+          FB
+        </span>
+
+        <span class="gz-order-text">
+          <strong>Facebook</strong>
+          <small>Message us on Facebook</small>
+        </span>
+
+        <span class="gz-order-arrow">
+          →
+        </span>
+      </button>
+
+    </div>
+  </div>
+</div>
+
+
+<script>
+(function () {
+
+  /* ========================================================
+     YOUR GRABZONE SOCIAL LINKS
+
+     IMPORTANT:
+     Replace ONLY these 3 links with your actual links.
+  ======================================================== */
+
+  const GRABZONE_SOCIAL = {
+
+    whatsapp:
+      "YOUR_WHATSAPP_LINK",
+
+    instagram:
+      "YOUR_INSTAGRAM_LINK",
+
+    facebook:
+      "YOUR_FACEBOOK_LINK"
+
+  };
+
+
+  /* ========================================================
+     ELEMENTS
+  ======================================================== */
+
+  const modal =
+    document.getElementById("gzOrderChooser");
+
+  const closeButton =
+    document.getElementById("gzOrderClose");
+
+  const whatsappButton =
+    document.getElementById("gzWhatsApp");
+
+  const instagramButton =
+    document.getElementById("gzInstagram");
+
+  const facebookButton =
+    document.getElementById("gzFacebook");
+
+
+  /* ========================================================
+     OPEN / CLOSE
+  ======================================================== */
+
+  function openChooser() {
+
+    modal.classList.add("gz-show");
+
+    document.body.style.overflow = "hidden";
+
+  }
+
+
+  function closeChooser() {
+
+    modal.classList.remove("gz-show");
+
+    document.body.style.overflow = "";
+
+  }
+
+
+  /* ========================================================
+     OPEN SOCIAL LINK
+  ======================================================== */
+
+  function openSocial(link) {
+
+    if (
+      !link ||
+      link.startsWith("YOUR_")
+    ) {
+
+      alert(
+        "This social media link has not been configured yet."
+      );
+
+      return;
+    }
+
+    window.open(
+      link,
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+    closeChooser();
+
+  }
+
+
+  /* ========================================================
+     BUTTONS
+  ======================================================== */
+
+  closeButton.addEventListener(
+    "click",
+    closeChooser
+  );
+
+
+  whatsappButton.addEventListener(
+    "click",
+    function () {
+
+      openSocial(
+        GRABZONE_SOCIAL.whatsapp
+      );
+
+    }
+  );
+
+
+  instagramButton.addEventListener(
+    "click",
+    function () {
+
+      openSocial(
+        GRABZONE_SOCIAL.instagram
+      );
+
+    }
+  );
+
+
+  facebookButton.addEventListener(
+    "click",
+    function () {
+
+      openSocial(
+        GRABZONE_SOCIAL.facebook
+      );
+
+    }
+  );
+
+
+  /* ========================================================
+     CLICK OUTSIDE
+  ======================================================== */
+
+  modal.addEventListener(
+    "click",
+    function (event) {
+
+      if (
+        event.target === modal
+      ) {
+
+        closeChooser();
+
+      }
+
+    }
+  );
+
+
+  /* ========================================================
+     ESC KEY
+  ======================================================== */
+
+  document.addEventListener(
+    "keydown",
+    function (event) {
+
+      if (
+        event.key === "Escape" &&
+        modal.classList.contains("gz-show")
+      ) {
+
+        closeChooser();
+
+      }
+
+    }
+  );
+
+
+  /* ========================================================
+     INTERCEPT EXISTING GRABZONE BUTTONS
+
+     This is the important part.
+
+     Even if old store.js tries to send the user directly
+     to WhatsApp, these buttons are intercepted first.
+  ======================================================== */
+
+  function bindDMButton(id) {
+
+    const button =
+      document.getElementById(id);
+
+    if (!button) return;
+
+
+    button.addEventListener(
+      "click",
+      function (event) {
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        openChooser();
+
+      },
+      true
+    );
+
+  }
+
+
+  /*
+    Header DM to Order
+  */
+  bindDMButton("headerDm");
+
+
+  /*
+    Verify by DM
+  */
+  bindDMButton("refDm");
+
+
+})();
+</script>
+
 </body>
 </html>
