@@ -454,24 +454,27 @@ async function loadNotices() {
     } catch (e) {}
   }
 
+  /* =====================================================
+     ONLY ONE COPY
+     No clone.
+  ===================================================== */
+
   const html = notices.map(n => `
-    <span class="gz-notice-item">
+    <span class="gzNoticeItem">
       <b>${esc(n.title)}</b>
-      <span>${esc(n.message)}</span>
+      <span class="gzNoticeMessage">
+        ${esc(n.message)}
+      </span>
     </span>
   `).join("");
 
   track.innerHTML = `
     <div id="gzNoticeMoving">
-      <div class="gzNoticeGroup">
-        ${html}
-      </div>
-      <div class="gzNoticeGroup" aria-hidden="true">
-        ${html}
-      </div>
+      ${html}
     </div>
   `;
 
+  /* Remove previous custom style */
   document.getElementById("gzNoticeStyle")?.remove();
 
   const style = document.createElement("style");
@@ -482,28 +485,37 @@ async function loadNotices() {
     #noticeTrack {
       position: relative !important;
       overflow: hidden !important;
-      min-width: 0 !important;
+
       width: 100% !important;
+      min-width: 0 !important;
       height: 100% !important;
+
       display: block !important;
+
+      white-space: nowrap !important;
     }
 
     #gzNoticeMoving {
       position: absolute !important;
 
       top: 50% !important;
+
       left: 0 !important;
 
-      display: flex !important;
+      display: inline-flex !important;
       align-items: center !important;
 
       width: max-content !important;
       min-width: max-content !important;
 
-      white-space: nowrap !important;
+      height: max-content !important;
 
       margin: 0 !important;
       padding: 0 !important;
+
+      white-space: nowrap !important;
+
+      transform: translate3d(0, -50%, 0) !important;
 
       animation: none !important;
       transition: none !important;
@@ -511,19 +523,7 @@ async function loadNotices() {
       will-change: transform !important;
     }
 
-    .gzNoticeGroup {
-      display: flex !important;
-      align-items: center !important;
-
-      width: max-content !important;
-      min-width: max-content !important;
-
-      flex: 0 0 auto !important;
-
-      white-space: nowrap !important;
-    }
-
-    .gz-notice-item {
+    .gzNoticeItem {
       display: inline-flex !important;
       align-items: center !important;
 
@@ -534,31 +534,42 @@ async function loadNotices() {
 
       margin-right: 100px !important;
 
+      padding: 0 !important;
+
       white-space: nowrap !important;
 
       font-size: 13px !important;
       line-height: 1 !important;
     }
 
-    .gz-notice-item b {
+    .gzNoticeItem b {
+      display: inline-block !important;
+
       margin-right: 12px !important;
+
       font-weight: 900 !important;
+
+      white-space: nowrap !important;
     }
 
-    .gz-notice-item::before,
-    .gz-notice-item::after {
+    .gzNoticeMessage {
+      white-space: nowrap !important;
+    }
+
+    .gzNoticeItem::before,
+    .gzNoticeItem::after {
       content: none !important;
       display: none !important;
     }
 
-    @media(max-width:600px) {
+    @media (max-width: 600px) {
 
-      .gz-notice-item {
+      .gzNoticeItem {
         font-size: 10px !important;
         margin-right: 60px !important;
       }
 
-      .gz-notice-item b {
+      .gzNoticeItem b {
         margin-right: 8px !important;
       }
 
@@ -570,18 +581,11 @@ async function loadNotices() {
   const moving =
     document.getElementById("gzNoticeMoving");
 
-  const group =
-    moving.querySelector(".gzNoticeGroup");
-
-  const firstItem =
-    moving.querySelector(".gz-notice-item");
-
-  if (!moving || !group || !firstItem) return;
+  if (!moving) return;
 
   /*
-    Wait for browser layout.
+    Wait until browser finishes layout.
   */
-
   await new Promise(resolve => {
     requestAnimationFrame(() => {
       requestAnimationFrame(resolve);
@@ -591,48 +595,20 @@ async function loadNotices() {
   const trackWidth =
     track.getBoundingClientRect().width;
 
-  const groupWidth =
-    group.getBoundingClientRect().width;
+  const noticeWidth =
+    moving.getBoundingClientRect().width;
 
-  const firstItemWidth =
-    firstItem.getBoundingClientRect().width;
-
-  if (
-    !trackWidth ||
-    !groupWidth ||
-    !firstItemWidth
-  ) {
-    return;
-  }
+  if (!trackWidth || !noticeWidth) return;
 
   /*
-    THIS IS THE IMPORTANT PART.
-
-    The first notice starts with its LEFT EDGE
-    exactly at the RIGHT EDGE of the notice bar.
-
-    Therefore:
-    
-    NOTICE |                    GrabZone...
-                              ↑
-                         starts here
-
-    NOT:
-    
-    NOTICE |        GrabZone...
-                 ↑
-              middle
+    Start completely outside the RIGHT.
   */
-
   const startX = trackWidth;
 
   /*
-    Move the first complete group
-    completely across the screen.
+    Finish completely outside the LEFT.
   */
-
-  const endX =
-    -groupWidth;
+  const endX = -noticeWidth;
 
   const distance =
     startX - endX;
@@ -640,55 +616,63 @@ async function loadNotices() {
   /*
     Speed.
   */
-
   const speed =
     window.innerWidth <= 600
-      ? 110
-      : 130;
+      ? 105
+      : 125;
 
   const duration =
     Math.max(
-      6000,
+      5000,
       (distance / speed) * 1000
     );
 
   /*
-    Put it at the RIGHT edge immediately.
+    Put notice at the right edge.
   */
-
   moving.style.transform =
     `translate3d(${startX}px,-50%,0)`;
 
   /*
-    Animate directly with Web Animations API.
+    ONE notice sequence.
+    No duplicate.
   */
-
-  const animation =
-    moving.animate(
-      [
-        {
-          transform:
-            `translate3d(${startX}px,-50%,0)`
-        },
-
-        {
-          transform:
-            `translate3d(${endX}px,-50%,0)`
-        }
-      ],
+  const animation = moving.animate(
+    [
       {
-        duration: duration,
-        iterations: Infinity,
-        easing: "linear"
+        transform:
+          `translate3d(${startX}px,-50%,0)`
+      },
+      {
+        transform:
+          `translate3d(${endX}px,-50%,0)`
       }
-    );
-
-  animation.play();
+    ],
+    {
+      duration: duration,
+      iterations: 1,
+      easing: "linear",
+      fill: "forwards"
+    }
+  );
 
   window.__grabzoneNoticeAnimation =
     animation;
-}
 
+  /*
+    When the complete notice sequence
+    finishes, start again from the right.
+  */
+  animation.onfinish = () => {
+
+    /*
+      Re-run the same notice sequence.
+      Still only ONE copy.
+    */
+    loadNotices();
+
+  };
+}
 /* =========================================================
    PRODUCT DETAIL
 ========================================================= */
