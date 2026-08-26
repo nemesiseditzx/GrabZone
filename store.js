@@ -423,10 +423,8 @@ function setupSearch() {
 /* =========================================================
    NOTICE BOARD
 ========================================================= */
-
 async function loadNotices() {
-  const track =
-    document.getElementById("noticeTrack");
+  const track = document.getElementById("noticeTrack");
 
   if (!track || !sb) return;
 
@@ -449,7 +447,13 @@ async function loadNotices() {
     return;
   }
 
-  const content = notices.map(notice => `
+  /*
+    Build the notice once.
+    The FIRST copy is visible immediately.
+    The second copy creates the seamless loop.
+  */
+
+  const html = notices.map(notice => `
     <span class="notice-item">
       <b>${esc(notice.title)}</b>
       <span class="notice-message">
@@ -458,91 +462,112 @@ async function loadNotices() {
     </span>
   `).join("");
 
-  /*
-    The important change:
-    The first notice is NOT placed completely outside
-    the screen. It starts at the visible right edge.
-  */
-
   track.innerHTML = `
     <div class="notice-loop">
-      ${content}
+      <div class="notice-content">
+        ${html}
+      </div>
+
+      <div class="notice-content" aria-hidden="true">
+        ${html}
+      </div>
     </div>
   `;
+
+  /*
+    Completely remove previous notice CSS.
+  */
 
   document
     .getElementById("grabzoneNoticeFinal")
     ?.remove();
 
-  const style =
-    document.createElement("style");
+  const style = document.createElement("style");
 
-  style.id =
-    "grabzoneNoticeFinal";
+  style.id = "grabzoneNoticeFinal";
 
   style.textContent = `
 
     .notice-track {
       position: relative !important;
 
-      overflow: hidden !important;
-
       width: 100% !important;
       min-width: 0 !important;
       height: 100% !important;
+
+      overflow: hidden !important;
 
       display: block !important;
 
       white-space: nowrap !important;
     }
 
+
+    /*
+      IMPORTANT:
+
+      NO left:100%.
+      NO translateX(100%).
+
+      The first notice is visible immediately.
+    */
+
     .notice-loop {
       position: absolute !important;
 
+      left: 0 !important;
       top: 50% !important;
 
-      /*
-        IMPORTANT:
-        Start exactly at the RIGHT edge.
-        No waiting for the whole notice
-        to travel from outside.
-      */
-      left: 100% !important;
-
-      display: inline-flex !important;
+      display: flex !important;
       align-items: center !important;
 
       width: max-content !important;
       min-width: max-content !important;
+
+      height: max-content !important;
 
       margin: 0 !important;
       padding: 0 !important;
 
       white-space: nowrap !important;
 
-      transform:
-        translate3d(0, -50%, 0) !important;
+      transform: translate3d(0, -50%, 0) !important;
 
       animation:
-        grabzoneNoticeFast
-        8s
+        grabzoneNoticeImmediate
+        var(--notice-time, 14s)
         linear
         infinite !important;
 
       will-change: transform !important;
+
       backface-visibility: hidden !important;
     }
+
+
+    .notice-content {
+      display: flex !important;
+      align-items: center !important;
+
+      width: max-content !important;
+      min-width: max-content !important;
+
+      flex: 0 0 auto !important;
+
+      white-space: nowrap !important;
+    }
+
 
     .notice-item {
       display: inline-flex !important;
       align-items: center !important;
 
-      flex: 0 0 auto !important;
-
       width: max-content !important;
       min-width: max-content !important;
 
-      margin: 0 70px 0 0 !important;
+      flex: 0 0 auto !important;
+
+      margin: 0 80px 0 0 !important;
       padding: 0 !important;
 
       white-space: nowrap !important;
@@ -551,17 +576,30 @@ async function loadNotices() {
       line-height: 1 !important;
     }
 
-    .notice-item b {
-      margin-right: 10px !important;
-      font-weight: 900 !important;
-    }
 
-    .notice-message {
+    .notice-item b {
+      display: inline-block !important;
+
+      margin: 0 12px 0 0 !important;
+
+      font-weight: 900 !important;
+
       white-space: nowrap !important;
     }
 
+
+    .notice-message {
+      display: inline-block !important;
+
+      margin: 0 !important;
+      padding: 0 !important;
+
+      white-space: nowrap !important;
+    }
+
+
     /*
-      Absolutely remove the dot.
+      NO DOT.
     */
 
     .notice-item::before,
@@ -570,17 +608,25 @@ async function loadNotices() {
       display: none !important;
     }
 
-    @keyframes grabzoneNoticeFast {
 
-      0% {
+    /*
+      Seamless movement.
+
+      First copy moves exactly the width of itself.
+      Second copy is already directly behind it.
+    */
+
+    @keyframes grabzoneNoticeImmediate {
+
+      from {
         transform:
           translate3d(0, -50%, 0);
       }
 
-      100% {
+      to {
         transform:
           translate3d(
-            calc(-100% - 100vw),
+            calc(-50%),
             -50%,
             0
           );
@@ -588,28 +634,31 @@ async function loadNotices() {
 
     }
 
+
     @media (max-width: 600px) {
 
       .notice-loop {
         animation-duration:
-          7s !important;
+          var(--notice-mobile-time, 11s) !important;
       }
 
       .notice-item {
+        margin-right: 55px !important;
         font-size: 10px !important;
-        margin-right: 50px !important;
       }
 
       .notice-item b {
-        margin-right: 7px !important;
+        margin-right: 8px !important;
       }
 
     }
+
 
     @media (prefers-reduced-motion: reduce) {
 
       .notice-loop {
         animation: none !important;
+
         left: 0 !important;
 
         transform:
@@ -622,19 +671,107 @@ async function loadNotices() {
 
   document.head.appendChild(style);
 
-  const loop =
-    track.querySelector(
-      ".notice-loop"
-    );
-
-  if (!loop) return;
 
   /*
-    Make sure browser has calculated
-    the real notice width.
+    Wait until the browser has actually rendered
+    the notice before measuring it.
+  */
+
+  const loop =
+    track.querySelector(".notice-loop");
+
+  const firstGroup =
+    track.querySelector(".notice-content");
+
+  if (!loop || !firstGroup) return;
+
+
+  const calculateSpeed = () => {
+
+    const width =
+      firstGroup.getBoundingClientRect().width;
+
+    if (!width) return;
+
+
+    /*
+      95 pixels/second desktop.
+      85 pixels/second mobile.
+    */
+
+    const desktopSpeed = 95;
+    const mobileSpeed = 85;
+
+
+    const desktopTime =
+      Math.max(
+        7,
+        width / desktopSpeed
+      );
+
+
+    const mobileTime =
+      Math.max(
+        6,
+        width / mobileSpeed
+      );
+
+
+    loop.style.setProperty(
+      "--notice-time",
+      `${desktopTime}s`
+    );
+
+
+    loop.style.setProperty(
+      "--notice-mobile-time",
+      `${mobileTime}s`
+    );
+
+  };
+
+
+  /*
+    Force browser layout first.
   */
 
   void loop.offsetWidth;
+
+  calculateSpeed();
+
+
+  /*
+    Recalculate after fonts load.
+  */
+
+  if (document.fonts?.ready) {
+
+    document.fonts.ready.then(
+      calculateSpeed
+    );
+
+  }
+
+
+  /*
+    Recalculate on screen resize.
+  */
+
+  let resizeTimer;
+
+  window.addEventListener(
+    "resize",
+    () => {
+
+      clearTimeout(resizeTimer);
+
+      resizeTimer = setTimeout(
+        calculateSpeed,
+        150
+      );
+
+    }
+  );
 }
 
 /* =========================================================
