@@ -447,37 +447,31 @@ async function loadNotices() {
     return;
   }
 
-  /* Stop any previous animation */
+  /* Stop previous animation */
   if (window.__grabzoneNoticeAnimation) {
     try {
       window.__grabzoneNoticeAnimation.cancel();
     } catch (e) {}
   }
 
-  /* Completely replace notice HTML */
+  const html = notices.map(n => `
+    <span class="gz-notice-item">
+      <b>${esc(n.title)}</b>
+      <span>${esc(n.message)}</span>
+    </span>
+  `).join("");
+
   track.innerHTML = `
     <div id="gzNoticeMoving">
       <div class="gzNoticeGroup">
-        ${notices.map(n => `
-          <span class="gzNoticeItem">
-            <b>${esc(n.title)}</b>
-            <span>${esc(n.message)}</span>
-          </span>
-        `).join("")}
+        ${html}
       </div>
-
       <div class="gzNoticeGroup" aria-hidden="true">
-        ${notices.map(n => `
-          <span class="gzNoticeItem">
-            <b>${esc(n.title)}</b>
-            <span>${esc(n.message)}</span>
-          </span>
-        `).join("")}
+        ${html}
       </div>
     </div>
   `;
 
-  /* Remove our previous style */
   document.getElementById("gzNoticeStyle")?.remove();
 
   const style = document.createElement("style");
@@ -497,8 +491,8 @@ async function loadNotices() {
     #gzNoticeMoving {
       position: absolute !important;
 
-      left: 0 !important;
       top: 50% !important;
+      left: 0 !important;
 
       display: flex !important;
       align-items: center !important;
@@ -506,15 +500,15 @@ async function loadNotices() {
       width: max-content !important;
       min-width: max-content !important;
 
+      white-space: nowrap !important;
+
       margin: 0 !important;
       padding: 0 !important;
 
-      transform: translate3d(0, -50%, 0);
-
-      white-space: nowrap !important;
-
       animation: none !important;
       transition: none !important;
+
+      will-change: transform !important;
     }
 
     .gzNoticeGroup {
@@ -529,7 +523,7 @@ async function loadNotices() {
       white-space: nowrap !important;
     }
 
-    .gzNoticeItem {
+    .gz-notice-item {
       display: inline-flex !important;
       align-items: center !important;
 
@@ -538,9 +532,7 @@ async function loadNotices() {
       width: max-content !important;
       min-width: max-content !important;
 
-      margin-right: 90px !important;
-
-      padding: 0 !important;
+      margin-right: 100px !important;
 
       white-space: nowrap !important;
 
@@ -548,27 +540,28 @@ async function loadNotices() {
       line-height: 1 !important;
     }
 
-    .gzNoticeItem b {
-      display: inline-block !important;
+    .gz-notice-item b {
       margin-right: 12px !important;
       font-weight: 900 !important;
     }
 
-    .gzNoticeItem::before,
-    .gzNoticeItem::after {
+    .gz-notice-item::before,
+    .gz-notice-item::after {
       content: none !important;
       display: none !important;
     }
 
     @media(max-width:600px) {
-      .gzNoticeItem {
-        margin-right: 55px !important;
+
+      .gz-notice-item {
         font-size: 10px !important;
+        margin-right: 60px !important;
       }
 
-      .gzNoticeItem b {
+      .gz-notice-item b {
         margin-right: 8px !important;
       }
+
     }
   `;
 
@@ -580,74 +573,120 @@ async function loadNotices() {
   const group =
     moving.querySelector(".gzNoticeGroup");
 
-  if (!moving || !group) return;
+  const firstItem =
+    moving.querySelector(".gz-notice-item");
+
+  if (!moving || !group || !firstItem) return;
 
   /*
-    IMPORTANT:
-    Wait until the browser has painted the
-    actual text before measuring it.
+    Wait for browser layout.
   */
-  await new Promise(resolve =>
-    requestAnimationFrame(() =>
-      requestAnimationFrame(resolve)
-    )
-  );
 
-  const width =
+  await new Promise(resolve => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve);
+    });
+  });
+
+  const trackWidth =
+    track.getBoundingClientRect().width;
+
+  const groupWidth =
     group.getBoundingClientRect().width;
 
-  if (!width || width < 1) {
-    console.error(
-      "GrabZone notice width could not be measured."
-    );
+  const firstItemWidth =
+    firstItem.getBoundingClientRect().width;
+
+  if (
+    !trackWidth ||
+    !groupWidth ||
+    !firstItemWidth
+  ) {
     return;
   }
 
   /*
-    Speed in pixels per second.
+    THIS IS THE IMPORTANT PART.
+
+    The first notice starts with its LEFT EDGE
+    exactly at the RIGHT EDGE of the notice bar.
+
+    Therefore:
+    
+    NOTICE |                    GrabZone...
+                              ↑
+                         starts here
+
+    NOT:
+    
+    NOTICE |        GrabZone...
+                 ↑
+              middle
   */
+
+  const startX = trackWidth;
+
+  /*
+    Move the first complete group
+    completely across the screen.
+  */
+
+  const endX =
+    -groupWidth;
+
+  const distance =
+    startX - endX;
+
+  /*
+    Speed.
+  */
+
   const speed =
     window.innerWidth <= 600
-      ? 105
-      : 125;
+      ? 110
+      : 130;
 
   const duration =
-    (width / speed) * 1000;
+    Math.max(
+      6000,
+      (distance / speed) * 1000
+    );
 
   /*
-    Start at ZERO.
-    Therefore the first notice is visible immediately.
+    Put it at the RIGHT edge immediately.
   */
+
   moving.style.transform =
-    "translate3d(0,-50%,0)";
+    `translate3d(${startX}px,-50%,0)`;
 
   /*
-    DIRECT BROWSER ANIMATION.
-    This does NOT use CSS @keyframes.
+    Animate directly with Web Animations API.
   */
-  window.__grabzoneNoticeAnimation =
+
+  const animation =
     moving.animate(
       [
         {
           transform:
-            "translate3d(0,-50%,0)"
+            `translate3d(${startX}px,-50%,0)`
         },
+
         {
           transform:
-            `translate3d(${-width}px,-50%,0)`
+            `translate3d(${endX}px,-50%,0)`
         }
       ],
       {
-        duration: Math.max(duration, 4500),
+        duration: duration,
         iterations: Infinity,
         easing: "linear"
       }
     );
 
-  /*
-    Make sure it starts immediately.
-  */
-  window.__grabzoneNoticeAnimation.play();
+  animation.play();
+
+  window.__grabzoneNoticeAnimation =
+    animation;
 }
 
 /* =========================================================
