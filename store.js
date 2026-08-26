@@ -254,6 +254,42 @@ function ensureDMChooser() {
       font-weight: 900;
     }
 
+    .gz-order-icon svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+      fill: currentColor;
+    }
+
+    .gz-order-icon svg rect {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    .gz-order-icon svg circle {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    .gz-order-icon svg .gz-ig-dot {
+      fill: currentColor;
+      stroke: none;
+    }
+
+    .gz-wa-icon {
+      background: #25D366;
+    }
+
+    .gz-ig-icon {
+      background: linear-gradient(135deg, #833AB4, #E1306C, #FCAF45);
+    }
+
+    .gz-fb-icon {
+      background: #1877F2;
+    }
+
     .gz-order-text {
       flex: 1;
       display: flex;
@@ -321,7 +357,11 @@ function ensureDMChooser() {
           class="gz-order-option"
           id="gzWhatsApp"
         >
-          <span class="gz-order-icon">WA</span>
+          <span class="gz-order-icon gz-wa-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" role="img">
+        <path d="M20.5 3.5A11.5 11.5 0 0 0 2.4 17.1L1 22.8l5.8-1.5A11.5 11.5 0 1 0 20.5 3.5Zm-8.5 18a9.9 9.9 0 0 1-5-1.3l-.4-.2-3.4.9.9-3.3-.2-.4A9.9 9.9 0 1 1 12 21.5Zm5.5-7.4c-.3-.2-1.7-.8-2-.9-.3-.1-.5-.2-.7.2-.2.3-.7.9-.8 1.1-.2.2-.3.2-.6.1-1.5-.7-2.6-1.3-3.7-3-.3-.5.3-.5.8-1.7.1-.2 0-.4 0-.5l-.8-1.9c-.2-.5-.4-.4-.7-.4h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1 2.9 1.2 3.1c.2.2 2 3.1 4.9 4.2 1.8.7 2.5.8 3.4.7.5-.1 1.7-.7 1.9-1.3.2-.6.2-1.2.1-1.3-.2-.1-.4-.2-.7-.3Z"/>
+      </svg>
+    </span>
           <span class="gz-order-text">
             <strong>WhatsApp</strong>
             <small>Chat with us on WhatsApp</small>
@@ -334,7 +374,13 @@ function ensureDMChooser() {
           class="gz-order-option"
           id="gzInstagram"
         >
-          <span class="gz-order-icon">IG</span>
+          <span class="gz-order-icon gz-ig-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" role="img">
+        <rect x="3" y="3" width="18" height="18" rx="5"/>
+        <circle cx="12" cy="12" r="4.2"/>
+        <circle cx="17.4" cy="6.7" r="1.15" class="gz-ig-dot"/>
+      </svg>
+    </span>
           <span class="gz-order-text">
             <strong>Instagram</strong>
             <small>Message us on Instagram</small>
@@ -347,7 +393,11 @@ function ensureDMChooser() {
           class="gz-order-option"
           id="gzFacebook"
         >
-          <span class="gz-order-icon">FB</span>
+          <span class="gz-order-icon gz-fb-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" role="img">
+        <path d="M13.8 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.5 1.6-1.5H17V3.9c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 4v2.2H8.3v3h2.6v8h2.9Z"/>
+      </svg>
+    </span>
           <span class="gz-order-text">
             <strong>Facebook</strong>
             <small>Message us on Facebook</small>
