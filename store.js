@@ -899,7 +899,7 @@ function setupSearch() {
    NOTICES
 ========================================================= */
 
-async function loadNotices() {
+
 
 async function loadNotices() {
   const track = document.getElementById("noticeTrack");
