@@ -714,3 +714,111 @@
   }
 
 }
+
+/* =========================================================
+   GRABZONE — FINAL NOTICE MARQUEE
+   ========================================================= */
+
+.notice-track {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+}
+
+/* Start completely outside the right side */
+.notice-loop {
+  display: flex !important;
+  align-items: center !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  flex-shrink: 0 !important;
+
+  animation: grabzoneNoticeRun 42s linear infinite !important;
+
+  will-change: transform;
+}
+
+.notice-content {
+  display: flex !important;
+  align-items: center !important;
+  width: max-content !important;
+  flex-shrink: 0 !important;
+}
+
+.notice-item {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+
+  margin-right: 100px !important;
+}
+
+.notice-item b {
+  display: inline-block !important;
+  margin-right: 14px !important;
+}
+
+.notice-message {
+  display: inline-block !important;
+}
+
+/* Separator */
+.notice-item::after {
+  content: "•";
+  margin-left: 100px;
+  opacity: .45;
+}
+
+/*
+  IMPORTANT:
+  Start from completely outside the right edge.
+  Move all the way left.
+*/
+@keyframes grabzoneNoticeRun {
+
+  0% {
+    transform: translateX(100vw);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+
+  .notice-loop {
+    animation-duration: 34s !important;
+  }
+
+  .notice-item {
+    margin-right: 60px !important;
+    font-size: 10px !important;
+  }
+
+  .notice-item b {
+    margin-right: 8px !important;
+  }
+
+  .notice-item::after {
+    margin-left: 60px;
+  }
+
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+  .notice-loop {
+    animation: none !important;
+    transform: none !important;
+  }
+
+}
