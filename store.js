@@ -900,8 +900,7 @@ function setupSearch() {
 ========================================================= */
 
 
-
-  async function loadNotices() {
+async function loadNotices() {
   const track = document.getElementById("noticeTrack");
 
   if (!track || !sb) return;
@@ -933,38 +932,21 @@ function setupSearch() {
   `).join("");
 
   /*
-    IMPORTANT:
-    The spacer pushes the FIRST notice completely
-    outside the right side of the screen.
-
-    Structure:
-
-    [SCREEN WIDTH SPACER]
-    [NOTICE GROUP]
-    [NOTICE GROUP]
-
-    When the first group finishes,
-    the second identical group takes exactly
-    the same position.
+    ONE notice group only.
+    No duplicate group.
+    No separator dot.
   */
 
   track.innerHTML = `
     <div class="notice-loop">
-      <div class="notice-start-space"></div>
-
-      <div class="notice-content">
-        ${content}
-      </div>
-
-      <div class="notice-content">
-        ${content}
-      </div>
+      ${content}
     </div>
   `;
 
   /*
-    Remove previous runtime notice CSS.
+    Remove any previous notice runtime CSS.
   */
+
   document
     .getElementById("grabzoneNoticeFinal")
     ?.remove();
@@ -975,67 +957,50 @@ function setupSearch() {
 
   style.textContent = `
 
+    /* Notice viewport */
+
     .notice-track {
       position: relative !important;
       flex: 1 1 auto !important;
       min-width: 0 !important;
       width: auto !important;
+
       overflow: hidden !important;
+
       display: flex !important;
       align-items: center !important;
+
       white-space: nowrap !important;
 
-      /*
-        Kill every old notice animation.
-      */
       animation: none !important;
       transform: none !important;
     }
 
+
+    /* Single moving notice */
+
     .notice-loop {
-      display: flex !important;
+      display: inline-flex !important;
       align-items: center !important;
 
       width: max-content !important;
       min-width: max-content !important;
 
-      flex-shrink: 0 !important;
+      flex: 0 0 auto !important;
 
-      transform: translate3d(0, 0, 0);
+      white-space: nowrap !important;
 
       animation:
-        grabzoneNoticeFinalMove
-        var(--notice-duration, 35s)
+        grabzoneNoticeSingle
+        var(--notice-duration, 32s)
         linear
         infinite !important;
 
-      will-change: transform;
+      will-change: transform !important;
     }
 
-    /*
-      THIS is what makes the notice start
-      completely outside the right side.
-    */
-    .notice-start-space {
-      display: block !important;
 
-      width: var(--notice-start-width, 100vw) !important;
-      min-width: var(--notice-start-width, 100vw) !important;
-
-      height: 1px !important;
-
-      flex: 0 0 auto !important;
-    }
-
-    .notice-content {
-      display: flex !important;
-      align-items: center !important;
-
-      width: max-content !important;
-      min-width: max-content !important;
-
-      flex: 0 0 auto !important;
-    }
+    /* Individual notice */
 
     .notice-item {
       display: inline-flex !important;
@@ -1048,72 +1013,68 @@ function setupSearch() {
 
       white-space: nowrap !important;
 
-      margin-right: 100px !important;
+      margin-right: 90px !important;
 
       font-size: 13px !important;
     }
 
+
     .notice-item b {
       display: inline-block !important;
 
-      margin-right: 14px !important;
+      margin-right: 12px !important;
 
       font-weight: 800 !important;
     }
 
+
     .notice-message {
       display: inline-block !important;
+
       white-space: nowrap !important;
     }
 
-    .notice-item::after {
-      content: "•";
-
-      display: inline-block;
-
-      margin-left: 100px;
-
-      opacity: .45;
-    }
 
     /*
-      Move exactly:
-
-      screen width
-      +
-      one complete notice group
-
-      This makes the second group take the exact
-      starting position of the first group.
+      IMPORTANT:
+      Remove the old trailing dot completely.
     */
-    @keyframes grabzoneNoticeFinalMove {
 
-      from {
-        transform: translate3d(0, 0, 0);
+    .notice-item::after {
+      content: none !important;
+      display: none !important;
+    }
+
+
+    /*
+      Start completely outside RIGHT.
+      Finish completely outside LEFT.
+
+      Because both positions are invisible,
+      the loop reset is not noticeable.
+    */
+
+    @keyframes grabzoneNoticeSingle {
+
+      0% {
+        transform: translateX(100%);
       }
 
-      to {
-        transform:
-          translate3d(
-            calc(
-              -1 *
-              (
-                var(--notice-start-width) +
-                var(--notice-group-width)
-              )
-            ),
-            0,
-            0
-          );
+      100% {
+        transform: translateX(-100%);
       }
 
     }
+
 
     @media (max-width: 600px) {
 
+      .notice-loop {
+        animation-duration: 28s !important;
+      }
+
       .notice-item {
         font-size: 10px !important;
-
         margin-right: 60px !important;
       }
 
@@ -1121,11 +1082,8 @@ function setupSearch() {
         margin-right: 8px !important;
       }
 
-      .notice-item::after {
-        margin-left: 60px;
-      }
-
     }
+
 
     @media (prefers-reduced-motion: reduce) {
 
@@ -1141,75 +1099,34 @@ function setupSearch() {
   document.head.appendChild(style);
 
   /*
-    Measure actual widths.
+    Calculate a comfortable speed based on
+    actual notice length.
   */
+
   const loop =
     track.querySelector(".notice-loop");
 
-  const startSpace =
-    track.querySelector(".notice-start-space");
+  if (!loop) return;
 
-  const firstGroup =
-    track.querySelector(".notice-content");
-
-  if (!loop || !startSpace || !firstGroup) {
-    return;
-  }
-
-  /*
-    Use the actual visible track width.
-    This means the notice starts exactly
-    at the right edge — not the middle.
-  */
   const trackWidth =
     track.getBoundingClientRect().width;
 
-  const groupWidth =
-    firstGroup.getBoundingClientRect().width;
+  const contentWidth =
+    loop.getBoundingClientRect().width;
 
-  if (
-    !trackWidth ||
-    !groupWidth
-  ) {
-    return;
-  }
+  if (!trackWidth || !contentWidth) return;
 
-  startSpace.style.setProperty(
-    "--notice-start-width",
-    `${trackWidth}px`
-  );
+  const isMobile =
+    window.matchMedia("(max-width: 600px)").matches;
 
-  loop.style.setProperty(
-    "--notice-start-width",
-    `${trackWidth}px`
-  );
+  const speed =
+    isMobile ? 28 : 38;
 
-  loop.style.setProperty(
-    "--notice-group-width",
-    `${groupWidth}px`
-  );
-
-  /*
-    Comfortable speed.
-    Mobile is slightly slower.
-  */
-  const mobile =
-    window.matchMedia(
-      "(max-width: 600px)"
-    ).matches;
-
-  const pixelsPerSecond =
-    mobile ? 28 : 38;
-
-  const totalDistance =
-    trackWidth + groupWidth;
+  const distance =
+    trackWidth + contentWidth;
 
   const duration =
-    Math.max(
-      20,
-      totalDistance /
-      pixelsPerSecond
-    );
+    Math.max(18, distance / speed);
 
   loop.style.setProperty(
     "--notice-duration",
