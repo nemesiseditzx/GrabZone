@@ -1,7 +1,6 @@
 :root{--ink:#101010;--muted:#6d6d6d;--line:#e7e7e7;--soft:#f5f5f2}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--ink)}a{text-decoration:none;color:inherit}button,input,textarea,select{font:inherit}.hidden{display:none!important}/* =========================================================
-   GRABZONE NOTICE BOARD — FIXED MARQUEE
-   Keeps the label locked and scrolls notices only inside
-   the remaining track area. Starts from the right edge.
+/* =========================================================
+   GRABZONE — INFINITE NOTICE MARQUEE
 ========================================================= */
 
 .notice-wrap{
@@ -18,52 +17,123 @@
 
 .notice-label{
   flex:0 0 auto;
-  width:auto;
   height:100%;
+  min-width:88px;
+  padding:0 18px;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:0 18px;
-  border-right:1px solid #333;
   background:#101010;
-  color:#fff;
+  border-right:1px solid #333;
   font-size:11px;
-  letter-spacing:.16em;
   font-weight:800;
+  letter-spacing:.16em;
   white-space:nowrap;
   position:relative;
-  z-index:2;
+  z-index:5;
 }
 
 .notice-track{
-  flex:1 1 auto;
+  flex:1;
   min-width:0;
-  width:max-content;
   height:100%;
+  overflow:hidden;
   display:flex;
   align-items:center;
-  white-space:nowrap;
-  font-size:13px;
-  overflow:visible;
   position:relative;
-  animation:grabzoneNoticeMarquee 28s linear infinite;
+}
+
+.notice-track-inner{
+  display:flex;
+  width:max-content;
+  flex:none;
+  align-items:center;
+  white-space:nowrap;
+  animation:grabzoneInfiniteNotice 32s linear infinite;
   will-change:transform;
 }
 
-.notice-item{
-  flex:0 0 auto;
-  display:inline-flex;
+.notice-group{
+  display:flex;
   align-items:center;
-  margin-right:70px;
-  white-space:nowrap;
+  flex:none;
 }
 
-@keyframes grabzoneNoticeMarquee{
-  0%{
-    transform:translateX(100vw);
+.notice-item{
+  display:inline-flex;
+  align-items:center;
+  flex:none;
+  white-space:nowrap;
+  margin-right:90px;
+  font-size:13px;
+  line-height:1;
+}
+
+.notice-item b{
+  display:inline-block;
+  margin-right:10px;
+  font-weight:900;
+}
+
+.notice-item::after{
+  content:"•";
+  margin-left:90px;
+  opacity:.35;
+}
+
+/* True seamless loop */
+@keyframes grabzoneInfiniteNotice{
+  from{
+    transform:translateX(0);
   }
-  100%{
-    transform:translateX(-100%);
+
+  to{
+    transform:translateX(-50%);
+  }
+}
+
+/* Mobile */
+@media(max-width:600px){
+
+  .notice-wrap{
+    height:34px;
+  }
+
+  .notice-label{
+    min-width:62px;
+    height:34px;
+    padding:0 10px;
+    font-size:8px;
+    letter-spacing:.10em;
+  }
+
+  .notice-track{
+    min-width:0;
+  }
+
+  .notice-track-inner{
+    animation-duration:26s;
+  }
+
+  .notice-item{
+    margin-right:55px;
+    font-size:10px;
+  }
+
+  .notice-item b{
+    margin-right:7px;
+  }
+
+  .notice-item::after{
+    margin-left:55px;
+  }
+}
+
+/* Respect reduced motion */
+@media(prefers-reduced-motion:reduce){
+  .notice-track-inner{
+    animation:none;
+    transform:none;
   }
 }
 
