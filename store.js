@@ -16,7 +16,6 @@ if (
   );
 }
 
-
 /* =========================================================
    HELPERS
 ========================================================= */
@@ -41,33 +40,23 @@ function escAttr(x) {
 function dmLink(text) {
   const base = SITE.whatsapp || C?.whatsapp || "";
 
-  if (!base) {
-    return "#";
-  }
+  if (!base) return "#";
 
-  return (
-    base +
-    "?text=" +
-    encodeURIComponent(text)
-  );
+  return base + "?text=" + encodeURIComponent(text);
 }
-
 
 /* =========================================================
    MAIN LOAD
 ========================================================= */
 
 async function load() {
-
   if (!sb) {
     console.error("Supabase is not configured.");
     return;
   }
 
   try {
-
     await loadSettings();
-
     applySiteSettings();
 
     await Promise.all([
@@ -76,24 +65,16 @@ async function load() {
     ]);
 
     await renderDetail();
-
   } catch (error) {
-
-    console.error(
-      "Website loading error:",
-      error
-    );
-
+    console.error("Website loading error:", error);
   }
 }
-
 
 /* =========================================================
    SITE SETTINGS
 ========================================================= */
 
 async function loadSettings() {
-
   const { data, error } = await sb
     .from("site_settings")
     .select("*")
@@ -101,27 +82,19 @@ async function loadSettings() {
     .maybeSingle();
 
   if (error) {
-    console.error(
-      "Settings error:",
-      error
-    );
+    console.error("Settings error:", error);
     return;
   }
 
-  if (data) {
-    SITE = data;
-  }
+  if (data) SITE = data;
 }
-
 
 /* =========================================================
    TEXT / LINK HELPERS
 ========================================================= */
 
 function setText(id, value) {
-
-  const element =
-    document.getElementById(id);
+  const element = document.getElementById(id);
 
   if (
     element &&
@@ -132,27 +105,19 @@ function setText(id, value) {
   }
 }
 
-
 function setHref(id, value) {
+  const element = document.getElementById(id);
 
-  const element =
-    document.getElementById(id);
-
-  if (
-    element &&
-    value
-  ) {
+  if (element && value) {
     element.href = value;
   }
 }
-
 
 /* =========================================================
    APPLY WEBSITE SETTINGS
 ========================================================= */
 
 function applySiteSettings() {
-
   const storeName =
     SITE.store_name ||
     C?.storeName ||
@@ -160,220 +125,56 @@ function applySiteSettings() {
 
   document.title = storeName;
 
+  setText("storeName", storeName);
+  setText("footerName", storeName);
+  setText("heroBrand", storeName);
 
-  /* Store name */
+  setText("heroEyebrow", SITE.hero_eyebrow);
+  setText("heroTitle", SITE.hero_title);
+  setText("heroTitleEm", SITE.hero_title_em);
+  setText("heroDescription", SITE.hero_description);
 
-  setText(
-    "storeName",
-    storeName
-  );
+  setText("offerTitle", SITE.offer_title);
+  setText("offerMessage", SITE.offer_message);
+  setText("offerCode", SITE.offer_code);
 
-  setText(
-    "footerName",
-    storeName
-  );
+  setText("collectionEyebrow", SITE.collection_eyebrow);
+  setText("collectionTitle", SITE.collection_title);
 
-  setText(
-    "heroBrand",
-    storeName
-  );
+  setText("howEyebrow", SITE.how_eyebrow);
+  setText("howTitle", SITE.how_title);
 
+  setText("step1Title", SITE.step1_title);
+  setText("step1Body", SITE.step1_body);
+  setText("step2Title", SITE.step2_title);
+  setText("step2Body", SITE.step2_body);
+  setText("step3Title", SITE.step3_title);
+  setText("step3Body", SITE.step3_body);
 
-  /* Hero */
+  setText("referralEyebrow", SITE.referral_eyebrow);
+  setText("referralTitle", SITE.referral_title);
+  setText("referralBody", SITE.referral_body);
+  setText("refDm", SITE.referral_button_text);
 
-  setText(
-    "heroEyebrow",
-    SITE.hero_eyebrow
-  );
+  setText("footerText", SITE.footer_text);
 
-  setText(
-    "heroTitle",
-    SITE.hero_title
-  );
+  setText("nav1", SITE.header_link1_label);
+  setText("nav2", SITE.header_link2_label);
+  setText("nav3", SITE.header_link3_label);
 
-  setText(
-    "heroTitleEm",
-    SITE.hero_title_em
-  );
+  setHref("nav1", SITE.header_link1_url);
+  setHref("nav2", SITE.header_link2_url);
+  setHref("nav3", SITE.header_link3_url);
 
-  setText(
-    "heroDescription",
-    SITE.hero_description
-  );
+  setText("heroButton", SITE.hero_button_text);
+  setHref("heroButton", SITE.hero_button_link);
 
-
-  /* Offer */
-
-  setText(
-    "offerTitle",
-    SITE.offer_title
-  );
-
-  setText(
-    "offerMessage",
-    SITE.offer_message
-  );
-
-  setText(
-    "offerCode",
-    SITE.offer_code
-  );
-
-
-  /* Collection */
-
-  setText(
-    "collectionEyebrow",
-    SITE.collection_eyebrow
-  );
-
-  setText(
-    "collectionTitle",
-    SITE.collection_title
-  );
-
-
-  /* How to order */
-
-  setText(
-    "howEyebrow",
-    SITE.how_eyebrow
-  );
-
-  setText(
-    "howTitle",
-    SITE.how_title
-  );
-
-  setText(
-    "step1Title",
-    SITE.step1_title
-  );
-
-  setText(
-    "step1Body",
-    SITE.step1_body
-  );
-
-  setText(
-    "step2Title",
-    SITE.step2_title
-  );
-
-  setText(
-    "step2Body",
-    SITE.step2_body
-  );
-
-  setText(
-    "step3Title",
-    SITE.step3_title
-  );
-
-  setText(
-    "step3Body",
-    SITE.step3_body
-  );
-
-
-  /* Referral */
-
-  setText(
-    "referralEyebrow",
-    SITE.referral_eyebrow
-  );
-
-  setText(
-    "referralTitle",
-    SITE.referral_title
-  );
-
-  setText(
-    "referralBody",
-    SITE.referral_body
-  );
-
-  setText(
-    "refDm",
-    SITE.referral_button_text
-  );
-
-
-  /* Footer */
-
-  setText(
-    "footerText",
-    SITE.footer_text
-  );
-
-
-  /* Navigation */
-
-  setText(
-    "nav1",
-    SITE.header_link1_label
-  );
-
-  setText(
-    "nav2",
-    SITE.header_link2_label
-  );
-
-  setText(
-    "nav3",
-    SITE.header_link3_label
-  );
-
-  setHref(
-    "nav1",
-    SITE.header_link1_url
-  );
-
-  setHref(
-    "nav2",
-    SITE.header_link2_url
-  );
-
-  setHref(
-    "nav3",
-    SITE.header_link3_url
-  );
-
-
-  /* Hero buttons */
-
-  setText(
-    "heroButton",
-    SITE.hero_button_text
-  );
-
-  setHref(
-    "heroButton",
-    SITE.hero_button_link
-  );
-
-  setText(
-    "howButton",
-    SITE.how_button_text
-  );
-
-  setHref(
-    "howButton",
-    SITE.how_button_link
-  );
-
-
-  /* Logo */
+  setText("howButton", SITE.how_button_text);
+  setHref("howButton", SITE.how_button_link);
 
   if (SITE.logo_url) {
-
-    [
-      "brandMark",
-      "footerMark"
-    ].forEach(id => {
-
-      const element =
-        document.getElementById(id);
+    ["brandMark", "footerMark"].forEach(id => {
+      const element = document.getElementById(id);
 
       if (!element) return;
 
@@ -389,519 +190,243 @@ function applySiteSettings() {
           "
         >
       `;
-
     });
-
   }
 
-
-  /* Social links */
-
-  const socialLinks = [
-
-    [
-      "headerDm",
-      SITE.whatsapp || C?.whatsapp
-    ],
-
-    [
-      "wa",
-      SITE.whatsapp || C?.whatsapp
-    ],
-
-    [
-      "ig",
-      SITE.instagram || C?.instagram
-    ],
-
-    [
-      "ms",
-      SITE.messenger || C?.messenger
-    ]
-
-  ];
-
-
-  socialLinks.forEach(
-    ([id, url]) => {
-
-      setHref(
-        id,
-        url || "#"
-      );
-
-    }
-  );
-
-
-  /* Hero image */
+  [
+    ["headerDm", SITE.whatsapp || C?.whatsapp],
+    ["wa", SITE.whatsapp || C?.whatsapp],
+    ["ig", SITE.instagram || C?.instagram],
+    ["ms", SITE.messenger || C?.messenger]
+  ].forEach(([id, url]) => {
+    setHref(id, url || "#");
+  });
 
   if (SITE.hero_image_url) {
-
-    const hero =
-      document.getElementById(
-        "heroCard"
-      );
+    const hero = document.getElementById("heroCard");
 
     if (hero) {
-
       hero.style.backgroundImage =
-        `url("${escAttr(
-          SITE.hero_image_url
-        )}")`;
+        `url("${escAttr(SITE.hero_image_url)}")`;
 
-      hero.style.backgroundSize =
-        "cover";
-
-      hero.style.backgroundPosition =
-        "center";
-
+      hero.style.backgroundSize = "cover";
+      hero.style.backgroundPosition = "center";
     }
-
   }
 
+  [
+    ["noticeSection", SITE.show_notice],
+    ["offers", SITE.show_offer],
+    ["how", SITE.show_how],
+    ["referralSection", SITE.show_referral]
+  ].forEach(([id, value]) => {
+    const element = document.getElementById(id);
 
-  /* Visibility */
+    if (!element) return;
 
-  const visibility = [
-
-    [
-      "noticeSection",
-      SITE.show_notice
-    ],
-
-    [
-      "offers",
-      SITE.show_offer
-    ],
-
-    [
-      "how",
-      SITE.show_how
-    ],
-
-    [
-      "referralSection",
-      SITE.show_referral
-    ]
-
-  ];
-
-
-  visibility.forEach(
-    ([id, value]) => {
-
-      const element =
-        document.getElementById(id);
-
-      if (!element) return;
-
-      element.style.display =
-        value === false
-          ? "none"
-          : "";
-
-    }
-  );
-
+    element.style.display =
+      value === false ? "none" : "";
+  });
 }
 
-
 /* =========================================================
-   LOAD PRODUCTS
+   PRODUCTS
 ========================================================= */
 
 async function loadProducts() {
-
-  const {
-    data,
-    error
-  } = await sb
+  const { data, error } = await sb
     .from("products")
     .select("*")
     .eq("published", true)
-    .order(
-      "created_at",
-      {
-        ascending: false
-      }
-    );
-
+    .order("created_at", { ascending: false });
 
   if (error) {
-
-    console.error(
-      "Products error:",
-      error
-    );
-
+    console.error("Products error:", error);
     allProducts = [];
-
     renderProducts();
-
     return;
   }
 
-
-  allProducts =
-    data || [];
-
-
+  allProducts = data || [];
   renderProducts();
 }
 
-
-/* =========================================================
-   RENDER PRODUCTS
-========================================================= */
-
 function renderProducts() {
-
-  const grid =
-    document.getElementById(
-      "products"
-    );
+  const grid = document.getElementById("products");
 
   if (!grid) return;
 
-
-  /* Search */
-
   const searchInput =
-    document.getElementById(
-      "search"
-    );
+    document.getElementById("search");
 
   const query =
-    (
-      searchInput?.value ||
-      ""
-    )
+    (searchInput?.value || "")
       .trim()
       .toLowerCase();
-
-
-  /* Active category */
 
   const selectedCategory =
-    String(
-      activeCategory || "All"
-    )
+    String(activeCategory || "All")
       .trim()
       .toLowerCase();
 
+  const filtered = allProducts.filter(product => {
+    const category =
+      String(product.category || "")
+        .trim()
+        .toLowerCase();
 
-  /* Filter products */
+    const categoryMatches =
+      selectedCategory === "all" ||
+      category === selectedCategory;
 
-  const filtered =
-    allProducts.filter(
-      product => {
+    const searchableText = `
+      ${product.name || ""}
+      ${product.category || ""}
+      ${product.description || ""}
+      ${product.tag || ""}
+    `.toLowerCase();
 
-        const productCategory =
-          String(
-            product.category || ""
-          )
-            .trim()
-            .toLowerCase();
-
-
-        const categoryMatches =
-          selectedCategory === "all" ||
-          productCategory ===
-            selectedCategory;
-
-
-        const searchableText =
-          `
-            ${product.name || ""}
-            ${product.category || ""}
-            ${product.description || ""}
-            ${product.tag || ""}
-          `
-            .toLowerCase();
-
-
-        const searchMatches =
-          searchableText.includes(
-            query
-          );
-
-
-        return (
-          categoryMatches &&
-          searchMatches
-        );
-
-      }
+    return (
+      categoryMatches &&
+      searchableText.includes(query)
     );
+  });
 
+  grid.innerHTML = filtered.map(product => {
+    const price =
+      Number(product.price || 0)
+        .toLocaleString();
 
-  /* Render products */
+    const oldPrice = product.old_price
+      ? `
+        <span class="old">
+          ৳${Number(product.old_price).toLocaleString()}
+        </span>
+      `
+      : "";
 
-  grid.innerHTML =
-    filtered
-      .map(product => {
+    const tag = product.tag
+      ? `
+        <span class="product-tag">
+          ${esc(product.tag)}
+        </span>
+      `
+      : "";
 
-        const price =
-          Number(
-            product.price || 0
-          ).toLocaleString();
-
-
-        const oldPrice =
-          product.old_price
-            ? `
-              <span class="old">
-                ৳${Number(
-                  product.old_price
-                ).toLocaleString()}
-              </span>
-            `
-            : "";
-
-
-        const tag =
-          product.tag
-            ? `
-              <span class="product-tag">
-                ${esc(product.tag)}
-              </span>
-            `
-            : "";
-
-
-        return `
-
-          <a
-            class="product-card"
-            href="product.html?id=${encodeURIComponent(
-              product.id
-            )}"
+    return `
+      <a
+        class="product-card"
+        href="product.html?id=${encodeURIComponent(product.id)}"
+      >
+        <div class="product-image">
+          <img
+            src="${escAttr(product.image_url)}"
+            alt="${escAttr(product.name)}"
+            loading="lazy"
           >
+        </div>
 
-            <div class="product-image">
+        <div class="product-info">
+          <div class="product-cat">
+            ${esc(product.category)}
+          </div>
 
-              <img
-                src="${escAttr(
-                  product.image_url
-                )}"
-                alt="${escAttr(
-                  product.name
-                )}"
-                loading="lazy"
-              >
+          <div class="product-name">
+            ${esc(product.name)}
+          </div>
 
-            </div>
+          ${tag}
 
-
-            <div class="product-info">
-
-              <div class="product-cat">
-                ${esc(
-                  product.category
-                )}
-              </div>
-
-
-              <div class="product-name">
-                ${esc(
-                  product.name
-                )}
-              </div>
-
-
-              ${tag}
-
-
-              <div class="price">
-
-                ৳${price}
-
-                ${oldPrice}
-
-              </div>
-
-            </div>
-
-          </a>
-
-        `;
-
-      })
-      .join("");
-
-
-  /* Empty state */
+          <div class="price">
+            ৳${price}
+            ${oldPrice}
+          </div>
+        </div>
+      </a>
+    `;
+  }).join("");
 
   const empty =
-    document.getElementById(
-      "empty"
-    );
+    document.getElementById("empty");
 
   if (empty) {
-
     empty.classList.toggle(
       "hidden",
       filtered.length > 0
     );
-
   }
 
-
-  /* Render categories */
-
   renderCategories();
-
 }
 
-
-/* =========================================================
-   RENDER CATEGORY BUTTONS
-========================================================= */
-
 function renderCategories() {
-
   const container =
-    document.getElementById(
-      "categories"
-    );
+    document.getElementById("categories");
 
   if (!container) return;
-
-
-  /* Get unique categories */
 
   const categories = [
     "All",
     ...new Set(
-
       allProducts
-
         .map(product =>
           String(
             product.category || ""
           ).trim()
         )
-
         .filter(Boolean)
-
     )
   ];
 
-
-  /* Clear old buttons */
-
   container.innerHTML = "";
 
+  categories.forEach(category => {
+    const button =
+      document.createElement("button");
 
-  /* Create buttons */
+    button.type = "button";
+    button.className = "chip";
 
-  categories.forEach(
-    category => {
-
-      const button =
-        document.createElement(
-          "button"
-        );
-
-
-      button.type =
-        "button";
-
-
-      button.className =
-        "chip";
-
-
-      const isActive =
-        String(category)
-          .toLowerCase() ===
-        String(activeCategory)
-          .toLowerCase();
-
-
-      if (isActive) {
-
-        button.classList.add(
-          "active"
-        );
-
-      }
-
-
-      button.textContent =
-        category;
-
-
-      /* IMPORTANT:
-         Real event listener.
-         No inline onclick.
-      */
-
-      button.addEventListener(
-        "click",
-        function(event) {
-
-          event.preventDefault();
-
-          event.stopPropagation();
-
-
-          activeCategory =
-            category;
-
-
-          /* Re-render */
-
-          renderProducts();
-
-        }
-      );
-
-
-      container.appendChild(
-        button
-      );
-
+    if (
+      String(category).toLowerCase() ===
+      String(activeCategory).toLowerCase()
+    ) {
+      button.classList.add("active");
     }
-  );
 
+    button.textContent = category;
+
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      activeCategory = category;
+      renderProducts();
+    });
+
+    container.appendChild(button);
+  });
 }
 
-
-/* =========================================================
-   SEARCH
-========================================================= */
-
 function setupSearch() {
-
   const search =
-    document.getElementById(
-      "search"
-    );
+    document.getElementById("search");
 
   if (!search) return;
 
-
   search.addEventListener(
     "input",
-    function() {
-
-      renderProducts();
-
-    }
+    renderProducts
   );
-
 }
 
-
 /* =========================================================
-   NOTICES
+   NOTICE BOARD
 ========================================================= */
 
-
 async function loadNotices() {
-  const track = document.getElementById("noticeTrack");
+  const track =
+    document.getElementById("noticeTrack");
 
   if (!track || !sb) return;
 
@@ -927,14 +452,16 @@ async function loadNotices() {
   const content = notices.map(notice => `
     <span class="notice-item">
       <b>${esc(notice.title)}</b>
-      <span class="notice-message">${esc(notice.message)}</span>
+      <span class="notice-message">
+        ${esc(notice.message)}
+      </span>
     </span>
   `).join("");
 
   /*
-    ONE notice group only.
-    No duplicate group.
-    No separator dot.
+    The important change:
+    The first notice is NOT placed completely outside
+    the screen. It starts at the visible right edge.
   */
 
   track.innerHTML = `
@@ -943,153 +470,150 @@ async function loadNotices() {
     </div>
   `;
 
-  /*
-    Remove any previous notice runtime CSS.
-  */
-
   document
     .getElementById("grabzoneNoticeFinal")
     ?.remove();
 
-  const style = document.createElement("style");
+  const style =
+    document.createElement("style");
 
-  style.id = "grabzoneNoticeFinal";
+  style.id =
+    "grabzoneNoticeFinal";
 
   style.textContent = `
 
-    /* Notice viewport */
-
     .notice-track {
       position: relative !important;
-      flex: 1 1 auto !important;
-      min-width: 0 !important;
-      width: auto !important;
 
       overflow: hidden !important;
 
-      display: flex !important;
-      align-items: center !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      height: 100% !important;
+
+      display: block !important;
 
       white-space: nowrap !important;
-
-      animation: none !important;
-      transform: none !important;
     }
 
-
-    /* Single moving notice */
-
     .notice-loop {
+      position: absolute !important;
+
+      top: 50% !important;
+
+      /*
+        IMPORTANT:
+        Start exactly at the RIGHT edge.
+        No waiting for the whole notice
+        to travel from outside.
+      */
+      left: 100% !important;
+
       display: inline-flex !important;
       align-items: center !important;
 
       width: max-content !important;
       min-width: max-content !important;
 
-      flex: 0 0 auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
 
       white-space: nowrap !important;
 
+      transform:
+        translate3d(0, -50%, 0) !important;
+
       animation:
-        grabzoneNoticeSingle
-        var(--notice-duration, 32s)
+        grabzoneNoticeFast
+        8s
         linear
         infinite !important;
 
       will-change: transform !important;
+      backface-visibility: hidden !important;
     }
-
-
-    /* Individual notice */
 
     .notice-item {
       display: inline-flex !important;
       align-items: center !important;
 
+      flex: 0 0 auto !important;
+
       width: max-content !important;
       min-width: max-content !important;
 
-      flex: 0 0 auto !important;
+      margin: 0 70px 0 0 !important;
+      padding: 0 !important;
 
       white-space: nowrap !important;
-
-      margin-right: 90px !important;
 
       font-size: 13px !important;
+      line-height: 1 !important;
     }
-
 
     .notice-item b {
-      display: inline-block !important;
-
-      margin-right: 12px !important;
-
-      font-weight: 800 !important;
+      margin-right: 10px !important;
+      font-weight: 900 !important;
     }
 
-
     .notice-message {
-      display: inline-block !important;
-
       white-space: nowrap !important;
     }
 
-
     /*
-      IMPORTANT:
-      Remove the old trailing dot completely.
+      Absolutely remove the dot.
     */
 
+    .notice-item::before,
     .notice-item::after {
       content: none !important;
       display: none !important;
     }
 
-
-    /*
-      Start completely outside RIGHT.
-      Finish completely outside LEFT.
-
-      Because both positions are invisible,
-      the loop reset is not noticeable.
-    */
-
-    @keyframes grabzoneNoticeSingle {
+    @keyframes grabzoneNoticeFast {
 
       0% {
-        transform: translateX(100%);
+        transform:
+          translate3d(0, -50%, 0);
       }
 
       100% {
-        transform: translateX(-100%);
+        transform:
+          translate3d(
+            calc(-100% - 100vw),
+            -50%,
+            0
+          );
       }
 
     }
-
 
     @media (max-width: 600px) {
 
       .notice-loop {
-        animation-duration: 28s !important;
+        animation-duration:
+          7s !important;
       }
 
       .notice-item {
         font-size: 10px !important;
-        margin-right: 60px !important;
+        margin-right: 50px !important;
       }
 
       .notice-item b {
-        margin-right: 8px !important;
+        margin-right: 7px !important;
       }
 
     }
-
 
     @media (prefers-reduced-motion: reduce) {
 
       .notice-loop {
         animation: none !important;
-        transform: none !important;
+        left: 0 !important;
+
+        transform:
+          translate3d(0, -50%, 0) !important;
       }
 
     }
@@ -1098,79 +622,42 @@ async function loadNotices() {
 
   document.head.appendChild(style);
 
-  /*
-    Calculate a comfortable speed based on
-    actual notice length.
-  */
-
   const loop =
-    track.querySelector(".notice-loop");
+    track.querySelector(
+      ".notice-loop"
+    );
 
   if (!loop) return;
 
-  const trackWidth =
-    track.getBoundingClientRect().width;
+  /*
+    Make sure browser has calculated
+    the real notice width.
+  */
 
-  const contentWidth =
-    loop.getBoundingClientRect().width;
-
-  if (!trackWidth || !contentWidth) return;
-
-  const isMobile =
-    window.matchMedia("(max-width: 600px)").matches;
-
-  const speed =
-    isMobile ? 28 : 38;
-
-  const distance =
-    trackWidth + contentWidth;
-
-  const duration =
-    Math.max(18, distance / speed);
-
-  loop.style.setProperty(
-    "--notice-duration",
-    `${duration}s`
-  );
+  void loop.offsetWidth;
 }
 
-
 /* =========================================================
-   PRODUCT DETAIL PAGE
+   PRODUCT DETAIL
 ========================================================= */
 
 async function renderDetail() {
-
   const element =
     document.getElementById(
       "productDetail"
     );
 
-
-  if (
-    !element ||
-    !sb
-  ) {
-    return;
-  }
-
+  if (!element || !sb) return;
 
   const params =
     new URLSearchParams(
       window.location.search
     );
 
-
   const productId =
     params.get("id");
 
-
-  if (!productId) {
-    return;
-  }
-
-
-  /* Load product */
+  if (!productId) return;
 
   const {
     data: product,
@@ -1178,66 +665,36 @@ async function renderDetail() {
   } = await sb
     .from("products")
     .select("*")
-    .eq(
-      "id",
-      productId
-    )
-    .eq(
-      "published",
-      true
-    )
+    .eq("id", productId)
+    .eq("published", true)
     .maybeSingle();
 
-
-  if (
-    error ||
-    !product
-  ) {
-
+  if (error || !product) {
     element.innerHTML =
       "<h1>Product not found</h1>";
-
     return;
   }
 
-
-  /* Load gallery */
-
-  const {
-    data: images
-  } = await sb
-    .from("product_images")
-    .select("*")
-    .eq(
-      "product_id",
-      productId
-    )
-    .order(
-      "sort_order"
-    );
-
+  const { data: images } =
+    await sb
+      .from("product_images")
+      .select("*")
+      .eq("product_id", productId)
+      .order("sort_order");
 
   const gallery =
-    images &&
-    images.length
+    images && images.length
       ? images
       : [
           {
             image_url:
               product.image_url,
-
-            is_main:
-              true
+            is_main: true
           }
         ];
 
-
-  /* Currency */
-
   const currency =
-    SITE.currency ||
-    "৳";
-
+    SITE.currency || "৳";
 
   document.title =
     product.name +
@@ -1247,52 +704,40 @@ async function renderDetail() {
       "GRABZONE"
     );
 
-
-  /* Detail page */
-
   element.innerHTML = `
-
     <div class="detail-grid">
-
-
-      <!-- GALLERY -->
 
       <div class="gallery">
 
-
         <div class="gallery-thumbs">
 
-          ${gallery
-            .map(
-              (image, index) => `
-
-                <button
-                  type="button"
-                  class="gallery-thumb ${
-                    index === 0
-                      ? "active"
-                      : ""
-                  }"
-                  onclick="showGalleryImage(${index});return false;"
+          ${gallery.map(
+            (image, index) => `
+              <button
+                type="button"
+                class="gallery-thumb ${
+                  index === 0
+                    ? "active"
+                    : ""
+                }"
+                onclick="
+                  showGalleryImage(${index});
+                  return false;
+                "
+              >
+                <img
+                  src="${escAttr(
+                    image.image_url
+                  )}"
+                  alt="${escAttr(
+                    product.name
+                  )} ${index + 1}"
                 >
-
-                  <img
-                    src="${escAttr(
-                      image.image_url
-                    )}"
-                    alt="${escAttr(
-                      product.name
-                    )} ${index + 1}"
-                  >
-
-                </button>
-
-              `
-            )
-            .join("")}
+              </button>
+            `
+          ).join("")}
 
         </div>
-
 
         <div class="gallery-main">
 
@@ -1308,68 +753,41 @@ async function renderDetail() {
 
         </div>
 
-
       </div>
-
-
-      <!-- PRODUCT INFORMATION -->
 
       <div>
 
-
         <div class="eyebrow">
-
-          ${esc(
-            product.category
-          )}
-
+          ${esc(product.category)}
         </div>
 
-
         <h1>
-
-          ${esc(
-            product.name
-          )}
-
+          ${esc(product.name)}
         </h1>
-
 
         ${
           product.tag
             ? `
               <span class="tag">
-
-                ${esc(
-                  product.tag
-                )}
-
+                ${esc(product.tag)}
               </span>
             `
             : ""
         }
 
-
         <div class="detail-price">
 
-          ${esc(
-            currency
-          )}
-
+          ${esc(currency)}
           ${Number(
             product.price
           ).toLocaleString()}
-
 
           ${
             product.old_price
               ? `
                 <span class="old">
 
-                  ${esc(
-                    currency
-                  )}
-
+                  ${esc(currency)}
                   ${Number(
                     product.old_price
                   ).toLocaleString()}
@@ -1381,18 +799,11 @@ async function renderDetail() {
 
         </div>
 
-
         <p class="detail-desc">
-
           ${esc(
-            product.description ||
-            ""
+            product.description || ""
           )}
-
         </p>
-
-
-        <!-- ORDER BOX -->
 
         <div class="dm-box">
 
@@ -1400,12 +811,10 @@ async function renderDetail() {
             Have a referral code?
           </strong>
 
-
           <p>
             Enter it below so our team
             can verify it.
           </p>
-
 
           <input
             id="refCode"
@@ -1414,55 +823,39 @@ async function renderDetail() {
             autocomplete="off"
           >
 
-
           <a
             class="btn btn-dark btn-full"
             target="_blank"
             rel="noopener"
             id="orderBtn"
           >
-
             DM to Order
-
           </a>
 
         </div>
 
-
       </div>
 
-
     </div>
-
   `;
-
-
-  /* Store gallery */
 
   window.__gallery =
     gallery;
-
-
-  /* Order button */
 
   const orderButton =
     document.getElementById(
       "orderBtn"
     );
 
-
   const referralInput =
     document.getElementById(
       "refCode"
     );
 
-
   function updateOrderLink() {
-
     const referral =
       referralInput?.value
         ?.trim() || "";
-
 
     let message =
       `I want to order: ${
@@ -1471,103 +864,67 @@ async function renderDetail() {
         currency
       }${product.price}`;
 
-
     if (referral) {
-
       message +=
         ` | Referral code: ${referral}`;
-
     }
-
 
     orderButton.href =
       dmLink(message);
-
   }
-
 
   if (orderButton) {
-
     updateOrderLink();
-
   }
 
-
   if (referralInput) {
-
     referralInput.addEventListener(
       "input",
       updateOrderLink
     );
-
   }
-
 }
 
-
 /* =========================================================
-   PRODUCT GALLERY SWITCH
+   PRODUCT GALLERY
 ========================================================= */
 
 function showGalleryImage(index) {
-
   const gallery =
-    window.__gallery ||
-    [];
+    window.__gallery || [];
 
-
-  if (!gallery[index]) {
-    return;
-  }
-
+  if (!gallery[index]) return;
 
   const mainImage =
     document.getElementById(
       "mainProductImage"
     );
 
-
   if (mainImage) {
-
     mainImage.src =
       gallery[index].image_url;
-
   }
 
-
-  const thumbs =
-    document.querySelectorAll(
+  document
+    .querySelectorAll(
       ".gallery-thumb"
-    );
-
-
-  thumbs.forEach(
-    (thumb, i) => {
-
+    )
+    .forEach((thumb, i) => {
       thumb.classList.toggle(
         "active",
         i === index
       );
-
-    }
-  );
-
+    });
 }
-
 
 /* =========================================================
    RESET CATEGORY
 ========================================================= */
 
 function resetCategory() {
-
-  activeCategory =
-    "All";
-
+  activeCategory = "All";
   renderProducts();
-
 }
-
 
 /* =========================================================
    DOM READY
@@ -1575,11 +932,8 @@ function resetCategory() {
 
 document.addEventListener(
   "DOMContentLoaded",
-  function() {
-
+  () => {
     setupSearch();
-
     load();
-
   }
 );
