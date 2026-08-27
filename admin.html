@@ -109,9 +109,32 @@
   border-radius:15px;
   padding:8px;
   cursor:grab;
-  transition:opacity .15s,transform .15s;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-touch-callout:none;
+  transition:opacity .15s,transform .15s,outline .15s;
 }
-.gz-gallery-item.gz-dragging{opacity:.4;transform:scale(.98)}
+.gz-gallery-item:active{
+  cursor:grabbing;
+}
+.gz-gallery-item.gz-dragging{
+  opacity:.5;
+  transform:scale(.98);
+  cursor:grabbing;
+}
+.gz-gallery-item.gz-drag-over{
+  outline:3px dashed #111;
+  outline-offset:3px;
+}
+.gz-gallery-item .gz-drag-label{
+  cursor:grab;
+  touch-action:none;
+}
+body.gz-gallery-dragging-active{
+  user-select:none;
+  -webkit-user-select:none;
+}
   .gz-gallery-item{
   touch-action:none;
   user-select:none;
@@ -1802,7 +1825,7 @@
 
       <div class="gz-gallery-box">
         <h3>🖼️ Product Images</h3>
-        <p>Drag images left/right or up/down to set their exact display order. Click <b>Set Main</b> to choose the primary product image.</p>
+        <p>Press and hold an image, then drag it left/right or up/down to set its exact display order. Click <b>Set Main</b> to choose the primary product image.</p>
 
         <div id="gzGallery" class="gz-gallery"></div>
 
@@ -1992,18 +2015,19 @@ function gzRenderGallery(){
     return;
   }
 
+  gzEditGallery.forEach((img,i)=>{
+    gzGetDragId(img,i);
+  });
+
   el.innerHTML=gzEditGallery.map((img,i)=>{
     const isMain=img.is_main===true;
 
     return `
       <div
         class="gz-gallery-item ${gzDragIndex===i?"gz-dragging":""}"
-        draggable="true"
         data-index="${i}"
-        ondragstart="gzDragStart(${i},event)"
-        ondragover="gzDragOver(event)"
-        ondrop="gzDrop(${i},event)"
-        ondragend="gzDragEnd()"
+        data-gz-drag-id="${gzEscapeAttr(gzGetDragId(img,i))}"
+        onpointerdown="gzPointerDown(${i},event)"
       >
         <img src="${gzEscapeAttr(img.image_url||"")}" alt="Product image ${i+1}"
              onerror="this.style.opacity=.25">
@@ -2029,89 +2053,298 @@ function gzRenderGallery(){
   }).join("");
 }
 
-function gzDragStart(index, event) {
-  gzDragIndex = index;
-
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData(
-      "text/plain",
-      String(index)
-    );
+function gzGetDragId(img,index){
+  if(!img.__gzDragId){
+    img.__gzDragId =
+      String(img.id || "") ||
+      ("gz-img-" + Date.now() + "-" + index + "-" + Math.random().toString(36).slice(2));
   }
-
-  const item = event.currentTarget;
-
-  if (item) {
-    item.classList.add("gz-dragging");
-  }
+  return img.__gzDragId;
 }
 
-function gzDragOver(event) {
-  event.preventDefault();
-
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = "move";
-  }
-
-  const target = event.currentTarget;
-
-  if (
-    target &&
-    !target.classList.contains("gz-dragging")
-  ) {
-    target.classList.add("gz-drag-over");
-  }
-}
-
-function gzDrop(to, event) {
-  event.preventDefault();
-  event.stopPropagation();
-
-  const from = gzDragIndex;
-
+function gzClearDragStyles(){
   document
     .querySelectorAll(".gz-gallery-item")
-    .forEach(item => {
+    .forEach(item=>{
       item.classList.remove(
-        "gz-drag-over",
-        "gz-dragging"
+        "gz-dragging",
+        "gz-drag-over"
       );
     });
 
-  if (
-    from === null ||
-    from === undefined ||
-    from === to
-  ) {
-    gzDragIndex = null;
+  document.body.classList.remove(
+    "gz-gallery-dragging-active"
+  );
+}
+
+let gzPointerDrag = null;
+
+function gzPointerDown(index,event){
+  if(
+    event.button !== undefined &&
+    event.button !== 0
+  ) return;
+
+  const target = event.target;
+
+  if(
+    target.closest &&
+    target.closest(
+      "button,input,textarea,select,a"
+    )
+  ) return;
+
+  const item = event.currentTarget;
+  const image = gzEditGallery[index];
+
+  if(!item || !image) return;
+
+  event.preventDefault();
+
+  const dragId = gzGetDragId(image,index);
+
+  gzDragIndex = index;
+
+  gzPointerDrag = {
+    item,
+    dragId,
+    startX:event.clientX,
+    startY:event.clientY,
+    moved:false
+  };
+
+  item.classList.add("gz-dragging");
+
+  document.body.classList.add(
+    "gz-gallery-dragging-active"
+  );
+
+  try{
+    item.setPointerCapture(event.pointerId);
+  }catch(e){}
+
+  item.addEventListener(
+    "pointermove",
+    gzPointerMove
+  );
+
+  item.addEventListener(
+    "pointerup",
+    gzPointerUp,
+    {once:true}
+  );
+
+  item.addEventListener(
+    "pointercancel",
+    gzPointerCancel,
+    {once:true}
+  );
+}
+
+function gzPointerMove(event){
+  if(!gzPointerDrag) return;
+
+  const dx =
+    event.clientX -
+    gzPointerDrag.startX;
+
+  const dy =
+    event.clientY -
+    gzPointerDrag.startY;
+
+  if(
+    !gzPointerDrag.moved &&
+    Math.hypot(dx,dy) < 6
+  ){
     return;
   }
 
-  const [moved] =
-    gzEditGallery.splice(from, 1);
+  gzPointerDrag.moved = true;
+  event.preventDefault();
 
-  gzEditGallery.splice(to, 0, moved);
+  const target =
+    document.elementFromPoint(
+      event.clientX,
+      event.clientY
+    );
 
-  gzDragIndex = null;
+  const targetItem =
+    target?.closest?.(".gz-gallery-item");
 
-  gzRenderGallery();
-}
+  if(
+    !targetItem ||
+    targetItem === gzPointerDrag.item
+  ){
+    return;
+  }
 
-function gzDragEnd() {
-  gzDragIndex = null;
+  const targetId =
+    targetItem.dataset.gzDragId;
+
+  if(
+    !targetId ||
+    targetId === gzPointerDrag.dragId
+  ){
+    return;
+  }
+
+  const from =
+    gzEditGallery.findIndex(
+      img =>
+        gzGetDragId(img,0) ===
+        gzPointerDrag.dragId
+    );
+
+  const to =
+    gzEditGallery.findIndex(
+      img =>
+        gzGetDragId(img,0) === targetId
+    );
+
+  if(
+    from < 0 ||
+    to < 0 ||
+    from === to
+  ){
+    return;
+  }
+
+  const rect =
+    targetItem.getBoundingClientRect();
+
+  const before =
+    event.clientY <
+    rect.top +
+    rect.height / 2;
+
+  const moved =
+    gzEditGallery.splice(from,1)[0];
+
+  let insertIndex;
+
+  if(from < to){
+    insertIndex =
+      before
+        ? to - 1
+        : to;
+  }else{
+    insertIndex =
+      before
+        ? to
+        : to + 1;
+  }
+
+  insertIndex = Math.max(
+    0,
+    Math.min(
+      insertIndex,
+      gzEditGallery.length
+    )
+  );
+
+  gzEditGallery.splice(
+    insertIndex,
+    0,
+    moved
+  );
+
+  if(before){
+    targetItem.parentNode.insertBefore(
+      gzPointerDrag.item,
+      targetItem
+    );
+  }else{
+    targetItem.parentNode.insertBefore(
+      gzPointerDrag.item,
+      targetItem.nextSibling
+    );
+  }
+
+  gzDragIndex = insertIndex;
 
   document
     .querySelectorAll(".gz-gallery-item")
-    .forEach(item => {
-      item.classList.remove(
-        "gz-drag-over",
-        "gz-dragging"
-      );
+    .forEach(item=>{
+      item.classList.remove("gz-drag-over");
     });
+
+  targetItem.classList.add(
+    "gz-drag-over"
+  );
 }
-  gzDragIndex=null;
+
+function gzFinishPointerDrag(){
+  if(!gzPointerDrag) return;
+
+  const item = gzPointerDrag.item;
+
+  item.classList.remove("gz-dragging");
+
+  gzClearDragStyles();
+
+  gzPointerDrag = null;
+  gzDragIndex = null;
+
+  /* Re-render only after the user releases the image. */
   gzRenderGallery();
+}
+
+function gzPointerUp(event){
+  if(!gzPointerDrag) return;
+
+  event.preventDefault();
+
+  const item = gzPointerDrag.item;
+
+  try{
+    item.releasePointerCapture(
+      event.pointerId
+    );
+  }catch(e){}
+
+  item.removeEventListener(
+    "pointermove",
+    gzPointerMove
+  );
+
+  gzFinishPointerDrag();
+}
+
+function gzPointerCancel(){
+  if(!gzPointerDrag) return;
+
+  const item = gzPointerDrag.item;
+
+  item.removeEventListener(
+    "pointermove",
+    gzPointerMove
+  );
+
+  gzFinishPointerDrag();
+}
+
+/* Compatibility functions for any old inline references. */
+function gzDragStart(index,event){
+  if(event?.preventDefault){
+    event.preventDefault();
+  }
+}
+
+function gzDragOver(event){
+  event.preventDefault();
+}
+
+function gzDrop(to,event){
+  event.preventDefault();
+}
+
+function gzDragEnd(){
+  if(gzPointerDrag){
+    gzFinishPointerDrag();
+  }else{
+    gzClearDragStyles();
+    gzDragIndex = null;
+  }
 }
 
 function gzSetMain(index){
