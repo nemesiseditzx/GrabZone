@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>GRABZONE</title>
+
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="grabzone-animations.css">
+  
+  <style>
+    /* =========================
+       LANGUAGE SWITCH
+    ========================== */
+
+    .language-switch {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px;
+      background: #fff;
+      border: 1px solid #dedede;
+      border-radius: 999px;
+      margin-right: 6px;
+    }
+
+    .lang-btn {
+      border: 0;
+      background: transparent;
+      color: #666;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .lang-btn:hover {
+      color: #111;
+    }
+
+    .lang-btn.active {
+      background: #111;
+      color: #fff;
+    }
+
+    @media (max-width: 760px) {
+      .language-switch {
+        margin-right: 2px;
+      }
+
+      .lang-btn {
+        padding: 5px 7px;
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- =========================
+       NOTICE
+  ========================== -->
+
+  <div id="noticeSection" class="notice-wrap">
+
+    <div
+      class="notice-label"
+      data-i18n="noticeLabel"
+    >
+      নোটিশ
+    </div>
+
+    <div
+      id="noticeTrack"
+      class="notice-track"
+    >
+      অফার লোড হচ্ছে...
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       HEADER
+  ========================== -->
+
+  <header class="header">
+
+    <a class="brand" href="index.html">
+
+      <span
+        id="brandMark"
+        class="brand-mark"
+      >
+        G
+      </span>
+
+      <span id="storeName">
+        GRABZONE
+      </span>
+
+    </a>
+
+
+    <nav>
+
+      <a
+        id="nav1"
+        href="#shop"
+        data-i18n="shop"
+      >
+        শপ
+      </a>
+
+      <a
+        id="nav2"
+        href="#offers"
+        data-i18n="offers"
+      >
+        অফার
+      </a>
+
+      <a
+        id="nav3"
+        href="#how"
+        data-i18n="howOrder"
+      >
+        কীভাবে অর্ডার করবেন
+      </a>
+
+      <a
+        id="nav4"
+        href="payment-method.html"
+        data-i18n="payment"
+      >
+        পেমেন্ট
+      </a>
+
+    </nav>
+
+
+    <div class="header-actions">
+
+      <!-- LANGUAGE SWITCH -->
+
+      <div
+        class="language-switch"
+        role="group"
+        aria-label="Language"
+      >
+
+        <button
+          id="langBn"
+          class="lang-btn active"
+          type="button"
+          onclick="setLanguage('bn')"
+        >
+          বাংলা
+        </button>
+
+        <button
+          id="langEn"
+          class="lang-btn"
+          type="button"
+          onclick="setLanguage('en')"
+        >
+          English
+        </button>
+
+      </div>
+
+
+      <!-- SEARCH -->
+
+      <button
+        class="icon-btn"
+        type="button"
+        onclick="document.getElementById('search').focus()"
+        aria-label="Search"
+      >
+        ⌕
+      </button>
+
+
+      <!-- DM -->
+
+      <a
+        id="headerDm"
+        class="btn btn-dark"
+        href="#"
+        data-i18n="dmOrder"
+        role="button"
+      >
+        DM করে অর্ডার
+      </a>
+
+    </div>
+
+  </header>
+
+
+  <!-- =========================
+       MAIN
+  ========================== -->
+
+  <main>
+
+
+    <!-- =========================
+         HERO
+    ========================== -->
+
+    <section class="hero">
+
+      <div class="hero-copy">
+
+        <div
+          id="heroEyebrow"
+          class="eyebrow"
+          data-i18n="heroEyebrow"
+        >
+          ট্রেন্ডিং পণ্য • DM অর্ডার
+        </div>
+
+
+        <h1>
+
+          <span
+            id="heroTitle"
+            data-i18n="heroTitle"
+          >
+            ট্রেন্ডিং পণ্য
+          </span>
+
+          <br>
+
+          <em
+            id="heroTitleEm"
+            data-i18n="heroTitleEm"
+          >
+            সহজেই Grab করুন।
+          </em>
+
+        </h1>
+
+
+        <p
+          id="heroDescription"
+          data-i18n="heroDescription"
+        >
+          দরকারি গ্যাজেট, ফ্যাশন ফাইন্ড, হোম এসেনশিয়াল
+          এবং আরও অনেক কিছু। পণ্য পছন্দ করুন এবং অর্ডার
+          করতে আমাদের DM করুন।
+        </p>
+
+
+        <div class="hero-buttons">
+
+          <a
+            id="heroButton"
+            href="#shop"
+            class="btn btn-dark btn-lg"
+            data-i18n="shopNow"
+          >
+            শপ করুন
+          </a>
+
+
+          <a
+            id="howButton"
+            href="#how"
+            class="text-link"
+            data-i18n="howItWorks"
+          >
+            কীভাবে কাজ করে →
+          </a>
+
+        </div>
+
+
+        <div class="trust">
+
+          <span data-i18n="trust1">
+            ✓ DM অর্ডার সাপোর্ট
+          </span>
+
+          <span data-i18n="trust2">
+            ✓ রেফারেল কুপন
+          </span>
+
+          <span data-i18n="trust3">
+            ✓ নতুন অফার
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <!-- HERO CARD -->
+
+      <div
+        id="heroCard"
+        class="hero-card"
+      >
+
+        <div class="hero-card-top">
+
+          <span id="heroBrand">
+            GRABZONE
+          </span>
+
+          <span data-i18n="newDrops">
+            নতুন ড্রপ
+          </span>
+
+        </div>
+
+
+
+        <div class="hero-card-bottom">
+
+          <strong data-i18n="trendingProducts">
+            ট্রেন্ডিং পণ্য
+          </strong>
+
+          <span data-i18n="updatedRegularly">
+            নিয়মিত আপডেট হয়
+          </span>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         OFFER
+    ========================== -->
+
+    <section
+      id="offers"
+      class="offer-strip"
+    >
+
+      <div>
+
+        <span class="dot"></span>
+
+        <strong id="offerTitle">
+          রেফারেল অফার
+        </strong>
+
+        <span id="offerMessage">
+          রেফারেল কোড যাচাই হলে যোগ্য কুপন পাওয়া যাবে।
+        </span>
+
+      </div>
+
+
+      <div
+        id="offerCode"
+        class="offer-code"
+      >
+        ৳10–৳20 OFF
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         PRODUCTS
+    ========================== -->
+
+    <section
+      id="shop"
+      class="shop-section"
+    >
+
+      <div class="section-head">
+
+        <div>
+
+          <div
+            id="collectionEyebrow"
+            class="eyebrow"
+            data-i18n="collectionEyebrow"
+          >
+            আমাদের কালেকশন
+          </div>
+
+          <h2
+            id="collectionTitle"
+            data-i18n="shopProducts"
+          >
+            পণ্য দেখুন
+          </h2>
+
+        </div>
+
+
+        <div class="shop-tools">
+
+          <input
+            id="search"
+            type="search"
+            placeholder="পণ্য খুঁজুন..."
+            data-placeholder="searchPlaceholder"
+            oninput="renderProducts()"
+            autocomplete="off"
+          >
+
+          <div
+            id="categories"
+            class="chips"
+          ></div>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="products"
+        class="product-grid"
+      ></div>
+
+
+      <div
+        id="empty"
+        class="empty hidden"
+        data-i18n="noProducts"
+      >
+        কোনো পণ্য পাওয়া যায়নি।
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         HOW TO ORDER
+    ========================== -->
+
+    <section
+      id="how"
+      class="how-section"
+    >
+
+      <div
+        id="howEyebrow"
+        class="eyebrow"
+        data-i18n="simpleOrdering"
+      >
+        সহজ অর্ডার
+      </div>
+
+
+      <h2
+        id="howTitle"
+        data-i18n="order3Steps"
+      >
+        ৩ ধাপে অর্ডার করুন।
+      </h2>
+
+
+      <div class="steps">
+
+        <div class="step">
+
+          <b>01</b>
+
+          <h3
+            id="step1Title"
+            data-i18n="step1Title"
+          >
+            পণ্য পছন্দ করুন
+          </h3>
+
+          <p
+            id="step1Body"
+            data-i18n="step1Body"
+          >
+            একটি পণ্য খুলে দাম ও বিস্তারিত দেখুন।
+          </p>
+
+        </div>
+
+
+        <div class="step">
+
+          <b>02</b>
+
+          <h3
+            id="step2Title"
+            data-i18n="step2Title"
+          >
+            DM করুন
+          </h3>
+
+          <p
+            id="step2Body"
+            data-i18n="step2Body"
+          >
+            DM করে অর্ডার করুন এবং থাকলে রেফারেল কোড দিন।
+          </p>
+
+        </div>
+
+
+        <div class="step">
+
+          <b>03</b>
+
+          <h3
+            id="step3Title"
+            data-i18n="step3Title"
+          >
+            আমরা যাচাই করব
+          </h3>
+
+          <p
+            id="step3Body"
+            data-i18n="step3Body"
+          >
+            আমাদের টিম অর্ডার ও রেফারেল যাচাই করে
+            ডেলিভারি নিশ্চিত করবে।
+          </p>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         REFERRAL
+    ========================== -->
+
+    <section
+      id="referralSection"
+      class="ref-section"
+    >
+
+      <div>
+
+        <div
+          id="referralEyebrow"
+          class="eyebrow"
+          data-i18n="referralProgram"
+        >
+          রেফারেল প্রোগ্রাম
+        </div>
+
+
+        <h2
+          id="referralTitle"
+          data-i18n="haveReferral"
+        >
+          রেফারেল কোড আছে?
+        </h2>
+
+
+        <p
+          id="referralBody"
+          data-i18n="referralBody"
+        >
+          আপনার অর্ডার DM-এ কোডটি দিন।
+          আমাদের টিম যাচাই করে যোগ্য কুপন প্রয়োগ করবে।
+        </p>
+
+      </div>
+
+
+      <a
+        id="refDm"
+        class="btn btn-dark btn-lg"
+        href="#"
+        data-i18n="verifyDm"
+        role="button"
+      >
+        DM-এ যাচাই করুন
+      </a>
+
+    </section>
+
+  </main>
+
+
+  <!-- =========================
+       FOOTER
+  ========================== -->
+
+  <footer>
+
+    <div class="brand">
+
+      <span
+        id="footerMark"
+        class="brand-mark"
+      >
+        G
+      </span>
+
+      <span id="footerName">
+        GRABZONE
+      </span>
+
+    </div>
+
+
+    <span id="footerText">
+      © <span id="year"></span> GRABZONE
+    </span>
+
+
+    <div class="footer-links">
+
+      <a
+        id="ig"
+        target="_blank"
+        rel="noopener"
+      >
+        Instagram
+      </a>
+
+      <a
+        id="wa"
+        target="_blank"
+        rel="noopener"
+      >
+        WhatsApp
+      </a>
+
+      <a
+        id="ms"
+        target="_blank"
+        rel="noopener"
+      >
+        Messenger
+      </a>
+
+    </div>
+
+  </footer>
+
+
+  <!-- =========================
+       SUPABASE + WEBSITE JS
+  ========================== -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="config.js"></script>
+
+  <script src="store.js"></script>
+
+
+  <!-- =========================
+       LANGUAGE SYSTEM
+  ========================== -->
+
+  <script>
+
+    const GRABZONE_LANG = {
+
+      bn: {
+
+        noticeLabel: "নোটিশ",
+
+        shop: "শপ",
+        offers: "অফার",
+        howOrder: "কীভাবে অর্ডার করবেন",
+        payment: "পেমেন্ট",
+
+        dmOrder: "DM করে অর্ডার",
+
+        heroEyebrow: "ট্রেন্ডিং পণ্য • DM অর্ডার",
+
+        heroTitle: "ট্রেন্ডিং পণ্য",
+
+        heroTitleEm: "সহজেই Grab করুন।",
+
+        heroDescription:
+          "দরকারি গ্যাজেট, ফ্যাশন ফাইন্ড, হোম এসেনশিয়াল এবং আরও অনেক কিছু। পণ্য পছন্দ করুন এবং অর্ডার করতে আমাদের DM করুন।",
+
+        shopNow: "শপ করুন",
+
+        howItWorks: "কীভাবে কাজ করে →",
+
+        trust1: "✓ DM অর্ডার সাপোর্ট",
+        trust2: "✓ রেফারেল কুপন",
+        trust3: "✓ নতুন অফার",
+
+        newDrops: "নতুন ড্রপ",
+
+        trendingProducts: "ট্রেন্ডিং পণ্য",
+
+        updatedRegularly: "নিয়মিত আপডেট হয়",
+
+        collectionEyebrow: "আমাদের কালেকশন",
+
+        shopProducts: "পণ্য দেখুন",
+
+        searchPlaceholder: "পণ্য খুঁজুন...",
+
+        noProducts: "কোনো পণ্য পাওয়া যায়নি।",
+
+        simpleOrdering: "সহজ অর্ডার",
+
+        order3Steps: "৩ ধাপে অর্ডার করুন।",
+
+        step1Title: "পণ্য পছন্দ করুন",
+
+        step1Body:
+          "একটি পণ্য খুলে দাম ও বিস্তারিত দেখুন।",
+
+        step2Title: "DM করুন",
+
+        step2Body:
+          "DM করে অর্ডার করুন এবং থাকলে রেফারেল কোড দিন।",
+
+        step3Title: "আমরা যাচাই করব",
+
+        step3Body:
+          "আমাদের টিম অর্ডার ও রেফারেল যাচাই করে ডেলিভারি নিশ্চিত করবে।",
+
+        referralProgram: "রেফারেল প্রোগ্রাম",
+
+        haveReferral: "রেফারেল কোড আছে?",
+
+        referralBody:
+          "আপনার অর্ডার DM-এ কোডটি দিন। আমাদের টিম যাচাই করে যোগ্য কুপন প্রয়োগ করবে।",
+
+        verifyDm: "DM-এ যাচাই করুন"
+
+      },
+
+
+      en: {
+
+        noticeLabel: "NOTICE",
+
+        shop: "Shop",
+        offers: "Offers",
+        howOrder: "How to Order",
+        payment: "Payment",
+
+        dmOrder: "DM to Order",
+
+        heroEyebrow: "TRENDING FINDS • DM ORDER",
+
+        heroTitle: "Grab what's",
+
+        heroTitleEm: "trending.",
+
+        heroDescription:
+          "Discover useful gadgets, fashion finds, home essentials and more. Pick a product and message us to order.",
+
+        shopNow: "Shop now",
+
+        howItWorks: "How it works →",
+
+        trust1: "✓ DM order support",
+        trust2: "✓ Referral coupons",
+        trust3: "✓ Fresh offers",
+
+        newDrops: "NEW DROPS",
+
+        trendingProducts: "Trending products",
+
+        updatedRegularly: "Updated regularly",
+
+        collectionEyebrow: "OUR COLLECTION",
+
+        shopProducts: "Shop products",
+
+        searchPlaceholder: "Search products...",
+
+        noProducts: "No products found.",
+
+        simpleOrdering: "SIMPLE ORDERING",
+
+        order3Steps: "Order in 3 steps.",
+
+        step1Title: "Pick a product",
+
+        step1Body:
+          "Open a product and check its price and details.",
+
+        step2Title: "Send a DM",
+
+        step2Body:
+          "Tap DM to Order and include your referral code if you have one.",
+
+        step3Title: "We verify & confirm",
+
+        step3Body:
+          "Our team verifies your order and referral, then confirms delivery details.",
+
+        referralProgram: "REFERRAL PROGRAM",
+
+        haveReferral: "Have a referral code?",
+
+        referralBody:
+          "Include the code in your order DM. Our team verifies it and applies any eligible coupon.",
+
+        verifyDm: "Verify by DM"
+
+      }
+
+    };
+
+
+    /* =========================
+       CHANGE LANGUAGE
+    ========================== */
+
+    function setLanguage(lang) {
+
+      if (!GRABZONE_LANG[lang]) {
+
+        lang = "bn";
+
+      }
+
+
+      /* Save customer preference */
+
+      localStorage.setItem(
+        "grabzone_language",
+        lang
+      );
+
+
+      /* Change HTML language */
+
+      document.documentElement.lang =
+        lang === "bn" ? "bn" : "en";
+
+
+      const dictionary =
+        GRABZONE_LANG[lang];
+
+
+      /* Change text */
+
+      document
+        .querySelectorAll("[data-i18n]")
+        .forEach(element => {
+
+          const key =
+            element.dataset.i18n;
+
+          if (dictionary[key]) {
+
+            element.textContent =
+              dictionary[key];
+
+          }
+
+        });
+
+
+      /* Change placeholders */
+
+      document
+        .querySelectorAll("[data-placeholder]")
+        .forEach(element => {
+
+          const key =
+            element.dataset.placeholder;
+
+          if (dictionary[key]) {
+
+            element.placeholder =
+              dictionary[key];
+
+          }
+
+        });
+
+
+      /* Active button */
+
+      const bnButton =
+        document.getElementById("langBn");
+
+      const enButton =
+        document.getElementById("langEn");
+
+
+      if (bnButton) {
+
+        bnButton.classList.toggle(
+          "active",
+          lang === "bn"
+        );
+
+      }
+
+
+      if (enButton) {
+
+        enButton.classList.toggle(
+          "active",
+          lang === "en"
+        );
+
+      }
+
+
+      /* Re-render products/categories */
+
+      if (
+        typeof renderProducts === "function"
+      ) {
+
+        renderProducts();
+
+      }
+
+
+      /*
+         IMPORTANT:
+         Do not reload notices here. The notice marquee is
+         initialized once by store.js. Re-fetching it during
+         language changes can restart the animation and make
+         the notice appear late or duplicate.
+      */
+
+    }
+
+
+    /* =========================
+       LOAD SAVED LANGUAGE
+    ========================== */
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      function () {
+
+        const savedLanguage =
+          localStorage.getItem(
+            "grabzone_language"
+          ) || "bn";
+
+
+        setLanguage(
+          savedLanguage
+        );
+
+      }
+    );
+
+  </script>
+
+  <script src="grabzone-animations.js"></script>
+  <script src="grabzone-animation-loader.js"></script>
+  <script src="policy-link.js"></script>
+
+ 
+
+</body>
+</html>
