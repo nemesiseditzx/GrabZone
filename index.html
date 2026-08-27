@@ -182,7 +182,157 @@
       }
     }
 
-  </style>
+  
+    /* CONTACT / HELP CHOOSER */
+    .contact-chooser {
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .18s ease, visibility .18s ease;
+    }
+
+    .contact-chooser.open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .contact-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.58);
+      backdrop-filter: blur(4px);
+    }
+
+    .contact-modal {
+      position: relative;
+      width: min(460px, 100%);
+      background: #fff;
+      border-radius: 22px;
+      padding: 28px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.24);
+      transform: translateY(10px) scale(.98);
+      transition: transform .18s ease;
+    }
+
+    .contact-chooser.open .contact-modal {
+      transform: translateY(0) scale(1);
+    }
+
+    .contact-close {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 50%;
+      background: #f2f2f0;
+      color: #111;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .contact-eyebrow {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      color: #777;
+      margin-bottom: 9px;
+    }
+
+    .contact-modal h3 {
+      margin: 0 35px 8px 0;
+      font-size: clamp(21px, 4vw, 28px);
+      line-height: 1.12;
+      color: #111;
+    }
+
+    .contact-modal > p {
+      margin: 0 0 20px;
+      color: #666;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .contact-options {
+      display: grid;
+      gap: 10px;
+    }
+
+    .contact-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 14px;
+      border: 1px solid #e7e7e4;
+      border-radius: 15px;
+      color: #111;
+      text-decoration: none;
+      background: #fff;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    }
+
+    .contact-option:hover {
+      transform: translateY(-1px);
+      background: #f7f7f5;
+      border-color: #d9d9d5;
+    }
+
+    .contact-icon {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 40px;
+      border-radius: 12px;
+      background: #111;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .contact-option > span:nth-child(2) {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .contact-option strong,
+    .contact-option small {
+      display: block;
+    }
+
+    .contact-option strong {
+      font-size: 14px;
+      margin-bottom: 3px;
+    }
+
+    .contact-option small {
+      color: #777;
+      font-size: 12px;
+    }
+
+    .contact-arrow {
+      font-size: 18px;
+      color: #777;
+    }
+
+    @media (max-width: 520px) {
+      .contact-modal {
+        padding: 23px 17px 17px;
+        border-radius: 19px;
+      }
+    }
+
+</style>
 </head>
 
 <body>
@@ -286,6 +436,18 @@
 
       <a href="payment-method.html" data-i18n="payment" onclick="closeMobileMenu()">
         পেমেন্ট
+      </a>
+
+      <a href="policies.html" data-i18n="privacyPolicy" onclick="closeMobileMenu()">
+        Privacy Policy
+      </a>
+
+      <a href="#" data-i18n="needHelp" onclick="event.preventDefault(); closeMobileMenu(); openContactChooser();">
+        Need Help
+      </a>
+
+      <a href="#" data-i18n="contactUs" onclick="event.preventDefault(); closeMobileMenu(); openContactChooser();">
+        Contact Us
       </a>
 
     </div>
@@ -759,6 +921,55 @@
        FOOTER
   ========================== -->
 
+
+  <!-- CONTACT / HELP CHOOSER -->
+  <div id="contactChooser" class="contact-chooser" aria-hidden="true">
+    <div class="contact-backdrop" onclick="closeContactChooser()"></div>
+
+    <div class="contact-modal" role="dialog" aria-modal="true" aria-labelledby="contactChooserTitle">
+      <button type="button" class="contact-close" aria-label="Close" onclick="closeContactChooser()">×</button>
+
+      <div class="contact-eyebrow" data-i18n="contactEyebrow">CONTACT US</div>
+
+      <h3 id="contactChooserTitle" data-i18n="contactTitle">
+        How would you like to contact us?
+      </h3>
+
+      <p data-i18n="contactBody">
+        Choose your preferred platform and our team will help you.
+      </p>
+
+      <div class="contact-options">
+        <a id="contactInstagram" class="contact-option" href="#" target="_blank" rel="noopener">
+          <span class="contact-icon">◎</span>
+          <span>
+            <strong>Instagram</strong>
+            <small data-i18n="contactInstagramText">Message us on Instagram</small>
+          </span>
+          <span class="contact-arrow">→</span>
+        </a>
+
+        <a id="contactWhatsApp" class="contact-option" href="#" target="_blank" rel="noopener">
+          <span class="contact-icon">◔</span>
+          <span>
+            <strong>WhatsApp</strong>
+            <small data-i18n="contactWhatsAppText">Chat with us on WhatsApp</small>
+          </span>
+          <span class="contact-arrow">→</span>
+        </a>
+
+        <a id="contactMessenger" class="contact-option" href="#" target="_blank" rel="noopener">
+          <span class="contact-icon">●</span>
+          <span>
+            <strong>Messenger</strong>
+            <small data-i18n="contactMessengerText">Message us on Messenger</small>
+          </span>
+          <span class="contact-arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
   <footer>
 
     <div class="brand">
@@ -783,6 +994,26 @@
 
 
     <div class="footer-links">
+
+      <a href="policies.html" data-i18n="privacyPolicy">
+        Privacy Policy
+      </a>
+
+      <a
+        href="#"
+        data-i18n="needHelp"
+        onclick="event.preventDefault(); openContactChooser();"
+      >
+        Need Help
+      </a>
+
+      <a
+        href="#"
+        data-i18n="contactUs"
+        onclick="event.preventDefault(); openContactChooser();"
+      >
+        Contact Us
+      </a>
 
       <a
         id="ig"
@@ -840,6 +1071,16 @@
         offers: "অফার",
         howOrder: "কীভাবে অর্ডার করবেন",
         payment: "পেমেন্ট",
+
+        privacyPolicy: "প্রাইভেসি পলিসি",
+        needHelp: "সাহায্য দরকার?",
+        contactUs: "যোগাযোগ করুন",
+        contactEyebrow: "যোগাযোগ",
+        contactTitle: "কীভাবে আমাদের সাথে যোগাযোগ করতে চান?",
+        contactBody: "আপনার পছন্দের প্ল্যাটফর্ম বেছে নিন। আমাদের টিম সাহায্য করবে।",
+        contactInstagramText: "Instagram-এ মেসেজ করুন",
+        contactWhatsAppText: "WhatsApp-এ চ্যাট করুন",
+        contactMessengerText: "Messenger-এ মেসেজ করুন",
 
         dmOrder: "DM করে অর্ডার",
 
@@ -913,6 +1154,16 @@
         offers: "Offers",
         howOrder: "How to Order",
         payment: "Payment",
+
+        privacyPolicy: "Privacy Policy",
+        needHelp: "Need Help",
+        contactUs: "Contact Us",
+        contactEyebrow: "CONTACT US",
+        contactTitle: "How would you like to contact us?",
+        contactBody: "Choose your preferred platform and our team will help you.",
+        contactInstagramText: "Message us on Instagram",
+        contactWhatsAppText: "Chat with us on WhatsApp",
+        contactMessengerText: "Message us on Messenger",
 
         dmOrder: "DM to Order",
 
@@ -1123,6 +1374,63 @@
 
   </script>
 
+
+
+  <script>
+    /* CONTACT / HELP CHOOSER */
+    function openContactChooser() {
+      const modal = document.getElementById("contactChooser");
+      if (!modal) return;
+
+      const instagram =
+        (typeof SITE !== "undefined" && SITE.instagram) ||
+        (typeof C !== "undefined" && C && C.instagram) || "";
+
+      const whatsapp =
+        (typeof SITE !== "undefined" && SITE.whatsapp) ||
+        (typeof C !== "undefined" && C && C.whatsapp) || "";
+
+      const messenger =
+        (typeof SITE !== "undefined" && SITE.messenger) ||
+        (typeof C !== "undefined" && C && C.messenger) || "";
+
+      const ig = document.getElementById("contactInstagram");
+      const wa = document.getElementById("contactWhatsApp");
+      const ms = document.getElementById("contactMessenger");
+
+      if (ig) {
+        ig.href = instagram || "#";
+        ig.style.display = instagram ? "flex" : "none";
+      }
+
+      if (wa) {
+        wa.href = whatsapp || "#";
+        wa.style.display = whatsapp ? "flex" : "none";
+      }
+
+      if (ms) {
+        ms.href = messenger || "#";
+        ms.style.display = messenger ? "flex" : "none";
+      }
+
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeContactChooser() {
+      const modal = document.getElementById("contactChooser");
+      if (!modal) return;
+
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    }
+
+    document.addEventListener("keydown", function(event) {
+      if (event.key === "Escape") closeContactChooser();
+    });
+  </script>
 
   <script>
     /* =========================
