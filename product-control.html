@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GRABZONE — Product Control</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f4f1;color:#111;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+.wrap{max-width:1180px;margin:auto;padding:28px 18px 60px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;background:#111;color:#fff;display:grid;place-items:center;font-weight:900}
+h1,h2,h3,p{margin-top:0}
+h1{font-size:32px;margin-bottom:5px}
+.muted{color:#777}
+.card{background:#fff;border:1px solid #e5e5e1;border-radius:20px;padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.04);margin-bottom:18px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap}
+input,textarea,select{width:100%;border:1px solid #ddd;border-radius:12px;padding:12px;background:#fff;outline:none}
+input:focus,textarea:focus,select:focus{border-color:#111}
+.search{max-width:360px}
+.btn{border:0;border-radius:12px;padding:11px 15px;font-weight:800}
+.primary{background:#111;color:#fff}
+.ghost{background:#f0f0ed;color:#111}
+.danger{background:#fee;color:#a00}
+.product-row{display:grid;grid-template-columns:74px 1fr auto;gap:15px;align-items:center;padding:14px 0;border-bottom:1px solid #eee}
+.product-row:last-child{border-bottom:0}
+.product-thumb{width:74px;height:74px;border-radius:14px;object-fit:cover;background:#eee}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.status{font-size:11px;font-weight:800;border-radius:999px;padding:5px 8px;background:#eee}
+.status.live{background:#e8f8ec;color:#176b2c}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:1000;padding:18px;display:none;align-items:center;justify-content:center}
+.modal.open{display:flex}
+.modal-box{width:min(1000px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:24px;padding:24px;position:relative}
+.close{position:absolute;right:15px;top:15px;border:0;background:#f1f1ee;width:38px;height:38px;border-radius:50%;font-size:22px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.full{grid-column:1/-1}
+label{display:block;font-size:12px;font-weight:800;color:#555}
+label input,label textarea,label select{display:block;margin-top:7px;color:#111;font-weight:500}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px}
+.gallery-item{border:1px solid #ddd;border-radius:16px;padding:9px;background:#fafaf8;position:relative}
+.gallery-item.dragging{opacity:.45}
+.gallery-item img{width:100%;height:150px;object-fit:cover;border-radius:11px;background:#eee;display:block}
+.gallery-meta{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px}
+.handle{cursor:grab;color:#777;font-size:12px}
+.main-badge{font-size:10px;font-weight:900;background:#111;color:#fff;padding:4px 7px;border-radius:999px}
+.gallery-controls{display:flex;gap:5px;margin-top:7px}
+.gallery-controls button{flex:1;border:0;border-radius:9px;padding:7px;font-size:11px;font-weight:800;background:#eee}
+.gallery-controls .main{background:#111;color:#fff}
+.add-url{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}
+.notice{padding:12px 14px;border-radius:12px;background:#f5f5f2;color:#666;font-size:13px}
+#msg{margin-top:10px;font-size:13px;font-weight:700}
+@media(max-width:700px){
+ .wrap{padding:18px 12px 45px}
+ h1{font-size:26px}
+ .product-row{grid-template-columns:58px 1fr}
+ .product-thumb{width:58px;height:58px}
+ .product-row .actions{grid-column:1/-1;justify-content:flex-start}
+ .form-grid{grid-template-columns:1fr}
+ .full{grid-column:auto}
+ .gallery{grid-template-columns:repeat(2,1fr)}
+ .gallery-item img{height:130px}
+ .add-url{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="logo">G</div>
+      <div><strong>GRABZONE</strong><div class="muted">Product Control Center</div></div>
+    </div>
+    <a class="btn ghost" href="admin.html">← Admin</a>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <input id="search" class="search" placeholder="Search products..." oninput="renderList()">
+      <button class="btn ghost" onclick="loadProducts()">↻ Refresh</button>
+    </div>
+    <div id="list" style="margin-top:12px"></div>
+    <div id="listMsg"></div>
+  </div>
+</div>
+
+<div id="editor" class="modal" aria-hidden="true">
+  <div class="modal-box">
+    <button class="close" onclick="closeEditor()">×</button>
+    <div style="padding-right:45px">
+      <div class="muted" style="font-size:11px;font-weight:900;letter-spacing:.14em">EDIT PRODUCT</div>
+      <h2 id="editorTitle">Product</h2>
+      <p class="muted">Change product information and arrange the gallery exactly how you want.</p>
+    </div>
+
+    <div class="form-grid">
+      <label>Product name<input id="e_name"></label>
+      <label>Category<input id="e_category"></label>
+      <label>Price<input id="e_price" type="number" step="0.01"></label>
+      <label>Old price<input id="e_old_price" type="number" step="0.01"></label>
+      <label>Tag<input id="e_tag" placeholder="New / Hot Deal"></label>
+      <label>Publish
+        <select id="e_published">
+          <option value="true">Yes — show on website</option>
+          <option value="false">No — keep hidden</option>
+        </select>
+      </label>
+      <label class="full">Description<textarea id="e_description" rows="5"></textarea></label>
+    </div>
+
+    <div class="card" style="margin-top:18px;margin-bottom:0;padding:16px;background:#fafaf8">
+      <h3 style="margin-bottom:4px">Product images</h3>
+      <p class="muted" style="font-size:13px">Drag an image to change its position. The first/main image is used as the product's primary image.</p>
+      <div id="gallery" class="gallery"></div>
+      <div class="add-url">
+        <input id="newImageUrl" placeholder="Paste image URL to add an image">
+        <button class="btn ghost" onclick="addImageUrl()">＋ Add image</button>
+      </div>
+      <div class="notice" style="margin-top:10px">Tip: after dragging, click <b>Save Gallery Order</b>. To change the main product photo, click <b>Set Main</b>.</div>
+    </div>
+
+    <div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px">
+      <button class="btn ghost" onclick="closeEditor()">Cancel</button>
+      <button class="btn ghost" onclick="saveGallery()">Save Gallery Order</button>
+      <button class="btn primary" onclick="saveProduct()">Save Product Changes</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<script>
+const C = window.GRABZONE_CONFIG || {};
+let sb = null;
+let products = [];
+let editingProduct = null;
+let gallery = [];
+let dragIndex = null;
+
+if (C.supabaseUrl && C.supabaseAnonKey && window.supabase) {
+  sb = window.supabase.createClient(C.supabaseUrl, C.supabaseAnonKey);
+}
+
+function esc(v){
+  return String(v ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+function escAttr(v){return esc(v).replace(/`/g,"&#96;");}
+function money(v){return Number(v||0).toLocaleString();}
+
+async function requireSession(){
+  if(!sb) throw new Error("Supabase is not configured in config.js.");
+  const {data,error}=await sb.auth.getSession();
+  if(error) throw error;
+  if(!data?.session) throw new Error("Admin session not found. Sign in through your Admin Panel first.");
+}
+
+async function loadProducts(){
+  const msg=document.getElementById("listMsg");
+  try{
+    await requireSession();
+    const {data,error}=await sb.from("products").select("*").order("created_at",{ascending:false});
+    if(error) throw error;
+
+    const base=data||[];
+    products=await Promise.all(base.map(async p=>{
+      const {data:imgs}=await sb.from("product_images").select("*").eq("product_id",p.id).order("sort_order",{ascending:true});
+      const images=imgs||[];
+      const main=images.find(x=>x.is_main===true)||images[0];
+      return {...p, images, displayImage:main?.image_url||p.image_url||""};
+    }));
+    renderList();
+    msg.textContent="";
+  }catch(e){
+    console.error(e);
+    msg.textContent="⚠ "+(e.message||"Could not load products.");
+    msg.style.color="#a00";
+  }
+}
+
+function renderList(){
+  const q=(document.getElementById("search").value||"").trim().toLowerCase();
+  const list=document.getElementById("list");
+  const filtered=products.filter(p=>`${p.name||""} ${p.category||""} ${p.description||""} ${p.tag||""}`.toLowerCase().includes(q));
+
+  if(!filtered.length){
+    list.innerHTML='<div class="muted" style="padding:25px 0">No products found.</div>';
+    return;
+  }
+
+  list.innerHTML=filtered.map(p=>`
+    <div class="product-row">
+      <img class="product-thumb" src="${escAttr(p.displayImage)}" onerror="this.style.opacity=.2">
+      <div>
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+          <strong>${esc(p.name)}</strong>
+          <span class="status ${p.published?'live':''}">${p.published?'LIVE':'HIDDEN'}</span>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:4px">${esc(p.category||"No category")} · ৳${money(p.price)}</div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" onclick="openEditor(${JSON.stringify(String(p.id))})">✎ Edit</button>
+        <button class="btn danger" onclick="togglePublish(${JSON.stringify(String(p.id))},${p.published?'false':'true'})">${p.published?'Hide':'Publish'}</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function openEditor(id){
+  try{
+    await requireSession();
+    const product=products.find(p=>String(p.id)===String(id));
+    if(!product) throw new Error("Product not found.");
+
+    editingProduct=product;
+    gallery=[...(product.images||[])].sort((a,b)=>(a.sort_order??0)-(b.sort_order??0));
+
+    document.getElementById("editorTitle").textContent=product.name;
+    document.getElementById("e_name").value=product.name||"";
+    document.getElementById("e_category").value=product.category||"";
+    document.getElementById("e_price").value=product.price??"";
+    document.getElementById("e_old_price").value=product.old_price??"";
+    document.getElementById("e_tag").value=product.tag||"";
+    document.getElementById("e_published").value=String(!!product.published);
+    document.getElementById("e_description").value=product.description||"";
+    document.getElementById("newImageUrl").value="";
+    document.getElementById("msg").textContent="";
+    renderGallery();
+
+    const modal=document.getElementById("editor");
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden","false");
+  }catch(e){
+    alert(e.message||"Could not open product.");
+  }
+}
+
+function closeEditor(){
+  document.getElementById("editor").classList.remove("open");
+  document.getElementById("editor").setAttribute("aria-hidden","true");
+  editingProduct=null;
+  gallery=[];
+}
+
+function renderGallery(){
+  const el=document.getElementById("gallery");
+  if(!gallery.length){
+    el.innerHTML='<div class="muted" style="grid-column:1/-1;padding:12px 0">No gallery images. Add an image URL below.</div>';
+    return;
+  }
+
+  el.innerHTML=gallery.map((img,i)=>{
+    const isMain=img.is_main===true || (i===0 && !gallery.some(x=>x.is_main===true));
+    return `
+      <div class="gallery-item ${dragIndex===i?'dragging':''}" draggable="true"
+        ondragstart="dragStart(${i},event)" ondragover="dragOver(event)" ondrop="dropImage(${i},event)" ondragend="dragEnd()">
+        <img src="${escAttr(img.image_url)}" alt="Image ${i+1}" onerror="this.style.opacity=.25">
+        <div class="gallery-meta">
+          <span class="handle">☷ Drag</span>
+          ${isMain?'<span class="main-badge">MAIN</span>':''}
+        </div>
+        <div class="gallery-controls">
+          <button class="${isMain?'main':''}" onclick="setMain(${i})">Set Main</button>
+          <button onclick="removeImage(${i})">Remove</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function dragStart(i,e){
+  dragIndex=i;
+  e.dataTransfer.effectAllowed="move";
+  e.dataTransfer.setData("text/plain",String(i));
+  renderGallery();
+}
+function dragOver(e){e.preventDefault();e.dataTransfer.dropEffect="move";}
+function dropImage(to,e){
+  e.preventDefault();
+  const from=dragIndex;
+  if(from===null || from===to) return dragEnd();
+  const [item]=gallery.splice(from,1);
+  gallery.splice(to,0,item);
+  dragIndex=null;
+  renderGallery();
+}
+function dragEnd(){dragIndex=null;renderGallery();}
+
+function setMain(i){
+  gallery=gallery.map((x,idx)=>({...x,is_main:idx===i}));
+  renderGallery();
+}
+
+function removeImage(i){
+  if(!confirm("Remove this image from the product gallery?")) return;
+  gallery.splice(i,1);
+  if(gallery.length && !gallery.some(x=>x.is_main===true)) gallery[0].is_main=true;
+  renderGallery();
+}
+
+function addImageUrl(){
+  const input=document.getElementById("newImageUrl");
+  const url=input.value.trim();
+  if(!url) return;
+  if(gallery.length>=10){alert("Maximum 10 images per product.");return;}
+  gallery.push({image_url:url,is_main:gallery.length===0,sort_order:gallery.length});
+  input.value="";
+  renderGallery();
+}
+
+async function saveProduct(){
+  if(!editingProduct) return;
+  const msg=document.getElementById("msg");
+  try{
+    await requireSession();
+
+    const payload={
+      name:document.getElementById("e_name").value.trim(),
+      category:document.getElementById("e_category").value.trim(),
+      price:Number(document.getElementById("e_price").value||0),
+      old_price:document.getElementById("e_old_price").value===""?null:Number(document.getElementById("e_old_price").value),
+      tag:document.getElementById("e_tag").value.trim()||null,
+      published:document.getElementById("e_published").value==="true",
+      description:document.getElementById("e_description").value.trim()
+    };
+    if(!payload.name || !payload.price) throw new Error("Product name and price are required.");
+
+    const {error}=await sb.from("products").update(payload).eq("id",editingProduct.id);
+    if(error) throw error;
+
+    await saveGallery(true);
+    msg.textContent="✓ Product and gallery saved.";
+    msg.style.color="#176b2c";
+
+    await loadProducts();
+    const fresh=products.find(p=>String(p.id)===String(editingProduct.id));
+    if(fresh) openEditor(fresh.id);
+  }catch(e){
+    console.error(e);
+    msg.textContent="⚠ "+(e.message||"Save failed.");
+    msg.style.color="#a00";
+  }
+}
+
+async function saveGallery(silent=false){
+  if(!editingProduct) return;
+  const msg=document.getElementById("msg");
+  try{
+    await requireSession();
+
+    /* Remove current gallery rows, then recreate in the exact drag order. */
+    const {error:delError}=await sb.from("product_images").delete().eq("product_id",editingProduct.id);
+    if(delError) throw delError;
+
+    const mainIndex=Math.max(0,gallery.findIndex(x=>x.is_main===true));
+    if(gallery.length){
+      const rows=gallery.map((x,i)=>({
+        product_id:editingProduct.id,
+        image_url:x.image_url,
+        sort_order:i,
+        is_main:i===mainIndex
+      }));
+      const {error:insError}=await sb.from("product_images").insert(rows);
+      if(insError) throw insError;
+
+      /* Keep products.image_url synchronized with the selected main image. */
+      const {error:updateError}=await sb.from("products").update({image_url:gallery[mainIndex].image_url}).eq("id",editingProduct.id);
+      if(updateError) throw updateError;
+    }else{
+      const {error:updateError}=await sb.from("products").update({image_url:null}).eq("id",editingProduct.id);
+      if(updateError) throw updateError;
+    }
+
+    if(!silent){
+      msg.textContent="✓ Gallery order saved.";
+      msg.style.color="#176b2c";
+    }
+    await loadProducts();
+  }catch(e){
+    console.error(e);
+    msg.textContent="⚠ "+(e.message||"Gallery save failed.");
+    msg.style.color="#a00";
+  }
+}
+
+async function togglePublish(id,value){
+  try{
+    await requireSession();
+    const {error}=await sb.from("products").update({published:value==="true"}).eq("id",id);
+    if(error) throw error;
+    await loadProducts();
+  }catch(e){alert(e.message||"Could not update product.");}
+}
+
+document.getElementById("editor").addEventListener("click",e=>{
+  if(e.target.id==="editor") closeEditor();
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeEditor();});
+loadProducts();
+</script>
+</body>
+</html>
