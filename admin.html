@@ -1,0 +1,2203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <title>GRABZONE — Admin</title>
+
+  <link rel="stylesheet" href="admin.css">
+
+<style>
+/* =========================================================
+   GRABZONE PRODUCT EDITOR
+========================================================= */
+.gz-editor-overlay{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  background:rgba(0,0,0,.62);
+  backdrop-filter:blur(5px);
+}
+.gz-editor-overlay.open{display:flex}
+.gz-editor{
+  width:min(1080px,100%);
+  max-height:94vh;
+  overflow:auto;
+  background:#fff;
+  border-radius:24px;
+  box-shadow:0 30px 100px rgba(0,0,0,.3);
+  padding:24px;
+  position:relative;
+}
+.gz-editor-close{
+  position:absolute;
+  top:14px;
+  right:14px;
+  width:40px;
+  height:40px;
+  border:0;
+  border-radius:50%;
+  background:#f0f0ed;
+  font-size:24px;
+  cursor:pointer;
+}
+.gz-editor-head{padding-right:52px;margin-bottom:18px}
+.gz-editor-head .eyebrow{font-size:11px;font-weight:900;letter-spacing:.14em;color:#777}
+.gz-editor-head h2{margin:5px 0 5px;font-size:28px}
+.gz-editor-head p{margin:0;color:#777;font-size:13px}
+.gz-editor-select{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  margin-bottom:18px;
+}
+.gz-editor-select select{
+  min-width:0;
+  width:100%;
+  padding:12px;
+  border:1px solid #ddd;
+  border-radius:12px;
+  background:#fff;
+}
+.gz-editor-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:13px;
+}
+.gz-editor-grid label{
+  display:block;
+  font-size:12px;
+  font-weight:800;
+  color:#555;
+}
+.gz-editor-grid label input,
+.gz-editor-grid label textarea,
+.gz-editor-grid label select{
+  width:100%;
+  display:block;
+  margin-top:7px;
+  border:1px solid #ddd;
+  border-radius:12px;
+  padding:12px;
+  background:#fff;
+  color:#111;
+}
+.gz-editor-grid .full{grid-column:1/-1}
+.gz-gallery-box{
+  margin-top:18px;
+  padding:17px;
+  border:1px solid #e5e5e1;
+  border-radius:18px;
+  background:#fafaf8;
+}
+.gz-gallery-box h3{margin:0 0 4px}
+.gz-gallery-box p{margin:0;color:#777;font-size:12px}
+.gz-gallery{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(145px,1fr));
+  gap:12px;
+  margin-top:13px;
+}
+.gz-gallery-item{
+  background:#fff;
+  border:1px solid #deded9;
+  border-radius:15px;
+  padding:8px;
+  cursor:grab;
+  transition:opacity .15s,transform .15s;
+}
+.gz-gallery-item.gz-dragging{opacity:.4;transform:scale(.98)}
+.gz-gallery-item img{
+  width:100%;
+  height:145px;
+  object-fit:cover;
+  display:block;
+  border-radius:10px;
+  background:#eee;
+}
+.gz-gallery-info{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:5px;
+  margin-top:8px;
+}
+.gz-drag-label{font-size:10px;font-weight:800;color:#888}
+.gz-main-badge{
+  background:#111;
+  color:#fff;
+  border-radius:999px;
+  padding:4px 7px;
+  font-size:9px;
+  font-weight:900;
+}
+.gz-gallery-actions{display:flex;gap:5px;margin-top:7px}
+.gz-gallery-actions button{
+  flex:1;
+  border:0;
+  border-radius:9px;
+  padding:7px 5px;
+  font-size:10px;
+  font-weight:800;
+  cursor:pointer;
+  background:#eee;
+}
+.gz-gallery-actions button.gz-main-btn{background:#111;color:#fff}
+.gz-add-image{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:8px;
+  margin-top:12px;
+}
+.gz-add-image input{
+  min-width:0;
+  border:1px solid #ddd;
+  border-radius:11px;
+  padding:11px;
+}
+.gz-editor-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:9px;
+  flex-wrap:wrap;
+  margin-top:18px;
+}
+.gz-editor-message{
+  margin-top:10px;
+  min-height:20px;
+  font-size:13px;
+  font-weight:800;
+}
+@media(max-width:700px){
+  .gz-editor{padding:18px;border-radius:19px}
+  .gz-editor-grid{grid-template-columns:1fr}
+  .gz-editor-grid .full{grid-column:auto}
+  .gz-editor-select{grid-template-columns:1fr}
+  .gz-gallery{grid-template-columns:repeat(2,1fr)}
+  .gz-gallery-item img{height:125px}
+  .gz-add-image{grid-template-columns:1fr}
+}
+</style>
+
+</head>
+
+<body>
+
+<!-- =====================================================
+     LOGIN
+===================================================== -->
+
+<div id="loginBox" class="login-page">
+
+  <div class="login-card">
+
+    <div class="logo-badge">G</div>
+
+    <div class="eyebrow">
+      GRABZONE
+    </div>
+
+    <h1>
+      Admin Control Center
+    </h1>
+
+    <p>
+      Manage your store without touching code.
+    </p>
+
+    <input
+      id="email"
+      type="email"
+      placeholder="Admin email"
+      autocomplete="email"
+    >
+
+    <input
+      id="password"
+      type="password"
+      placeholder="Password"
+      autocomplete="current-password"
+    >
+
+    <button
+      class="primary wide"
+      onclick="login()"
+    >
+      Sign in
+    </button>
+
+    <div
+      id="loginMsg"
+      class="message"
+    ></div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     ADMIN APP
+===================================================== -->
+
+<div id="app" class="hidden">
+
+
+  <!-- TOP BAR -->
+
+  <header class="topbar">
+
+    <div class="brand">
+
+      <div class="brand-badge">
+        G
+      </div>
+
+      <div>
+
+        <strong>
+          GRABZONE
+        </strong>
+
+        <small>
+          Website Control Center
+        </small>
+
+      </div>
+
+    </div>
+
+
+    <div class="top-actions">
+
+      <a
+        class="view-store"
+        href="index.html"
+        target="_blank"
+        rel="noopener"
+      >
+        ↗ View Store
+      </a>
+
+      <button
+        class="ghost"
+        onclick="logout()"
+      >
+        Log out
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <!-- MAIN LAYOUT -->
+
+  <div class="layout">
+
+
+    <!-- =================================================
+         SIDEBAR
+    ================================================== -->
+
+    <aside class="sidebar">
+
+
+      <button
+        class="side-link active"
+        data-tab="dashboard"
+        type="button"
+      >
+        ⌂
+        <span>
+          Overview
+        </span>
+      </button>
+
+
+      <button
+        class="side-link"
+        data-tab="appearance"
+        type="button"
+      >
+        ◈
+        <span>
+          Website Design
+        </span>
+      </button>
+
+
+      <button
+        class="side-link"
+        data-tab="content"
+        type="button"
+      >
+        ✎
+        <span>
+          Text & Links
+        </span>
+      </button>
+
+
+      <button
+        class="side-link"
+        data-tab="products"
+        type="button"
+      >
+        ▣
+        <span>
+          Products
+        </span>
+      </button>
+
+
+      <button
+        class="side-link"
+        data-tab="notices"
+        type="button"
+      >
+        ⚑
+        <span>
+          Notice Board
+        </span>
+      </button>
+
+
+      <button
+        id="gzPaymentNavStatic"
+        class="side-link"
+        data-tab="payment"
+        type="button"
+      >
+        ▣
+        <span>
+          Payment Methods
+        </span>
+      </button>
+
+
+      <!-- POLICY CENTER -->
+
+      <a
+        class="side-link"
+        href="policy-admin.html"
+      >
+        ▤
+        <span>
+          Policies
+        </span>
+      </a>
+
+
+      <!-- HELP -->
+
+      <div class="side-help">
+
+        <b>
+          Easy mode
+        </b>
+
+        <p>
+          Change something → Save →
+          refresh your store.
+        </p>
+
+      </div>
+
+    </aside>
+
+
+    <!-- =================================================
+         MAIN CONTENT
+    ================================================== -->
+
+    <main class="content">
+
+
+      <!-- =================================================
+           OVERVIEW
+      ================================================== -->
+
+      <section
+        id="tab-dashboard"
+        class="tab active"
+      >
+
+        <div class="page-title">
+
+          <div>
+
+            <div class="eyebrow">
+              WELCOME BACK
+            </div>
+
+            <h1>
+              Store overview
+            </h1>
+
+            <p>
+              Control your store from one place.
+            </p>
+
+          </div>
+
+
+          <a
+            class="primary"
+            href="index.html"
+            target="_blank"
+            rel="noopener"
+          >
+            View live website ↗
+          </a>
+
+        </div>
+
+
+        <!-- STATS -->
+
+        <div class="stats">
+
+          <div class="stat">
+
+            <span>
+              🛍️
+            </span>
+
+            <b id="statProducts">
+              —
+            </b>
+
+            <small>
+              Products
+            </small>
+
+          </div>
+
+
+          <div class="stat">
+
+            <span>
+              📢
+            </span>
+
+            <b id="statNotices">
+              —
+            </b>
+
+            <small>
+              Active notices
+            </small>
+
+          </div>
+
+
+          <div class="stat">
+
+            <span>
+              ●
+            </span>
+
+            <b>
+              Live
+            </b>
+
+            <small>
+              Store status
+            </small>
+
+          </div>
+
+        </div>
+
+
+        <!-- QUICK ACTIONS -->
+
+        <div class="quick-grid">
+
+
+          <button
+            class="quick"
+            data-tab-target="products"
+            type="button"
+          >
+
+            <b>
+              ＋ Add a product
+            </b>
+
+            <span>
+              Upload multiple images,
+              set price and publish.
+            </span>
+
+          </button>
+
+
+          <button
+            class="quick"
+            data-tab-target="appearance"
+            type="button"
+          >
+
+            <b>
+              🎨 Website design
+            </b>
+
+            <span>
+              Logo, hero image, colors
+              and sections.
+            </span>
+
+          </button>
+
+
+          <button
+            class="quick"
+            data-tab-target="content"
+            type="button"
+          >
+
+            <b>
+              ✎ Text & links
+            </b>
+
+            <span>
+              Titles, buttons, links
+              and social pages.
+            </span>
+
+          </button>
+
+
+          <button
+            class="quick"
+            data-tab-target="notices"
+            type="button"
+          >
+
+            <b>
+              📢 Notice board
+            </b>
+
+            <span>
+              Add and control
+              scrolling notices.
+            </span>
+
+          </button>
+
+
+          <!-- POLICY QUICK ACTION -->
+
+          <a
+            class="quick"
+            href="policy-admin.html"
+          >
+
+            <b>
+              ▤ Policy Center
+            </b>
+
+            <span>
+              Edit policies, languages,
+              colors and animations.
+            </span>
+
+          </a>
+
+        </div>
+
+      </section>
+
+
+      <!-- =================================================
+           WEBSITE DESIGN
+      ================================================== -->
+
+      <section
+        id="tab-appearance"
+        class="tab"
+      >
+
+        <div class="page-title">
+
+          <div>
+
+            <div class="eyebrow">
+              WEBSITE DESIGN
+            </div>
+
+            <h1>
+              Make it look your way.
+            </h1>
+
+            <p>
+              Upload images and choose colors.
+            </p>
+
+          </div>
+
+
+          <button
+            class="primary"
+            onclick="saveSettings()"
+            type="button"
+          >
+            Save design changes
+          </button>
+
+        </div>
+
+
+        <!-- BRAND -->
+
+        <div class="panel">
+
+          <h2>
+            Brand
+          </h2>
+
+          <p class="muted">
+            Store identity and visual style.
+          </p>
+
+
+          <div class="form-grid">
+
+
+            <label>
+
+              Store name
+
+              <input
+                id="s_store_name"
+                placeholder="GRABZONE"
+              >
+
+            </label>
+
+
+            <label>
+
+              Tagline
+
+              <input
+                id="s_tagline"
+                placeholder="Grab What's Trending."
+              >
+
+            </label>
+
+
+            <label>
+
+              Store logo
+
+              <input
+                id="s_logo"
+                type="file"
+                accept="image/*"
+                onchange="previewFile(this,'logoPreview')"
+              >
+
+              <div
+                class="image-preview small"
+                id="logoPreview"
+              >
+
+                <span>
+                  No image selected
+                </span>
+
+              </div>
+
+            </label>
+
+
+            <label>
+
+              Hero / banner image
+
+              <input
+                id="s_hero"
+                type="file"
+                accept="image/*"
+                onchange="previewFile(this,'heroPreview')"
+              >
+
+              <div
+                class="image-preview"
+                id="heroPreview"
+              >
+
+                <span>
+                  No image selected
+                </span>
+
+              </div>
+
+            </label>
+
+
+            <label>
+
+              Primary color
+
+              <input
+                id="s_primary"
+                type="color"
+              >
+
+            </label>
+
+
+            <label>
+
+              Page background
+
+              <input
+                id="s_bg"
+                type="color"
+              >
+
+            </label>
+
+          </div>
+
+        </div>
+
+
+        <!-- SHOW / HIDE -->
+
+        <div class="panel">
+
+          <h2>
+            Show / hide sections
+          </h2>
+
+
+          <div class="toggle-grid">
+
+
+            <label>
+
+              📢 Notice board
+
+              <select id="s_show_notice">
+
+                <option value="true">
+                  Show
+                </option>
+
+                <option value="false">
+                  Hide
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <label>
+
+              🎁 Offer section
+
+              <select id="s_show_offer">
+
+                <option value="true">
+                  Show
+                </option>
+
+                <option value="false">
+                  Hide
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <label>
+
+              🧾 How to Order
+
+              <select id="s_show_how">
+
+                <option value="true">
+                  Show
+                </option>
+
+                <option value="false">
+                  Hide
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <label>
+
+              🤝 Referral
+
+              <select id="s_show_ref">
+
+                <option value="true">
+                  Show
+                </option>
+
+                <option value="false">
+                  Hide
+                </option>
+
+              </select>
+
+            </label>
+
+
+          </div>
+
+        </div>
+
+
+        <div
+          id="settingsMsg"
+          class="save-message"
+        ></div>
+
+      </section>
+
+
+      <!-- =================================================
+           TEXT & LINKS
+      ================================================== -->
+
+      <section
+        id="tab-content"
+        class="tab"
+      >
+
+        <div class="page-title">
+
+          <div>
+
+            <div class="eyebrow">
+              TEXT & LINKS
+            </div>
+
+            <h1>
+              Edit customer-facing content.
+            </h1>
+
+            <p>
+              These fields control the live storefront.
+            </p>
+
+          </div>
+
+
+          <button
+            class="primary"
+            onclick="saveSettings()"
+            type="button"
+          >
+            Save website changes
+          </button>
+
+        </div>
+
+
+        <!-- HERO -->
+
+        <div class="panel">
+
+          <h2>
+            Hero
+          </h2>
+
+
+          <div class="form-grid">
+
+
+            <label>
+
+              Small heading
+
+              <input
+                id="s_hero_eyebrow"
+              >
+
+            </label>
+
+
+            <label>
+
+              Main heading
+
+              <input
+                id="s_hero_title"
+              >
+
+            </label>
+
+
+            <label>
+
+              Highlighted heading
+
+              <input
+                id="s_hero_title_em"
+              >
+
+            </label>
+
+
+            <label>
+
+              Button text
+
+              <input
+                id="s_hero_button_text"
+              >
+
+            </label>
+
+
+            <label class="full">
+
+              Description
+
+              <textarea
+                id="s_hero_description"
+              ></textarea>
+
+            </label>
+
+
+            <label>
+
+              Button link
+
+              <input
+                id="s_hero_button_link"
+              >
+
+            </label>
+
+
+            <label>
+
+              How it works text
+
+              <input
+                id="s_how_button_text"
+              >
+
+            </label>
+
+
+            <label>
+
+              How it works link
+
+              <input
+                id="s_how_button_link"
+              >
+
+            </label>
+
+
+          </div>
+
+        </div>
+
+
+        <!-- HEADER -->
+
+        <div class="panel">
+
+          <h2>
+            Header navigation
+          </h2>
+
+
+          <div class="form-grid">
+
+
+            <label>
+
+              Menu 1 label
+
+              <input
+                id="s_header_link1_label"
+              >
+
+            </label>
+
+
+            <label>
+
+              Menu 1 link
+
+              <input
+                id="s_header_link1_url"
+              >
+
+            </label>
+
+
+            <label>
+
+              Menu 2 label
+
+              <input
+                id="s_header_link2_label"
+              >
+
+            </label>
+
+
+            <label>
+
+              Menu 2 link
+
+              <input
+                id="s_header_link2_url"
+              >
+
+            </label>
+
+
+            <label>
+
+              Menu 3 label
+
+              <input
+                id="s_header_link3_label"
+              >
+
+            </label>
+
+
+            <label>
+
+              Menu 3 link
+
+              <input
+                id="s_header_link3_url"
+              >
+
+            </label>
+
+
+          </div>
+
+        </div>
+
+
+        <!-- OFFERS -->
+
+        <div class="panel">
+
+          <h2>
+            Offers
+          </h2>
+
+
+          <div class="form-grid">
+
+
+            <label>
+
+              Offer title
+
+              <input
+                id="s_offer_title"
+              >
+
+            </label>
+
+
+            <label>
+
+              Offer code / badge
+
+              <input
+                id="s_offer_code"
+              >
+
+            </label>
+
+
+            <label class="full">
+
+              Offer message
+
+              <textarea
+                id="s_offer_message"
+              ></textarea>
+
+            </label>
+
+
+          </div>
+
+        </div>
+
+
+        <!-- HOW TO ORDER -->
+
+        <div class="panel">
+
+          <h2>
+            How to Order
+          </h2>
+
+
+          <div class="form-grid">
+
+
+            <label>
+
+              Section title
+
+              <input
+                id="s_how_title"
+              >
+
+            </label>
+
+
+            <label>
+
+              Step 1 title
+
+              <input
+                id="s_step1_title"
+              >
+
+            </label>
+
+
+            <label>
+
+              Step 1 text
+
+              <textarea
+                id="s_step1_body"
+              ></textarea>
+
+            </label>
+
+
+            <label>
+
+              Step 2 title
+
+              <input
+                id="s_step2_title"
+              >
+
+            </label>
+
+
+            <label>
+
+              Step 2 text
+
+              <textarea
+                id="s_step2_body"
+              ></textarea>
+
+            </label>
+
+
+            <label>
+
+              Step 3 title
+
+              <input
+                id="s_step3_title"
+              >
+
+            </label>
+
+
+            <label>
+
+              Step 3 text
+
+              <textarea
+                id="s_step3_body"
+              ></textarea>
+
+            </label>
+
+
+          </div>
+
+        </div>
+
+
+        <!-- REFERRAL -->
+
+        <div class="panel">
+
+          <h2>
+            Referral & contact
+          </h2>
+
+
+          <div class="form-grid">
+
+
+            <label>
+
+              Referral title
+
+              <input
+                id="s_referral_title"
+              >
+
+            </label>
+
+
+            <label>
+
+              Referral button
+
+              <input
+                id="s_referral_button_text"
+              >
+
+            </label>
+
+
+            <label class="full">
+
+              Referral text
+
+              <textarea
+                id="s_referral_body"
+              ></textarea>
+
+            </label>
+
+
+            <label>
+
+              WhatsApp
+
+              <input
+                id="s_whatsapp"
+              >
+
+            </label>
+
+
+            <label>
+
+              Instagram
+
+              <input
+                id="s_instagram"
+              >
+
+            </label>
+
+
+            <label>
+
+              Messenger
+
+              <input
+                id="s_messenger"
+              >
+
+            </label>
+
+
+            <label>
+
+              Footer text
+
+              <input
+                id="s_footer_text"
+              >
+
+            </label>
+
+
+          </div>
+
+        </div>
+
+
+        <div
+          id="contentMsg"
+          class="save-message"
+        ></div>
+
+      </section>
+
+
+      <!-- =================================================
+           PRODUCTS
+      ================================================== -->
+
+      <section
+        id="tab-products"
+        class="tab"
+      >
+
+        <div class="page-title">
+
+          <div>
+
+            <div class="eyebrow">
+              CATALOG
+            </div>
+
+            <h1>
+              Products
+            </h1>
+
+            <p>
+              Add up to 10 images to each product.
+              Choose your main image from the gallery.
+            </p>
+
+          </div>
+
+          <button
+            class="primary"
+            type="button"
+            onclick="gzOpenProductEditor()"
+          >
+            ✎ Edit Products
+          </button>
+
+        </div>
+
+
+        <!-- ADD PRODUCT -->
+
+        <div class="panel">
+
+          <h2>
+            ＋ Add new product
+          </h2>
+
+
+          <div class="product-create">
+
+
+            <div>
+
+              <div class="form-grid">
+
+
+                <label>
+
+                  Product name
+
+                  <input
+                    id="name"
+                    placeholder="Portable Electric Kettle"
+                  >
+
+                </label>
+
+
+                <label>
+
+                  Category
+
+                  <input
+                    id="category"
+                    placeholder="Smart Gadgets"
+                  >
+
+                </label>
+
+
+                <label>
+
+                  Price
+
+                  <input
+                    id="price"
+                    type="number"
+                    placeholder="500"
+                  >
+
+                </label>
+
+
+                <label>
+
+                  Old price
+
+                  <input
+                    id="oldPrice"
+                    type="number"
+                    placeholder="700"
+                  >
+
+                </label>
+
+
+                <label>
+
+                  Tag
+
+                  <input
+                    id="tag"
+                    placeholder="New / Hot Deal"
+                  >
+
+                </label>
+
+
+                <label>
+
+                  Publish
+
+                  <select id="published">
+
+                    <option value="true">
+                      Yes — show on website
+                    </option>
+
+                    <option value="false">
+                      No — save hidden
+                    </option>
+
+                  </select>
+
+                </label>
+
+
+                <label class="full">
+
+                  Description
+
+                  <textarea
+                    id="description"
+                    placeholder="Tell customers what this product does..."
+                  ></textarea>
+
+                </label>
+
+
+              </div>
+
+            </div>
+
+
+            <div>
+
+              <div
+                id="multiPreview"
+                class="multi-preview"
+              >
+
+                <div class="empty-preview">
+                  No images selected
+                </div>
+
+              </div>
+
+
+              <label class="file-button">
+
+                📷 Choose up to 10 product images
+
+                <input
+                  id="images"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onchange="previewMultiple(this)"
+                >
+
+              </label>
+
+
+              <p class="hint">
+                You can choose multiple images.
+                Set any image as the main image.
+              </p>
+
+
+              <button
+                class="primary wide"
+                onclick="addProduct()"
+                type="button"
+              >
+                Upload & Save Product
+              </button>
+
+
+            </div>
+
+          </div>
+
+
+          <div
+            id="productMsg"
+            class="save-message"
+          ></div>
+
+        </div>
+
+
+        <!-- PRODUCTS -->
+
+        <div class="panel">
+
+          <div class="panel-head">
+
+            <div>
+
+              <h2>
+                Your products
+              </h2>
+
+              <p>
+                Manage products and choose
+                their main image.
+              </p>
+
+            </div>
+
+
+            <button
+              class="ghost"
+              onclick="loadProducts()"
+              type="button"
+            >
+              ↻ Refresh
+            </button>
+
+          </div>
+
+
+          <div
+            id="products"
+            class="product-list"
+          ></div>
+
+        </div>
+
+      </section>
+
+
+      <!-- =================================================
+           NOTICES
+      ================================================== -->
+
+      <section
+        id="tab-notices"
+        class="tab"
+      >
+
+        <div class="page-title">
+
+          <div>
+
+            <div class="eyebrow">
+              NOTICE BOARD
+            </div>
+
+            <h1>
+              Notices & offers
+            </h1>
+
+            <p>
+              Active notices scroll automatically
+              on the storefront.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <!-- ADD NOTICE -->
+
+        <div class="panel">
+
+          <h2>
+            ＋ Add notice
+          </h2>
+
+
+          <div class="form-grid">
+
+
+            <label>
+
+              Notice title
+
+              <input
+                id="noticeTitle"
+                placeholder="Special Offer"
+              >
+
+            </label>
+
+
+            <label>
+
+              Display order
+
+              <input
+                id="noticeOrder"
+                type="number"
+                value="0"
+              >
+
+            </label>
+
+
+            <label class="full">
+
+              Notice message
+
+              <textarea
+                id="noticeMessage"
+                placeholder="৳100 OFF this week — DM us to order."
+              ></textarea>
+
+            </label>
+
+
+          </div>
+
+
+          <button
+            class="primary"
+            onclick="addNotice()"
+            type="button"
+          >
+            Add notice
+          </button>
+
+        </div>
+
+
+        <!-- CURRENT NOTICES -->
+
+        <div class="panel">
+
+          <h2>
+            Current notices
+          </h2>
+
+
+          <div
+            id="notices"
+            class="notice-list"
+          ></div>
+
+        </div>
+
+      </section>
+
+
+    </main>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     SCRIPTS
+===================================================== -->
+
+
+<!-- =====================================================
+     PRODUCT EDITOR
+===================================================== -->
+<div id="gzProductEditor" class="gz-editor-overlay" aria-hidden="true">
+  <div class="gz-editor" role="dialog" aria-modal="true" aria-labelledby="gzEditorTitle">
+    <button class="gz-editor-close" type="button" onclick="gzCloseProductEditor()" aria-label="Close">×</button>
+
+    <div class="gz-editor-head">
+      <div class="eyebrow">PRODUCT CONTROL</div>
+      <h2 id="gzEditorTitle">Edit Product</h2>
+      <p>Edit any published product, hide/show it, and arrange its images by dragging them into the exact order you want.</p>
+    </div>
+
+    <div class="gz-editor-select">
+      <select id="gzProductPicker" onchange="gzSelectProduct(this.value)">
+        <option value="">Select a product…</option>
+      </select>
+      <button class="ghost" type="button" onclick="gzLoadEditorProducts()">↻ Refresh</button>
+    </div>
+
+    <div id="gzEditorFields" style="display:none">
+      <div class="gz-editor-grid">
+        <label>
+          Product name
+          <input id="gz_e_name">
+        </label>
+
+        <label>
+          Category
+          <input id="gz_e_category">
+        </label>
+
+        <label>
+          Price
+          <input id="gz_e_price" type="number" step="0.01">
+        </label>
+
+        <label>
+          Old price
+          <input id="gz_e_old_price" type="number" step="0.01">
+        </label>
+
+        <label>
+          Tag
+          <input id="gz_e_tag" placeholder="New / Hot Deal">
+        </label>
+
+        <label>
+          Publish
+          <select id="gz_e_published">
+            <option value="true">Yes — show on website</option>
+            <option value="false">No — keep hidden</option>
+          </select>
+        </label>
+
+        <label class="full">
+          Description
+          <textarea id="gz_e_description" rows="5"></textarea>
+        </label>
+      </div>
+
+      <div class="gz-gallery-box">
+        <h3>🖼️ Product Images</h3>
+        <p>Drag images left/right or up/down to set their exact display order. Click <b>Set Main</b> to choose the primary product image.</p>
+
+        <div id="gzGallery" class="gz-gallery"></div>
+
+        <div class="gz-add-image">
+          <input id="gzNewImageUrl" placeholder="Paste an image URL to add another image">
+          <button class="ghost" type="button" onclick="gzAddImage()">＋ Add Image</button>
+        </div>
+      </div>
+
+      <div class="gz-editor-actions">
+        <button class="ghost" type="button" onclick="gzCloseProductEditor()">Cancel</button>
+        <button class="primary" type="button" onclick="gzSaveProduct()">✓ Save All Changes</button>
+      </div>
+
+      <div id="gzEditorMessage" class="gz-editor-message"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="config.js"></script>
+
+<script src="admin.js"></script>
+
+
+<script>
+/* =========================================================
+   GRABZONE PRODUCT EDITOR
+   Uses the existing Admin authentication + Supabase client.
+========================================================= */
+let gzEditProduct = null;
+let gzEditGallery = [];
+let gzDragIndex = null;
+
+function gzEscape(value){
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[ch]));
+}
+
+function gzEscapeAttr(value){
+  return gzEscape(value).replace(/`/g,"&#96;");
+}
+
+function gzGetClient(){
+  if (typeof sb !== "undefined" && sb) return sb;
+
+  const cfg = window.GRABZONE_CONFIG || {};
+  if (window.supabase && cfg.supabaseUrl && cfg.supabaseAnonKey){
+    window.__gzEditorClient ||= window.supabase.createClient(
+      cfg.supabaseUrl,
+      cfg.supabaseAnonKey
+    );
+    return window.__gzEditorClient;
+  }
+
+  throw new Error("Supabase is not configured.");
+}
+
+async function gzRequireLogin(){
+  const client = gzGetClient();
+  const {data,error} = await client.auth.getSession();
+  if(error) throw error;
+  if(!data?.session) throw new Error("Please sign in to the Admin Panel first.");
+  return client;
+}
+
+async function gzOpenProductEditor(){
+  const modal = document.getElementById("gzProductEditor");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden","false");
+  document.body.style.overflow="hidden";
+
+  const msg=document.getElementById("gzEditorMessage");
+  msg.textContent="Loading products…";
+  msg.style.color="#777";
+
+  try{
+    await gzLoadEditorProducts();
+    msg.textContent="";
+  }catch(e){
+    console.error(e);
+    msg.textContent="⚠ "+(e.message||"Could not load products.");
+    msg.style.color="#a00";
+  }
+}
+
+function gzCloseProductEditor(){
+  const modal=document.getElementById("gzProductEditor");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden","true");
+  document.body.style.overflow="";
+  gzEditProduct=null;
+  gzEditGallery=[];
+  gzDragIndex=null;
+  document.getElementById("gzEditorFields").style.display="none";
+}
+
+async function gzLoadEditorProducts(){
+  const client=await gzRequireLogin();
+  const picker=document.getElementById("gzProductPicker");
+  const current=picker.value;
+
+  const {data,error}=await client
+    .from("products")
+    .select("*")
+    .order("created_at",{ascending:false});
+
+  if(error) throw error;
+
+  const rows=data||[];
+  picker.innerHTML='<option value="">Select a product…</option>'+
+    rows.map(p=>`
+      <option value="${gzEscapeAttr(p.id)}">
+        ${gzEscape(p.name || "Unnamed product")} — ${p.published ? "LIVE" : "HIDDEN"}
+      </option>
+    `).join("");
+
+  if(current && rows.some(p=>String(p.id)===String(current))){
+    picker.value=current;
+  }
+
+  if(picker.value){
+    await gzSelectProduct(picker.value);
+  }
+}
+
+async function gzSelectProduct(id){
+  if(!id){
+    document.getElementById("gzEditorFields").style.display="none";
+    return;
+  }
+
+  const client=await gzRequireLogin();
+
+  const {data:product,error}=await client
+    .from("products")
+    .select("*")
+    .eq("id",id)
+    .maybeSingle();
+
+  if(error) throw error;
+  if(!product) throw new Error("Product not found.");
+
+  const {data:images,error:imageError}=await client
+    .from("product_images")
+    .select("*")
+    .eq("product_id",id)
+    .order("sort_order",{ascending:true});
+
+  if(imageError) throw imageError;
+
+  gzEditProduct=product;
+  gzEditGallery=(images||[]).map(x=>({...x}));
+
+  /* If there is no gallery row, preserve the old product image. */
+  if(!gzEditGallery.length && product.image_url){
+    gzEditGallery=[{
+      image_url:product.image_url,
+      is_main:true,
+      sort_order:0
+    }];
+  }
+
+  document.getElementById("gzEditorTitle").textContent =
+    "Edit: "+(product.name||"Product");
+
+  document.getElementById("gz_e_name").value=product.name||"";
+  document.getElementById("gz_e_category").value=product.category||"";
+  document.getElementById("gz_e_price").value=product.price??"";
+  document.getElementById("gz_e_old_price").value=product.old_price??"";
+  document.getElementById("gz_e_tag").value=product.tag||"";
+  document.getElementById("gz_e_published").value=String(!!product.published);
+  document.getElementById("gz_e_description").value=product.description||"";
+  document.getElementById("gzNewImageUrl").value="";
+  document.getElementById("gzEditorFields").style.display="block";
+  document.getElementById("gzEditorMessage").textContent="";
+  gzRenderGallery();
+}
+
+function gzRenderGallery(){
+  const el=document.getElementById("gzGallery");
+
+  if(!gzEditGallery.length){
+    el.innerHTML='<div style="grid-column:1/-1;color:#777;font-size:13px;padding:12px 0">No product images.</div>';
+    return;
+  }
+
+  el.innerHTML=gzEditGallery.map((img,i)=>{
+    const isMain=img.is_main===true;
+
+    return `
+      <div
+        class="gz-gallery-item ${gzDragIndex===i?"gz-dragging":""}"
+        draggable="true"
+        data-index="${i}"
+        ondragstart="gzDragStart(${i},event)"
+        ondragover="gzDragOver(event)"
+        ondrop="gzDrop(${i},event)"
+        ondragend="gzDragEnd()"
+      >
+        <img src="${gzEscapeAttr(img.image_url||"")}" alt="Product image ${i+1}"
+             onerror="this.style.opacity=.25">
+
+        <div class="gz-gallery-info">
+          <span class="gz-drag-label">☷ DRAG</span>
+          ${isMain?'<span class="gz-main-badge">MAIN</span>':""}
+        </div>
+
+        <div class="gz-gallery-actions">
+          <button
+            type="button"
+            class="${isMain?"gz-main-btn":""}"
+            onclick="gzSetMain(${i})"
+          >${isMain?"✓ Main":"Set Main"}</button>
+
+          <button type="button" onclick="gzRemoveImage(${i})">
+            Remove
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function gzDragStart(index,event){
+  gzDragIndex=index;
+  event.dataTransfer.effectAllowed="move";
+  event.dataTransfer.setData("text/plain",String(index));
+  gzRenderGallery();
+}
+
+function gzDragOver(event){
+  event.preventDefault();
+  event.dataTransfer.dropEffect="move";
+}
+
+function gzDrop(to,event){
+  event.preventDefault();
+
+  const from=gzDragIndex;
+  if(from===null || from===to){
+    gzDragEnd();
+    return;
+  }
+
+  const [moved]=gzEditGallery.splice(from,1);
+  gzEditGallery.splice(to,0,moved);
+
+  gzDragIndex=null;
+  gzRenderGallery();
+}
+
+function gzDragEnd(){
+  gzDragIndex=null;
+  gzRenderGallery();
+}
+
+function gzSetMain(index){
+  gzEditGallery=gzEditGallery.map((img,i)=>({
+    ...img,
+    is_main:i===index
+  }));
+  gzRenderGallery();
+}
+
+function gzRemoveImage(index){
+  if(!confirm("Remove this image from the product?")) return;
+
+  gzEditGallery.splice(index,1);
+
+  if(gzEditGallery.length && !gzEditGallery.some(x=>x.is_main===true)){
+    gzEditGallery[0].is_main=true;
+  }
+
+  gzRenderGallery();
+}
+
+function gzAddImage(){
+  const input=document.getElementById("gzNewImageUrl");
+  const url=input.value.trim();
+
+  if(!url) return;
+
+  if(gzEditGallery.length>=10){
+    alert("Maximum 10 images per product.");
+    return;
+  }
+
+  gzEditGallery.push({
+    image_url:url,
+    is_main:gzEditGallery.length===0,
+    sort_order:gzEditGallery.length
+  });
+
+  input.value="";
+  gzRenderGallery();
+}
+
+async function gzSaveProduct(){
+  if(!gzEditProduct) return;
+
+  const client=await gzRequireLogin();
+  const msg=document.getElementById("gzEditorMessage");
+
+  try{
+    msg.textContent="Saving…";
+    msg.style.color="#777";
+
+    const payload={
+      name:document.getElementById("gz_e_name").value.trim(),
+      category:document.getElementById("gz_e_category").value.trim(),
+      price:Number(document.getElementById("gz_e_price").value||0),
+      old_price:document.getElementById("gz_e_old_price").value===""
+        ? null
+        : Number(document.getElementById("gz_e_old_price").value),
+      tag:document.getElementById("gz_e_tag").value.trim()||null,
+      published:document.getElementById("gz_e_published").value==="true",
+      description:document.getElementById("gz_e_description").value.trim()
+    };
+
+    if(!payload.name) throw new Error("Product name is required.");
+    if(!payload.price) throw new Error("Product price is required.");
+
+    const {error:productError}=await client
+      .from("products")
+      .update(payload)
+      .eq("id",gzEditProduct.id);
+
+    if(productError) throw productError;
+
+    /* Save gallery in the exact visual order. */
+    const {error:deleteError}=await client
+      .from("product_images")
+      .delete()
+      .eq("product_id",gzEditProduct.id);
+
+    if(deleteError) throw deleteError;
+
+    if(gzEditGallery.length){
+      let mainIndex=gzEditGallery.findIndex(x=>x.is_main===true);
+      if(mainIndex<0) mainIndex=0;
+
+      const rows=gzEditGallery.map((img,index)=>({
+        product_id:gzEditProduct.id,
+        image_url:img.image_url,
+        sort_order:index,
+        is_main:index===mainIndex
+      }));
+
+      const {error:insertError}=await client
+        .from("product_images")
+        .insert(rows);
+
+      if(insertError) throw insertError;
+
+      const {error:imageUpdateError}=await client
+        .from("products")
+        .update({
+          image_url:gzEditGallery[mainIndex].image_url
+        })
+        .eq("id",gzEditProduct.id);
+
+      if(imageUpdateError) throw imageUpdateError;
+    }else{
+      const {error:imageUpdateError}=await client
+        .from("products")
+        .update({image_url:null})
+        .eq("id",gzEditProduct.id);
+
+      if(imageUpdateError) throw imageUpdateError;
+    }
+
+    msg.textContent="✓ Product updated successfully.";
+    msg.style.color="#176b2c";
+
+    /* Refresh the normal Products section too. */
+    if(typeof loadProducts==="function"){
+      try{ await loadProducts(); }catch(refreshError){ console.warn(refreshError); }
+    }
+
+    /* Reload this product so the saved order is reflected immediately. */
+    await gzSelectProduct(gzEditProduct.id);
+
+    msg.textContent="✓ All changes saved.";
+    msg.style.color="#176b2c";
+
+  }catch(e){
+    console.error(e);
+    msg.textContent="⚠ "+(e.message||"Save failed.");
+    msg.style.color="#a00";
+  }
+}
+
+document.getElementById("gzProductEditor").addEventListener("click",event=>{
+  if(event.target.id==="gzProductEditor") gzCloseProductEditor();
+});
+
+document.addEventListener("keydown",event=>{
+  if(event.key==="Escape"){
+    const modal=document.getElementById("gzProductEditor");
+    if(modal?.classList.contains("open")) gzCloseProductEditor();
+  }
+});
+</script>
+
+<script src="admin-animations.js"></script>
+<script src="payment-admin.js"></script>
+<script src="product-display-admin.js"></script>
+
+</body>
+</html>
