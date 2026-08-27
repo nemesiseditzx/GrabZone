@@ -1,3 +1,74 @@
+const galleryNavStyle = document.createElement("style");
+
+galleryNavStyle.textContent = `
+  .gallery-main {
+    position: relative;
+  }
+
+  .gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+
+    width: 44px;
+    height: 44px;
+
+    border: none;
+    border-radius: 50%;
+
+    background: rgba(255,255,255,.92);
+    color: #111;
+
+    font-size: 32px;
+    line-height: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+
+    box-shadow: 0 6px 20px rgba(0,0,0,.15);
+
+    transition: transform .18s ease;
+  }
+
+  .gallery-nav:hover {
+    transform: translateY(-50%) scale(1.06);
+  }
+
+  .gallery-nav:active {
+    transform: translateY(-50%) scale(.94);
+  }
+
+  .gallery-nav-prev {
+    left: 12px;
+  }
+
+  .gallery-nav-next {
+    right: 12px;
+  }
+
+  @media (max-width: 600px) {
+    .gallery-nav {
+      width: 38px;
+      height: 38px;
+      font-size: 27px;
+    }
+
+    .gallery-nav-prev {
+      left: 8px;
+    }
+
+    .gallery-nav-next {
+      right: 8px;
+    }
+  }
+`;
+
+document.head.appendChild(galleryNavStyle);
+
 let sb = null;
 let allProducts = [];
 let activeCategory = "All";
