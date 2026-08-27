@@ -1298,19 +1298,37 @@ async function renderDetail() {
 
         </div>
 
-        <div class="gallery-main">
+       <div class="gallery-main">
 
-          <img
-            id="mainProductImage"
-            src="${escAttr(
-              gallery[0].image_url
-            )}"
-            alt="${escAttr(
-              product.name
-            )}"
-          >
+  <button
+    type="button"
+    class="gallery-nav gallery-nav-prev"
+    aria-label="Previous image"
+    onclick="galleryPrevious(); return false;"
+  >
+    ‹
+  </button>
 
-        </div>
+  <img
+    id="mainProductImage"
+    src="${escAttr(
+      gallery[0].image_url
+    )}"
+    alt="${escAttr(
+      product.name
+    )}"
+  >
+
+  <button
+    type="button"
+    class="gallery-nav gallery-nav-next"
+    aria-label="Next image"
+    onclick="galleryNext(); return false;"
+  >
+    ›
+  </button>
+
+</div>
 
       </div>
 
@@ -1464,32 +1482,63 @@ async function renderDetail() {
    PRODUCT GALLERY
 ========================================================= */
 
+/* =========================================================
+   PRODUCT GALLERY NEXT / PREVIOUS
+========================================================= */
+
+let currentGalleryIndex = 0;
+
+function galleryNext() {
+  const gallery = window.__gallery || [];
+
+  if (gallery.length <= 1) return;
+
+  currentGalleryIndex =
+    (currentGalleryIndex + 1) % gallery.length;
+
+  showGalleryImage(currentGalleryIndex);
+}
+
+function galleryPrevious() {
+  const gallery = window.__gallery || [];
+
+  if (gallery.length <= 1) return;
+
+  currentGalleryIndex =
+    (currentGalleryIndex - 1 + gallery.length) %
+    gallery.length;
+
+  showGalleryImage(currentGalleryIndex);
+}
+
 function showGalleryImage(index) {
-  const gallery =
-    window.__gallery || [];
+    const gallery =
+        window.__gallery || [];
 
-  if (!gallery[index]) return;
+    if (!gallery[index]) return;
 
-  const mainImage =
-    document.getElementById(
-      "mainProductImage"
-    );
+    currentGalleryIndex = index;
 
-  if (mainImage) {
-    mainImage.src =
-      gallery[index].image_url;
-  }
+    const mainImage =
+        document.getElementById(
+            "mainProductImage"
+        );
 
-  document
-    .querySelectorAll(
-      ".gallery-thumb"
-    )
-    .forEach((thumb, i) => {
-      thumb.classList.toggle(
-        "active",
-        i === index
-      );
-    });
+    if (mainImage) {
+        mainImage.src =
+            gallery[index].image_url;
+    }
+
+    document
+        .querySelectorAll(
+            ".gallery-thumb"
+        )
+        .forEach((thumb, i) => {
+            thumb.classList.toggle(
+                "active",
+                i === index
+            );
+        });
 }
 
 /* =========================================================
