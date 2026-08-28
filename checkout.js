@@ -19,7 +19,8 @@ const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const getSource=()=>{const buy=read(BUY_NOW_KEY,null);return Array.isArray(buy)&&buy.length?buy:read(CART_KEY,[])};
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
-const shippingForDivision=value=>String(value||'').trim().toLowerCase()==='dhaka'?dhakaShippingCharge:outsideDhakaShippingCharge;
+const dhakaMetroUpazilas=new Set(['Adabor','Dhaka Airport','Badda','Banani','Bangshal','Bhashantek','Dhaka Cantonment','Dhaka Chackbazar','Dakshin Khan','Darus-Salam','Demra','Dhanmondi','Gandaria','Gulshan','Hatirjheel','Hazaribagh','Jatrabari','Kadamtoli','Kafrul','Kalabagan','Kamrangirchar','Khilkhet','Khilgaon','Kotwali','Lalbagh','Mirpur Model','Mohammadpur','Motijheel','Mugda','Dhaka New Market','Pallabi','Paltan Model','Ramna Model','Rampura','Rupnagar','Sabujbag','Shah Ali','Shahbag','Shahjahanpur','Sher-e-Bangla Nagar','Shyampur','Sutrapur','Tejgaon','Tejgaon Industrial','Turag','Uttar Khan','Vatara','Uttara East','Uttara West','Wari']);
+const shippingForLocation=(division,upazila)=>String(division||'').trim().toLowerCase()==='dhaka'&&dhakaMetroUpazilas.has(String(upazila||'').trim())?dhakaShippingCharge:outsideDhakaShippingCharge;
 
 function divisions(){
   return locationTree?.data||[];
@@ -112,7 +113,7 @@ function render(){
     <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
-  const sub=subtotal(),shipping=shippingForDivision($('division')?.value||''),discount=Number(referralState.discount||0);
+  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||'', $('upazila')?.value||''),discount=Number(referralState.discount||0);
   $('checkoutSubtotal').textContent=money(sub);
   $('checkoutShipping').textContent=money(shipping);
   $('checkoutDiscount').textContent='-'+money(discount);
@@ -183,14 +184,14 @@ async function submit(e){
   }
   d.phone=d.phone.replace(/\D/g,'');
   const b=$('placeOrderBtn');b.disabled=true;b.textContent='Placing order…';msg('');
-  const shipping=shippingForDivision(d.division);
+  const shipping=shippingForLocation(d.division,d.upazila);
   const payload={
     customer_name:d.customer_name,email:d.email,phone:d.phone,division:d.division,
     district:d.district,upazila:d.upazila,address:d.address,
     referral_code:d.referral_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
     items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price)})),
-    subtotal:subtotal(),total:subtotal()+shipping
+    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0))
   };
   try{
     if(!sb)throw new Error('Order service is not configured.');
