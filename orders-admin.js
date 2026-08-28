@@ -25,7 +25,7 @@ function inject(){
  @media(max-width:760px){.gz-order-filters,.gz-order-grid{grid-template-columns:1fr}.gz-order-full{grid-column:auto}.gz-order-editor{padding:18px}.gz-item-edit{grid-template-columns:1fr 65px 95px 1fr 36px}}
  `; document.head.appendChild(style);
  const paymentNav=document.querySelector('.sidebar [data-tab="payment"]');
- if(paymentNav){const b=document.createElement('button');b.className='side-link';b.type='button';b.dataset.tab='orders';b.innerHTML='▤ <span>Orders</span>';paymentNav.parentNode.insertBefore(b,paymentNav);}
+ if(paymentNav&&!document.querySelector('.sidebar [data-tab="orders"]')){const b=document.createElement('button');b.className='side-link';b.type='button';b.dataset.tab='orders';b.innerHTML='▤ <span>Orders</span>';paymentNav.parentNode.insertBefore(b,paymentNav);}
  document.body.insertAdjacentHTML('beforeend',`<div id="gzOrderModal" class="gz-order-modal"><div class="gz-order-editor"><button id="gzOrderClose" class="gz-order-close">×</button><h2 id="gzOrderEditorTitle">Order</h2><div id="gzOrderEditorSub" class="muted"></div><div id="gzOrderEditorBody"></div><div id="gzOrderEditorMsg" class="gz-order-message"></div><div class="gz-order-actions"><button class="ghost" id="gzOrderCancel">Close</button><button class="primary" id="gzOrderSave">Save changes</button></div></div></div>`);
  $('gzOrdersRefresh').onclick=loadOrders; $('gzOrderSearch').oninput=renderOrders; $('gzOrderStatusFilter').onchange=renderOrders;
  $('gzOrderClose').onclick=closeEditor; $('gzOrderCancel').onclick=closeEditor; $('gzOrderModal').onclick=e=>{if(e.target.id==='gzOrderModal')closeEditor()}; $('gzOrderSave').onclick=saveEditor;
