@@ -21,7 +21,7 @@ function inject(){
 
  const style=document.createElement('style'); style.id='gzOrdersStyle'; style.textContent=`
  .gz-order-filters{display:grid;grid-template-columns:1fr 180px;gap:10px}.gz-order-filters input,.gz-order-filters select{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ddd;border-radius:11px;background:#fff;font:inherit}
- .gz-orders-wrap{overflow:auto}.gz-orders-table{width:100%;border-collapse:collapse;min-width:1120px}.gz-orders-table th,.gz-orders-table td{padding:12px 9px;border-bottom:1px solid #eee;text-align:left;font-size:12px;vertical-align:middle}.gz-orders-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#777}.gz-order-link{border:0;background:none;padding:0;font:inherit;font-weight:900;cursor:pointer}.gz-order-email,.gz-order-ref{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gz-status-select{border:1px solid #ddd;border-radius:999px;padding:6px 9px;background:#fff;font:inherit;font-size:10px;font-weight:800;cursor:pointer}.gz-order-actions-cell{display:flex;gap:6px;white-space:nowrap}.gz-order-action{border:1px solid #ddd;background:#fff;border-radius:8px;padding:7px 9px;font:inherit;font-size:10px;font-weight:850;cursor:pointer}.gz-order-action.edit{background:#111;color:#fff;border-color:#111}.gz-order-action.delete{color:#a00000}.gz-empty-orders{text-align:center;padding:30px;color:#777}
+ .gz-orders-wrap{overflow:auto}.gz-orders-table{width:100%;border-collapse:collapse;min-width:1120px}.gz-orders-table th,.gz-orders-table td{padding:12px 9px;border-bottom:1px solid #eee;text-align:left;font-size:12px;vertical-align:middle}.gz-orders-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#777}.gz-order-link{border:0;background:none;padding:0;font:inherit;font-weight:900;cursor:pointer}.gz-order-email,.gz-order-ref{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gz-status-select{border:1px solid #ddd;border-radius:999px;padding:6px 9px;background:#fff;font:inherit;font-size:10px;font-weight:800;cursor:pointer}.gz-order-actions-cell{display:flex;gap:6px;white-space:nowrap}.gz-order-action{border:1px solid #ddd;background:#fff;border-radius:8px;padding:7px 9px;font:inherit;font-size:10px;font-weight:850;cursor:pointer}.gz-order-action.edit{background:#111;color:#fff;border-color:#111}.gz-order-action.delete{color:#a00000}.gz-order-action.bk{background:#f5f5f5;border-color:#111}.gz-empty-orders{text-align:center;padding:30px;color:#777}
  .gz-order-modal{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:15px;background:rgba(0,0,0,.58);backdrop-filter:blur(5px)}.gz-order-modal.open{display:flex}.gz-order-editor{position:relative;width:min(1050px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:22px;padding:24px}.gz-order-close{position:absolute;right:14px;top:14px;border:0;border-radius:50%;width:38px;height:38px;background:#f0f0ed;font-size:22px;cursor:pointer}.gz-order-editor h2{margin:0 50px 4px}.gz-order-editor .muted{margin-bottom:18px}.gz-order-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.gz-order-grid label{display:grid;gap:6px;font-size:11px;font-weight:800;color:#555}.gz-order-grid input,.gz-order-grid textarea,.gz-order-grid select{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:11px;background:#fff;font:inherit;color:#111}.gz-order-grid textarea{min-height:90px;resize:vertical}.gz-order-full{grid-column:1/-1}.gz-items-editor{margin-top:18px;border-top:1px solid #eee;padding-top:18px}.gz-item-edit{display:grid;grid-template-columns:1.4fr 80px 120px 1.2fr 36px;gap:8px;align-items:center;margin-bottom:8px}.gz-item-edit input{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:9px;padding:9px}.gz-item-edit button{border:0;background:#f3f3f1;border-radius:9px;height:36px;cursor:pointer}.gz-order-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px;flex-wrap:wrap}.gz-order-message{min-height:20px;font-size:12px;font-weight:800;margin-top:8px}.gz-order-total-preview{margin-top:10px;text-align:right;font-weight:900}
  @media(max-width:760px){.gz-order-filters,.gz-order-grid{grid-template-columns:1fr}.gz-order-full{grid-column:auto}.gz-order-editor{padding:18px}.gz-item-edit{grid-template-columns:1fr 65px 95px 1fr 36px}}
  `; document.head.appendChild(style);
@@ -66,6 +66,7 @@ function renderOrders(){
  panel.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.order));
  panel.querySelectorAll('[data-edit-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.editOrder));
  panel.querySelectorAll('[data-delete-order]').forEach(b=>b.onclick=()=>deleteOrder(b.dataset.deleteOrder));
+ panel.querySelectorAll('[data-bk-order]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.bkOrder));
  panel.querySelectorAll('[data-bk-order]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.bkOrder));
  panel.querySelectorAll('[data-send-bk]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.sendBk));
  panel.querySelectorAll('[data-status-order]').forEach(s=>s.onchange=()=>changeStatus(s.dataset.statusOrder,s.value));
@@ -118,6 +119,25 @@ async function sendToBusinessKoro(id){
  }
 }
 
+async function sendToBusinessKoro(id){
+ const order=orders.find(x=>x.id===id);if(!order)return;
+ if(!confirm('Send '+order.order_number+' to Business Koro now?'))return;
+ const button=document.querySelector('[data-bk-order="'+CSS.escape(id)+'"]');
+ if(button){button.disabled=true;button.textContent='Sending…'}
+ try{
+  const{data:items,error}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
+  if(error)throw error;if(!items?.length)throw new Error('This order has no products.');
+  const response=await fetch('/api/business-koro-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:order.id,orderNumber:order.order_number,customer:{name:order.customer_name,phone:order.phone,address:order.address,division:order.division,district:order.district,area:order.upazila,note:order.admin_note||''},items:items.map(it=>({productId:it.business_koro_product_id||null,productName:it.product_name,quantity:Number(it.quantity||1),sellingPrice:Number(it.unit_price||0)}))})});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(result.error||'Business Koro rejected the order.');
+  const ids=(result.orders||[]).map(x=>x.supplierOrderId).filter(Boolean);
+  const note=[order.admin_note,'Business Koro submitted '+new Date().toLocaleString()+(ids.length?' · IDs: '+ids.join(', '):'')].filter(Boolean).join('\\n');
+  const{error:updateError}=await sb.from('orders').update({admin_note:note,updated_at:new Date().toISOString()}).eq('id',id);
+  if(updateError)throw updateError;order.admin_note=note;
+  alert('✓ Order sent to Business Koro successfully.');
+ }catch(e){alert('Could not send order: '+e.message)}
+ finally{if(button){button.disabled=false;button.textContent='Send to Business Koro'}}
+}
 async function changeStatus(id,status){
  const order=orders.find(x=>x.id===id); if(!order||order.status===status)return;
  const {error}=await sb.from('orders').update({status,updated_at:new Date().toISOString()}).eq('id',id);
