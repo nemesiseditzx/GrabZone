@@ -63,6 +63,27 @@ async function sendOne(apiKey,orderNumber,customer,item,productId){
   return data;
 }
 
+async function markOrder(orderId, supplierIds){
+  const url=process.env.SUPABASE_URL;
+  const key=process.env.SUPABASE_SECRET_KEY;
+  if(!url||!key||!orderId)return;
+
+  const note='Business Koro submitted: '+supplierIds.filter(Boolean).join(', ');
+  try{
+    await fetch(url+'/rest/v1/orders?id=eq.'+encodeURIComponent(orderId),{
+      method:'PATCH',
+      headers:{
+        apikey:key,
+        'Content-Type':'application/json',
+        Prefer:'return=minimal'
+      },
+      body:JSON.stringify({admin_note:note,updated_at:new Date().toISOString()})
+    });
+  }catch(error){
+    console.error('Could not save Business Koro supplier IDs:',error);
+  }
+}
+
 module.exports=async function handler(req,res){
   if(req.method!=='POST')return res.status(405).json({error:'Method not allowed.'});
 
@@ -103,6 +124,8 @@ module.exports=async function handler(req,res){
         });
       }
     }
+
+    await markOrder(body.orderId,results.map(x=>x.supplierOrderId));
 
     return res.status(200).json({
       success:true,
