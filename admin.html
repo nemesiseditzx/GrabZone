@@ -1892,6 +1892,11 @@ body.gz-gallery-dragging-active{
         </label>
 
         <label>
+          Business Koro Product ID
+          <input id="gz_e_business_koro_id" placeholder="Optional — save once to avoid product matching">
+        </label>
+
+        <label>
           Publish
           <select id="gz_e_published">
             <option value="true">Yes — show on website</option>
@@ -2081,6 +2086,7 @@ async function gzSelectProduct(id){
   document.getElementById("gz_e_price").value=product.price??"";
   document.getElementById("gz_e_old_price").value=product.old_price??"";
   document.getElementById("gz_e_tag").value=product.tag||"";
+  document.getElementById("gz_e_business_koro_id").value=product.business_koro_product_id||"";
   document.getElementById("gz_e_published").value=String(!!product.published);
   document.getElementById("gz_e_description").value=product.description||"";
   document.getElementById("gzNewImageUrl").value="";
@@ -2393,6 +2399,7 @@ async function gzSaveProduct(){
         ? null
         : Number(document.getElementById("gz_e_old_price").value),
       tag:document.getElementById("gz_e_tag").value.trim()||null,
+      business_koro_product_id:document.getElementById("gz_e_business_koro_id").value.trim()||null,
       published:document.getElementById("gz_e_published").value==="true",
       description:document.getElementById("gz_e_description").value.trim()
     };
