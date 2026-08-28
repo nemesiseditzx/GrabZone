@@ -51,12 +51,13 @@ function renderOrders(){
  const q=($('gzOrderSearch')?.value||'').trim().toLowerCase(), st=$('gzOrderStatusFilter')?.value||'';
  const list=orders.filter(o=>(!q||`${o.order_number} ${o.customer_name} ${o.phone} ${o.email} ${o.referral_code||''}`.toLowerCase().includes(q))&&(!st||o.status===st));
  if(!list.length){panel.innerHTML='<div class="gz-empty-orders">No orders found.</div>';return}
- panel.innerHTML=`<div class="gz-orders-wrap"><table class="gz-orders-table"><thead><tr><th>Order</th><th>Customer</th><th>Phone</th><th>Email</th><th>Referral</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>${list.map(o=>`<tr>
+ panel.innerHTML=`<div class="gz-orders-wrap"><table class="gz-orders-table"><thead><tr><th>Order</th><th>Customer</th><th>Phone</th><th>Email</th><th>Referral</th><th>Discount</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>${list.map(o=>`<tr>
  <td><button class="gz-order-link" data-order="${esc(o.id)}">${esc(o.order_number)}</button></td>
  <td>${esc(o.customer_name)}</td>
  <td>${esc(o.phone)}</td>
  <td class="gz-order-email" title="${esc(o.email)}">${esc(o.email)}</td>
  <td class="gz-order-ref" title="${esc(o.referral_code||'—')}">${esc(o.referral_code||'—')}</td>
+ <td>${o.referral_discount?'-'+money(o.referral_discount):'—'}</td>
  <td><b>${money(o.total)}</b></td>
  <td><select class="gz-status-select" data-status-order="${esc(o.id)}" aria-label="Change order status">${statuses.map(s=>`<option value="${esc(s)}" ${s===o.status?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
  <td>${o.created_at?new Date(o.created_at).toLocaleString():'—'}</td>
@@ -65,8 +66,51 @@ function renderOrders(){
  panel.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.order));
  panel.querySelectorAll('[data-edit-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.editOrder));
  panel.querySelectorAll('[data-delete-order]').forEach(b=>b.onclick=()=>deleteOrder(b.dataset.deleteOrder));
+ panel.querySelectorAll('[data-bk-order]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.bkOrder));
  panel.querySelectorAll('[data-send-bk]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.sendBk));
  panel.querySelectorAll('[data-status-order]').forEach(s=>s.onchange=()=>changeStatus(s.dataset.statusOrder,s.value));
+}
+
+async function sendToBusinessKoro(id){
+ const order=orders.find(x=>x.id===id); if(!order)return;
+ const {data:items,error}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
+ if(error){alert(error.message);return}
+ if(!items?.length){alert('This order has no products.');return}
+ const button=[...document.querySelectorAll('[data-bk-order]')].find(x=>x.dataset.bkOrder===id);
+ if(button){button.disabled=true;button.textContent='Sending…'}
+ try{
+  const response=await fetch('/api/business-koro-order',{
+   method:'POST',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({
+    orderId:order.id,
+    orderNumber:order.order_number,
+    customer:{
+     name:order.customer_name,
+     phone:order.phone,
+     address:order.address,
+     division:order.division,
+     district:order.district,
+     area:order.upazila,
+     note:order.admin_note||''
+    },
+    items:items.map(it=>({
+     productId:it.business_koro_product_id||null,
+     productName:it.product_name,
+     quantity:Number(it.quantity||1),
+     sellingPrice:Number(it.unit_price||0)
+    }))
+   })
+  });
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(result.error||'Business Koro submission failed.');
+  alert('✓ Order '+order.order_number+' was sent to Business Koro.');
+  await loadOrders();
+ }catch(e){
+  alert('⚠ '+e.message);
+ }finally{
+  if(button){button.disabled=false;button.textContent='Send to Business Koro'}
+ }
 }
 
 async function changeStatus(id,status){
@@ -130,6 +174,7 @@ async function openEditor(id){
  <label>Upazila / Thana<input id="oeUpazila" value="${esc(current.upazila||'')}"></label><label>Referral Code<input id="oeReferral" value="${esc(current.referral_code||'')}"></label>
  <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label>
  <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" value="${Number(current.shipping_charge||0)}"></label>
+ <label>Referral Discount<input id="oeDiscount" type="number" step="0.01" min="0" value="${Number(current.referral_discount||0)}"></label>
  <label class="gz-order-full">Admin Note<textarea id="oeNote">${esc(current.admin_note||'')}</textarea></label></div>
  <div class="gz-items-editor"><h3>Products in this order</h3><div id="oeItems">${current.items.map((it,i)=>itemRow(it,i)).join('')}</div><button type="button" class="ghost" id="oeAddItem">＋ Add item</button><div id="oePreview" class="gz-order-total-preview"></div></div>`;
  $('oeAddItem').onclick=()=>{current.items.push({id:null,product_id:null,product_name:'',image_url:'',quantity:1,unit_price:0});renderItemEditor();updatePreview()};
@@ -149,7 +194,7 @@ async function saveEditor(){
   customer_name:$('oeName').value.trim(),phone:$('oePhone').value.trim(),email:$('oeEmail').value.trim(),
   division:$('oeDivision').value.trim(),district:$('oeDistrict').value.trim(),upazila:$('oeUpazila').value.trim(),
   address:$('oeAddress').value.trim(),referral_code:$('oeReferral').value.trim()||null,
-  payment_method:$('oePayment').value.trim()||'Cash on Delivery',shipping_charge:Number($('oeShipping').value||0),
+  payment_method:$('oePayment').value.trim()||'Cash on Delivery',shipping_charge:Number($('oeShipping').value||0),referral_discount:Math.max(0,Number($('oeDiscount').value||0)),
   status:$('oeStatus').value,admin_note:$('oeNote').value.trim()||null
  };
  const items=[...document.querySelectorAll('.gz-item-edit')].map((row,i)=>({
@@ -162,7 +207,7 @@ async function saveEditor(){
  if(!/^01[3-9]\d{8}$/.test(payload.phone.replace(/\D/g,''))){$('gzOrderEditorMsg').textContent='⚠ Mobile number must be a valid 11-digit Bangladesh number (01XXXXXXXXX).';return}
  if(!items.length){$('gzOrderEditorMsg').textContent='⚠ Add at least one product.';return}
  payload.phone=payload.phone.replace(/\D/g,'');
- payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.total=payload.subtotal+payload.shipping_charge;payload.updated_at=new Date().toISOString();
+ payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.total=Math.max(0,payload.subtotal+payload.shipping_charge-payload.referral_discount);payload.updated_at=new Date().toISOString();
  $('gzOrderSave').disabled=true;
  try{
   const {error:e1}=await sb.from('orders').update(payload).eq('id',current.id);if(e1)throw e1;
