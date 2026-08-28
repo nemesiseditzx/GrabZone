@@ -57,26 +57,20 @@
         <div class="two-col">
           <div class="field">
             <label for="division">Division <i>*</i></label>
-            <input id="divisionSearch" class="location-search" type="search" placeholder="Search division..." autocomplete="off">
-            <select id="division" name="division" required>
-              <option value="">Select Division</option>
-            </select>
+            <input id="division" name="division" type="text" list="divisionOptions" placeholder="Select or type division..." autocomplete="address-level1" required>
+            <datalist id="divisionOptions"></datalist>
           </div>
           <div class="field">
             <label for="district">District <i>*</i></label>
-            <input id="districtSearch" class="location-search" type="search" placeholder="Search district..." autocomplete="off" disabled>
-            <select id="district" name="district" required disabled>
-              <option value="">Select District</option>
-            </select>
+            <input id="district" name="district" type="text" list="districtOptions" placeholder="Select or type district..." autocomplete="address-level2" required disabled>
+            <datalist id="districtOptions"></datalist>
           </div>
         </div>
 
         <div class="field">
           <label for="upazila">Upazila / Thana <i>*</i></label>
-          <input id="upazilaSearch" class="location-search" type="search" placeholder="Search upazila / thana..." autocomplete="off" disabled>
-          <select id="upazila" name="upazila" required disabled>
-            <option value="">Select Upazila / Thana</option>
-          </select>
+          <input id="upazila" name="upazila" type="text" list="upazilaOptions" placeholder="Select or type upazila / thana..." autocomplete="address-level3" required disabled>
+          <datalist id="upazilaOptions"></datalist>
         </div>
 
         <div class="field">
