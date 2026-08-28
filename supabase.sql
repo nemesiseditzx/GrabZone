@@ -65,190 +65,7 @@ revoke all on public.order_items from anon, authenticated;
 grant select,insert,update,delete on public.orders to authenticated;
 grant select,insert,update,delete on public.order_items to authenticated;
 grant usage,select on sequence public.order_number_seq to authenticated;
-create or replace function public.create_public_order(payload jsonb)
-returns jsonb language plpgsql security definer set search_path=public as $$
-declare new_order public.orders; item jsonb; product_row public.products; qty integer;
-calculated_subtotal numeric:=0; fixed_shipping numeric:=130; item_total numeric; order_id uuid;
-begin
- if coalesce(trim(payload->>'customer_name'),'')='' or coalesce(trim(payload->>'email'),'')='' or coalesce(trim(payload->>'phone'),'')='' or coalesce(trim(payload->>'division'),'')='' or coalesce(trim(payload->>'district'),'')='' or coalesce(trim(payload->>'address'),'')='' then raise exception 'Please complete all required fields.'; end if;
- if trim(payload->>'phone') !~ '^01[3-9][0-9]{8}
- insert into public.orders(customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,status)
- values(trim(payload->>'customer_name'),lower(trim(payload->>'email')),trim(payload->>'phone'),trim(payload->>'division'),trim(payload->>'district'),nullif(trim(payload->>'upazila'),''),trim(payload->>'address'),nullif(trim(payload->>'referral_code'),''),'Cash on Delivery',fixed_shipping,'New')
- returning * into new_order;
- order_id:=new_order.id;
- for item in select * from jsonb_array_elements(payload->'items') loop
-  select * into product_row from public.products where id=nullif(item->>'product_id','')::uuid and published=true;
-  if not found then raise exception 'One of the selected products is no longer available.'; end if;
-  qty:=greatest(1,coalesce((item->>'quantity')::integer,1)); item_total:=product_row.price*qty; calculated_subtotal:=calculated_subtotal+item_total;
-  insert into public.order_items(order_id,product_id,product_name,image_url,quantity,unit_price,line_total) values(order_id,product_row.id,product_row.name,product_row.image_url,qty,product_row.price,item_total);
- end loop;
- update public.orders set subtotal=calculated_subtotal,total=calculated_subtotal+fixed_shipping,updated_at=now() where id=order_id returning * into new_order;
- return jsonb_build_object('id',new_order.id,'order_number',new_order.order_number,'subtotal',new_order.subtotal,'shipping_charge',new_order.shipping_charge,'total',new_order.total,'status',new_order.status);
-end; $$;
-revoke all on function public.create_public_order(jsonb) from public;
-grant execute on function public.create_public_order(jsonb) to anon,authenticated;
-create index if not exists orders_created_at_idx on public.orders(created_at desc);
-create index if not exists orders_status_idx on public.orders(status);
-create index if not exists order_items_order_id_idx on public.order_items(order_id);
-
-
--- Update existing storefront copy for the automated checkout flow.
-update public.site_settings set
- hero_eyebrow='ট্রেন্ডিং পণ্য • সহজ অনলাইন অর্ডার',
- hero_description='দরকারি গ্যাজেট, ফ্যাশন ফাইন্ড, হোম এসেনশিয়াল এবং আরও অনেক কিছু। পণ্য পছন্দ করুন, কার্টে যোগ করুন এবং Cash on Delivery-তে অর্ডার করুন।',
- step2_title='কার্টে যোগ করুন',
- step2_body='কার্টে পণ্য যোগ করুন, তারপর checkout-এ আপনার তথ্য দিন।',
- step3_title='Checkout সম্পন্ন করুন',
- step3_body='অর্ডার পাওয়ার পর আমাদের টিম ফোনে তথ্য যাচাই করে ডেলিভারি নিশ্চিত করবে।',
- referral_body='Checkout-এর সময় referral code দিন। আপাতত আমরা শুধু কোডটি অর্ডারের সাথে সংরক্ষণ করছি।',
- referral_button_text='Shop & Checkout'
-where id=1;
- then raise exception 'Please enter a valid 11-digit Bangladesh mobile number (01XXXXXXXXX).'; end if;
- if jsonb_typeof(payload->'items')<>'array' or jsonb_array_length(payload->'items')<1 then raise exception 'Your order is empty.'; end if;
- insert into public.orders(customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,status)
- values(trim(payload->>'customer_name'),lower(trim(payload->>'email')),trim(payload->>'phone'),trim(payload->>'division'),trim(payload->>'district'),nullif(trim(payload->>'upazila'),''),trim(payload->>'address'),nullif(trim(payload->>'referral_code'),''),'Cash on Delivery',fixed_shipping,'New')
- returning * into new_order;
- order_id:=new_order.id;
- for item in select * from jsonb_array_elements(payload->'items') loop
-  select * into product_row from public.products where id=nullif(item->>'product_id','')::uuid and published=true;
-  if not found then raise exception 'One of the selected products is no longer available.'; end if;
-  qty:=greatest(1,coalesce((item->>'quantity')::integer,1)); item_total:=product_row.price*qty; calculated_subtotal:=calculated_subtotal+item_total;
-  insert into public.order_items(order_id,product_id,product_name,image_url,quantity,unit_price,line_total) values(order_id,product_row.id,product_row.name,product_row.image_url,qty,product_row.price,item_total);
- end loop;
- update public.orders set subtotal=calculated_subtotal,total=calculated_subtotal+fixed_shipping,updated_at=now() where id=order_id returning * into new_order;
- return jsonb_build_object('id',new_order.id,'order_number',new_order.order_number,'subtotal',new_order.subtotal,'shipping_charge',new_order.shipping_charge,'total',new_order.total,'status',new_order.status);
-end; $$;
-revoke all on function public.create_public_order(jsonb) from public;
-grant execute on function public.create_public_order(jsonb) to anon,authenticated;
-create index if not exists orders_created_at_idx on public.orders(created_at desc);
-create index if not exists orders_status_idx on public.orders(status);
-create index if not exists order_items_order_id_idx on public.order_items(order_id);
-
-
--- Update existing storefront copy for the automated checkout flow.
-update public.site_settings set
- hero_eyebrow='ট্রেন্ডিং পণ্য • সহজ অনলাইন অর্ডার',
- hero_description='দরকারি গ্যাজেট, ফ্যাশন ফাইন্ড, হোম এসেনশিয়াল এবং আরও অনেক কিছু। পণ্য পছন্দ করুন, কার্টে যোগ করুন এবং Cash on Delivery-তে অর্ডার করুন।',
- step2_title='কার্টে যোগ করুন',
- step2_body='কার্টে পণ্য যোগ করুন, তারপর checkout-এ আপনার তথ্য দিন।',
- step3_title='Checkout সম্পন্ন করুন',
- step3_body='অর্ডার পাওয়ার পর আমাদের টিম ফোনে তথ্য যাচাই করে ডেলিভারি নিশ্চিত করবে।',
- referral_body='Checkout-এর সময় referral code দিন। আপাতত আমরা শুধু কোডটি অর্ডারের সাথে সংরক্ষণ করছি।',
- referral_button_text='Shop & Checkout'
-where id=1;
-
-
--- GRABZONE Business Koro + delivery-rate patch
--- Run this once in Supabase Dashboard -> SQL Editor.
-
-create or replace function public.create_public_order(payload jsonb)
-returns jsonb
-language plpgsql
-security definer
-set search_path=public
-as $$
-declare
-  new_order public.orders;
-  item jsonb;
-  product_row public.products;
-  qty integer;
-  calculated_subtotal numeric := 0;
-  fixed_shipping numeric := case
-    when lower(trim(coalesce(payload->>'division',''))) in ('dhaka','ঢাকা') then 70
-    else 130
-  end;
-  item_total numeric;
-  order_id uuid;
-begin
-  if coalesce(trim(payload->>'customer_name'),'')=''
-     or coalesce(trim(payload->>'email'),'')=''
-     or coalesce(trim(payload->>'phone'),'')=''
-     or coalesce(trim(payload->>'division'),'')=''
-     or coalesce(trim(payload->>'district'),'')=''
-     or coalesce(trim(payload->>'address'),'')=''
-  then
-    raise exception 'Please complete all required fields.';
-  end if;
-
-  if trim(payload->>'phone') !~ '^01[3-9][0-9]{8}$' then
-    raise exception 'Please enter a valid 11-digit Bangladesh mobile number (01XXXXXXXXX).';
-  end if;
-
-  if jsonb_typeof(payload->'items') <> 'array'
-     or jsonb_array_length(payload->'items') < 1
-  then
-    raise exception 'Your order is empty.';
-  end if;
-
-  insert into public.orders(
-    customer_name,email,phone,division,district,upazila,address,
-    referral_code,payment_method,shipping_charge,status
-  )
-  values(
-    trim(payload->>'customer_name'),
-    lower(trim(payload->>'email')),
-    trim(payload->>'phone'),
-    trim(payload->>'division'),
-    trim(payload->>'district'),
-    nullif(trim(payload->>'upazila'),''),
-    trim(payload->>'address'),
-    nullif(trim(payload->>'referral_code'),''),
-    'Cash on Delivery',
-    fixed_shipping,
-    'New'
-  )
-  returning * into new_order;
-
-  order_id := new_order.id;
-
-  for item in select * from jsonb_array_elements(payload->'items') loop
-    select * into product_row
-    from public.products
-    where id = nullif(item->>'product_id','')::uuid
-      and published = true;
-
-    if not found then
-      raise exception 'One of the selected products is no longer available.';
-    end if;
-
-    qty := greatest(1,coalesce((item->>'quantity')::integer,1));
-    item_total := product_row.price * qty;
-    calculated_subtotal := calculated_subtotal + item_total;
-
-    insert into public.order_items(
-      order_id,product_id,product_name,image_url,quantity,unit_price,line_total
-    )
-    values(
-      order_id,product_row.id,product_row.name,product_row.image_url,
-      qty,product_row.price,item_total
-    );
-  end loop;
-
-  update public.orders
-  set subtotal=calculated_subtotal,
-      total=calculated_subtotal+fixed_shipping,
-      updated_at=now()
-  where id=order_id
-  returning * into new_order;
-
-  return jsonb_build_object(
-    'id',new_order.id,
-    'order_number',new_order.order_number,
-    'subtotal',new_order.subtotal,
-    'shipping_charge',new_order.shipping_charge,
-    'total',new_order.total,
-    'status',new_order.status
-  );
-end;
-$$;
-
-revoke all on function public.create_public_order(jsonb) from public;
-grant execute on function public.create_public_order(jsonb) to anon,authenticated;
-
-
--- GRABZONE REFERRAL + LOCATION + DELIVERY SYSTEM
--- Run once in Supabase SQL Editor.
-
+-- GrabZone referral system
 alter table public.orders
   add column if not exists referral_discount numeric not null default 0;
 
@@ -279,97 +96,23 @@ create table if not exists public.referral_codes (
 );
 
 alter table public.referral_codes enable row level security;
-
 drop policy if exists "authenticated manage referral codes" on public.referral_codes;
 create policy "authenticated manage referral codes"
 on public.referral_codes for all to authenticated
-using(true) with check(true);
+using (true) with check (true);
 
 revoke all on public.referral_codes from anon;
-grant select,insert,update,delete on public.referral_codes to authenticated;
+grant select, insert, update, delete on public.referral_codes to authenticated;
 
-create or replace function public.validate_referral_code(
-  p_code text,
-  p_subtotal numeric
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path=public
-as $$
-declare
-  r public.referral_codes;
-  discount numeric := 0;
-  now_ts timestamptz := now();
-begin
-  select * into r
-  from public.referral_codes
-  where upper(code)=upper(trim(p_code))
-    and active=true
-  limit 1;
+-- Public order creation
+-- Delivery: Dhaka division = ৳70; all other divisions = ৳130.
+-- Referral discounts are controlled from referral_codes.
 
-  if not found then
-    return jsonb_build_object('valid',false,'message','Invalid or inactive referral code.');
-  end if;
-
-  if r.starts_at is not null and now_ts < r.starts_at then
-    return jsonb_build_object('valid',false,'message','This referral code is not active yet.');
-  end if;
-
-  if r.expires_at is not null and now_ts > r.expires_at then
-    return jsonb_build_object('valid',false,'message','This referral code has expired.');
-  end if;
-
-  if r.usage_limit is not null and r.used_count >= r.usage_limit then
-    return jsonb_build_object('valid',false,'message','This referral code has reached its usage limit.');
-  end if;
-
-  if coalesce(p_subtotal,0) < r.min_order_amount then
-    return jsonb_build_object(
-      'valid',false,
-      'message','Minimum order amount for this code is ৳'||r.min_order_amount::text||'.'
-    );
-  end if;
-
-  if r.benefit_type='percentage' then
-    discount := round(coalesce(p_subtotal,0) * r.benefit_value / 100, 2);
-  else
-    discount := r.benefit_value;
-  end if;
-
-  if r.max_discount_amount is not null then
-    discount := least(discount,r.max_discount_amount);
-  end if;
-
-  discount := greatest(0,least(discount,coalesce(p_subtotal,0)));
-
-  return jsonb_build_object(
-    'valid',true,
-    'code',upper(r.code),
-    'discount',discount,
-    'label',
-      case
-        when r.benefit_type='percentage'
-          then r.benefit_value::text||'% off'
-        else
-          '৳'||r.benefit_value::text||' off'
-      end,
-    'admin_name',r.admin_name
-  );
-end;
-$$;
-
-revoke all on function public.validate_referral_code(text,numeric) from public;
-grant execute on function public.validate_referral_code(text,numeric) to anon,authenticated;
-
--- Replace the public order function so the referral benefit is actually applied
--- and the delivery rule is:
--- Dhaka division = ৳70; every other division = ৳130.
 create or replace function public.create_public_order(payload jsonb)
 returns jsonb
 language plpgsql
 security definer
-set search_path=public
+set search_path = public
 as $$
 declare
   new_order public.orders;
@@ -382,15 +125,16 @@ declare
   order_id uuid;
   ref public.referral_codes;
   calculated_discount numeric := 0;
-
+  normalized_division text;
+  normalized_referral text;
 begin
-  if coalesce(trim(payload->>'customer_name'),'')=''
-     or coalesce(trim(payload->>'email'),'')=''
-     or coalesce(trim(payload->>'phone'),'')=''
-     or coalesce(trim(payload->>'division'),'')=''
-     or coalesce(trim(payload->>'district'),'')=''
-     or coalesce(trim(payload->>'upazila'),'')=''
-     or coalesce(trim(payload->>'address'),'')=''
+  if coalesce(trim(payload->>'customer_name'),'') = ''
+     or coalesce(trim(payload->>'email'),'') = ''
+     or coalesce(trim(payload->>'phone'),'') = ''
+     or coalesce(trim(payload->>'division'),'') = ''
+     or coalesce(trim(payload->>'district'),'') = ''
+     or coalesce(trim(payload->>'upazila'),'') = ''
+     or coalesce(trim(payload->>'address'),'') = ''
   then
     raise exception 'Please complete all required fields.';
   end if;
@@ -405,16 +149,19 @@ begin
     raise exception 'Your order is empty.';
   end if;
 
+  normalized_division := lower(trim(payload->>'division'));
+  normalized_referral := upper(trim(coalesce(payload->>'referral_code','')));
+
   fixed_shipping := case
-    when lower(trim(payload->>'division'))='dhaka' then 70
+    when normalized_division in ('dhaka','ঢাকা') then 70
     else 130
   end;
 
-  insert into public.orders(
-    customer_name,email,phone,division,district,upazila,address,
-    referral_code,referral_discount,payment_method,shipping_charge,status
+  insert into public.orders (
+    customer_name, email, phone, division, district, upazila, address,
+    referral_code, referral_discount, payment_method, shipping_charge, status
   )
-  values(
+  values (
     trim(payload->>'customer_name'),
     lower(trim(payload->>'email')),
     trim(payload->>'phone'),
@@ -422,7 +169,7 @@ begin
     trim(payload->>'district'),
     trim(payload->>'upazila'),
     trim(payload->>'address'),
-    nullif(upper(trim(payload->>'referral_code')),''),
+    nullif(normalized_referral,''),
     0,
     'Cash on Delivery',
     fixed_shipping,
@@ -442,24 +189,25 @@ begin
       raise exception 'One of the selected products is no longer available.';
     end if;
 
-    qty := greatest(1,coalesce((item->>'quantity')::integer,1));
+    qty := greatest(1, coalesce((item->>'quantity')::integer, 1));
     item_total := product_row.price * qty;
     calculated_subtotal := calculated_subtotal + item_total;
 
-    insert into public.order_items(
-      order_id,product_id,product_name,image_url,quantity,unit_price,line_total
+    insert into public.order_items (
+      order_id, product_id, product_name, image_url,
+      quantity, unit_price, line_total
     )
-    values(
-      order_id,product_row.id,product_row.name,product_row.image_url,
-      qty,product_row.price,item_total
+    values (
+      order_id, product_row.id, product_row.name, product_row.image_url,
+      qty, product_row.price, item_total
     );
   end loop;
 
-  if nullif(upper(trim(payload->>'referral_code')),'') is not null then
+  if normalized_referral <> '' then
     select * into ref
     from public.referral_codes
-    where upper(code)=upper(trim(payload->>'referral_code'))
-      and active=true
+    where upper(code) = normalized_referral
+      and active = true
     limit 1;
 
     if not found then
@@ -479,46 +227,46 @@ begin
     end if;
 
     if calculated_subtotal < ref.min_order_amount then
-      raise exception 'Minimum order amount for this referral code is ৳% ',ref.min_order_amount;
+      raise exception 'Minimum order amount for this referral code is ৳% ', ref.min_order_amount;
     end if;
 
     calculated_discount := case
-      when ref.benefit_type='percentage'
-        then round(calculated_subtotal*ref.benefit_value/100,2)
+      when ref.benefit_type = 'percentage'
+        then round(calculated_subtotal * ref.benefit_value / 100, 2)
       else ref.benefit_value
     end;
 
     if ref.max_discount_amount is not null then
-      calculated_discount := least(calculated_discount,ref.max_discount_amount);
+      calculated_discount := least(calculated_discount, ref.max_discount_amount);
     end if;
 
-    calculated_discount := greatest(0,least(calculated_discount,calculated_subtotal));
+    calculated_discount := greatest(0, least(calculated_discount, calculated_subtotal));
 
     update public.referral_codes
-    set used_count=used_count+1,updated_at=now()
-    where id=ref.id;
+    set used_count = used_count + 1,
+        updated_at = now()
+    where id = ref.id;
   end if;
 
   update public.orders
-  set subtotal=calculated_subtotal,
-      referral_discount=calculated_discount,
-      total=greatest(0,calculated_subtotal+fixed_shipping-calculated_discount),
-      updated_at=now()
-  where id=order_id
+  set subtotal = calculated_subtotal,
+      referral_discount = calculated_discount,
+      total = greatest(0, calculated_subtotal + fixed_shipping - calculated_discount),
+      updated_at = now()
+  where id = order_id
   returning * into new_order;
 
   return jsonb_build_object(
-    'id',new_order.id,
-    'order_number',new_order.order_number,
-    'subtotal',new_order.subtotal,
-    'shipping_charge',new_order.shipping_charge,
-    'referral_discount',new_order.referral_discount,
-    'total',new_order.total,
-    'status',new_order.status
+    'id', new_order.id,
+    'order_number', new_order.order_number,
+    'subtotal', new_order.subtotal,
+    'shipping_charge', new_order.shipping_charge,
+    'referral_discount', new_order.referral_discount,
+    'total', new_order.total,
+    'status', new_order.status
   );
 end;
 $$;
 
 revoke all on function public.create_public_order(jsonb) from public;
-grant execute on function public.create_public_order(jsonb) to anon,authenticated;
-
+grant execute on function public.create_public_order(jsonb) to anon, authenticated;
