@@ -1539,23 +1539,6 @@ async function renderDetail() {
         </p>
 
         <div class="dm-box">
-
-          <strong>
-            Have a referral code?
-          </strong>
-
-          <p>
-            Enter it below so our team
-            can verify it.
-          </p>
-
-          <input
-            id="refCode"
-            type="text"
-            placeholder="Optional referral code"
-            autocomplete="off"
-          >
-
           <button
             type="button"
             class="btn btn-dark btn-full"
@@ -1563,7 +1546,6 @@ async function renderDetail() {
           >
             View Cart
           </button>
-
         </div>
 
       </div>
@@ -1577,11 +1559,6 @@ async function renderDetail() {
   const orderButton =
     document.getElementById(
       "orderBtn"
-    );
-
-  const referralInput =
-    document.getElementById(
-      "refCode"
     );
 
   function updateOrderLink() {
