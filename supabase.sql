@@ -154,7 +154,7 @@ declare
   qty integer;
   calculated_subtotal numeric := 0;
   fixed_shipping numeric := case
-    when lower(trim(coalesce(payload->>'district',''))) in ('dhaka','ঢাকা') then 70
+    when lower(trim(coalesce(payload->>'division',''))) in ('dhaka','ঢাকা') then 70
     else 130
   end;
   item_total numeric;
