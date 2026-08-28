@@ -71,6 +71,39 @@ declare new_order public.orders; item jsonb; product_row public.products; qty in
 calculated_subtotal numeric:=0; fixed_shipping numeric:=130; item_total numeric; order_id uuid;
 begin
  if coalesce(trim(payload->>'customer_name'),'')='' or coalesce(trim(payload->>'email'),'')='' or coalesce(trim(payload->>'phone'),'')='' or coalesce(trim(payload->>'division'),'')='' or coalesce(trim(payload->>'district'),'')='' or coalesce(trim(payload->>'address'),'')='' then raise exception 'Please complete all required fields.'; end if;
+ if trim(payload->>'phone') !~ '^01[3-9][0-9]{8}
+ insert into public.orders(customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,status)
+ values(trim(payload->>'customer_name'),lower(trim(payload->>'email')),trim(payload->>'phone'),trim(payload->>'division'),trim(payload->>'district'),nullif(trim(payload->>'upazila'),''),trim(payload->>'address'),nullif(trim(payload->>'referral_code'),''),'Cash on Delivery',fixed_shipping,'New')
+ returning * into new_order;
+ order_id:=new_order.id;
+ for item in select * from jsonb_array_elements(payload->'items') loop
+  select * into product_row from public.products where id=nullif(item->>'product_id','')::uuid and published=true;
+  if not found then raise exception 'One of the selected products is no longer available.'; end if;
+  qty:=greatest(1,coalesce((item->>'quantity')::integer,1)); item_total:=product_row.price*qty; calculated_subtotal:=calculated_subtotal+item_total;
+  insert into public.order_items(order_id,product_id,product_name,image_url,quantity,unit_price,line_total) values(order_id,product_row.id,product_row.name,product_row.image_url,qty,product_row.price,item_total);
+ end loop;
+ update public.orders set subtotal=calculated_subtotal,total=calculated_subtotal+fixed_shipping,updated_at=now() where id=order_id returning * into new_order;
+ return jsonb_build_object('id',new_order.id,'order_number',new_order.order_number,'subtotal',new_order.subtotal,'shipping_charge',new_order.shipping_charge,'total',new_order.total,'status',new_order.status);
+end; $$;
+revoke all on function public.create_public_order(jsonb) from public;
+grant execute on function public.create_public_order(jsonb) to anon,authenticated;
+create index if not exists orders_created_at_idx on public.orders(created_at desc);
+create index if not exists orders_status_idx on public.orders(status);
+create index if not exists order_items_order_id_idx on public.order_items(order_id);
+
+
+-- Update existing storefront copy for the automated checkout flow.
+update public.site_settings set
+ hero_eyebrow='ট্রেন্ডিং পণ্য • সহজ অনলাইন অর্ডার',
+ hero_description='দরকারি গ্যাজেট, ফ্যাশন ফাইন্ড, হোম এসেনশিয়াল এবং আরও অনেক কিছু। পণ্য পছন্দ করুন, কার্টে যোগ করুন এবং Cash on Delivery-তে অর্ডার করুন।',
+ step2_title='কার্টে যোগ করুন',
+ step2_body='কার্টে পণ্য যোগ করুন, তারপর checkout-এ আপনার তথ্য দিন।',
+ step3_title='Checkout সম্পন্ন করুন',
+ step3_body='অর্ডার পাওয়ার পর আমাদের টিম ফোনে তথ্য যাচাই করে ডেলিভারি নিশ্চিত করবে।',
+ referral_body='Checkout-এর সময় referral code দিন। আপাতত আমরা শুধু কোডটি অর্ডারের সাথে সংরক্ষণ করছি।',
+ referral_button_text='Shop & Checkout'
+where id=1;
+ then raise exception 'Please enter a valid 11-digit Bangladesh mobile number (01XXXXXXXXX).'; end if;
  if jsonb_typeof(payload->'items')<>'array' or jsonb_array_length(payload->'items')<1 then raise exception 'Your order is empty.'; end if;
  insert into public.orders(customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,status)
  values(trim(payload->>'customer_name'),lower(trim(payload->>'email')),trim(payload->>'phone'),trim(payload->>'division'),trim(payload->>'district'),nullif(trim(payload->>'upazila'),''),trim(payload->>'address'),nullif(trim(payload->>'referral_code'),''),'Cash on Delivery',fixed_shipping,'New')
