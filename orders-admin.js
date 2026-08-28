@@ -82,8 +82,12 @@ async function sendToBusinessKoro(id,force=false){
  if(!force&&!confirm('Send '+order.order_number+' to Business Koro now? This will submit the order for fulfillment.'))return;
  if(button){button.disabled=true;button.textContent='Sending…';}
  try{
+   const sessionResult=await sb.auth.getSession();
+   const token=sessionResult?.data?.session?.access_token;
+   if(!token)throw new Error('Your admin session has expired. Please log in again.');
    const response=await fetch('/api/business-koro-order',{
-     method:'POST',headers:{'Content-Type':'application/json'},
+     method:'POST',
+     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
      body:JSON.stringify({orderId:id,force})
    });
    const data=await response.json().catch(()=>({}));
