@@ -43,15 +43,23 @@ function locationLabel(x){
   const en=String(x?.name?.en||'').trim(),local=String(x?.name?.local||'').trim();
   return en&&local&&en!==local?en+' — '+local:(en||local);
 }
-function fillDatalist(listId,records){
-  const list=$(listId);
-  if(!list)return;
-  list.innerHTML=(Array.isArray(records)?records:[]).map(x=>{
-    const en=String(x?.name?.en||'').trim();
-    const local=String(x?.name?.local||'').trim();
-    const label=en&&local&&en!==local?en+' — '+local:(en||local);
-    return '<option value="'+esc(en||local)+'">'+esc(label)+'</option>';
+function fillSelect(selectId,records,placeholder){
+  const select=$(selectId);if(!select)return;
+  const current=select.value;
+  select.innerHTML='<option value="">'+esc(placeholder)+'</option>'+(Array.isArray(records)?records:[]).map(x=>{
+    const en=String(x?.name?.en||'').trim(),local=String(x?.name?.local||'').trim();
+    const value=en||local,label=en&&local&&en!==local?en+' — '+local:(en||local);
+    return '<option value="'+esc(value)+'">'+esc(label)+'</option>';
   }).join('');
+  if([...select.options].some(o=>o.value===current))select.value=current;
+}
+function filterRecords(records,query){
+  const q=normalizeLocation(query);
+  if(!q)return records;
+  return records.filter(x=>{
+    const en=normalizeLocation(x?.name?.en),local=normalizeLocation(x?.name?.local);
+    return en.includes(q)||local.includes(q);
+  });
 }
 function normalizeLocation(value){
   return String(value||'').trim().toLowerCase().replace(/\s+/g,' ');
@@ -64,11 +72,11 @@ function findDistrict(value){
   const q=normalizeLocation(value);
   return districtRecords().find(x=>normalizeLocation(x?.name?.en)===q||normalizeLocation(x?.name?.local)===q);
 }
-function fillDistrictOptions(){
-  fillDatalist('districtOptions',districtRecords());
+function fillDistrictOptions(query=''){
+  fillSelect('district',filterRecords(districtRecords(),query),'Select District');
 }
-function fillUpazilaOptions(){
-  fillDatalist('upazilaOptions',upazilaRecords());
+function fillUpazilaOptions(query=''){
+  fillSelect('upazila',filterRecords(upazilaRecords(),query),'Select Upazila / Thana');
 }
 async function loadLocations(){
   try{
@@ -80,7 +88,7 @@ async function loadLocations(){
     const totalDistricts=divisions().reduce((n,d)=>n+(Array.isArray(d.district)?d.district.length:0),0);
     const totalUpazilas=divisions().reduce((n,d)=>n+(Array.isArray(d.district)?d.district.reduce((m,x)=>m+(Array.isArray(x.upazila)?x.upazila.length:0),0):0),0);
     console.info('Bangladesh locations loaded:',divisions().length,'divisions,',totalDistricts,'districts,',totalUpazilas,'upazilas/thanas');
-    fillDatalist('divisionOptions',divisions());
+    fillSelect('division',divisions(),'Select Division');
   }catch(e){
     console.error(e);
     msg('Could not load Bangladesh location data. Please refresh the page.',true);
@@ -88,17 +96,21 @@ async function loadLocations(){
 }
 function onDivisionChange(){
   const selected=$('division')?.value||'';
-  fillDistrictOptions();
+  fillDistrictOptions('');
   $('district').disabled=!selected;
+  $('districtSearch').disabled=!selected;
+  $('upazila').innerHTML='<option value="">Select Upazila / Thana</option>';
   $('upazila').value='';
   $('upazila').disabled=true;
-  fillDatalist('upazilaOptions',[]);
+  $('upazilaSearch').value='';
+  $('upazilaSearch').disabled=true;
   render();
 }
 function onDistrictChange(){
   const selected=$('district')?.value||'';
-  fillUpazilaOptions();
+  fillUpazilaOptions('');
   $('upazila').disabled=!selected;
+  $('upazilaSearch').disabled=!selected;
   render();
 }
 function formData(){
@@ -237,8 +249,11 @@ async function submit(e){
 }
 document.addEventListener('DOMContentLoaded',async()=>{
   $('checkoutForm')?.addEventListener('submit',submit);
-  $('division')?.addEventListener('input',onDivisionChange);
-  $('district')?.addEventListener('input',onDistrictChange);
+  $('division')?.addEventListener('change',onDivisionChange);
+  $('district')?.addEventListener('change',onDistrictChange);
+  $('divisionSearch')?.addEventListener('input',e=>fillSelect('division',filterRecords(divisions(),e.target.value),'Select Division'));
+  $('districtSearch')?.addEventListener('input',e=>fillDistrictOptions(e.target.value));
+  $('upazilaSearch')?.addEventListener('input',e=>fillUpazilaOptions(e.target.value));
   $('applyReferralBtn')?.addEventListener('click',applyReferral);
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
   await loadLocations();await loadSite();await hydrate();
