@@ -1556,14 +1556,13 @@ async function renderDetail() {
             autocomplete="off"
           >
 
-          <a
+          <button
+            type="button"
             class="btn btn-dark btn-full"
-            target="_blank"
-            rel="noopener"
             id="orderBtn"
           >
-            DM to Order
-          </a>
+            View Cart
+          </button>
 
         </div>
 
@@ -1586,52 +1585,22 @@ async function renderDetail() {
     );
 
   function updateOrderLink() {
-    const referral =
-      referralInput?.value
-        ?.trim() || "";
-
-    let message =
-      `I want to order: ${
-        product.name
-      } | Price: ${
-        currency
-      }${product.price}`;
-
-    if (referral) {
-      message +=
-        ` | Referral code: ${referral}`;
-    }
-
-    /*
-      Store the message globally for the social chooser.
-      WhatsApp uses it; Instagram/Facebook use their Admin
-      Panel destination directly.
-    */
-    window.__grabzoneOrderMessage = message;
-
-    /*
-      Keep a harmless href for accessibility/fallback, but
-      the click chooser intercepts the actual navigation.
-    */
-    orderButton.href = "#";
+    if (orderButton) orderButton.textContent = "View Cart";
   }
 
   if (orderButton) {
     updateOrderLink();
+    orderButton.addEventListener("click", event => {
+      event.preventDefault();
+      if (window.GrabZoneCart?.open) {
+        window.GrabZoneCart.open();
+      } else {
+        window.location.href = "index.html";
+      }
+    });
   }
 
-  if (referralInput) {
-    referralInput.addEventListener(
-      "input",
-      updateOrderLink
-    );
-  }
 
-  /*
-    Product-page DM button is rendered after the initial
-    DOM-ready setup, so bind it now.
-  */
-  setupDMChooser();
 }
 
 /* =========================================================
