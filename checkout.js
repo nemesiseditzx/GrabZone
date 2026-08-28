@@ -72,11 +72,11 @@ function findDistrict(value){
   const q=normalizeLocation(value);
   return districtRecords().find(x=>normalizeLocation(x?.name?.en)===q||normalizeLocation(x?.name?.local)===q);
 }
-function fillDistrictOptions(query=''){
-  fillSelect('district',filterRecords(districtRecords(),query),'Select District');
+function fillDistrictOptions(){
+  fillSelect('district',districtRecords(),'Select District');
 }
-function fillUpazilaOptions(query=''){
-  fillSelect('upazila',filterRecords(upazilaRecords(),query),'Select Upazila / Thana');
+function fillUpazilaOptions(){
+  fillSelect('upazila',upazilaRecords(),'Select Upazila / Thana');
 }
 async function loadLocations(){
   try{
@@ -96,7 +96,7 @@ async function loadLocations(){
 }
 function onDivisionChange(){
   const selected=$('division')?.value||'';
-  fillDistrictOptions('');
+  fillDistrictOptions();
   $('district').disabled=!selected;
   $('districtSearch').disabled=!selected;
   $('upazila').innerHTML='<option value="">Select Upazila / Thana</option>';
@@ -108,7 +108,7 @@ function onDivisionChange(){
 }
 function onDistrictChange(){
   const selected=$('district')?.value||'';
-  fillUpazilaOptions('');
+  fillUpazilaOptions();
   $('upazila').disabled=!selected;
   $('upazilaSearch').disabled=!selected;
   render();
@@ -251,9 +251,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('checkoutForm')?.addEventListener('submit',submit);
   $('division')?.addEventListener('change',onDivisionChange);
   $('district')?.addEventListener('change',onDistrictChange);
-  $('divisionSearch')?.addEventListener('input',e=>fillSelect('division',filterRecords(divisions(),e.target.value),'Select Division'));
-  $('districtSearch')?.addEventListener('input',e=>fillDistrictOptions(e.target.value));
-  $('upazilaSearch')?.addEventListener('input',e=>fillUpazilaOptions(e.target.value));
   $('applyReferralBtn')?.addEventListener('click',applyReferral);
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
   await loadLocations();await loadSite();await hydrate();
