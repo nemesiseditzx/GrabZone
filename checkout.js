@@ -19,7 +19,7 @@ const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const getSource=()=>{const buy=read(BUY_NOW_KEY,null);return Array.isArray(buy)&&buy.length?buy:read(CART_KEY,[])};
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
-const shippingForDistrict=value=>String(value||'').trim().toLowerCase()==='dhaka'?dhakaShippingCharge:outsideDhakaShippingCharge;
+const shippingForDivision=value=>String(value||'').trim().toLowerCase()==='dhaka'?dhakaShippingCharge:outsideDhakaShippingCharge;
 
 function divisions(){
   return locationTree?.data||[];
@@ -36,10 +36,11 @@ function locationLabel(x){
   if(!x)return '';
   return x.name?.en===x.name?.local?x.name.en:`${x.name?.en||''} — ${x.name?.local||''}`;
 }
-function fillSelect(el,records,placeholder){
+function fillSelect(el,records,placeholder,query=''){
   if(!el)return;
-  el.innerHTML='<option value="">'+placeholder+'</option>'+
-    records.map(x=>`<option value="${esc(x.name?.en||'')}">${esc(locationLabel(x))}</option>`).join('');
+  const q=String(query||'').trim().toLowerCase();
+  const filtered=!q?records:records.filter(x=>String(x.name?.en||'').toLowerCase().includes(q)||String(x.name?.local||'').toLowerCase().includes(q));
+  el.innerHTML='<option value="">'+placeholder+'</option>'+filtered.map(x=>'<option value="'+esc(x.name?.en||'')+'">'+esc(locationLabel(x))+'</option>').join('');
 }
 async function loadLocations(){
   try{
@@ -54,15 +55,23 @@ async function loadLocations(){
 }
 function onDivisionChange(){
   fillSelect($('district'),districtRecords(),'Select District');
-  $('district').disabled=false;
+  $('district').disabled=false;$('districtSearch').disabled=false;
   fillSelect($('upazila'),[],'Select Upazila / Thana');
-  $('upazila').disabled=true;
+  $('upazila').disabled=true;$('upazilaSearch').disabled=true;$('upazilaSearch').value='';
   render();
 }
 function onDistrictChange(){
   fillSelect($('upazila'),upazilaRecords(),'Select Upazila / Thana');
-  $('upazila').disabled=false;
+  $('upazila').disabled=false;$('upazilaSearch').disabled=false;
   render();
+}
+function bindLocationSearch(inputId,selectId,getRecords,placeholder){
+  const input=$(inputId),select=$(selectId);if(!input||!select)return;
+  input.addEventListener('input',()=>{
+    const selected=select.value;
+    fillSelect(select,getRecords(),placeholder,input.value);
+    if(selected&&[...select.options].some(o=>o.value===selected))select.value=selected;
+  });
 }
 function formData(){
   return {
@@ -103,7 +112,7 @@ function render(){
     <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
-  const sub=subtotal(),shipping=shippingForDistrict($('district')?.value||''),discount=Number(referralState.discount||0);
+  const sub=subtotal(),shipping=shippingForDivision($('division')?.value||''),discount=Number(referralState.discount||0);
   $('checkoutSubtotal').textContent=money(sub);
   $('checkoutShipping').textContent=money(shipping);
   $('checkoutDiscount').textContent='-'+money(discount);
@@ -174,7 +183,7 @@ async function submit(e){
   }
   d.phone=d.phone.replace(/\D/g,'');
   const b=$('placeOrderBtn');b.disabled=true;b.textContent='Placing order…';msg('');
-  const shipping=shippingForDistrict(d.district);
+  const shipping=shippingForDivision(d.division);
   const payload={
     customer_name:d.customer_name,email:d.email,phone:d.phone,division:d.division,
     district:d.district,upazila:d.upazila,address:d.address,
@@ -204,6 +213,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('district')?.addEventListener('change',onDistrictChange);
   $('applyReferralBtn')?.addEventListener('click',applyReferral);
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
-  await loadLocations();await loadSite();await hydrate();
+  await loadLocations();bindLocationSearch('divisionSearch','division',divisions,'Select Division');bindLocationSearch('districtSearch','district',districtRecords,'Select District');bindLocationSearch('upazilaSearch','upazila',upazilaRecords,'Select Upazila / Thana');await loadSite();await hydrate();
 });
 })();
