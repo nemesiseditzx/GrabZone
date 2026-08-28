@@ -90,3 +90,16 @@ grant execute on function public.create_public_order(jsonb) to anon,authenticate
 create index if not exists orders_created_at_idx on public.orders(created_at desc);
 create index if not exists orders_status_idx on public.orders(status);
 create index if not exists order_items_order_id_idx on public.order_items(order_id);
+
+
+-- Update existing storefront copy for the automated checkout flow.
+update public.site_settings set
+ hero_eyebrow='ট্রেন্ডিং পণ্য • সহজ অনলাইন অর্ডার',
+ hero_description='দরকারি গ্যাজেট, ফ্যাশন ফাইন্ড, হোম এসেনশিয়াল এবং আরও অনেক কিছু। পণ্য পছন্দ করুন, কার্টে যোগ করুন এবং Cash on Delivery-তে অর্ডার করুন।',
+ step2_title='কার্টে যোগ করুন',
+ step2_body='কার্টে পণ্য যোগ করুন, তারপর checkout-এ আপনার তথ্য দিন।',
+ step3_title='Checkout সম্পন্ন করুন',
+ step3_body='অর্ডার পাওয়ার পর আমাদের টিম ফোনে তথ্য যাচাই করে ডেলিভারি নিশ্চিত করবে।',
+ referral_body='Checkout-এর সময় referral code দিন। আপাতত আমরা শুধু কোডটি অর্ডারের সাথে সংরক্ষণ করছি।',
+ referral_button_text='Shop & Checkout'
+where id=1;
