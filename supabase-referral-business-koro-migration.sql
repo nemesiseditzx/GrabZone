@@ -130,6 +130,8 @@ declare
   discount numeric := 0;
   item_total numeric;
   order_id uuid;
+  referral_id uuid := null;
+  referral_admin text := null;
   referral_code_value text := nullif(upper(trim(payload->>'referral_code')),'');
 begin
   if coalesce(trim(payload->>'customer_name'),'')=''
@@ -231,15 +233,18 @@ begin
 
     discount := greatest(0,least(discount,calculated_subtotal));
 
+    referral_id := referral.id;
+    referral_admin := referral.admin_name;
+
     update public.referral_codes
     set used_count=used_count+1,updated_at=now()
-    where id=referral.id;
+    where id=referral_id;
   end if;
 
   update public.orders
   set subtotal=calculated_subtotal,
       discount_amount=discount,
-      referral_admin_name=case when referral.id is not null then referral.admin_name else null end,
+      referral_admin_name=referral_admin,
       total=greatest(0,calculated_subtotal+fixed_shipping-discount),
       updated_at=now()
   where id=order_id
