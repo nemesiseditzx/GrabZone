@@ -263,6 +263,36 @@ body.gz-gallery-dragging-active{
 .gz-sortable-drag{cursor:grabbing !important}
 </style>
 
+
+<style id="gz-final-gallery-drag-css">
+.gz-gallery-item{
+  touch-action:none !important;
+  user-select:none !important;
+  -webkit-user-select:none !important;
+  -webkit-touch-callout:none !important;
+  cursor:grab;
+}
+.gz-gallery-item:active{cursor:grabbing}
+.gz-gallery-item img{
+  -webkit-user-drag:none !important;
+  user-select:none !important;
+  pointer-events:none;
+}
+.gz-gallery-item.gz-dragging{
+  opacity:.55 !important;
+  transform:scale(.98);
+  z-index:20;
+}
+.gz-gallery-item.gz-drag-over{
+  outline:3px dashed #111 !important;
+  outline-offset:3px;
+}
+body.gz-gallery-dragging-active{
+  user-select:none !important;
+  -webkit-user-select:none !important;
+}
+</style>
+
 </head>
 
 <body>
@@ -1891,7 +1921,6 @@ body.gz-gallery-dragging-active{
 <script src="config.js"></script>
 
 <script src="admin.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 
 
 <script>
@@ -2097,88 +2126,158 @@ function gzRenderGallery(){
 }
 
 let gzGallerySortable = null;
+let gzGalleryPointer = null;
 
 function gzInitGallerySortable(){
   const el = document.getElementById("gzGallery");
-
-  if(!el || typeof Sortable === "undefined"){
-    return;
-  }
+  if(!el) return;
 
   if(gzGallerySortable){
-    try{
-      gzGallerySortable.destroy();
-    }catch(e){}
+    try{ gzGallerySortable.destroy(); }catch(e){}
     gzGallerySortable = null;
   }
 
-  gzGallerySortable = new Sortable(el,{
-    animation:160,
-    ghostClass:"gz-sortable-ghost",
-    chosenClass:"gz-sortable-chosen",
-    dragClass:"gz-sortable-drag",
-    forceFallback:false,
-    delayOnTouchOnly:true,
-    delay:120,
-    touchStartThreshold:5,
-    fallbackTolerance:5,
-    direction:"horizontal",
-    filter:"button,input,textarea,select,a",
-    preventOnFilter:false,
-
-    onStart:function(evt){
-      gzDragIndex = evt.oldIndex;
-      document.body.classList.add(
-        "gz-gallery-dragging-active"
-      );
-    },
-
-    onMove:function(evt){
-      return true;
-    },
-
-    onEnd:function(evt){
-      const oldIndex = evt.oldIndex;
-      const newIndex = evt.newIndex;
-
-      if(
-        oldIndex === undefined ||
-        newIndex === undefined ||
-        oldIndex === newIndex
-      ){
-        gzDragIndex = null;
-        document.body.classList.remove(
-          "gz-gallery-dragging-active"
-        );
-        return;
-      }
-
-      const moved =
-        gzEditGallery.splice(
-          oldIndex,
-          1
-        )[0];
-
-      gzEditGallery.splice(
-        newIndex,
-        0,
-        moved
-      );
-
-      gzDragIndex = null;
-
-      document.body.classList.remove(
-        "gz-gallery-dragging-active"
-      );
-
-      /*
-       * Do not render during dragging.
-       * Only re-render after the drop so the new order
-       * remains visible and can be saved.
-       */
-      gzRenderGallery();
-    }
+  el.querySelectorAll(".gz-gallery-item").forEach((item,index)=>{
+    item.onpointerdown = function(event){
+      gzGalleryPointerDown(index,event);
+    };
   });
+}
+
+function gzGalleryPointerDown(index,event){
+  if(event.button !== undefined && event.button !== 0) return;
+
+  const target = event.target;
+  if(target?.closest?.("button,input,textarea,select,a")) return;
+
+  const item = event.currentTarget || document.querySelector(
+    `.gz-gallery-item[data-index="${index}"]`
+  );
+  if(!item || !gzEditGallery[index]) return;
+
+  event.preventDefault();
+
+  gzGalleryPointer = {
+    item,
+    index,
+    id: gzGetDragId(gzEditGallery[index],index),
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    active: false
+  };
+
+  try{ item.setPointerCapture(event.pointerId); }catch(e){}
+
+  item.addEventListener("pointermove",gzGalleryPointerMove);
+  item.addEventListener("pointerup",gzGalleryPointerUp,{once:true});
+  item.addEventListener("pointercancel",gzGalleryPointerCancel,{once:true});
+}
+
+function gzGalleryPointerMove(event){
+  if(!gzGalleryPointer) return;
+
+  const dx = event.clientX - gzGalleryPointer.startX;
+  const dy = event.clientY - gzGalleryPointer.startY;
+
+  if(!gzGalleryPointer.active && Math.hypot(dx,dy) < 7) return;
+
+  gzGalleryPointer.active = true;
+  event.preventDefault();
+
+  const dragged = gzGalleryPointer.item;
+  dragged.classList.add("gz-dragging");
+  document.body.classList.add("gz-gallery-dragging-active");
+
+  const under = document.elementFromPoint(event.clientX,event.clientY);
+  const target = under?.closest?.(".gz-gallery-item");
+
+  if(!target || target === dragged) return;
+
+  const targetId = target.dataset.gzDragId;
+  const from = gzEditGallery.findIndex(
+    img => gzGetDragId(img,0) === gzGalleryPointer.id
+  );
+  const to = gzEditGallery.findIndex(
+    img => gzGetDragId(img,0) === targetId
+  );
+
+  if(from < 0 || to < 0 || from === to) return;
+
+  const rect = target.getBoundingClientRect();
+  const before =
+    event.clientX < rect.left + rect.width / 2;
+
+  const moved = gzEditGallery.splice(from,1)[0];
+
+  let insertIndex;
+  if(from < to){
+    insertIndex = before ? to - 1 : to;
+  }else{
+    insertIndex = before ? to : to + 1;
+  }
+
+  insertIndex = Math.max(
+    0,
+    Math.min(insertIndex,gzEditGallery.length)
+  );
+
+  gzEditGallery.splice(insertIndex,0,moved);
+
+  if(before){
+    target.parentNode.insertBefore(dragged,target);
+  }else{
+    target.parentNode.insertBefore(dragged,target.nextSibling);
+  }
+
+  gzGalleryPointer.index = insertIndex;
+
+  document.querySelectorAll(".gz-gallery-item").forEach(x=>{
+    x.classList.remove("gz-drag-over");
+  });
+  target.classList.add("gz-drag-over");
+}
+
+function gzGalleryPointerUp(event){
+  if(!gzGalleryPointer) return;
+
+  const item = gzGalleryPointer.item;
+  item.removeEventListener("pointermove",gzGalleryPointerMove);
+
+  try{ item.releasePointerCapture(event.pointerId); }catch(e){}
+
+  const didMove = gzGalleryPointer.active;
+
+  item.classList.remove("gz-dragging");
+  document.body.classList.remove("gz-gallery-dragging-active");
+
+  document.querySelectorAll(".gz-gallery-item").forEach(x=>{
+    x.classList.remove("gz-drag-over");
+  });
+
+  gzGalleryPointer = null;
+  gzDragIndex = null;
+
+  if(didMove){
+    gzRenderGallery();
+  }
+}
+
+function gzGalleryPointerCancel(){
+  if(!gzGalleryPointer) return;
+
+  const item = gzGalleryPointer.item;
+  item.removeEventListener("pointermove",gzGalleryPointerMove);
+
+  item.classList.remove("gz-dragging");
+  document.body.classList.remove("gz-gallery-dragging-active");
+
+  document.querySelectorAll(".gz-gallery-item").forEach(x=>{
+    x.classList.remove("gz-drag-over");
+  });
+
+  gzGalleryPointer = null;
+  gzDragIndex = null;
 }
 
 function gzGetDragId(img,index){
