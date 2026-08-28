@@ -26,7 +26,7 @@ function inject(){
  @media(max-width:760px){.gz-order-filters,.gz-order-grid{grid-template-columns:1fr}.gz-order-full{grid-column:auto}.gz-order-editor{padding:18px}.gz-item-edit{grid-template-columns:1fr 65px 95px 1fr 36px}}
  `; document.head.appendChild(style);
 
- document.body.insertAdjacentHTML('beforeend',`<div id="gzOrderModal" class="gz-order-modal"><div class="gz-order-editor"><button id="gzOrderClose" class="gz-order-close">×</button><h2 id="gzOrderEditorTitle">Order</h2><div id="gzOrderEditorSub" class="muted"></div><div id="gzOrderEditorBody"></div><div id="gzOrderEditorMsg" class="gz-order-message"></div><div class="gz-order-actions"><button class="ghost" id="gzOrderCancel">Close</button><button class="primary" id="gzOrderSave">Save changes</button></div></div></div>`);
+ document.body.insertAdjacentHTML('beforeend',`<div id="gzOrderModal" class="gz-order-modal"><div class="gz-order-editor"><button id="gzOrderClose" class="gz-order-close">×</button><h2 id="gzOrderEditorTitle">Order</h2><div id="gzOrderEditorSub" class="muted"></div><div id="gzOrderEditorBody"></div><div id="gzOrderEditorMsg" class="gz-order-message"></div><div class="gz-order-actions"><button class="ghost" id="gzOrderCancel">Close</button><button class="ghost" id="gzOrderSendBk">Send to Business Koro</button><button class="primary" id="gzOrderSave">Save changes</button></div></div></div>`);
 
  $('gzOrdersRefresh').onclick=loadOrders;
  $('gzOrderSearch').oninput=renderOrders;
@@ -35,6 +35,7 @@ function inject(){
  $('gzOrderCancel').onclick=closeEditor;
  $('gzOrderModal').onclick=e=>{if(e.target.id==='gzOrderModal')closeEditor()};
  $('gzOrderSave').onclick=saveEditor;
+ $('gzOrderSendBk').onclick=()=>current&&sendToBusinessKoro(current.id);
 }
 
 async function loadOrders(){
@@ -59,11 +60,12 @@ function renderOrders(){
  <td><b>${money(o.total)}</b></td>
  <td><select class="gz-status-select" data-status-order="${esc(o.id)}" aria-label="Change order status">${statuses.map(s=>`<option value="${esc(s)}" ${s===o.status?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
  <td>${o.created_at?new Date(o.created_at).toLocaleString():'—'}</td>
- <td><div class="gz-order-actions-cell"><button class="gz-order-action edit" data-edit-order="${esc(o.id)}">Edit</button><button class="gz-order-action delete" data-delete-order="${esc(o.id)}">Delete</button></div></td>
+ <td><div class="gz-order-actions-cell"><button class="gz-order-action edit" data-edit-order="${esc(o.id)}">Edit</button><button class="gz-order-action" data-send-bk="${esc(o.id)}">${o.business_koro_sent_at?'Sent ✓':'Send to Business Koro'}</button><button class="gz-order-action delete" data-delete-order="${esc(o.id)}">Delete</button></div></td>
  </tr>`).join('')}</tbody></table></div>`;
  panel.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.order));
  panel.querySelectorAll('[data-edit-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.editOrder));
  panel.querySelectorAll('[data-delete-order]').forEach(b=>b.onclick=()=>deleteOrder(b.dataset.deleteOrder));
+ panel.querySelectorAll('[data-send-bk]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.sendBk));
  panel.querySelectorAll('[data-status-order]').forEach(s=>s.onchange=()=>changeStatus(s.dataset.statusOrder,s.value));
 }
 
@@ -72,6 +74,31 @@ async function changeStatus(id,status){
  const {error}=await sb.from('orders').update({status,updated_at:new Date().toISOString()}).eq('id',id);
  if(error){alert('Could not update status: '+error.message);renderOrders();return}
  order.status=status; renderOrders();
+}
+
+async function sendToBusinessKoro(id,force=false){
+ const order=orders.find(x=>x.id===id);if(!order)return;
+ const button=[...document.querySelectorAll('[data-send-bk]')].find(x=>x.dataset.sendBk===id);
+ if(!force&&!confirm('Send '+order.order_number+' to Business Koro now? This will submit the order for fulfillment.'))return;
+ if(button){button.disabled=true;button.textContent='Sending…';}
+ try{
+   const response=await fetch('/api/business-koro-order',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({orderId:id,force})
+   });
+   const data=await response.json().catch(()=>({}));
+   if(response.status===409&&!force){
+     if(confirm((data.error||'This order was already submitted.')+'\n\nSend it again anyway?')) return sendToBusinessKoro(id,true);
+     return;
+   }
+   if(!response.ok)throw new Error(data.error||'Business Koro submission failed.');
+   alert('✓ '+order.order_number+' sent to Business Koro. '+(data.submitted||0)+' supplier order(s) created.');
+   await loadOrders();
+ }catch(e){
+   alert('Business Koro: '+e.message);
+ }finally{
+   if(button){button.disabled=false;button.textContent='Send to Business Koro';}
+ }
 }
 
 async function deleteOrder(id){
