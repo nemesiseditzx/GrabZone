@@ -364,8 +364,7 @@ grant execute on function public.validate_referral_code(text,numeric) to anon,au
 
 -- Replace the public order function so the referral benefit is actually applied
 -- and the delivery rule is:
--- Dhaka division + one of the configured Dhaka metro thanas = ৳70
--- everything else = ৳130.
+-- Dhaka division = ৳70; every other division = ৳130.
 create or replace function public.create_public_order(payload jsonb)
 returns jsonb
 language plpgsql
@@ -383,17 +382,7 @@ declare
   order_id uuid;
   ref public.referral_codes;
   calculated_discount numeric := 0;
-  metro text[] := array[
-    'Adabor','Dhaka Airport','Badda','Banani','Bangshal','Bhashantek',
-    'Dhaka Cantonment','Dhaka Chackbazar','Dakshin Khan','Darus-Salam','Demra',
-    'Dhanmondi','Gandaria','Gulshan','Hatirjheel','Hazaribagh','Jatrabari',
-    'Kadamtoli','Kafrul','Kalabagan','Kamrangirchar','Khilkhet','Khilgaon',
-    'Kotwali','Lalbagh','Mirpur Model','Mohammadpur','Motijheel','Mugda',
-    'Dhaka New Market','Pallabi','Paltan Model','Ramna Model','Rampura',
-    'Rupnagar','Sabujbag','Shah Ali','Shahbag','Shahjahanpur',
-    'Sher-e-Bangla Nagar','Shyampur','Sutrapur','Tejgaon','Tejgaon Industrial',
-    'Turag','Uttar Khan','Vatara','Uttara East','Uttara West','Wari'
-  ];
+
 begin
   if coalesce(trim(payload->>'customer_name'),'')=''
      or coalesce(trim(payload->>'email'),'')=''
@@ -417,9 +406,7 @@ begin
   end if;
 
   fixed_shipping := case
-    when lower(trim(payload->>'division'))='dhaka'
-      and trim(payload->>'upazila') = any(metro)
-    then 70
+    when lower(trim(payload->>'division'))='dhaka' then 70
     else 130
   end;
 
