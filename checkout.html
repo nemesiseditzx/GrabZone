@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Checkout — GRABZONE</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="checkout.css">
+</head>
+<body>
+<header class="checkout-header">
+  <a href="index.html" class="checkout-brand">
+    <img id="checkoutLogo" src="favicon.png" alt="GrabZone">
+    <span>GRABZONE</span>
+  </a>
+  <a href="index.html" class="back-link">← Continue shopping</a>
+</header>
+
+<main class="checkout-shell">
+  <section class="checkout-heading">
+    <span class="eyebrow">SECURE CHECKOUT</span>
+    <h1>Complete your order.</h1>
+    <p>Enter your delivery details. No advance payment is required.</p>
+  </section>
+
+  <div class="checkout-layout">
+    <section class="checkout-card">
+      <div class="card-heading">
+        <h2>Delivery Address</h2>
+        <span>All fields marked * are required</span>
+      </div>
+
+      <div id="checkoutItems" class="checkout-items"></div>
+      <div id="checkoutEmpty" class="checkout-empty" hidden>
+        <h3>Your cart is empty.</h3>
+        <p>Add a product before checking out.</p>
+        <a href="index.html" class="dark-btn">Browse products</a>
+      </div>
+
+      <form id="checkoutForm" novalidate>
+        <div class="field">
+          <label for="customerName">Your Name <i>*</i></label>
+          <input id="customerName" name="customer_name" type="text" placeholder="Your full name" autocomplete="name" required>
+        </div>
+
+        <div class="field">
+          <label for="customerPhone">Mobile Number <i>*</i></label>
+          <input id="customerPhone" name="phone" type="tel" placeholder="Your phone number" autocomplete="tel" required>
+        </div>
+
+        <div class="field">
+          <label for="customerEmail">Email Address <i>*</i></label>
+          <input id="customerEmail" name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+          <small>We'll send your order number and order updates to this email.</small>
+        </div>
+
+        <div class="two-col">
+          <div class="field">
+            <label for="division">Division <i>*</i></label>
+            <input id="division" name="division" type="text" placeholder="Select Division" required>
+          </div>
+          <div class="field">
+            <label for="district">District <i>*</i></label>
+            <input id="district" name="district" type="text" placeholder="Select District" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="upazila">Upazila / Thana</label>
+          <input id="upazila" name="upazila" type="text" placeholder="Upazila / Thana">
+        </div>
+
+        <div class="field">
+          <label for="address">Street Address <i>*</i></label>
+          <textarea id="address" name="address" rows="4" placeholder="House #, Road, Area..." required></textarea>
+        </div>
+
+        <div class="field">
+          <label for="referralCode">Referral Code <span>(Optional)</span></label>
+          <input id="referralCode" name="referral_code" type="text" placeholder="Enter referral code">
+          <small>We only record the code for now. Any applicable benefit will be handled by our team.</small>
+        </div>
+
+        <div class="payment-box">
+          <div class="payment-icon">✓</div>
+          <div>
+            <strong>Cash on Delivery</strong>
+            <p>Place your order now. Pay only when you receive your product.</p>
+          </div>
+        </div>
+
+        <div id="checkoutMessage" class="checkout-message" aria-live="polite"></div>
+
+        <button id="placeOrderBtn" class="confirm-btn" type="submit">
+          ✓ Confirm Order
+        </button>
+      </form>
+
+      <div id="checkoutSuccess" class="success-box" hidden>
+        <div class="success-mark">✓</div>
+        <span class="eyebrow">ORDER RECEIVED</span>
+        <h2>Thank you for your order!</h2>
+        <p>Your order has been successfully placed. Our team will call you to verify the details before processing it.</p>
+        <div class="order-number-label">YOUR ORDER NUMBER</div>
+        <div id="successOrderNumber" class="order-number">GZ-0001</div>
+        <p id="successEmailNote" class="success-email"></p>
+        <a href="index.html" class="dark-btn">Continue Shopping</a>
+      </div>
+    </section>
+
+    <aside class="summary-card">
+      <div class="summary-title">Delivery Details</div>
+      <div id="checkoutItemsSide" class="summary-products"></div>
+      <div class="summary-line"><span>Subtotal</span><b id="checkoutSubtotal">৳0</b></div>
+      <div class="summary-line"><span>Shipping Charge</span><b id="checkoutShipping">৳0</b></div>
+      <div class="summary-total"><span>Total Bill</span><b id="checkoutTotal">৳0</b></div>
+      <div class="security-note">🛡️ Your information is used only to process and verify your GrabZone order.</div>
+    </aside>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="checkout.js"></script>
+</body>
+</html>
