@@ -104,7 +104,7 @@ begin
         when r.benefit_type='percentage'
           then r.benefit_value::text||'% off'
         else
-          then '৳'||r.benefit_value::text||' off'
+          '৳'||r.benefit_value::text||' off'
       end,
     'admin_name',r.admin_name
   );
