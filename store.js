@@ -592,22 +592,12 @@ function bindDMChooser(id) {
 }
 
 function setupDMChooser() {
-  ensureDMChooser();
-
   /*
-    Header button
+    GrabZone now uses the automated website checkout.
+    The old DM chooser is intentionally not bound to any
+    customer-facing order button.
   */
-  bindDMChooser("headerDm");
-
-  /*
-    Homepage referral / Verify by DM
-  */
-  bindDMChooser("refDm");
-
-  /*
-    Product page order button
-  */
-  bindDMChooser("orderBtn");
+  return;
 }
 
 /* =========================================================
