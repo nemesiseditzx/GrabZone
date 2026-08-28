@@ -16,3 +16,4 @@
 [hidden]{display:none!important}
 @media(max-width:850px){.checkout-layout{grid-template-columns:1fr}.summary-card{position:static;order:-1}.checkout-shell{padding-top:30px}}
 @media(max-width:560px){.checkout-header{padding:0 16px}.checkout-header .back-link{font-size:11px}.checkout-card,.summary-card{padding:19px;border-radius:19px}.two-col{grid-template-columns:1fr}.checkout-heading h1{font-size:39px}.checkout-item{grid-template-columns:50px 1fr auto}.checkout-item img{width:50px;height:50px}}
+.location-search{width:100%;box-sizing:border-box;margin:0 0 7px;padding:11px 12px;border:1px solid #ddd;border-radius:10px;background:#fff;font:inherit;color:#111}.location-search:focus{outline:none;border-color:#111;box-shadow:0 0 0 3px rgba(0,0,0,.06)}.location-search:disabled{background:#f4f4f2;cursor:not-allowed}
