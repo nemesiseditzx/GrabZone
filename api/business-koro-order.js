@@ -11,6 +11,19 @@ async function readJson(response){
   try{return text?JSON.parse(text):{}}
   catch{return {raw:text}}
 }
+async function requireAdmin(req){
+  const auth=String(req.headers.authorization||'');
+  if(!auth.startsWith('Bearer '))throw Object.assign(new Error('Admin authentication required.'),{status:401});
+  const url=process.env.SUPABASE_URL;
+  const key=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if(!url||!key)throw new Error('Supabase server credentials are not configured.');
+  const response=await fetch(url+'/auth/v1/user',{
+    headers:{apikey:key,Authorization:auth}
+  });
+  if(!response.ok)throw Object.assign(new Error('Admin authentication failed.'),{status:401});
+  return response.json();
+}
+
 async function supabaseRequest(path,options={}){
   const url=process.env.SUPABASE_URL;
   const key=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -115,6 +128,7 @@ module.exports=async function handler(req,res){
   if(!apiKey)return res.status(503).json({error:'Business Koro integration is not configured yet. Add BUSINESS_KORO_API_KEY in Vercel.'});
 
   try{
+    await requireAdmin(req);
     const body=req.body||{};
     let order=body.orderId?null:null;
     let items=Array.isArray(body.items)?body.items.filter(Boolean):[];
@@ -171,6 +185,6 @@ module.exports=async function handler(req,res){
     });
   }catch(error){
     console.error('Business Koro order error:',error);
-    return res.status(502).json({error:error?.message||'Business Koro submission failed.'});
+    return res.status(error?.status||502).json({error:error?.message||'Business Koro submission failed.'});
   }
 };
