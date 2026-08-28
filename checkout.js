@@ -20,34 +20,52 @@ const getSource=()=>{const buy=read(BUY_NOW_KEY,null);return Array.isArray(buy)&
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
 const dhakaMetroUpazilas=new Set(['Adabor','Dhaka Airport','Badda','Banani','Bangshal','Bhashantek','Dhaka Cantonment','Dhaka Chackbazar','Dakshin Khan','Darus-Salam','Demra','Dhanmondi','Gandaria','Gulshan','Hatirjheel','Hazaribagh','Jatrabari','Kadamtoli','Kafrul','Kalabagan','Kamrangirchar','Khilkhet','Khilgaon','Kotwali','Lalbagh','Mirpur Model','Mohammadpur','Motijheel','Mugda','Dhaka New Market','Pallabi','Paltan Model','Ramna Model','Rampura','Rupnagar','Sabujbag','Shah Ali','Shahbag','Shahjahanpur','Sher-e-Bangla Nagar','Shyampur','Sutrapur','Tejgaon','Tejgaon Industrial','Turag','Uttar Khan','Vatara','Uttara East','Uttara West','Wari']);
-const shippingForLocation=(division,upazila)=>String(division||'').trim().toLowerCase()==='dhaka'&&dhakaMetroUpazilas.has(String(upazila||'').trim())?dhakaShippingCharge:outsideDhakaShippingCharge;
+const shippingForLocation=(division)=>String(division||'').trim().toLowerCase()==='dhaka'?dhakaShippingCharge:outsideDhakaShippingCharge;
 
 function divisions(){
-  return locationTree?.data||[];
+  return Array.isArray(locationTree?.data)?locationTree.data:[];
 }
 function districtRecords(){
-  const d=divisions().find(x=>x.name?.en===String($('division')?.value||''));
-  return d?.district||[];
+  const selected=String($('division')?.value||'').trim();
+  if(!selected)return [];
+  const d=divisions().find(x=>String(x?.name?.en||'').trim()===selected || String(x?.name?.local||'').trim()===selected);
+  return Array.isArray(d?.district)?d.district:[];
 }
 function upazilaRecords(){
-  const d=districtRecords().find(x=>x.name?.en===String($('district')?.value||''));
-  return d?.upazila||[];
+  const selectedDivision=String($('division')?.value||'').trim();
+  const selectedDistrict=String($('district')?.value||'').trim();
+  if(!selectedDivision||!selectedDistrict)return [];
+  const d=districtRecords().find(x=>String(x?.name?.en||'').trim()===selectedDistrict || String(x?.name?.local||'').trim()===selectedDistrict);
+  return Array.isArray(d?.upazila)?d.upazila:[];
 }
 function locationLabel(x){
   if(!x)return '';
-  return x.name?.en===x.name?.local?x.name.en:`${x.name?.en||''} — ${x.name?.local||''}`;
+  const en=String(x?.name?.en||'').trim(),local=String(x?.name?.local||'').trim();
+  return en&&local&&en!==local?en+' — '+local:(en||local);
 }
 function fillSelect(el,records,placeholder,query=''){
   if(!el)return;
+  const list=Array.isArray(records)?records:[];
   const q=String(query||'').trim().toLowerCase();
-  const filtered=!q?records:records.filter(x=>String(x.name?.en||'').toLowerCase().includes(q)||String(x.name?.local||'').toLowerCase().includes(q));
-  el.innerHTML='<option value="">'+placeholder+'</option>'+filtered.map(x=>'<option value="'+esc(x.name?.en||'')+'">'+esc(locationLabel(x))+'</option>').join('');
+  const filtered=!q?list:list.filter(x=>{
+    const en=String(x?.name?.en||'').toLowerCase();
+    const local=String(x?.name?.local||'').toLowerCase();
+    return en.includes(q)||local.includes(q);
+  });
+  el.innerHTML='<option value="">'+esc(placeholder)+'</option>'+
+    filtered.map(x=>'<option value="'+esc(x?.name?.en||x?.name?.local||'')+'">'+esc(locationLabel(x))+'</option>').join('');
+  el.disabled=false;
 }
 async function loadLocations(){
   try{
-    const r=await fetch('/data/bangladesh-locations.json',{cache:'force-cache'});
+    const r=await fetch('/data/bangladesh-locations.json',{cache:'no-store'});
     if(!r.ok)throw new Error('Location data could not be loaded.');
-    locationTree=await r.json();
+    const json=await r.json();
+    locationTree=json&&Array.isArray(json.data)?json.data:[];
+    if(divisions().length!==8)console.warn('Expected 8 divisions, received',divisions().length);
+    const totalDistricts=divisions().reduce((n,d)=>n+(Array.isArray(d.district)?d.district.length:0),0);
+    const totalUpazilas=divisions().reduce((n,d)=>n+(Array.isArray(d.district)?d.district.reduce((m,x)=>m+(Array.isArray(x.upazila)?x.upazila.length:0),0):0),0);
+    console.info('Bangladesh locations loaded:',divisions().length,'divisions,',totalDistricts,'districts,',totalUpazilas,'upazilas/thanas');
     fillSelect($('division'),divisions(),'Select Division');
   }catch(e){
     console.error(e);
@@ -55,15 +73,23 @@ async function loadLocations(){
   }
 }
 function onDivisionChange(){
+  const selected=$('division')?.value||'';
   fillSelect($('district'),districtRecords(),'Select District');
-  $('district').disabled=false;$('districtSearch').disabled=false;
-  fillSelect($('upazila'),[],'Select Upazila / Thana');
-  $('upazila').disabled=true;$('upazilaSearch').disabled=true;$('upazilaSearch').value='';
+  $('districtSearch').disabled=!selected;
+  $('district').disabled=!selected;
+  $('upazila').innerHTML='<option value="">Select Upazila / Thana</option>';
+  $('upazila').disabled=true;
+  $('upazilaSearch').disabled=true;
+  $('districtSearch').value='';
+  $('upazilaSearch').value='';
   render();
 }
 function onDistrictChange(){
+  const selected=$('district')?.value||'';
   fillSelect($('upazila'),upazilaRecords(),'Select Upazila / Thana');
-  $('upazila').disabled=false;$('upazilaSearch').disabled=false;
+  $('upazila').disabled=!selected;
+  $('upazilaSearch').disabled=!selected;
+  $('upazilaSearch').value='';
   render();
 }
 function bindLocationSearch(inputId,selectId,getRecords,placeholder){
@@ -113,7 +139,7 @@ function render(){
     <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
-  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||'', $('upazila')?.value||''),discount=Number(referralState.discount||0);
+  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||''),discount=Number(referralState.discount||0);
   $('checkoutSubtotal').textContent=money(sub);
   $('checkoutShipping').textContent=money(shipping);
   $('checkoutDiscount').textContent='-'+money(discount);
@@ -184,7 +210,7 @@ async function submit(e){
   }
   d.phone=d.phone.replace(/\D/g,'');
   const b=$('placeOrderBtn');b.disabled=true;b.textContent='Placing order…';msg('');
-  const shipping=shippingForLocation(d.division,d.upazila);
+  const shipping=shippingForLocation(d.division);
   const payload={
     customer_name:d.customer_name,email:d.email,phone:d.phone,division:d.division,
     district:d.district,upazila:d.upazila,address:d.address,
