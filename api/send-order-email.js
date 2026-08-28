@@ -1,7 +1,7 @@
 module.exports = async function handler(req,res){
   if(req.method!=='POST') return res.status(405).json({error:'Method not allowed'});
   const resendKey=process.env.RESEND_API_KEY;
-  const from=process.env.ORDER_EMAIL_FROM;
+  const from=process.env.ORDER_EMAIL_FROM||process.env.RESEND_FROM_EMAIL;
   const supabaseUrl=process.env.SUPABASE_URL;
   const supabaseSecret=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
   if(!resendKey||!from||!supabaseUrl||!supabaseSecret) return res.status(503).json({error:'Email service is not configured.'});
