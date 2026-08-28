@@ -30,3 +30,63 @@ drop policy if exists "authenticated manage products" on public.products;
 create policy "authenticated manage products" on public.products for all to authenticated using(true) with check(true);
 drop policy if exists "authenticated manage notices" on public.notices;
 create policy "authenticated manage notices" on public.notices for all to authenticated using(true) with check(true);
+
+-- GRABZONE AUTOMATED ORDERS
+create sequence if not exists public.order_number_seq start with 1;
+create table if not exists public.orders (
+ id uuid primary key default gen_random_uuid(),
+ order_no bigint not null default nextval('public.order_number_seq'),
+ order_number text generated always as ('GZ-' || lpad(order_no::text,4,'0')) stored,
+ customer_name text not null, email text not null, phone text not null,
+ division text not null, district text not null, upazila text, address text not null,
+ referral_code text, payment_method text not null default 'Cash on Delivery',
+ shipping_charge numeric not null default 130, subtotal numeric not null default 0,
+ total numeric not null default 0, status text not null default 'New',
+ admin_note text, created_at timestamptz not null default now(),
+ updated_at timestamptz not null default now(),
+ constraint orders_status_check check(status in ('New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'))
+);
+alter sequence public.order_number_seq owned by public.orders.order_no;
+create table if not exists public.order_items (
+ id uuid primary key default gen_random_uuid(),
+ order_id uuid not null references public.orders(id) on delete cascade,
+ product_id uuid, product_name text not null, image_url text,
+ quantity integer not null check(quantity>0), unit_price numeric not null default 0,
+ line_total numeric not null default 0
+);
+alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
+drop policy if exists "authenticated manage orders" on public.orders;
+create policy "authenticated manage orders" on public.orders for all to authenticated using(true) with check(true);
+drop policy if exists "authenticated manage order items" on public.order_items;
+create policy "authenticated manage order items" on public.order_items for all to authenticated using(true) with check(true);
+revoke all on public.orders from anon, authenticated;
+revoke all on public.order_items from anon, authenticated;
+grant select,insert,update,delete on public.orders to authenticated;
+grant select,insert,update,delete on public.order_items to authenticated;
+grant usage,select on sequence public.order_number_seq to authenticated;
+create or replace function public.create_public_order(payload jsonb)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare new_order public.orders; item jsonb; product_row public.products; qty integer;
+calculated_subtotal numeric:=0; fixed_shipping numeric:=130; item_total numeric; order_id uuid;
+begin
+ if coalesce(trim(payload->>'customer_name'),'')='' or coalesce(trim(payload->>'email'),'')='' or coalesce(trim(payload->>'phone'),'')='' or coalesce(trim(payload->>'division'),'')='' or coalesce(trim(payload->>'district'),'')='' or coalesce(trim(payload->>'address'),'')='' then raise exception 'Please complete all required fields.'; end if;
+ if jsonb_typeof(payload->'items')<>'array' or jsonb_array_length(payload->'items')<1 then raise exception 'Your order is empty.'; end if;
+ insert into public.orders(customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,status)
+ values(trim(payload->>'customer_name'),lower(trim(payload->>'email')),trim(payload->>'phone'),trim(payload->>'division'),trim(payload->>'district'),nullif(trim(payload->>'upazila'),''),trim(payload->>'address'),nullif(trim(payload->>'referral_code'),''),'Cash on Delivery',fixed_shipping,'New')
+ returning * into new_order;
+ order_id:=new_order.id;
+ for item in select * from jsonb_array_elements(payload->'items') loop
+  select * into product_row from public.products where id=nullif(item->>'product_id','')::uuid and published=true;
+  if not found then raise exception 'One of the selected products is no longer available.'; end if;
+  qty:=greatest(1,coalesce((item->>'quantity')::integer,1)); item_total:=product_row.price*qty; calculated_subtotal:=calculated_subtotal+item_total;
+  insert into public.order_items(order_id,product_id,product_name,image_url,quantity,unit_price,line_total) values(order_id,product_row.id,product_row.name,product_row.image_url,qty,product_row.price,item_total);
+ end loop;
+ update public.orders set subtotal=calculated_subtotal,total=calculated_subtotal+fixed_shipping,updated_at=now() where id=order_id returning * into new_order;
+ return jsonb_build_object('id',new_order.id,'order_number',new_order.order_number,'subtotal',new_order.subtotal,'shipping_charge',new_order.shipping_charge,'total',new_order.total,'status',new_order.status);
+end; $$;
+revoke all on function public.create_public_order(jsonb) from public;
+grant execute on function public.create_public_order(jsonb) to anon,authenticated;
+create index if not exists orders_created_at_idx on public.orders(created_at desc);
+create index if not exists orders_status_idx on public.orders(status);
+create index if not exists order_items_order_id_idx on public.order_items(order_id);
