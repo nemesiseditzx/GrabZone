@@ -76,6 +76,11 @@ async function sendToBusinessKoro(id){
  const {data:items,error}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
  if(error){alert(error.message);return}
  if(!items?.length){alert('This order has no products.');return}
+ const productIds=[...new Set(items.map(x=>x.product_id).filter(Boolean))];
+ const {data:productRows}=productIds.length
+   ?await sb.from('products').select('id,business_koro_product_id').in('id',productIds)
+   :{data:[]};
+ const bkMap=new Map((productRows||[]).map(p=>[p.id,p.business_koro_product_id]));
  const button=[...document.querySelectorAll('[data-bk-order]')].find(x=>x.dataset.bkOrder===id);
  if(button){button.disabled=true;button.textContent='Sending…'}
  try{
@@ -95,7 +100,7 @@ async function sendToBusinessKoro(id){
      note:order.admin_note||''
     },
     items:items.map(it=>({
-     productId:it.business_koro_product_id||null,
+     productId:bkMap.get(it.product_id)||null,
      productName:it.product_name,
      quantity:Number(it.quantity||1),
      sellingPrice:Number(it.unit_price||0)
