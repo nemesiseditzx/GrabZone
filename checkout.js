@@ -19,7 +19,6 @@ const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const getSource=()=>{const buy=read(BUY_NOW_KEY,null);return Array.isArray(buy)&&buy.length?buy:read(CART_KEY,[])};
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
-const dhakaMetroUpazilas=new Set(['Adabor','Dhaka Airport','Badda','Banani','Bangshal','Bhashantek','Dhaka Cantonment','Dhaka Chackbazar','Dakshin Khan','Darus-Salam','Demra','Dhanmondi','Gandaria','Gulshan','Hatirjheel','Hazaribagh','Jatrabari','Kadamtoli','Kafrul','Kalabagan','Kamrangirchar','Khilkhet','Khilgaon','Kotwali','Lalbagh','Mirpur Model','Mohammadpur','Motijheel','Mugda','Dhaka New Market','Pallabi','Paltan Model','Ramna Model','Rampura','Rupnagar','Sabujbag','Shah Ali','Shahbag','Shahjahanpur','Sher-e-Bangla Nagar','Shyampur','Sutrapur','Tejgaon','Tejgaon Industrial','Turag','Uttar Khan','Vatara','Uttara East','Uttara West','Wari']);
 const shippingForLocation=(division)=>String(division||'').trim().toLowerCase()==='dhaka'?dhakaShippingCharge:outsideDhakaShippingCharge;
 
 function divisions(){
@@ -53,24 +52,8 @@ function fillSelect(selectId,records,placeholder){
   }).join('');
   if([...select.options].some(o=>o.value===current))select.value=current;
 }
-function filterRecords(records,query){
-  const q=normalizeLocation(query);
-  if(!q)return records;
-  return records.filter(x=>{
-    const en=normalizeLocation(x?.name?.en),local=normalizeLocation(x?.name?.local);
-    return en.includes(q)||local.includes(q);
-  });
-}
 function normalizeLocation(value){
   return String(value||'').trim().toLowerCase().replace(/\s+/g,' ');
-}
-function findDivision(value){
-  const q=normalizeLocation(value);
-  return divisions().find(x=>normalizeLocation(x?.name?.en)===q||normalizeLocation(x?.name?.local)===q);
-}
-function findDistrict(value){
-  const q=normalizeLocation(value);
-  return districtRecords().find(x=>normalizeLocation(x?.name?.en)===q||normalizeLocation(x?.name?.local)===q);
 }
 function fillDistrictOptions(){
   fillSelect('district',districtRecords(),'Select District');
@@ -98,19 +81,15 @@ function onDivisionChange(){
   const selected=$('division')?.value||'';
   fillDistrictOptions();
   $('district').disabled=!selected;
-  $('districtSearch').disabled=!selected;
   $('upazila').innerHTML='<option value="">Select Upazila / Thana</option>';
   $('upazila').value='';
   $('upazila').disabled=true;
-  $('upazilaSearch').value='';
-  $('upazilaSearch').disabled=true;
   render();
 }
 function onDistrictChange(){
   const selected=$('district')?.value||'';
   fillUpazilaOptions();
   $('upazila').disabled=!selected;
-  $('upazilaSearch').disabled=!selected;
   render();
 }
 function formData(){
