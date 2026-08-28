@@ -2044,63 +2044,403 @@
           },
           "upazila": [
             {
-              "id": "BD30260014",
+              "id": "BD-DHAKA-METRO-01",
               "name": {
-                "local": "ধামরাই",
-                "en": "Dhamrai",
-                "slug": "dhamrai-bd30260014"
-              },
-              "code": {
-                "id": "BD30260014",
-                "iso": null
+                "local": "আদাবর",
+                "en": "Adabor",
+                "slug": "adabor"
               }
             },
             {
-              "id": "BD30260018",
+              "id": "BD-DHAKA-METRO-02",
               "name": {
-                "local": "দোহার",
-                "en": "Dohar",
-                "slug": "dohar-bd30260018"
-              },
-              "code": {
-                "id": "BD30260018",
-                "iso": null
+                "local": "বিমানবন্দর",
+                "en": "Dhaka Airport",
+                "slug": "dhaka-airport"
               }
             },
             {
-              "id": "BD30260038",
+              "id": "BD-DHAKA-METRO-03",
               "name": {
-                "local": "কেরাণীগঞ্জ",
-                "en": "Keraniganj",
-                "slug": "keraniganj-bd30260038"
-              },
-              "code": {
-                "id": "BD30260038",
-                "iso": null
+                "local": "বাড্ডা",
+                "en": "Badda",
+                "slug": "badda"
               }
             },
             {
-              "id": "BD30260062",
+              "id": "BD-DHAKA-METRO-04",
               "name": {
-                "local": "নবাবগঞ্জ",
-                "en": "Nawabganj",
-                "slug": "nawabganj-bd30260062"
-              },
-              "code": {
-                "id": "BD30260062",
-                "iso": null
+                "local": "বনানী",
+                "en": "Banani",
+                "slug": "banani"
               }
             },
             {
-              "id": "BD30260072",
+              "id": "BD-DHAKA-METRO-05",
               "name": {
-                "local": "সাভার",
-                "en": "Savar",
-                "slug": "savar-bd30260072"
-              },
-              "code": {
-                "id": "BD30260072",
-                "iso": null
+                "local": "বংশাল",
+                "en": "Bangshal",
+                "slug": "bangshal"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-06",
+              "name": {
+                "local": "ভাষানটেক",
+                "en": "Bhashantek",
+                "slug": "bhashantek"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-07",
+              "name": {
+                "local": "ক্যান্টনমেন্ট",
+                "en": "Dhaka Cantonment",
+                "slug": "dhaka-cantonment"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-08",
+              "name": {
+                "local": "চকবাজার",
+                "en": "Dhaka Chackbazar",
+                "slug": "dhaka-chackbazar"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-09",
+              "name": {
+                "local": "দক্ষিণ খান",
+                "en": "Dakshin Khan",
+                "slug": "dakshin-khan"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-10",
+              "name": {
+                "local": "দারুস সালাম",
+                "en": "Darus-Salam",
+                "slug": "darus-salam"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-11",
+              "name": {
+                "local": "ডেমরা",
+                "en": "Demra",
+                "slug": "demra"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-12",
+              "name": {
+                "local": "ধানমন্ডি",
+                "en": "Dhanmondi",
+                "slug": "dhanmondi"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-13",
+              "name": {
+                "local": "গেন্ডারিয়া",
+                "en": "Gandaria",
+                "slug": "gandaria"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-14",
+              "name": {
+                "local": "গুলশান",
+                "en": "Gulshan",
+                "slug": "gulshan"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-15",
+              "name": {
+                "local": "হাতিরঝিল",
+                "en": "Hatirjheel",
+                "slug": "hatirjheel"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-16",
+              "name": {
+                "local": "হাজারীবাগ",
+                "en": "Hazaribagh",
+                "slug": "hazaribagh"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-17",
+              "name": {
+                "local": "জাত্রাবাড়ী",
+                "en": "Jatrabari",
+                "slug": "jatrabari"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-18",
+              "name": {
+                "local": "কদমতলী",
+                "en": "Kadamtoli",
+                "slug": "kadamtoli"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-19",
+              "name": {
+                "local": "কাফরুল",
+                "en": "Kafrul",
+                "slug": "kafrul"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-20",
+              "name": {
+                "local": "কালাবাগান",
+                "en": "Kalabagan",
+                "slug": "kalabagan"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-21",
+              "name": {
+                "local": "কামরাঙ্গীরচর",
+                "en": "Kamrangirchar",
+                "slug": "kamrangirchar"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-22",
+              "name": {
+                "local": "খিলক্ষেত",
+                "en": "Khilkhet",
+                "slug": "khilkhet"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-23",
+              "name": {
+                "local": "খিলগাঁও",
+                "en": "Khilgaon",
+                "slug": "khilgaon"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-24",
+              "name": {
+                "local": "কোতোয়ালী",
+                "en": "Kotwali",
+                "slug": "kotwali"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-25",
+              "name": {
+                "local": "লালবাগ",
+                "en": "Lalbagh",
+                "slug": "lalbagh"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-26",
+              "name": {
+                "local": "মিরপুর মডেল",
+                "en": "Mirpur Model",
+                "slug": "mirpur-model"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-27",
+              "name": {
+                "local": "মুহাম্মদপুর",
+                "en": "Mohammadpur",
+                "slug": "mohammadpur"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-28",
+              "name": {
+                "local": "মতিঝিল",
+                "en": "Motijheel",
+                "slug": "motijheel"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-29",
+              "name": {
+                "local": "মুগদা",
+                "en": "Mugda",
+                "slug": "mugda"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-30",
+              "name": {
+                "local": "নিউ মার্কেট",
+                "en": "Dhaka New Market",
+                "slug": "dhaka-new-market"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-31",
+              "name": {
+                "local": "পল্লবী",
+                "en": "Pallabi",
+                "slug": "pallabi"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-32",
+              "name": {
+                "local": "পল্টন মডেল",
+                "en": "Paltan Model",
+                "slug": "paltan-model"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-33",
+              "name": {
+                "local": "রামনা মডেল",
+                "en": "Ramna Model",
+                "slug": "ramna-model"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-34",
+              "name": {
+                "local": "রামপুরা",
+                "en": "Rampura",
+                "slug": "rampura"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-35",
+              "name": {
+                "local": "রূপনগর",
+                "en": "Rupnagar",
+                "slug": "rupnagar"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-36",
+              "name": {
+                "local": "সবুজবাগ",
+                "en": "Sabujbag",
+                "slug": "sabujbag"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-37",
+              "name": {
+                "local": "শাহ আলী",
+                "en": "Shah Ali",
+                "slug": "shah-ali"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-38",
+              "name": {
+                "local": "শাহবাগ",
+                "en": "Shahbag",
+                "slug": "shahbag"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-39",
+              "name": {
+                "local": "শাহজাহানপুর",
+                "en": "Shahjahanpur",
+                "slug": "shahjahanpur"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-40",
+              "name": {
+                "local": "শেরে বাংলা নগর",
+                "en": "Sher-e-Bangla Nagar",
+                "slug": "sher-e-bangla-nagar"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-41",
+              "name": {
+                "local": "শ্যামপুর",
+                "en": "Shyampur",
+                "slug": "shyampur"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-42",
+              "name": {
+                "local": "সুত্রাপুর",
+                "en": "Sutrapur",
+                "slug": "sutrapur"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-43",
+              "name": {
+                "local": "তেজগাঁও",
+                "en": "Tejgaon",
+                "slug": "tejgaon"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-44",
+              "name": {
+                "local": "তেজগাঁও শিল্পাঞ্চল",
+                "en": "Tejgaon Industrial",
+                "slug": "tejgaon-industrial"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-45",
+              "name": {
+                "local": "তুরাগ",
+                "en": "Turag",
+                "slug": "turag"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-46",
+              "name": {
+                "local": "উত্তর খান",
+                "en": "Uttar Khan",
+                "slug": "uttar-khan"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-47",
+              "name": {
+                "local": "ভাটারা",
+                "en": "Vatara",
+                "slug": "vatara"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-48",
+              "name": {
+                "local": "উত্তরা পূর্ব",
+                "en": "Uttara East",
+                "slug": "uttara-east"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-49",
+              "name": {
+                "local": "উত্তরা পশ্চিম",
+                "en": "Uttara West",
+                "slug": "uttara-west"
+              }
+            },
+            {
+              "id": "BD-DHAKA-METRO-50",
+              "name": {
+                "local": "ওয়ারী",
+                "en": "Wari",
+                "slug": "wari"
               }
             }
           ]
