@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Track Your Order | GrabZone</title>
+<link rel="icon" href="favicon.png"><link rel="stylesheet" href="styles.css">
+<style>
+body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20px}.track-card{background:#fff;border:1px solid #e5e5e1;border-radius:24px;padding:28px;box-shadow:0 10px 35px rgba(0,0,0,.06)}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.12em;color:#777}.track-card h1{margin:8px 0 8px;font-size:34px}.track-card p{color:#666}.track-form{display:flex;gap:10px;margin-top:22px}.track-form input{flex:1;border:1px solid #ddd;border-radius:12px;padding:14px;font:inherit;text-transform:uppercase}.track-form button{border:0;background:#111;color:#fff;border-radius:12px;padding:0 20px;font-weight:800;cursor:pointer}.track-msg{margin-top:12px;font-size:13px;font-weight:700}.result{margin-top:24px}.status-line{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.step{padding:10px 12px;border:1px solid #ddd;border-radius:999px;color:#888;font-size:12px;font-weight:800}.step.active{background:#111;color:#fff;border-color:#111}.tracking-box{margin-top:18px;padding:18px;background:#f5f5f2;border-radius:16px}.tracking-link{display:inline-block;margin-top:10px;padding:11px 15px;background:#111;color:#fff;border-radius:10px;text-decoration:none;font-weight:800}.help{margin-top:24px;padding-top:22px;border-top:1px solid #eee}.help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.help-grid a{padding:12px;border:1px solid #ddd;border-radius:12px;text-decoration:none;color:#111;text-align:center;font-weight:800}.items{margin-top:18px;border-top:1px solid #eee;padding-top:15px}.item{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}@media(max-width:600px){.track-wrap{margin:25px auto}.track-card{padding:20px}.track-card h1{font-size:28px}.track-form{flex-direction:column}.track-form button{height:48px}.help-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="track-wrap"><div class="track-card">
+<div class="eyebrow">GRABZONE ORDER TRACKING</div><h1>Track Your Order</h1>
+<p>Enter your Order ID to see the latest status of your order.</p>
+<form class="track-form" id="trackForm"><input id="orderId" placeholder="GZ-0001" autocomplete="off" required><button>Track Order</button></form>
+<div id="msg" class="track-msg"></div><div id="result" class="result" hidden></div>
+<div class="help"><b>Need help with your order?</b><div class="help-grid"><a id="ig" target="_blank" rel="noopener">Instagram</a><a id="fb" target="_blank" rel="noopener">Facebook</a><a id="wa" target="_blank" rel="noopener">WhatsApp</a></div></div>
+</div></div>
+<script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(()=>{const C=window.GRABZONE_CONFIG||{},$=id=>document.getElementById(id), statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
+async function loadSocial(){try{if(!window.supabase||!C.supabaseUrl||String(C.supabaseUrl).includes('PASTE_'))return;const sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);const{data}=await sb.from('site_settings').select('whatsapp,instagram,messenger,facebook').eq('id',1).maybeSingle();const s=data||{};$('wa').href=s.whatsapp||C.whatsapp||'';$('ig').href=s.instagram||C.instagram||'';$('fb').href=s.facebook||s.messenger||C.facebook||C.messenger||'';}catch(e){console.error(e)}}loadSocial();
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])}
+function render(o){const idx=statuses.indexOf(o.status);$('result').hidden=false;$('result').innerHTML='<b>Order #'+esc(o.orderNumber)+'</b><div class="status-line">'+statuses.map((s,i)=>'<span class="step '+(i<=idx?'active':'')+'">'+esc(s)+'</span>').join('')+'</div>'+(o.tracking?.number||o.tracking?.courier||o.tracking?.url?'<div class="tracking-box"><b>Package Tracking</b><div>'+esc(o.tracking.courier||'Courier')+(o.tracking.number?' · '+esc(o.tracking.number):'')+'</div>'+(o.tracking.url?'<a class="tracking-link" href="'+esc(o.tracking.url)+'" target="_blank" rel="noopener">Track Package →</a>':'')+'</div>':'<div class="tracking-box">Courier tracking details will appear here once your package is shipped.</div>')+(o.items?.length?'<div class="items"><b>Order Items</b>'+o.items.map(i=>'<div class="item"><span>'+esc(i.name)+' × '+i.quantity+'</span><span>৳'+Number(i.price*i.quantity).toLocaleString('en-BD')+'</span></div>').join('')+'</div>':'');}
+$('trackForm').onsubmit=async e=>{e.preventDefault();$('msg').textContent='Checking order…';$('result').hidden=true;try{const id=$('orderId').value.trim();const r=await fetch('/api/track-order?orderId='+encodeURIComponent(id));const d=await r.json();if(!r.ok)throw new Error(d.error||'Order not found.');render(d.order);$('msg').textContent=''}catch(e){$('msg').textContent=e.message}};
+})();
+</script></body></html>

@@ -313,6 +313,8 @@ async function submit(e){
     if(d.referral_code&&!referralState.code){msg('Please apply a valid referral code or remove it.',true);return}
   }
   d.phone=d.phone.replace(/\D/g,'');
+  const confirmed=window.confirm('Please review your order details carefully. By clicking OK, you are confirming that your name, phone number, delivery address and order items are correct and that you want to place this order.');
+  if(!confirmed)return;
   const b=$('placeOrderBtn');b.disabled=true;b.textContent='Placing order…';msg('');
   const shipping=shippingForLocation(d.division);
   const payload={
