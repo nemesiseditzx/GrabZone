@@ -8,7 +8,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const $=id=>document.getElementById(id);
 const statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
-const DHAKA_DELIVERY_CHARGE=70;
+
 
 function inject(){
  if($('gzOrdersTab'))return;
@@ -153,12 +153,7 @@ async function sendOrderEmail(orderNumber,type='status_updated'){
 async function confirmOrder(order){
  const isDhaka=String(order.division||'').trim().toLowerCase()==='dhaka';
  const updates={status:'Confirmed',updated_at:new Date().toISOString()};
- if(isDhaka){
-  const subtotal=Number(order.subtotal||0), discount=Number(order.referral_discount||0);
-  updates.shipping_charge=DHAKA_DELIVERY_CHARGE;
-  updates.total=Math.max(0,subtotal+DHAKA_DELIVERY_CHARGE-discount);
-  updates.admin_note=[order.admin_note,'Dhaka delivery adjusted to ৳70.'].filter(Boolean).join(' — ');
- }
+
  const {error}=await sb.from('orders').update(updates).eq('id',order.id);
  if(error)throw error;
  Object.assign(order,updates);
@@ -169,7 +164,7 @@ async function confirmOrder(order){
 async function changeStatus(id,status){
  const order=orders.find(x=>x.id===id); if(!order||order.status===status)return;
  if(status==='Confirmed'){
-  if(!confirm('Confirm '+order.order_number+'? Dhaka delivery will be adjusted to ৳70, then the customer receipt/status email will be sent.'))return;
+  if(!confirm('Confirm '+order.order_number+'? The order will be confirmed and the customer receipt/status email will be sent.'))return;
   try{
    const emailed=await confirmOrder(order);
    alert(emailed?'✓ Order confirmed. Dhaka delivery was adjusted to ৳70 and the customer email was sent.':'✓ Order confirmed and saved. Email could not be sent; check email settings.');
@@ -272,12 +267,7 @@ async function saveEditor(){
  payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.total=Math.max(0,payload.subtotal+payload.shipping_charge-payload.referral_discount);payload.updated_at=new Date().toISOString();
  $('gzOrderSave').disabled=true;
  try{
-  if(payload.status==='Confirmed'&&current.status!=='Confirmed'&&String(payload.division||'').trim().toLowerCase()==='dhaka'){
-  payload.shipping_charge=DHAKA_DELIVERY_CHARGE;
-  payload.total=Math.max(0,payload.subtotal+DHAKA_DELIVERY_CHARGE-payload.referral_discount);
-  payload.admin_note=[payload.admin_note,'Dhaka delivery adjusted to ৳70.'].filter(Boolean).join(' — ');
- }
- const {error:e1}=await sb.from('orders').update(payload).eq('id',current.id);if(e1)throw e1;
+  const {error:e1}=await sb.from('orders').update(payload).eq('id',current.id);if(e1)throw e1;
   const {error:e2}=await sb.from('order_items').delete().eq('order_id',current.id);if(e2)throw e2;
   const {error:e3}=await sb.from('order_items').insert(items.map(it=>({...it,order_id:current.id,line_total:it.quantity*it.unit_price})));if(e3)throw e3;
   $('gzOrderEditorMsg').textContent='✓ Order updated successfully.';
