@@ -70,7 +70,7 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
    const currentLabel=descriptions[o.status]||'Your order status has been updated';
    const statusMarkup=statuses.map((s,i)=>{
      const isCancelled=s==='Cancelled';
-     const cls=isCancelled?(o.status==='Cancelled'?'cancelled current':''):(i<safeIdx?'completed':i===safeIdx?'current':'');
+     const cls=o.status==='Cancelled'?(isCancelled?'cancelled current':''):(i<safeIdx?'completed':i===safeIdx?'current':'');
      return '<div class="track-status-step '+cls+'"><span class="track-status-icon">'+statusIcons[s]+'</span><span>'+esc(s)+'</span></div>';
    }).join('');
    $('result').innerHTML='<b>Order #'+esc(o.orderNumber)+'</b>'+
