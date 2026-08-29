@@ -3,6 +3,7 @@
 ========================================================= */
 
 let gzBillboardEditingId = null;
+let gzBillboardAdminItems = [];
 
 function gzBEsc(value){
   return String(value ?? "").replace(/[&<>"']/g,ch=>({
@@ -41,6 +42,11 @@ function gzResetBillboardForm(){
   document.getElementById("billboardSaveBtn").textContent="Add Billboard";
   document.getElementById("billboardCancelBtn").hidden=true;
   document.getElementById("billboardMsg").textContent="";
+}
+
+function gzEditBillboardById(id){
+  const item=gzBillboardAdminItems.find(x=>x.id===id);
+  if(item) gzEditBillboard(item);
 }
 
 function gzEditBillboard(item){
@@ -139,7 +145,9 @@ async function gzLoadBillboardsAdmin(){
     document.getElementById("bbDots").value=String(settings.show_dots!==false);
   }
 
-  box.innerHTML=(data||[]).map(item=>`
+  gzBillboardAdminItems=data||[];
+
+  box.innerHTML=gzBillboardAdminItems.map(item=>`
     <div class="gz-bb-row">
       <div class="gz-bb-thumb"><img src="${gzBEsc(item.image_url)}" alt=""></div>
       <div class="gz-bb-info">
@@ -148,7 +156,7 @@ async function gzLoadBillboardsAdmin(){
         <small>Order ${Number(item.sort_order)||0} · ${item.active?"Live":"Hidden"}</small>
       </div>
       <div class="gz-bb-actions">
-        <button class="ghost" type="button" onclick='gzEditBillboard(${JSON.stringify(item).replace(/</g,"\\u003c")})'>Edit</button>
+        <button class="ghost" type="button" onclick="gzEditBillboardById('${gzBEsc(item.id)}')">Edit</button>
         <button class="ghost" type="button" onclick="gzToggleBillboard('${gzBEsc(item.id)}',${item.active})">${item.active?"Hide":"Show"}</button>
         <button class="ghost danger" type="button" onclick="gzDeleteBillboard('${gzBEsc(item.id)}')">Delete</button>
       </div>
