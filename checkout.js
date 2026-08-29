@@ -69,9 +69,17 @@ function useEmbeddedLocations(){
   return false;
 }
 async function loadLocations(){
-  // Always load the JSON dataset first. This avoids stale/broken cached JS location data.
+  // Use the bundled dataset first. It is already on the checkout page, so the
+  // Division selector is populated immediately and does not depend on a fetch.
+  if(useEmbeddedLocations()){
+    $('district').disabled=true;
+    $('upazila').disabled=true;
+    return;
+  }
+
+  // Fallback for deployments where the bundled dataset is unavailable.
   try{
-    const r=await fetch('/data/bangladesh-locations.json?v=20260829',{cache:'no-store'});
+    const r=await fetch('/data/bangladesh-locations.json?checkout=20260829',{cache:'no-store'});
     if(!r.ok)throw new Error('HTTP '+r.status);
     const json=await r.json();
     if(!json||!Array.isArray(json.data)||!json.data.length)throw new Error('Invalid Bangladesh location data.');
@@ -80,24 +88,12 @@ async function loadLocations(){
     $('district').disabled=true;
     $('upazila').disabled=true;
     return;
-  }catch(e){
-    console.error('Primary location dataset failed:',e);
-  }
+  }catch(e){ console.error('GrabZone location data failed:',e); }
 
-  // Fallback to the bundled JS dataset if the JSON request is unavailable.
-  if(useEmbeddedLocations()){
-    $('district').disabled=true;
-    $('upazila').disabled=true;
-    return;
-  }
-
-  // Keep the hard-coded division choices usable even if the location dataset cannot be reached.
+  // Keep the static HTML Division choices and do not blank the control.
   const division=$('division');
-  if(division&&division.options.length<=1){
-    ['Barishal','Chattogram','Dhaka','Khulna','Mymensingh','Rajshahi','Rangpur','Sylhet']
-      .forEach(name=>division.add(new Option(name,name)));
-  }
-  msg('Could not load Bangladesh location data. Please refresh the page.',true);
+  if(division) division.disabled=false;
+  msg('Location data could not be loaded. Please refresh and try again.',true);
 }
 function onDivisionChange(){
   const selected=$('division')?.value||'';
