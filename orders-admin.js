@@ -11,7 +11,7 @@ const statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered
 const TRACK_MARKER='[[GRABZONE_TRACKING]]',TRACK_END='[[/GRABZONE_TRACKING]]';
 function parseTracking(note){const m=String(note||'').split(TRACK_MARKER)[1];if(!m)return{number:'',courier:'',url:''};try{return{number:'',courier:'',url:'',...JSON.parse(m.split(TRACK_END)[0])}}catch{return{number:'',courier:'',url:''}}}
 function saveTrackingNote(note){return String(note||'').split(TRACK_MARKER)[0].trim()||null}
-function trackingFor(order){const legacy=parseTracking(order.admin_note);return{number:String(order.tracking_number||legacy.number||'').trim(),courier:String(order.tracking_provider||legacy.courier||'').trim(),url:String(order.tracking_url||legacy.url||'').trim()}
+function trackingFor(order){const legacy=parseTracking(order.admin_note);return{number:String(order.tracking_number||legacy.number||'').trim(),courier:String(order.tracking_provider||legacy.courier||'').trim(),url:String(order.tracking_url||legacy.url||'').trim()}}
 
 
 
