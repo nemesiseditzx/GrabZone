@@ -246,15 +246,15 @@
     if(!s.scroll_reveal){if(revealObs)revealObs.disconnect();return}
     if(revealObs)revealObs.disconnect();
     /*
-      Reveal once and keep content visible.
-      Removing .gz-visible when an element leaves the viewport makes
-      already-rendered sections disappear again while scrolling back
-      and creates large blank gaps between sections.
+      Replay the reveal every time an element enters the viewport.
+      This gives the homepage a continuous motion feel when the user
+      scrolls down and back up, without changing document layout.
     */
     revealObs=new IntersectionObserver(es=>es.forEach(e=>{
       if(e.isIntersecting){
         e.target.classList.add("gz-visible");
-        revealObs.unobserve(e.target);
+      }else{
+        e.target.classList.remove("gz-visible");
       }
     }),{threshold:.08,rootMargin:"-4% 0px -4% 0px"});
     document.querySelectorAll(".gz-reveal-target").forEach(x=>revealObs.observe(x))
