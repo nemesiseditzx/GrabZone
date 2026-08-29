@@ -5,7 +5,7 @@
 <title>Track Your Order | GrabZone</title>
 <link rel="icon" href="favicon.png"><link rel="stylesheet" href="styles.css">
 <style>
-body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20px}.track-card{background:#fff;border:1px solid #e5e5e1;border-radius:24px;padding:28px;box-shadow:0 10px 35px rgba(0,0,0,.06)}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.12em;color:#777}.track-card h1{margin:8px 0 8px;font-size:34px}.track-card p{color:#666}.track-form{display:flex;gap:10px;margin-top:22px}.track-form input{flex:1;border:1px solid #ddd;border-radius:12px;padding:14px;font:inherit;text-transform:uppercase}.track-form button{border:0;background:#111;color:#fff;border-radius:12px;padding:0 20px;font-weight:800;cursor:pointer}.track-msg{margin-top:12px;font-size:13px;font-weight:700}.result{margin-top:24px}.track-status-line{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.track-status-step{padding:10px 12px;border:1px solid #ddd;border-radius:999px;color:#888;font-size:12px;font-weight:800}.track-status-step.active{background:#111;color:#fff;border-color:#111}.tracking-box{margin-top:18px;padding:18px;background:#f5f5f2;border-radius:16px}.tracking-link{display:inline-block;margin-top:10px;padding:11px 15px;background:#111;color:#fff;border-radius:10px;text-decoration:none;font-weight:800}.help{margin-top:24px;padding-top:22px;border-top:1px solid #eee}.help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.help-grid a{padding:12px;border:1px solid #ddd;border-radius:12px;text-decoration:none;color:#111;text-align:center;font-weight:800}.items{margin-top:18px;border-top:1px solid #eee;padding-top:15px}.item{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}@media(max-width:600px){.track-wrap{margin:25px auto}.track-card{padding:20px}.track-card h1{font-size:28px}.track-form{flex-direction:column}.track-form button{height:48px}.help-grid{grid-template-columns:1fr}}
+body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20px}.track-card{background:#fff;border:1px solid #e5e5e1;border-radius:24px;padding:28px;box-shadow:0 10px 35px rgba(0,0,0,.06)}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.12em;color:#777}.track-card h1{margin:8px 0 8px;font-size:34px}.track-card p{color:#666}.track-form{display:flex;gap:10px;margin-top:22px}.track-form input{flex:1;border:1px solid #ddd;border-radius:12px;padding:14px;font:inherit;text-transform:uppercase}.track-form button{border:0;background:#111;color:#fff;border-radius:12px;padding:0 20px;font-weight:800;cursor:pointer}.track-msg{margin-top:12px;font-size:13px;font-weight:700}.result{margin-top:24px}.track-status-line{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:18px 0}.track-status-step{position:relative;min-height:92px;padding:14px 10px;border:1px solid #e1e1dd;border-radius:14px;background:#f5f5f2;color:#777;font-size:12px;font-weight:800;display:flex;align-items:flex-start;justify-content:center;text-align:center;box-sizing:border-box}.track-status-step::before{content:'';width:10px;height:10px;border-radius:50%;background:#cfcfca;position:absolute;top:10px;left:50%;transform:translateX(-50%)}.track-status-step span{margin-top:18px}.track-status-step.completed{background:#eef7ef;border-color:#b9d8bd;color:#176b2c}.track-status-step.completed::before{background:#2e8b46}.track-status-step.current{background:#111;color:#fff;border-color:#111;box-shadow:0 7px 18px rgba(0,0,0,.12)}.track-status-step.current::before{background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.18)}.track-status-step.cancelled{background:#fff0f0;color:#a11;border-color:#efc4c4}.track-status-step.cancelled::before{background:#c33}.current-status{margin:4px 0 16px;padding:13px 15px;border-radius:13px;background:#111;color:#fff;font-size:14px;font-weight:800}.current-status small{display:block;margin-top:4px;color:#cfcfcf;font-size:12px;font-weight:600}.tracking-box{margin-top:18px;padding:18px;background:#f5f5f2;border-radius:16px}.tracking-link{display:inline-block;margin-top:10px;padding:11px 15px;background:#111;color:#fff;border-radius:10px;text-decoration:none;font-weight:800}.help{margin-top:24px;padding-top:22px;border-top:1px solid #eee}.help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.help-grid a{padding:12px;border:1px solid #ddd;border-radius:12px;text-decoration:none;color:#111;text-align:center;font-weight:800}.items{margin-top:18px;border-top:1px solid #eee;padding-top:15px}.item{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}@media(max-width:760px){.track-status-line{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:600px){.track-wrap{margin:25px auto}.track-card{padding:20px}.track-card h1{font-size:28px}.track-form{flex-direction:column}.track-form button{height:48px}.track-status-line{grid-template-columns:repeat(2,minmax(0,1fr))}.help-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -43,8 +43,26 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
  function render(o){
    const idx=statuses.indexOf(o.status);
+   const safeIdx=idx<0?0:idx;
+   const descriptions={
+     New:'Order received',
+     Contacting:'We are contacting you to confirm the order',
+     Confirmed:'Order confirmed successfully',
+     Processing:'Your order is being prepared',
+     Shipped:'Your package is on the way',
+     Delivered:'Order delivered',
+     Cancelled:'This order has been cancelled'
+   };
    $('result').hidden=false;
-   $('result').innerHTML='<b>Order #'+esc(o.orderNumber)+'</b><div class="track-status-line">'+statuses.map((s,i)=>'<span class="step '+(i<=idx?'active':'')+'">'+esc(s)+'</span>').join('')+'</div>'+
+   const currentLabel=descriptions[o.status]||'Your order status has been updated';
+   const statusMarkup=statuses.map((s,i)=>{
+     const isCancelled=s==='Cancelled';
+     const cls=isCancelled?(o.status==='Cancelled'?'cancelled current':''):(i<safeIdx?'completed':i===safeIdx?'current':'');
+     return '<div class="track-status-step '+cls+'"><span>'+esc(s)+'</span></div>';
+   }).join('');
+   $('result').innerHTML='<b>Order #'+esc(o.orderNumber)+'</b>'+
+   '<div class="current-status">Current Status: '+esc(o.status||'Unknown')+'<small>'+esc(currentLabel)+'</small></div>'+
+   '<div class="track-status-line" aria-label="Order status progress">'+statusMarkup+'</div>'+
    (o.tracking?.number||o.tracking?.courier||o.tracking?.url?
      '<div class="tracking-box"><b>Package Tracking</b><div>'+esc(o.tracking.courier||'Courier')+(o.tracking.number?' · '+esc(o.tracking.number):'')+'</div>'+
      (o.tracking.url?'<a class="tracking-link" href="'+esc(o.tracking.url)+'" target="_blank" rel="noopener">Track Package →</a>':'')+'</div>':
