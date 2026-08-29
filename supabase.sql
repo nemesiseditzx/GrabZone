@@ -327,3 +327,7 @@ $$;
 
 revoke all on function public.track_public_order(text) from public;
 grant execute on function public.track_public_order(text) to anon, authenticated;
+
+
+-- Refresh PostgREST schema cache so the public tracking RPC is immediately visible.
+notify pgrst, 'reload schema';
