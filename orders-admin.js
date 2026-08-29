@@ -272,10 +272,16 @@ async function saveEditor(){
  payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.total=Math.max(0,payload.subtotal+payload.shipping_charge-payload.referral_discount);payload.updated_at=new Date().toISOString();
  $('gzOrderSave').disabled=true;
  try{
-  const {error:e1}=await sb.from('orders').update(payload).eq('id',current.id);if(e1)throw e1;
+  if(payload.status==='Confirmed'&&current.status!=='Confirmed'&&String(payload.division||'').trim().toLowerCase()==='dhaka'){
+  payload.shipping_charge=DHAKA_DELIVERY_CHARGE;
+  payload.total=Math.max(0,payload.subtotal+DHAKA_DELIVERY_CHARGE-payload.referral_discount);
+  payload.admin_note=[payload.admin_note,'Dhaka delivery adjusted to ৳70.'].filter(Boolean).join(' — ');
+ }
+ const {error:e1}=await sb.from('orders').update(payload).eq('id',current.id);if(e1)throw e1;
   const {error:e2}=await sb.from('order_items').delete().eq('order_id',current.id);if(e2)throw e2;
   const {error:e3}=await sb.from('order_items').insert(items.map(it=>({...it,order_id:current.id,line_total:it.quantity*it.unit_price})));if(e3)throw e3;
   $('gzOrderEditorMsg').textContent='✓ Order updated successfully.';
+  if(payload.status==='Confirmed'&&current.status!=='Confirmed')await sendOrderEmail(current.order_number,'status_updated');
   await loadOrders();setTimeout(closeEditor,500);
  }catch(e){$('gzOrderEditorMsg').textContent='⚠ '+e.message}finally{$('gzOrderSave').disabled=false}
 }
