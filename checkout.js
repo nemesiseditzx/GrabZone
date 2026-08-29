@@ -55,11 +55,15 @@ function fillSelect(selectId,records,placeholder){
 
 function fillDistrictOptions(){
   fillSelect('district',districtRecords(),'Select District');
-  const s=$('districtSearch'); if(s){s.value='';s.disabled=false;}
+  setPickerEnabled('district',true);
+  renderPicker('district');
+  updatePickerText('district');
 }
 function fillUpazilaOptions(){
   fillSelect('upazila',upazilaRecords(),'Select Upazila / Thana');
-  const s=$('upazilaSearch'); if(s){s.value='';s.disabled=false;}
+  setPickerEnabled('upazila',true);
+  renderPicker('upazila');
+  updatePickerText('upazila');
 }
 function useEmbeddedLocations(){
   const embedded=window.GRABZONE_BD_LOCATIONS;
@@ -97,38 +101,88 @@ async function loadLocations(){
   if(division) division.disabled=false;
   msg('Location data could not be loaded. Please refresh and try again.',true);
 }
-function searchSelect(selectId, searchId, records, placeholder){
-  const input=$(searchId), select=$(selectId);
-  if(!input||!select)return;
-  const q=String(input.value||'').trim().toLowerCase();
-  const filtered=!q?records:records.filter(x=>{
-    const en=String(x?.name?.en||'').toLowerCase(), local=String(x?.name?.local||'').toLowerCase();
-    return en.includes(q)||local.includes(q);
+function locationRecords(type){
+  if(type==='division') return divisions();
+  if(type==='district') return districtRecords();
+  return upazilaRecords();
+}
+function locationLabel(x){
+  const en=String(x?.name?.en||'').trim(), local=String(x?.name?.local||'').trim();
+  return {en:en||local,local:local||en,value:en||local};
+}
+function pickerFor(type){
+  return document.querySelector('.location-picker[data-picker="'+type+'"]');
+}
+function renderPicker(type,query=''){
+  const picker=pickerFor(type); if(!picker)return;
+  const list=locationRecords(type);
+  const q=String(query||'').trim().toLowerCase();
+  const filtered=q?list.filter(x=>{
+    const n=locationLabel(x); return n.en.toLowerCase().includes(q)||n.local.toLowerCase().includes(q);
+  }):list;
+  const options=picker.querySelector('.location-options');
+  const selected=$(type)?.value||'';
+  options.innerHTML=filtered.length?filtered.map(x=>{
+    const n=locationLabel(x);
+    return '<button type="button" class="location-option'+(n.value===selected?' active':'')+'" data-value="'+esc(n.value)+'" role="option" aria-selected="'+(n.value===selected?'true':'false')+'"><span class="location-option-main">'+esc(n.local)+'</span><span class="location-option-sub">'+esc(n.en)+'</span></button>';
+  }).join(''):'<div class="location-empty">No matching location found.</div>';
+}
+function setPickerEnabled(type,enabled){
+  const picker=pickerFor(type); if(!picker)return;
+  const trigger=picker.querySelector('.location-trigger');
+  if(trigger)trigger.disabled=!enabled;
+  const input=picker.querySelector('.location-menu-search');
+  if(input)input.disabled=!enabled;
+}
+function updatePickerText(type){
+  const picker=pickerFor(type), select=$(type); if(!picker||!select)return;
+  const option=select.options[select.selectedIndex];
+  const text=picker.querySelector('.location-trigger-text');
+  if(text)text.textContent=option?.value||option?.textContent||('Select '+type);
+}
+function closeAllPickers(except){
+  document.querySelectorAll('.location-picker.open').forEach(p=>{
+    if(p!==except){p.classList.remove('open');p.querySelector('.location-menu')?.setAttribute('hidden','');p.querySelector('.location-trigger')?.setAttribute('aria-expanded','false');}
   });
-  fillSelect(selectId,filtered,placeholder);
 }
-function bindLocationSearch(){
-  const ds=$('districtSearch'), us=$('upazilaSearch');
-  ds?.addEventListener('input',()=>searchSelect('district','districtSearch',districtRecords(),'Select District'));
-  us?.addEventListener('input',()=>searchSelect('upazila','upazilaSearch',upazilaRecords(),'Select Upazila / Thana'));
+function openPicker(type){
+  const picker=pickerFor(type); if(!picker)return;
+  if(picker.querySelector('.location-trigger')?.disabled)return;
+  closeAllPickers(picker);
+  picker.classList.add('open');
+  const menu=picker.querySelector('.location-menu'), input=picker.querySelector('.location-menu-search');
+  menu.hidden=false; picker.querySelector('.location-trigger').setAttribute('aria-expanded','true');
+  input.value=''; renderPicker(type,'');
+  requestAnimationFrame(()=>input.focus());
 }
-function onDivisionChange(){
-  const selected=$('division')?.value||'';
-  fillDistrictOptions();
-  $('district').disabled=!selected;
-  const ds=$('districtSearch'); if(ds){ds.disabled=!selected;ds.value='';}
-  $('upazila').innerHTML='<option value="">Select Upazila / Thana</option>';
-  $('upazila').value='';
-  $('upazila').disabled=true;
-  const us=$('upazilaSearch'); if(us){us.disabled=true;us.value='';}
-  render();
+function closePicker(type){
+  const picker=pickerFor(type); if(!picker)return;
+  picker.classList.remove('open');picker.querySelector('.location-menu').hidden=true;picker.querySelector('.location-trigger').setAttribute('aria-expanded','false');
 }
-function onDistrictChange(){
-  const selected=$('district')?.value||'';
-  fillUpazilaOptions();
-  $('upazila').disabled=!selected;
-  const us=$('upazilaSearch'); if(us)us.disabled=!selected;
-  render();
+function chooseLocation(type,value){
+  const select=$(type); if(!select)return;
+  select.value=value;
+  updatePickerText(type);
+  closePicker(type);
+  if(type==='division') onDivisionChange();
+  else if(type==='district') onDistrictChange();
+  else render();
+}
+function bindLocationPickers(){
+  document.querySelectorAll('.location-picker').forEach(picker=>{
+    const type=picker.dataset.picker;
+    const trigger=picker.querySelector('.location-trigger');
+    const input=picker.querySelector('.location-menu-search');
+    trigger?.addEventListener('click',()=>picker.classList.contains('open')?closePicker(type):openPicker(type));
+    input?.addEventListener('input',()=>renderPicker(type,input.value));
+    picker.querySelector('.location-options')?.addEventListener('click',e=>{
+      const option=e.target.closest('.location-option');
+      if(option)chooseLocation(type,option.dataset.value);
+    });
+  });
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.location-picker'))closeAllPickers();
+  });
 }
 function formData(){
   return {
@@ -268,7 +322,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('checkoutForm')?.addEventListener('submit',submit);
   $('division')?.addEventListener('change',onDivisionChange);
   $('district')?.addEventListener('change',onDistrictChange);
-  bindLocationSearch();
+  bindLocationPickers();
   $('applyReferralBtn')?.addEventListener('click',applyReferral);
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
   await loadLocations();await loadSite();await hydrate();
