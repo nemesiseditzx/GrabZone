@@ -12,6 +12,23 @@ const TRACK_MARKER='[[GRABZONE_TRACKING]]',TRACK_END='[[/GRABZONE_TRACKING]]';
 function parseTracking(note){const m=String(note||'').split(TRACK_MARKER)[1];if(!m)return{number:'',courier:'',url:''};try{return{number:'',courier:'',url:'',...JSON.parse(m.split(TRACK_END)[0])}}catch{return{number:'',courier:'',url:''}}}
 function saveTrackingNote(note){return String(note||'').split(TRACK_MARKER)[0].trim()||null}
 function trackingFor(order){const legacy=parseTracking(order.admin_note);return{number:String(order.tracking_number||legacy.number||'').trim(),courier:String(order.tracking_provider||legacy.courier||'').trim(),url:String(order.tracking_url||legacy.url||'').trim()}}
+async function ensurePrivateTrackingId(order){
+ if(String(order.public_tracking_id||'').trim())return String(order.public_tracking_id).trim();
+ for(let attempt=0;attempt<5;attempt++){
+   const bytes=new Uint8Array(10);
+   if(window.crypto?.getRandomValues)window.crypto.getRandomValues(bytes);
+   else for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256);
+   const id='GZ-'+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+   const{data:existing,error:checkError}=await sb.from('orders').select('id').eq('public_tracking_id',id).maybeSingle();
+   if(checkError)throw checkError;
+   if(existing)continue;
+   const{error:updateError}=await sb.from('orders').update({public_tracking_id:id,updated_at:new Date().toISOString()}).eq('id',order.id);
+   if(updateError)throw updateError;
+   order.public_tracking_id=id;
+   return id;
+ }
+ throw new Error('Could not generate a unique Private Tracking ID.');
+}
 
 
 
@@ -69,6 +86,12 @@ async function loadOrders(){
      return;
    }
    orders=Array.isArray(data)?data:[];
+   // Backfill private customer-facing tracking IDs for older orders.
+   for(const order of orders){
+     if(!String(order.public_tracking_id||'').trim()){
+       try{await ensurePrivateTrackingId(order);}catch(e){console.error('Tracking ID backfill failed:',order.id,e);}
+     }
+   }
    renderOrders();
  }catch(e){
    console.error('GrabZone orders exception:',e);
@@ -82,7 +105,7 @@ function renderOrders(){
  const list=orders.filter(o=>(!q||`${o.order_number} ${o.public_tracking_id||''} ${o.customer_name} ${o.phone} ${o.email} ${o.referral_code||''}`.toLowerCase().includes(q))&&(!st||o.status===st));
  if(!list.length){panel.innerHTML='<div class="gz-empty-orders">No orders found.</div>';return}
  panel.innerHTML=`<div class="gz-orders-wrap"><table class="gz-orders-table"><thead><tr><th>Order / Tracking ID</th><th>Customer</th><th>Phone</th><th>Email</th><th>Referral</th><th>Discount</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>${list.map(o=>`<tr>
- <td><button class="gz-order-link" data-order="${esc(o.id)}">${esc(o.order_number)}</button><div class="gz-public-track-id">${esc(o.public_tracking_id||'—')}</div></td>
+ <td><button class="gz-order-link" data-order="${esc(o.id)}">${esc(o.order_number)}</button><div class="gz-public-track-id">${o.public_tracking_id?`Private Tracking ID: <b>${esc(o.public_tracking_id)}</b>`:'Private Tracking ID: generating…'}</div></td>
  <td>${esc(o.customer_name)}</td>
  <td>${esc(o.phone)}</td>
  <td class="gz-order-email" title="${esc(o.email)}">${esc(o.email)}</td>
