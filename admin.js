@@ -661,7 +661,11 @@ function switchTab(tab){
    .querySelector(`.side-link[data-tab="${tab}"]`)
    ?.classList.add("active");
 
- scrollTo(0,0)
+ scrollTo(0,0);
+
+ if(tab === "billboards" && typeof loadBillboardManager === "function"){
+   loadBillboardManager();
+ }
 }
 
 document.addEventListener("click",e=>{
