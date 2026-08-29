@@ -184,6 +184,27 @@ function bindLocationPickers(){
     if(!e.target.closest('.location-picker'))closeAllPickers();
   });
 }
+function onDivisionChange(){
+  const division=$('division'),district=$('district'),upazila=$('upazila');
+  if(!division||!district||!upazila)return;
+  district.value='';upazila.value='';
+  district.disabled=!division.value;upazila.disabled=true;
+  setPickerEnabled('district',!!division.value);
+  setPickerEnabled('upazila',false);
+  updatePickerText('district');updatePickerText('upazila');
+  if(division.value)fillDistrictOptions();
+  render();
+}
+function onDistrictChange(){
+  const district=$('district'),upazila=$('upazila');
+  if(!district||!upazila)return;
+  upazila.value='';
+  upazila.disabled=!district.value;
+  setPickerEnabled('upazila',!!district.value);
+  updatePickerText('upazila');
+  if(district.value)fillUpazilaOptions();
+  render();
+}
 function formData(){
   return {
     customer_name:$('customerName').value.trim(),
