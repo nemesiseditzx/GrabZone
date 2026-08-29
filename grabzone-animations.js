@@ -91,13 +91,73 @@
   function advanced(s){
     document.body.classList.toggle("gz-no-magnetic",!s.magnetic_cursor);
     if(s.text_reveal){
-      document.querySelectorAll(".hero h1,.section-head h2,.how-section h2,.ref-section h2").forEach(el=>{
-        if(el.dataset.gzSplit)return;el.dataset.gzSplit="1";
-        const text=el.textContent.trim();el.textContent="";
-        text.split(/(\s+)/).forEach((w,i)=>{if(/^\s+$/.test(w)){el.appendChild(document.createTextNode(w));return}const span=document.createElement("span");span.className="gz-text-word";span.textContent=w;span.style.transitionDelay=(i*55)+"ms";el.appendChild(span)})
+      const splitTargets=document.querySelectorAll(".hero h1,.section-head h2,.how-section h2,.ref-section h2");
+
+      splitTargets.forEach(el=>{
+        if(!el.dataset.gzSplit){
+          el.dataset.gzSplit="1";
+          const text=el.textContent.trim();
+          el.textContent="";
+          text.split(/(\s+)/).forEach((w,i)=>{
+            if(/^\s+$/.test(w)){
+              el.appendChild(document.createTextNode(w));
+              return;
+            }
+            const span=document.createElement("span");
+            span.className="gz-text-word";
+            span.textContent=w;
+            span.style.transitionDelay=(i*55)+"ms";
+            el.appendChild(span);
+          });
+        }
       });
-      const io=new IntersectionObserver(es=>es.forEach(e=>{e.target.querySelectorAll(".gz-text-word").forEach(w=>e.isIntersecting?w.classList.add("gz-text-in"):w.classList.remove("gz-text-in"))}),{threshold:.3});
-      document.querySelectorAll("[data-gz-split]").forEach(x=>io.observe(x))
+
+      const showWords=(el,visible)=>{
+        el.querySelectorAll(".gz-text-word").forEach(w=>{
+          w.classList.toggle("gz-text-in",visible);
+        });
+      };
+
+      const io=new IntersectionObserver(es=>es.forEach(e=>showWords(e.target,e.isIntersecting)),{
+        threshold:.12,
+        rootMargin:"40px 0px 40px 0px"
+      });
+
+      document.querySelectorAll("[data-gz-split]").forEach(el=>{
+        io.observe(el);
+
+        const r=el.getBoundingClientRect();
+        const inView=r.bottom>0 && r.top<innerHeight;
+        if(inView) showWords(el,true);
+      });
+
+      /*
+        Site settings and language switching update textContent after
+        the motion engine has initialized. Keep already-rendered words
+        visible instead of leaving the heading permanently transparent.
+      */
+      const textFixer=new MutationObserver(mutations=>{
+        for(const m of mutations){
+          if(m.type!=="characterData" && m.type!=="childList") continue;
+          const target=m.target.nodeType===1 ? m.target : m.target.parentElement;
+          const host=target?.closest?.("[data-gz-split]");
+          if(host){
+            const r=host.getBoundingClientRect();
+            if(r.bottom>0 && r.top<innerHeight) showWords(host,true);
+          }
+        }
+      });
+
+      document.querySelectorAll("[data-gz-split]").forEach(el=>{
+        textFixer.observe(el,{subtree:true,childList:true,characterData:true});
+      });
+
+      setTimeout(()=>{
+        document.querySelectorAll("[data-gz-split]").forEach(el=>{
+          const r=el.getBoundingClientRect();
+          if(r.bottom>0 && r.top<innerHeight) showWords(el,true);
+        });
+      },1200);
     }
     if(s.header_scroll){
       const h=document.querySelector("header");if(h){document.body.classList.add("gz-header-ready");addEventListener("scroll",()=>{const y=scrollY;h.classList.toggle("gz-header-hidden",y>last&&y>120);last=y},{passive:true})}
