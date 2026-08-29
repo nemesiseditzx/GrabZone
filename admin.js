@@ -23,85 +23,12 @@ async function logout(){
  location.reload()
 }
 
-function injectReferralManager(){
- if($('tab-referrals'))return;
- const main=document.querySelector('main.content');if(!main)return;
- const section=document.createElement('section');
- section.id='tab-referrals';section.className='tab';
- section.innerHTML=`
- <div class="page-title"><div><div class="eyebrow">REFERRAL MANAGEMENT</div><h1>Referral Codes</h1><p>Create and control every admin's code and its customer benefit.</p></div><button class="primary" id="gzReferralRefresh">↻ Refresh</button></div>
- <div class="panel">
-  <h3 style="margin-top:0">Create referral code</h3>
-  <div class="gz-ref-grid">
-   <label>Admin Name<input id="rcAdminName" placeholder="Tonmoy"></label>
-   <label>Admin Phone<input id="rcAdminPhone" placeholder="Optional"></label>
-   <label>Admin Email<input id="rcAdminEmail" type="email" placeholder="Optional"></label>
-   <label>Referral Code<input id="rcCode" placeholder="TONMOYB10"></label>
-   <label>Benefit Type<select id="rcType"><option value="fixed">Fixed ৳ off</option><option value="percentage">Percentage % off</option></select></label>
-   <label>Benefit Value<input id="rcValue" type="number" min="0" step="0.01" placeholder="10"></label>
-   <label>Minimum Order<input id="rcMin" type="number" min="0" step="0.01" value="0"></label>
-   <label>Maximum Discount<input id="rcMax" type="number" min="0" step="0.01" placeholder="No limit"></label>
-   <label>Usage Limit<input id="rcLimit" type="number" min="0" step="1" placeholder="Unlimited"></label>
-   <label>Starts At<input id="rcStart" type="datetime-local"></label>
-   <label>Expires At<input id="rcExpire" type="datetime-local"></label>
-   <label style="display:flex;align-items:center;gap:8px">Active <input id="rcActive" type="checkbox" checked></label>
-   <label class="gz-ref-full">Note<textarea id="rcNote" rows="2" placeholder="Internal note"></textarea></label>
-  </div>
-  <div id="gzReferralMsg" class="muted" style="margin-top:12px"></div>
-  <button class="primary" id="gzReferralCreate">＋ Create Code</button>
- </div>
- <div class="panel" style="margin-top:18px"><div id="gzReferralList" class="muted">Loading referral codes…</div></div>`;
- main.appendChild(section);
- const style=document.createElement('style');style.id='gzReferralStyle';style.textContent=`
- .gz-ref-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.gz-ref-grid label{display:grid;gap:6px;font-size:11px;font-weight:800;color:#555}.gz-ref-grid input,.gz-ref-grid select,.gz-ref-grid textarea{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:11px;background:#fff;font:inherit}.gz-ref-full{grid-column:1/-1}.gz-ref-table{width:100%;border-collapse:collapse;min-width:1050px}.gz-ref-table th,.gz-ref-table td{padding:11px 9px;border-bottom:1px solid #eee;text-align:left;font-size:12px}.gz-ref-table th{font-size:10px;text-transform:uppercase;color:#777}.gz-ref-wrap{overflow:auto}.gz-ref-actions{display:flex;gap:6px;white-space:nowrap}.gz-ref-actions button{border:1px solid #ddd;background:#fff;border-radius:8px;padding:7px 9px;font:inherit;font-size:10px;font-weight:800;cursor:pointer}.gz-ref-actions .danger{color:#a00000}@media(max-width:850px){.gz-ref-grid{grid-template-columns:1fr 1fr}}@media(max-width:560px){.gz-ref-grid{grid-template-columns:1fr}.gz-ref-full{grid-column:auto}}`;
- document.head.appendChild(style);
- $('gzReferralRefresh').onclick=loadReferralCodes;
- $('gzReferralCreate').onclick=createReferralCode;
- loadReferralCodes();
-}
-async function loadReferralCodes(){
- const box=$('gzReferralList');if(!box||!sb)return;
- box.textContent='Loading…';
- const{data,error}=await sb.from('referral_codes').select('*').order('created_at',{ascending:false});
- if(error){box.textContent=error.message;return}
- if(!data?.length){box.innerHTML='<div class="muted">No referral codes yet.</div>';return}
- box.innerHTML='<div class="gz-ref-wrap"><table class="gz-ref-table"><thead><tr><th>Admin</th><th>Code</th><th>Benefit</th><th>Rules</th><th>Used</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
- data.map(r=>`<tr><td><b>${esc(r.admin_name)}</b><br><small>${esc(r.admin_email||r.admin_phone||'')}</small></td><td><b>${esc(r.code)}</b></td><td>${r.benefit_type==='percentage'?esc(r.benefit_value)+'% off':money(r.benefit_value)+' off'}</td><td>Min ${money(r.min_order_amount)} · ${r.max_discount_amount==null?'No cap':'Cap '+money(r.max_discount_amount)} · ${r.usage_limit==null?'Unlimited':r.usage_limit+' uses'}</td><td>${r.used_count||0}</td><td>${r.active?'Active':'Disabled'}</td><td><div class="gz-ref-actions"><button data-ref-toggle="${esc(r.id)}">${r.active?'Disable':'Enable'}</button><button class="danger" data-ref-delete="${esc(r.id)}">Delete</button></div></td></tr>`).join('')+'</tbody></table></div>';
- box.querySelectorAll('[data-ref-toggle]').forEach(b=>b.onclick=()=>toggleReferral(b.dataset.refToggle));
- box.querySelectorAll('[data-ref-delete]').forEach(b=>b.onclick=()=>deleteReferral(b.dataset.refDelete));
-}
-async function createReferralCode(){
- const p={
-  admin_name:$('rcAdminName').value.trim(),admin_phone:$('rcAdminPhone').value.trim()||null,admin_email:$('rcAdminEmail').value.trim()||null,
-  code:$('rcCode').value.trim().toUpperCase(),benefit_type:$('rcType').value,benefit_value:Number($('rcValue').value||0),
-  min_order_amount:Number($('rcMin').value||0),max_discount_amount:$('rcMax').value?Number($('rcMax').value):null,
-  usage_limit:$('rcLimit').value?Number($('rcLimit').value):null,starts_at:$('rcStart').value?new Date($('rcStart').value).toISOString():null,
-  expires_at:$('rcExpire').value?new Date($('rcExpire').value).toISOString():null,active:$('rcActive').checked,note:$('rcNote').value.trim()||null
- };
- if(!p.admin_name||!p.code||p.benefit_value<=0){$('gzReferralMsg').textContent='Enter admin name, code and a benefit greater than 0.';return}
- try{
-  const{error}=await sb.from('referral_codes').insert(p);if(error)throw error;
-  $('gzReferralMsg').textContent='✓ Referral code created.';
-  ['rcAdminName','rcAdminPhone','rcAdminEmail','rcCode','rcValue','rcMax','rcLimit','rcStart','rcExpire','rcNote'].forEach(id=>{const e=$(id);if(e)e.value=''});
-  $('rcMin').value='0';$('rcActive').checked=true;await loadReferralCodes();
- }catch(e){$('gzReferralMsg').textContent='✕ '+e.message}
-}
-async function toggleReferral(id){
- const{data,error}=await sb.from('referral_codes').select('active').eq('id',id).single();if(error)return alert(error.message);
- const{error:e}=await sb.from('referral_codes').update({active:!data.active,updated_at:new Date().toISOString()}).eq('id',id);if(e)return alert(e.message);loadReferralCodes();
-}
-async function deleteReferral(id){
- if(!confirm('Delete this referral code?'))return;
- const{error}=await sb.from('referral_codes').delete().eq('id',id);if(error)return alert(error.message);loadReferralCodes();
-}
-
 function showApp(){
  $("loginBox").classList.add("hidden");
  $("app").classList.remove("hidden");
  loadSettings();
  loadProducts();
  loadNotices();
- injectReferralManager()
 }
 
 function previewFile(input,id){
