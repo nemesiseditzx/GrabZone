@@ -41,8 +41,11 @@ function upazilaRecords(){
 
 function fillSelect(selectId,records,placeholder){
   const select=$(selectId);if(!select)return;
+  const list=Array.isArray(records)?records:[];
+  // Never wipe a working static dropdown when location data has not loaded yet.
+  if(!list.length)return;
   const current=select.value;
-  select.innerHTML='<option value="">'+esc(placeholder)+'</option>'+(Array.isArray(records)?records:[]).map(x=>{
+  select.innerHTML='<option value="">'+esc(placeholder)+'</option>'+list.map(x=>{
     const en=String(x?.name?.en||'').trim(),local=String(x?.name?.local||'').trim();
     const value=en||local,label=en&&local&&en!==local?en+' — '+local:(en||local);
     return '<option value="'+esc(value)+'">'+esc(label)+'</option>';
