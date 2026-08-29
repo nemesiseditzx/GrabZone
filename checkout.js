@@ -55,9 +55,11 @@ function fillSelect(selectId,records,placeholder){
 
 function fillDistrictOptions(){
   fillSelect('district',districtRecords(),'Select District');
+  const s=$('districtSearch'); if(s){s.value='';s.disabled=false;}
 }
 function fillUpazilaOptions(){
   fillSelect('upazila',upazilaRecords(),'Select Upazila / Thana');
+  const s=$('upazilaSearch'); if(s){s.value='';s.disabled=false;}
 }
 function useEmbeddedLocations(){
   const embedded=window.GRABZONE_BD_LOCATIONS;
@@ -95,19 +97,37 @@ async function loadLocations(){
   if(division) division.disabled=false;
   msg('Location data could not be loaded. Please refresh and try again.',true);
 }
+function searchSelect(selectId, searchId, records, placeholder){
+  const input=$(searchId), select=$(selectId);
+  if(!input||!select)return;
+  const q=String(input.value||'').trim().toLowerCase();
+  const filtered=!q?records:records.filter(x=>{
+    const en=String(x?.name?.en||'').toLowerCase(), local=String(x?.name?.local||'').toLowerCase();
+    return en.includes(q)||local.includes(q);
+  });
+  fillSelect(selectId,filtered,placeholder);
+}
+function bindLocationSearch(){
+  const ds=$('districtSearch'), us=$('upazilaSearch');
+  ds?.addEventListener('input',()=>searchSelect('district','districtSearch',districtRecords(),'Select District'));
+  us?.addEventListener('input',()=>searchSelect('upazila','upazilaSearch',upazilaRecords(),'Select Upazila / Thana'));
+}
 function onDivisionChange(){
   const selected=$('division')?.value||'';
   fillDistrictOptions();
   $('district').disabled=!selected;
+  const ds=$('districtSearch'); if(ds){ds.disabled=!selected;ds.value='';}
   $('upazila').innerHTML='<option value="">Select Upazila / Thana</option>';
   $('upazila').value='';
   $('upazila').disabled=true;
+  const us=$('upazilaSearch'); if(us){us.disabled=true;us.value='';}
   render();
 }
 function onDistrictChange(){
   const selected=$('district')?.value||'';
   fillUpazilaOptions();
   $('upazila').disabled=!selected;
+  const us=$('upazilaSearch'); if(us)us.disabled=!selected;
   render();
 }
 function formData(){
