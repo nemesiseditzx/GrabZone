@@ -38,6 +38,188 @@
       .gz-text-word{display:inline-block;opacity:0;transform:translateY(24px);filter:blur(5px)}
       .gz-text-word.gz-text-in{opacity:1;transform:none;filter:none;transition:all .65s cubic-bezier(.16,1,.3,1)}
       .gz-section-transition{will-change:transform}
+
+      /* =====================================================
+         GRABZONE MOTION SYSTEM
+         Elements animate into view, but NEVER become hidden
+         again after they have been revealed.
+      ===================================================== */
+
+      .gz-page-veil{
+        position:fixed;
+        inset:0;
+        z-index:10000;
+        pointer-events:none;
+        background:#fff;
+        animation:gzPageVeil 1s cubic-bezier(.76,0,.24,1) forwards;
+      }
+      @keyframes gzPageVeil{
+        0%{opacity:1}
+        55%{opacity:1}
+        100%{opacity:0;visibility:hidden}
+      }
+
+      .gz-particle{
+        position:fixed;
+        z-index:0;
+        width:4px;
+        height:4px;
+        border-radius:50%;
+        background:rgba(255,106,0,.18);
+        pointer-events:none;
+        animation:gzFloatParticle var(--gz-particle-duration,12s) linear infinite;
+      }
+      @keyframes gzFloatParticle{
+        0%{transform:translate3d(0,20vh,0) scale(.6);opacity:0}
+        12%{opacity:.65}
+        50%{transform:translate3d(var(--px),-45vh,0) scale(1);opacity:.45}
+        88%{opacity:.25}
+        100%{transform:translate3d(calc(var(--px) * -1),-110vh,0) scale(.3);opacity:0}
+      }
+
+      .gz-reveal-target{
+        opacity:0;
+        transform:translate3d(0,34px,0);
+        filter:blur(4px);
+        transition:
+          opacity var(--gz-duration,.75s) cubic-bezier(.16,1,.3,1),
+          transform var(--gz-duration,.75s) cubic-bezier(.16,1,.3,1),
+          filter var(--gz-duration,.75s) cubic-bezier(.16,1,.3,1);
+        transition-delay:var(--gz-delay,0ms);
+      }
+      .gz-reveal-target.gz-visible{
+        opacity:1;
+        transform:none;
+        filter:none;
+      }
+
+      .product-card.gz-reveal-target{
+        transform:translate3d(0,55px,0) scale(.96);
+      }
+      .product-card.gz-reveal-target.gz-visible{
+        transform:none;
+      }
+
+      .step.gz-reveal-target{
+        transform:translate3d(0,28px,0);
+      }
+
+      .shop-section.gz-reveal-target,
+      .how-section.gz-reveal-target,
+      .ref-section.gz-reveal-target,
+      .offer-strip.gz-reveal-target{
+        transform:translate3d(0,45px,0);
+      }
+
+      .hero-copy{
+        animation:gzHeroCopy .9s cubic-bezier(.16,1,.3,1) both;
+      }
+      .hero-card{
+        animation:gzHeroCard 1s cubic-bezier(.16,1,.3,1) .08s both;
+      }
+      @keyframes gzHeroCopy{
+        from{opacity:0;transform:translate3d(-28px,18px,0)}
+        to{opacity:1;transform:none}
+      }
+      @keyframes gzHeroCard{
+        from{opacity:0;transform:translate3d(28px,20px,0) scale(.96) rotate(1deg)}
+        to{opacity:1;transform:none}
+      }
+
+      .product-card{
+        position:relative;
+        isolation:isolate;
+        transition:
+          transform .35s cubic-bezier(.16,1,.3,1),
+          box-shadow .35s ease;
+      }
+      .product-card::before{
+        content:"";
+        position:absolute;
+        inset:0;
+        z-index:2;
+        pointer-events:none;
+        border-radius:inherit;
+        opacity:0;
+        background:radial-gradient(
+          180px circle at var(--mx,50%) var(--my,50%),
+          rgba(255,106,0,.12),
+          transparent 65%
+        );
+        transition:opacity .3s ease;
+      }
+      .product-card:hover::before{opacity:1}
+      .product-card::after{
+        content:"";
+        position:absolute;
+        top:-30%;
+        left:-65%;
+        width:42%;
+        height:160%;
+        z-index:3;
+        pointer-events:none;
+        background:linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent);
+        transform:rotate(18deg);
+        transition:left .8s cubic-bezier(.16,1,.3,1);
+      }
+      .product-card:hover::after{left:125%}
+      .product-card:hover{
+        box-shadow:0 18px 42px rgba(0,0,0,.10);
+      }
+      .product-image{
+        overflow:hidden;
+      }
+      .product-image img{
+        transition:transform .65s cubic-bezier(.16,1,.3,1),filter .4s ease;
+      }
+      .product-card:hover .product-image img{
+        transform:scale(1.06);
+        filter:saturate(1.04);
+      }
+
+      .btn,
+      button,
+      .chip,
+      .text-link,
+      .header a{
+        transition:
+          transform .25s cubic-bezier(.16,1,.3,1),
+          box-shadow .25s ease,
+          background-color .2s ease,
+          color .2s ease;
+      }
+      .btn:hover,
+      button:hover{
+        transform:translateY(-2px);
+      }
+      .btn:active,
+      button:active{
+        transform:translateY(1px) scale(.98);
+      }
+
+      .section-head h2,
+      .how-section h2,
+      .ref-section h2{
+        will-change:transform;
+      }
+
+      .notice-track,
+      .notice-loop{
+        will-change:transform;
+      }
+
+      @media (prefers-reduced-motion:reduce){
+        .gz-page-veil,
+        .gz-particle,
+        .hero-copy,
+        .hero-card{animation:none!important}
+        .gz-reveal-target{
+          opacity:1!important;
+          transform:none!important;
+          filter:none!important;
+          transition:none!important;
+        }
+      }
     `;
     document.head.appendChild(s)
   }
@@ -47,7 +229,7 @@
       const v=document.createElement("div");v.className="gz-page-veil";document.body.appendChild(v);setTimeout(()=>v.remove(),1100)
     }
     if(s.floating_effects!==false&&!document.querySelector(".gz-particle")){
-      for(let i=0;i<12;i++){const p=document.createElement("i");p.className="gz-particle";p.style.left=Math.random()*100+"vw";p.style.bottom=(-10-Math.random()*20)+"vh";p.style.setProperty("--px",(Math.random()-.5)*180+"px");p.style.animationDuration=8+Math.random()*10+"s";p.style.animationDelay=-Math.random()*10+"s";document.body.appendChild(p)}
+      for(let i=0;i<12;i++){const p=document.createElement("i");p.className="gz-particle";p.style.left=Math.random()*100+"vw";p.style.bottom=(-10-Math.random()*20)+"vh";p.style.setProperty("--px",(Math.random()-.5)*180+"px");p.style.setProperty("--gz-particle-duration",8+Math.random()*10+"s");p.style.animationDuration=8+Math.random()*10+"s";p.style.animationDelay=-Math.random()*10+"s";document.body.appendChild(p)}
     }
     if(s.magnetic_cursor!==false&&!document.querySelector(".gz-magnetic-cursor")){
       const c=document.createElement("i");c.className="gz-magnetic-cursor";document.body.appendChild(c);
