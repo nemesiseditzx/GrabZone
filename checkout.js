@@ -57,7 +57,7 @@ function fillUpazilaOptions(){
 }
 async function loadLocations(){
   try{
-    const r=await fetch('/data/bangladesh-locations.json',{cache:'no-store'});
+    const r=await fetch('/data/bangladesh-locations.json?v=20260828',{cache:'no-store'});
     if(!r.ok)throw new Error('Location data could not be loaded.');
     const json=await r.json();
     locationTree=json&&Array.isArray(json.data)?json.data:[];
@@ -68,7 +68,9 @@ async function loadLocations(){
     fillSelect('division',divisions(),'Select Division');
   }catch(e){
     console.error(e);
-    msg('Could not load Bangladesh location data. Please refresh the page.',true);
+    locationTree=window.GRABZONE_BD_LOCATIONS&&Array.isArray(window.GRABZONE_BD_LOCATIONS.data)?window.GRABZONE_BD_LOCATIONS.data:[];
+    if(divisions().length===8) fillSelect('division',divisions(),'Select Division');
+    else msg('Could not load Bangladesh location data. Please refresh the page.',true);
   }
 }
 function onDivisionChange(){
