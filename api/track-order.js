@@ -35,8 +35,8 @@ function parseLegacyTracking(note){
 module.exports=async function handler(req,res){
   if(req.method!=='GET')return res.status(405).json({error:'Method not allowed.'});
 
-  const orderNumber=String(req.query?.orderId||req.query?.orderNumber||'').trim();
-  if(!orderNumber)return res.status(400).json({error:'Order ID is required.'});
+  const trackingId=String(req.query?.trackingId||'').trim();
+  if(!trackingId)return res.status(400).json({error:'Private Tracking ID is required.'});
 
   try{
     /*
@@ -46,7 +46,7 @@ module.exports=async function handler(req,res){
      */
     const rpc=await supabase('rpc/track_public_order',{
       method:'POST',
-      body:JSON.stringify({p_order_number:orderNumber})
+      body:JSON.stringify({p_tracking_id:trackingId})
     });
     const rpcData=await json(rpc);
 
@@ -61,12 +61,12 @@ module.exports=async function handler(req,res){
     const hasServerKey=Boolean(process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY);
     if(hasServerKey){
       const r=await supabase(
-        'orders?order_number=eq.'+encodeURIComponent(orderNumber)+
-        '&select=id,order_number,status,created_at,updated_at,admin_note,tracking_number,tracking_url,tracking_provider'
+        'orders?public_tracking_id=eq.'+encodeURIComponent(trackingId)+
+        '&select=id,order_number,public_tracking_id,status,created_at,updated_at,admin_note,tracking_number,tracking_url,tracking_provider'
       );
       const rows=await json(r);
       if(!r.ok||!Array.isArray(rows)||!rows[0]){
-        return res.status(404).json({error:'Order not found. Please check your Order ID.'});
+        return res.status(404).json({error:'Order not found. Please check your private Tracking ID.'});
       }
       const o=rows[0];
       const legacy=parseLegacyTracking(o.admin_note);
@@ -80,6 +80,7 @@ module.exports=async function handler(req,res){
       return res.status(200).json({
         success:true,
         order:{
+          trackingId:o.public_tracking_id,
           orderNumber:o.order_number,
           status:o.status,
           createdAt:o.created_at,
