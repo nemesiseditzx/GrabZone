@@ -10,7 +10,8 @@ const $=id=>document.getElementById(id);
 const statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
 const TRACK_MARKER='[[GRABZONE_TRACKING]]',TRACK_END='[[/GRABZONE_TRACKING]]';
 function parseTracking(note){const m=String(note||'').split(TRACK_MARKER)[1];if(!m)return{number:'',courier:'',url:''};try{return{number:'',courier:'',url:'',...JSON.parse(m.split(TRACK_END)[0])}}catch{return{number:'',courier:'',url:''}}}
-function saveTrackingNote(note,t){const base=String(note||'').split(TRACK_MARKER)[0].trim();const clean={number:String(t.number||'').trim(),courier:String(t.courier||'').trim(),url:String(t.url||'').trim()};return (base+(clean.number||clean.courier||clean.url?' '+TRACK_MARKER+JSON.stringify(clean)+TRACK_END:'')).trim()||null}
+function saveTrackingNote(note){return String(note||'').split(TRACK_MARKER)[0].trim()||null}
+function trackingFor(order){const legacy=parseTracking(order.admin_note);return{number:String(order.tracking_number||legacy.number||'').trim(),courier:String(order.tracking_provider||legacy.courier||'').trim(),url:String(order.tracking_url||legacy.url||'').trim()}
 
 
 
@@ -242,7 +243,7 @@ async function openEditor(id){
  <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label>
  <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" value="${Number(current.shipping_charge||0)}"></label>
  <label>Referral Discount<input id="oeDiscount" type="number" step="0.01" min="0" value="${Number(current.referral_discount||0)}"></label>
- <label class="gz-order-full">Admin Note<textarea id="oeNote">${esc(String(current.admin_note||'').split(TRACK_MARKER)[0].trim())}</textarea></label><label>Courier<input id="oeTrackingCourier" value="${esc(parseTracking(current.admin_note).courier)}" placeholder="e.g. Steadfast"></label><label>Tracking Number<input id="oeTrackingNumber" value="${esc(parseTracking(current.admin_note).number)}" placeholder="Courier tracking number"></label><label class="gz-order-full">Tracking URL<input id="oeTrackingUrl" type="url" value="${esc(parseTracking(current.admin_note).url)}" placeholder="https://courier-tracking-link..."></label></div>
+ <label class="gz-order-full">Admin Note<textarea id="oeNote">${esc(String(current.admin_note||'').split(TRACK_MARKER)[0].trim())}</textarea></label><label>Courier / Tracking Provider<input id="oeTrackingCourier" value="${esc(trackingFor(current).courier)}" placeholder="e.g. Steadfast"></label><label>Tracking Number<input id="oeTrackingNumber" value="${esc(trackingFor(current).number)}" placeholder="Courier tracking number"></label><label class="gz-order-full">Tracking URL<input id="oeTrackingUrl" type="url" value="${esc(trackingFor(current).url)}" placeholder="https://courier-tracking-link..."></label></div>
  <div class="gz-items-editor"><h3>Products in this order</h3><div id="oeItems">${current.items.map((it,i)=>itemRow(it,i)).join('')}</div><button type="button" class="ghost" id="oeAddItem">＋ Add item</button><div id="oePreview" class="gz-order-total-preview"></div></div>`;
  $('oeAddItem').onclick=()=>{current.items.push({id:null,product_id:null,product_name:'',image_url:'',quantity:1,unit_price:0});renderItemEditor();updatePreview()};
  current.items.forEach((_,i)=>bindItemRow(i)); updatePreview(); $('oeShipping').oninput=updatePreview;
@@ -262,7 +263,11 @@ async function saveEditor(){
   division:$('oeDivision').value.trim(),district:$('oeDistrict').value.trim(),upazila:$('oeUpazila').value.trim(),
   address:$('oeAddress').value.trim(),referral_code:$('oeReferral').value.trim()||null,
   payment_method:$('oePayment').value.trim()||'Cash on Delivery',shipping_charge:Number($('oeShipping').value||0),referral_discount:Math.max(0,Number($('oeDiscount').value||0)),
-  status:$('oeStatus').value,admin_note:saveTrackingNote($('oeNote').value.trim(),{number:$('oeTrackingNumber').value,courier:$('oeTrackingCourier').value,url:$('oeTrackingUrl').value})
+  status:$('oeStatus').value,
+  admin_note:saveTrackingNote($('oeNote').value.trim()),
+  tracking_provider:$('oeTrackingCourier').value.trim()||null,
+  tracking_number:$('oeTrackingNumber').value.trim()||null,
+  tracking_url:$('oeTrackingUrl').value.trim()||null
  };
  const items=[...document.querySelectorAll('.gz-item-edit')].map((row,i)=>({
   product_id:current.items[i]?.product_id||null,product_name:row.querySelector('.it-name').value.trim(),
