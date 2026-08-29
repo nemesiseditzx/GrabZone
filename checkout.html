@@ -142,5 +142,44 @@
 <script src="data/bangladesh-locations.js?v=20260829"></script>
 <script src="checkout.js?v=20260829"></script>
 <script src="location-fix.js?v=20260829"></script>
+<script>
+(function(){
+  function boot(){
+    var d=document.getElementById('division'), r=document.getElementById('district'), u=document.getElementById('upazila');
+    if(!d||!r||!u)return;
+    function label(x){return String((x&&x.name&&x.name.en)|| (x&&x.name&&x.name.local)||'').trim();}
+    function options(el,list,placeholder){
+      el.innerHTML='';
+      el.add(new Option(placeholder,''));
+      (list||[]).forEach(function(x){var n=label(x); if(n)el.add(new Option(n,n));});
+    }
+    function divisions(){return window.GRABZONE_BD_LOCATIONS&&Array.isArray(window.GRABZONE_BD_LOCATIONS.data)?window.GRABZONE_BD_LOCATIONS.data:[];}
+    function findDiv(){var v=d.value;return divisions().find(function(x){return label(x)===v || (x.name&&x.name.local===v);});}
+    function findDist(){var div=findDiv(),v=r.value;return div&&Array.isArray(div.district)?div.district.find(function(x){return label(x)===v || (x.name&&x.name.local===v);}):null;}
+    function divChange(){
+      var div=findDiv();
+      options(r,div&&div.district,'Select District'); r.disabled=!div;
+      options(u,[],'Select Upazila / Thana'); u.disabled=true;
+    }
+    function distChange(){
+      var dist=findDist();
+      options(u,dist&&dist.upazila,'Select Upazila / Thana'); u.disabled=!dist;
+    }
+    var data=divisions();
+    if(data.length){
+      options(d,data,'Select Division');
+      d.onchange=divChange; r.onchange=distChange;
+      r.disabled=true; u.disabled=true;
+    } else {
+      // Last-resort direct JSON load if the bundled script was not available.
+      fetch('/data/bangladesh-locations.json?ui=20260829',{cache:'no-store'})
+        .then(function(x){return x.json();})
+        .then(function(x){window.GRABZONE_BD_LOCATIONS=x;options(d,x.data,'Select Division');d.onchange=divChange;r.onchange=distChange;r.disabled=true;u.disabled=true;})
+        .catch(function(e){console.error('GrabZone locations failed',e);});
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+</script>
 </body>
 </html>
