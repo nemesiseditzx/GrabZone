@@ -21,13 +21,13 @@ function inject(){
  const section=document.createElement('section'); section.id='tab-orders'; section.className='tab';
  section.innerHTML=`
  <div class="page-title"><div><div class="eyebrow">ORDER MANAGEMENT</div><h1>Orders</h1><p>Receive website orders, call customers, confirm them and manage the full order lifecycle.</p></div><button class="primary" id="gzOrdersRefresh">↻ Refresh</button></div>
- <div class="panel"><div class="gz-order-filters"><input id="gzOrderSearch" placeholder="Search order number, name, phone or email"><select id="gzOrderStatusFilter"><option value="">All statuses</option>${statuses.map(s=>`<option>${s}</option>`).join('')}</select></div></div>
+ <div class="panel"><div class="gz-order-filters"><input id="gzOrderSearch" placeholder="Search order number, Tracking ID, name, phone or email"><select id="gzOrderStatusFilter"><option value="">All statuses</option>${statuses.map(s=>`<option>${s}</option>`).join('')}</select></div></div>
  <div class="panel" id="gzOrdersPanel"><div class="muted">Open Orders to load orders.</div></div>`;
  main.insertBefore(section,main.firstElementChild);
 
  const style=document.createElement('style'); style.id='gzOrdersStyle'; style.textContent=`
  .gz-order-filters{display:grid;grid-template-columns:1fr 180px;gap:10px}.gz-order-filters input,.gz-order-filters select{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ddd;border-radius:11px;background:#fff;font:inherit}
- .gz-orders-wrap{overflow:auto}.gz-orders-table{width:100%;border-collapse:collapse;min-width:1120px}.gz-orders-table th,.gz-orders-table td{padding:12px 9px;border-bottom:1px solid #eee;text-align:left;font-size:12px;vertical-align:middle}.gz-orders-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#777}.gz-order-link{border:0;background:none;padding:0;font:inherit;font-weight:900;cursor:pointer}.gz-order-email,.gz-order-ref{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gz-status-select{border:1px solid #ddd;border-radius:999px;padding:6px 9px;background:#fff;font:inherit;font-size:10px;font-weight:800;cursor:pointer}.gz-order-actions-cell{display:flex;gap:6px;white-space:nowrap}.gz-order-action{border:1px solid #ddd;background:#fff;border-radius:8px;padding:7px 9px;font:inherit;font-size:10px;font-weight:850;cursor:pointer}.gz-order-action.edit{background:#111;color:#fff;border-color:#111}.gz-order-action.delete{color:#a00000}.gz-order-action.bk{background:#f5f5f5;border-color:#111}.gz-empty-orders{text-align:center;padding:30px;color:#777}
+ .gz-orders-wrap{overflow:auto}.gz-orders-table{width:100%;border-collapse:collapse;min-width:1120px}.gz-orders-table th,.gz-orders-table td{padding:12px 9px;border-bottom:1px solid #eee;text-align:left;font-size:12px;vertical-align:middle}.gz-orders-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#777}.gz-order-link{border:0;background:none;padding:0;font:inherit;font-weight:900;cursor:pointer}.gz-public-track-id{margin-top:4px;font-size:9px;color:#666;letter-spacing:.04em;word-break:break-all}.gz-order-email,.gz-order-ref{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gz-status-select{border:1px solid #ddd;border-radius:999px;padding:6px 9px;background:#fff;font:inherit;font-size:10px;font-weight:800;cursor:pointer}.gz-order-actions-cell{display:flex;gap:6px;white-space:nowrap}.gz-order-action{border:1px solid #ddd;background:#fff;border-radius:8px;padding:7px 9px;font:inherit;font-size:10px;font-weight:850;cursor:pointer}.gz-order-action.edit{background:#111;color:#fff;border-color:#111}.gz-order-action.delete{color:#a00000}.gz-order-action.bk{background:#f5f5f5;border-color:#111}.gz-empty-orders{text-align:center;padding:30px;color:#777}
  .gz-order-modal{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:15px;background:rgba(0,0,0,.58);backdrop-filter:blur(5px)}.gz-order-modal.open{display:flex}.gz-order-editor{position:relative;width:min(1050px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:22px;padding:24px}.gz-order-close{position:absolute;right:14px;top:14px;border:0;border-radius:50%;width:38px;height:38px;background:#f0f0ed;font-size:22px;cursor:pointer}.gz-order-editor h2{margin:0 50px 4px}.gz-order-editor .muted{margin-bottom:18px}.gz-order-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.gz-order-grid label{display:grid;gap:6px;font-size:11px;font-weight:800;color:#555}.gz-order-grid input,.gz-order-grid textarea,.gz-order-grid select{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:11px;background:#fff;font:inherit;color:#111}.gz-order-grid textarea{min-height:90px;resize:vertical}.gz-order-full{grid-column:1/-1}.gz-items-editor{margin-top:18px;border-top:1px solid #eee;padding-top:18px}.gz-item-edit{display:grid;grid-template-columns:1.4fr 80px 120px 1.2fr 36px;gap:8px;align-items:center;margin-bottom:8px}.gz-item-edit input{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:9px;padding:9px}.gz-item-edit button{border:0;background:#f3f3f1;border-radius:9px;height:36px;cursor:pointer}.gz-order-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px;flex-wrap:wrap}.gz-order-message{min-height:20px;font-size:12px;font-weight:800;margin-top:8px}.gz-order-total-preview{margin-top:10px;text-align:right;font-weight:900}
  @media(max-width:760px){.gz-order-filters,.gz-order-grid{grid-template-columns:1fr}.gz-order-full{grid-column:auto}.gz-order-editor{padding:18px}.gz-item-edit{grid-template-columns:1fr 65px 95px 1fr 36px}}
  `; document.head.appendChild(style);
@@ -61,7 +61,7 @@ async function loadOrders(){
    }
    const {data,error}=await sb
      .from('orders')
-     .select('id,order_no,order_number,customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,subtotal,total,status,admin_note,created_at,updated_at,referral_discount,business_koro_sent_at,tracking_number,tracking_url,tracking_provider')
+     .select('id,order_no,order_number,public_tracking_id,customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,subtotal,total,status,admin_note,created_at,updated_at,referral_discount,business_koro_sent_at,tracking_number,tracking_url,tracking_provider')
      .order('created_at',{ascending:false});
    if(error){
      console.error('GrabZone orders load failed:',error);
@@ -79,10 +79,10 @@ async function loadOrders(){
 function renderOrders(){
  const panel=$('gzOrdersPanel');if(!panel)return;
  const q=($('gzOrderSearch')?.value||'').trim().toLowerCase(), st=$('gzOrderStatusFilter')?.value||'';
- const list=orders.filter(o=>(!q||`${o.order_number} ${o.customer_name} ${o.phone} ${o.email} ${o.referral_code||''}`.toLowerCase().includes(q))&&(!st||o.status===st));
+ const list=orders.filter(o=>(!q||`${o.order_number} ${o.public_tracking_id||''} ${o.customer_name} ${o.phone} ${o.email} ${o.referral_code||''}`.toLowerCase().includes(q))&&(!st||o.status===st));
  if(!list.length){panel.innerHTML='<div class="gz-empty-orders">No orders found.</div>';return}
- panel.innerHTML=`<div class="gz-orders-wrap"><table class="gz-orders-table"><thead><tr><th>Order</th><th>Customer</th><th>Phone</th><th>Email</th><th>Referral</th><th>Discount</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>${list.map(o=>`<tr>
- <td><button class="gz-order-link" data-order="${esc(o.id)}">${esc(o.order_number)}</button></td>
+ panel.innerHTML=`<div class="gz-orders-wrap"><table class="gz-orders-table"><thead><tr><th>Order / Tracking ID</th><th>Customer</th><th>Phone</th><th>Email</th><th>Referral</th><th>Discount</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>${list.map(o=>`<tr>
+ <td><button class="gz-order-link" data-order="${esc(o.id)}">${esc(o.order_number)}</button><div class="gz-public-track-id">${esc(o.public_tracking_id||'—')}</div></td>
  <td>${esc(o.customer_name)}</td>
  <td>${esc(o.phone)}</td>
  <td class="gz-order-email" title="${esc(o.email)}">${esc(o.email)}</td>
@@ -260,6 +260,7 @@ async function openEditor(id){
  $('gzOrderEditorSub').textContent=`Placed ${current.created_at?new Date(current.created_at).toLocaleString():'—'} · Last updated ${current.updated_at?new Date(current.updated_at).toLocaleString():'—'}`;
  $('gzOrderEditorBody').innerHTML=`
  <div class="gz-order-grid">
+ <label>Internal Order Number<input value="${esc(current.order_number)}" readonly></label><label>Private Tracking ID<input value="${esc(current.public_tracking_id||'')}" readonly></label>
  <label>Customer Name<input id="oeName" value="${esc(current.customer_name)}"></label><label>Mobile Number<input id="oePhone" value="${esc(current.phone)}"></label>
  <label>Email Address<input id="oeEmail" type="email" value="${esc(current.email)}"></label><label>Status<select id="oeStatus">${statuses.map(s=>`<option ${s===current.status?'selected':''}>${s}</option>`).join('')}</select></label>
  <label>Division<input id="oeDivision" value="${esc(current.division)}"></label><label>District<input id="oeDistrict" value="${esc(current.district)}"></label>
