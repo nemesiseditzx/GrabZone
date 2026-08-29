@@ -77,6 +77,25 @@ alter table public.orders
   add column if not exists tracking_provider text;
 create index if not exists orders_tracking_number_idx on public.orders(tracking_number);
 
+-- Private customer tracking ID.
+-- This is intentionally random and separate from the sequential internal order number.
+alter table public.orders
+  add column if not exists public_tracking_id text;
+
+update public.orders
+set public_tracking_id = 'GZ-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 16))
+where public_tracking_id is null or trim(public_tracking_id) = '';
+
+alter table public.orders
+  alter column public_tracking_id
+  set default ('GZ-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 16)));
+
+alter table public.orders
+  alter column public_tracking_id set not null;
+
+create unique index if not exists orders_public_tracking_id_uidx
+  on public.orders(public_tracking_id);
+
 create table if not exists public.referral_codes (
   id uuid primary key default gen_random_uuid(),
   admin_name text not null,
@@ -267,6 +286,7 @@ begin
   return jsonb_build_object(
     'id', new_order.id,
     'order_number', new_order.order_number,
+    'public_tracking_id', new_order.public_tracking_id,
     'subtotal', new_order.subtotal,
     'shipping_charge', new_order.shipping_charge,
     'referral_discount', new_order.referral_discount,
@@ -281,8 +301,11 @@ grant execute on function public.create_public_order(jsonb) to anon, authenticat
 
 
 -- Public customer order tracking
--- Only non-sensitive order status, tracking details and ordered product names/prices are exposed.
-create or replace function public.track_public_order(p_order_number text)
+-- Customers must use the random public_tracking_id. The sequential internal
+-- order number is deliberately not accepted by this public function.
+drop function if exists public.track_public_order(text);
+
+create or replace function public.track_public_order(p_tracking_id text)
 returns jsonb
 language plpgsql
 security definer
@@ -294,11 +317,11 @@ declare
 begin
   select * into o
   from public.orders
-  where upper(trim(order_number)) = upper(trim(p_order_number))
+  where upper(trim(public_tracking_id)) = upper(trim(p_tracking_id))
   limit 1;
 
   if not found then
-    raise exception 'Order not found. Please check your Order ID.';
+    raise exception 'Order not found. Please check your private Tracking ID.';
   end if;
 
   select coalesce(jsonb_agg(jsonb_build_object(
@@ -311,6 +334,7 @@ begin
   where oi.order_id = o.id;
 
   return jsonb_build_object(
+    'trackingId', o.public_tracking_id,
     'orderNumber', o.order_number,
     'status', o.status,
     'createdAt', o.created_at,
@@ -327,7 +351,6 @@ $$;
 
 revoke all on function public.track_public_order(text) from public;
 grant execute on function public.track_public_order(text) to anon, authenticated;
-
 
 -- Refresh PostgREST schema cache so the public tracking RPC is immediately visible.
 notify pgrst, 'reload schema';
