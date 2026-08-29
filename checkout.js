@@ -8,8 +8,7 @@ const sb=SUPABASE&&C.supabaseUrl&&!String(C.supabaseUrl).includes('PASTE_')
 const CART_KEY='grabzone_cart_v2';
 const BUY_NOW_KEY='grabzone_buy_now_v2';
 const currency=C.currency||'৳';
-const dhakaShippingCharge=Number(C.dhakaShippingCharge??70);
-const outsideDhakaShippingCharge=Number(C.outsideDhakaShippingCharge??130);
+const flatShippingCharge=130;
 
 let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0};
 const $=id=>document.getElementById(id);
