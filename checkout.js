@@ -37,11 +37,7 @@ function upazilaRecords(){
   const d=districtRecords().find(x=>String(x?.name?.en||'').trim()===selectedDistrict || String(x?.name?.local||'').trim()===selectedDistrict);
   return Array.isArray(d?.upazila)?d.upazila:[];
 }
-function locationLabel(x){
-  if(!x)return '';
-  const en=String(x?.name?.en||'').trim(),local=String(x?.name?.local||'').trim();
-  return en&&local&&en!==local?en+' — '+local:(en||local);
-}
+
 function fillSelect(selectId,records,placeholder){
   const select=$(selectId);if(!select)return;
   const current=select.value;
@@ -52,9 +48,7 @@ function fillSelect(selectId,records,placeholder){
   }).join('');
   if([...select.options].some(o=>o.value===current))select.value=current;
 }
-function normalizeLocation(value){
-  return String(value||'').trim().toLowerCase().replace(/\s+/g,' ');
-}
+
 function fillDistrictOptions(){
   fillSelect('district',districtRecords(),'Select District');
 }
