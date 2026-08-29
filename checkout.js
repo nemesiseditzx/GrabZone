@@ -330,12 +330,23 @@ async function submit(e){
     const{data:order,error}=await sb.rpc('create_public_order',{payload});
     if(error)throw error;
     if(!order?.id||!order?.order_number)throw new Error('Order could not be created.');
+
+    // Some older create_public_order functions return only the order number.
+    // Read the newly-created private tracking ID through the dedicated
+    // SECURITY DEFINER RPC instead of exposing the orders table to customers.
+    let privateTrackingId=String(order.public_tracking_id||'').trim();
+    if(!privateTrackingId){
+      const lookup=await sb.rpc('get_public_tracking_id',{p_order_id:order.id});
+      if(!lookup.error) privateTrackingId=String(lookup.data||'').trim();
+    }
+    if(!privateTrackingId)throw new Error('Order was created, but the private Tracking ID could not be generated. Please contact GrabZone support.');
+
     localStorage.removeItem(CART_KEY);localStorage.removeItem(BUY_NOW_KEY);
     $('checkoutForm').hidden=true;$('checkoutSuccess').hidden=false;
     $('successOrderNumber').textContent=order.order_number;
-    $('successTrackingId').textContent=order.public_tracking_id||'';
+    $('successTrackingId').textContent=privateTrackingId;
     const trackLink=$('successTrackLink');
-    if(trackLink&&order.public_tracking_id) trackLink.href='track-order.html?tracking='+encodeURIComponent(order.public_tracking_id);
+    if(trackLink) trackLink.href='track-order.html?tracking='+encodeURIComponent(privateTrackingId);
     $('successEmailNote').textContent='Your order has been saved successfully. Our team will call you to verify the order.';
     window.scrollTo({top:0,behavior:'smooth'});
   }catch(err){
