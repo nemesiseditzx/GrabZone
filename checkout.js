@@ -60,7 +60,7 @@ async function loadLocations(){
     const r=await fetch('/data/bangladesh-locations.json?v=20260828',{cache:'no-store'});
     if(!r.ok)throw new Error('Location data could not be loaded.');
     const json=await r.json();
-    locationTree=json&&Array.isArray(json.data)?json.data:[];
+    locationTree=json&&Array.isArray(json.data)?json:[];
     if(divisions().length!==8)console.warn('Expected 8 divisions, received',divisions().length);
     const totalDistricts=divisions().reduce((n,d)=>n+(Array.isArray(d.district)?d.district.length:0),0);
     const totalUpazilas=divisions().reduce((n,d)=>n+(Array.isArray(d.district)?d.district.reduce((m,x)=>m+(Array.isArray(x.upazila)?x.upazila.length:0),0):0),0);
@@ -68,7 +68,7 @@ async function loadLocations(){
     fillSelect('division',divisions(),'Select Division');
   }catch(e){
     console.error(e);
-    locationTree=window.GRABZONE_BD_LOCATIONS&&Array.isArray(window.GRABZONE_BD_LOCATIONS.data)?window.GRABZONE_BD_LOCATIONS.data:[];
+    locationTree=window.GRABZONE_BD_LOCATIONS&&Array.isArray(window.GRABZONE_BD_LOCATIONS.data)?window.GRABZONE_BD_LOCATIONS:[];
     if(divisions().length===8) fillSelect('division',divisions(),'Select Division');
     else msg('Could not load Bangladesh location data. Please refresh the page.',true);
   }
