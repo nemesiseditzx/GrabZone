@@ -333,6 +333,9 @@ async function submit(e){
     localStorage.removeItem(CART_KEY);localStorage.removeItem(BUY_NOW_KEY);
     $('checkoutForm').hidden=true;$('checkoutSuccess').hidden=false;
     $('successOrderNumber').textContent=order.order_number;
+    $('successTrackingId').textContent=order.public_tracking_id||'';
+    const trackLink=$('successTrackLink');
+    if(trackLink&&order.public_tracking_id) trackLink.href='track-order.html?tracking='+encodeURIComponent(order.public_tracking_id);
     $('successEmailNote').textContent='Your order has been saved successfully. Our team will call you to verify the order.';
     window.scrollTo({top:0,behavior:'smooth'});
   }catch(err){
