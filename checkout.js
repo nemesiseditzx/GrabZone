@@ -19,7 +19,7 @@ const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const getSource=()=>{const buy=read(BUY_NOW_KEY,null);return Array.isArray(buy)&&buy.length?buy:read(CART_KEY,[])};
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
-const shippingForLocation=(division)=>String(division||'').trim().toLowerCase()==='dhaka'?dhakaShippingCharge:outsideDhakaShippingCharge;
+const shippingForLocation=()=>flatShippingCharge;
 
 function divisions(){
   if(Array.isArray(locationTree)) return locationTree;
