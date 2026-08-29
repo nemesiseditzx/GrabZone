@@ -4,9 +4,10 @@ const STATUSES=['New','Contacting','Confirmed','Processing','Shipped','Delivered
 function json(res){return res.json().catch(()=>({}));}
 async function supabase(path,options={}){
   const url=process.env.SUPABASE_URL;
-  const key=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if(!url||!key)throw new Error('Tracking service is not configured.');
-  return fetch(url+'/rest/v1/'+path,{...options,headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',...(options.headers||{})}});
+  const publicUrl='https://omfmecdugwadwskennyr.supabase.co';
+  const publicKey='sb_publishable_mO4ASdgjeNFnoxxls8YDlg_hm1qsNSu';
+  const base=url||publicUrl, key=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY||publicKey;
+  return fetch(base+'/rest/v1/'+path,{...options,headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',...(options.headers||{})}});
 }
 function parseTracking(note){
   const text=String(note||'');
