@@ -69,6 +69,12 @@ grant usage,select on sequence public.order_number_seq to authenticated;
 alter table public.orders
   add column if not exists referral_discount numeric not null default 0;
 
+-- Customer order tracking fields
+alter table public.orders
+  add column if not exists tracking_number text,
+  add column if not exists tracking_url text,
+  add column if not exists tracking_provider text;
+
 create table if not exists public.referral_codes (
   id uuid primary key default gen_random_uuid(),
   admin_name text not null,
@@ -270,3 +276,52 @@ $$;
 
 revoke all on function public.create_public_order(jsonb) from public;
 grant execute on function public.create_public_order(jsonb) to anon, authenticated;
+
+
+-- Public customer order tracking
+-- Only non-sensitive order status, tracking details and ordered product names/prices are exposed.
+create or replace function public.track_public_order(p_order_number text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  o public.orders;
+  items jsonb := '[]'::jsonb;
+begin
+  select * into o
+  from public.orders
+  where upper(trim(order_number)) = upper(trim(p_order_number))
+  limit 1;
+
+  if not found then
+    raise exception 'Order not found. Please check your Order ID.';
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'name', oi.product_name,
+    'quantity', oi.quantity,
+    'price', oi.unit_price
+  ) order by oi.id), '[]'::jsonb)
+  into items
+  from public.order_items oi
+  where oi.order_id = o.id;
+
+  return jsonb_build_object(
+    'orderNumber', o.order_number,
+    'status', o.status,
+    'createdAt', o.created_at,
+    'updatedAt', o.updated_at,
+    'tracking', jsonb_build_object(
+      'number', coalesce(o.tracking_number, ''),
+      'courier', coalesce(o.tracking_provider, ''),
+      'url', coalesce(o.tracking_url, '')
+    ),
+    'items', items
+  );
+end;
+$$;
+
+revoke all on function public.track_public_order(text) from public;
+grant execute on function public.track_public_order(text) to anon, authenticated;
