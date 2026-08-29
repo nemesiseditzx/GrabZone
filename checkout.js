@@ -268,6 +268,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('checkoutForm')?.addEventListener('submit',submit);
   $('division')?.addEventListener('change',onDivisionChange);
   $('district')?.addEventListener('change',onDistrictChange);
+  bindLocationSearch();
   $('applyReferralBtn')?.addEventListener('click',applyReferral);
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
   await loadLocations();await loadSite();await hydrate();
