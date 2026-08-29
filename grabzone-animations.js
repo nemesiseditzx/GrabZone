@@ -63,9 +63,18 @@
     });
     if(!s.scroll_reveal){if(revealObs)revealObs.disconnect();return}
     if(revealObs)revealObs.disconnect();
+    /*
+      Reveal once and keep content visible.
+      Removing .gz-visible when an element leaves the viewport makes
+      already-rendered sections disappear again while scrolling back
+      and creates large blank gaps between sections.
+    */
     revealObs=new IntersectionObserver(es=>es.forEach(e=>{
-      if(e.isIntersecting)e.target.classList.add("gz-visible");else e.target.classList.remove("gz-visible")
-    }),{threshold:.12,rootMargin:"-8% 0px -8% 0px"});
+      if(e.isIntersecting){
+        e.target.classList.add("gz-visible");
+        revealObs.unobserve(e.target);
+      }
+    }),{threshold:.08,rootMargin:"-4% 0px -4% 0px"});
     document.querySelectorAll(".gz-reveal-target").forEach(x=>revealObs.observe(x))
   }
 
