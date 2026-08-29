@@ -9,10 +9,6 @@ let editingId=null,referrals=[];
 
 function inject(){
   if($('gzReferralTab'))return;
-  const ordersNav=document.querySelector('.side-link[data-tab="orders"]');
-  if(ordersNav){
-    ordersNav.insertAdjacentHTML('afterend',`<button id="gzReferralTab" class="side-link" data-tab="referrals" type="button">🎁 <span>Referral Codes</span></button>`);
-  }
   const main=document.querySelector('main.content');if(!main)return;
   const section=document.createElement('section');section.id='tab-referrals';section.className='tab';
   section.innerHTML=`
