@@ -22,6 +22,7 @@ const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.qua
 const shippingForLocation=(division)=>String(division||'').trim().toLowerCase()==='dhaka'?dhakaShippingCharge:outsideDhakaShippingCharge;
 
 function divisions(){
+  if(Array.isArray(locationTree)) return locationTree;
   return Array.isArray(locationTree?.data)?locationTree.data:[];
 }
 function districtRecords(){
