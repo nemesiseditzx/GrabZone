@@ -153,6 +153,12 @@ async function sendOrderEmail(orderNumber,type='status_updated'){
 async function confirmOrder(order){
  const isDhaka=String(order.division||'').trim().toLowerCase()==='dhaka';
  const updates={status:'Confirmed',updated_at:new Date().toISOString()};
+ if(isDhaka){
+  const subtotal=Number(order.subtotal||0), discount=Number(order.referral_discount||0);
+  updates.shipping_charge=70;
+  updates.total=Math.max(0,subtotal+70-discount);
+  updates.admin_note=[order.admin_note,'Dhaka delivery adjusted to ৳70 on confirmation.'].filter(Boolean).join(' — ');
+ }
 
  const {error}=await sb.from('orders').update(updates).eq('id',order.id);
  if(error)throw error;
@@ -164,10 +170,10 @@ async function confirmOrder(order){
 async function changeStatus(id,status){
  const order=orders.find(x=>x.id===id); if(!order||order.status===status)return;
  if(status==='Confirmed'){
-  if(!confirm('Confirm '+order.order_number+'? The order will be confirmed and the customer receipt/status email will be sent.'))return;
+  if(!confirm('Confirm '+order.order_number+'? If this is Dhaka City, delivery will be adjusted from ৳130 to ৳70. The customer receipt/status email will be sent.'))return;
   try{
    const emailed=await confirmOrder(order);
-   alert(emailed?'✓ Order confirmed. Dhaka delivery was adjusted to ৳70 and the customer email was sent.':'✓ Order confirmed and saved. Email could not be sent; check email settings.');
+   alert(emailed?(String(order.division||'').trim().toLowerCase()==='dhaka'?'✓ Order confirmed. Dhaka delivery adjusted to ৳70 and the customer email was sent.':'✓ Order confirmed and the customer email was sent.'):'✓ Order confirmed and saved. Email could not be sent; check email settings.');
   }catch(e){alert('Could not confirm order: '+e.message)}
   return;
  }
