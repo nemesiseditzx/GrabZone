@@ -42,3 +42,5 @@
 .location-option-sub{display:block;color:#78807d;font-size:11px;line-height:1.3;margin-top:2px}
 .location-empty{padding:18px 10px;text-align:center;color:#858a88;font-size:13px}
 @media(max-width:560px){.location-menu{position:absolute}.location-options{max-height:230px}.location-trigger{font-size:16px}}
+
+.delivery-notice{margin-top:10px;padding:10px 12px;border:1px solid #dfe9e4;background:#f3faf6;border-radius:10px;color:#53615b;font-size:12px;line-height:1.5}.delivery-notice strong{color:#176b4d}
