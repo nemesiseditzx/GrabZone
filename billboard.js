@@ -112,7 +112,7 @@ function renderBillboard(){
           ${item.eyebrow ? `<span>${gzBillboardEsc(item.eyebrow)}</span>` : ""}
           ${item.title ? `<strong>${gzBillboardEsc(item.title)}</strong>` : ""}
           ${item.message ? `<p>${gzBillboardEsc(item.message)}</p>` : ""}
-          ${item.button_text ? `<b>${gzBillboardEsc(item.button_text)} <i>→</i></b>` : ""}
+          ${item.button_text && link ? `<b>${gzBillboardEsc(item.button_text)} <i>→</i></b>` : ""}
         </div>
       </div>
     `;
