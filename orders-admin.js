@@ -45,11 +45,35 @@ function inject(){
 }
 
 async function loadOrders(){
- if(!sb){$('gzOrdersPanel').innerHTML='<div>Supabase is not configured.</div>';return}
- $('gzOrdersPanel').innerHTML='<div class="muted">Loading orders…</div>';
- const {data,error}=await sb.from('orders').select('*').order('created_at',{ascending:false});
- if(error){$('gzOrdersPanel').innerHTML='<div>'+esc(error.message)+'</div>';return}
- orders=data||[]; renderOrders();
+ const panel=$('gzOrdersPanel');
+ if(!panel)return;
+ if(!sb){
+   panel.innerHTML='<div class="muted">⚠ Supabase is not configured.</div>';
+   return;
+ }
+ panel.innerHTML='<div class="muted">Loading orders…</div>';
+ try{
+   const sessionResult=await sb.auth.getSession();
+   const session=sessionResult?.data?.session;
+   if(!session){
+     panel.innerHTML='<div class="muted">⚠ Admin session expired. Please log in again.</div>';
+     return;
+   }
+   const {data,error}=await sb
+     .from('orders')
+     .select('id,order_no,order_number,customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,subtotal,total,status,admin_note,created_at,updated_at,referral_discount,business_koro_sent_at,tracking_number,tracking_url,tracking_provider')
+     .order('created_at',{ascending:false});
+   if(error){
+     console.error('GrabZone orders load failed:',error);
+     panel.innerHTML='<div><b>Could not load orders.</b><br><span class="muted">'+esc(error.message||'Database request failed.')+'</span><br><small>Open the browser console for details.</small></div>';
+     return;
+   }
+   orders=Array.isArray(data)?data:[];
+   renderOrders();
+ }catch(e){
+   console.error('GrabZone orders exception:',e);
+   panel.innerHTML='<div><b>Could not load orders.</b><br><span class="muted">'+esc(e.message||'Unexpected error.')+'</span></div>';
+ }
 }
 
 function renderOrders(){
@@ -291,7 +315,7 @@ async function saveEditor(){
  }catch(e){$('gzOrderEditorMsg').textContent='⚠ '+e.message}finally{$('gzOrderSave').disabled=false}
 }
 
-document.addEventListener('DOMContentLoaded',inject);
+document.addEventListener('DOMContentLoaded',()=>{inject();setTimeout(()=>{if($('tab-orders')?.classList.contains('active'))loadOrders()},0)});
 window.gzLoadOrders=loadOrders;
 document.addEventListener('click',e=>{const b=e.target.closest('.side-link[data-tab="orders"]');if(b)setTimeout(loadOrders,0)});
 })();
