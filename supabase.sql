@@ -66,7 +66,6 @@ grant select,insert,update,delete on public.orders to authenticated;
 grant select,insert,update,delete on public.order_items to authenticated;
 grant usage,select on sequence public.order_number_seq to authenticated;
 create unique index if not exists orders_order_number_uidx on public.orders(order_number);
-create index if not exists orders_tracking_number_idx on public.orders(tracking_number);
 -- GrabZone referral system
 alter table public.orders
   add column if not exists referral_discount numeric not null default 0;
@@ -76,6 +75,7 @@ alter table public.orders
   add column if not exists tracking_number text,
   add column if not exists tracking_url text,
   add column if not exists tracking_provider text;
+create index if not exists orders_tracking_number_idx on public.orders(tracking_number);
 
 create table if not exists public.referral_codes (
   id uuid primary key default gen_random_uuid(),
