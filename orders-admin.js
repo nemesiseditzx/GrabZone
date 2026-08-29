@@ -8,6 +8,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const $=id=>document.getElementById(id);
 const statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
+const DHAKA_DELIVERY_CHARGE=70;
 
 function inject(){
  if($('gzOrdersTab'))return;
@@ -26,7 +27,7 @@ function inject(){
  @media(max-width:760px){.gz-order-filters,.gz-order-grid{grid-template-columns:1fr}.gz-order-full{grid-column:auto}.gz-order-editor{padding:18px}.gz-item-edit{grid-template-columns:1fr 65px 95px 1fr 36px}}
  `; document.head.appendChild(style);
 
- document.body.insertAdjacentHTML('beforeend',`<div id="gzOrderModal" class="gz-order-modal"><div class="gz-order-editor"><button id="gzOrderClose" class="gz-order-close">×</button><h2 id="gzOrderEditorTitle">Order</h2><div id="gzOrderEditorSub" class="muted"></div><div id="gzOrderEditorBody"></div><div id="gzOrderEditorMsg" class="gz-order-message"></div><div class="gz-order-actions"><button class="ghost" id="gzOrderCancel">Close</button><button class="ghost" id="gzOrderSendBk">Send to Business Koro</button><button class="primary" id="gzOrderSave">Save changes</button></div></div></div>`);
+ document.body.insertAdjacentHTML('beforeend',`<div id="gzOrderModal" class="gz-order-modal"><div class="gz-order-editor"><button id="gzOrderClose" class="gz-order-close">×</button><h2 id="gzOrderEditorTitle">Order</h2><div id="gzOrderEditorSub" class="muted"></div><div id="gzOrderEditorBody"></div><div id="gzOrderEditorMsg" class="gz-order-message"></div><div class="gz-order-actions"><button class="ghost" id="gzOrderCancel">Close</button><button class="ghost" id="gzOrderSendBk" disabled>Send to Business Koro</button><button class="primary" id="gzOrderSave">Save changes</button></div></div></div>`);
 
  $('gzOrdersRefresh').onclick=loadOrders;
  $('gzOrderSearch').oninput=renderOrders;
@@ -35,7 +36,7 @@ function inject(){
  $('gzOrderCancel').onclick=closeEditor;
  $('gzOrderModal').onclick=e=>{if(e.target.id==='gzOrderModal')closeEditor()};
  $('gzOrderSave').onclick=saveEditor;
- $('gzOrderSendBk').onclick=()=>current&&sendToBusinessKoro(current.id);
+ $('gzOrderSendBk').onclick=()=>current&&current.status==='Confirmed'&&sendToBusinessKoro(current.id);
 }
 
 async function loadOrders(){
@@ -61,14 +62,14 @@ function renderOrders(){
  <td><b>${money(o.total)}</b></td>
  <td><select class="gz-status-select" data-status-order="${esc(o.id)}" aria-label="Change order status">${statuses.map(s=>`<option value="${esc(s)}" ${s===o.status?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
  <td>${o.created_at?new Date(o.created_at).toLocaleString():'—'}</td>
- <td><div class="gz-order-actions-cell"><button class="gz-order-action edit" data-edit-order="${esc(o.id)}">Edit</button><button class="gz-order-action" data-send-bk="${esc(o.id)}">${o.business_koro_sent_at?'Sent ✓':'Send to Business Koro'}</button><button class="gz-order-action delete" data-delete-order="${esc(o.id)}">Delete</button></div></td>
+ <td><div class="gz-order-actions-cell"><button class="gz-order-action edit" data-edit-order="${esc(o.id)}">Edit</button><button class="gz-order-action" data-send-bk="${esc(o.id)}" ${o.status!=='Confirmed'||o.business_koro_sent_at?'disabled':''}>${o.business_koro_sent_at?'Sent ✓':o.status==='Confirmed'?'Send to Business Koro':'Confirm order first'}</button><button class="gz-order-action delete" data-delete-order="${esc(o.id)}">Delete</button></div></td>
  </tr>`).join('')}</tbody></table></div>`;
  panel.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.order));
  panel.querySelectorAll('[data-edit-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.editOrder));
  panel.querySelectorAll('[data-delete-order]').forEach(b=>b.onclick=()=>deleteOrder(b.dataset.deleteOrder));
  panel.querySelectorAll('[data-bk-order]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.bkOrder));
  panel.querySelectorAll('[data-bk-order]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.bkOrder));
- panel.querySelectorAll('[data-send-bk]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.sendBk));
+ panel.querySelectorAll('[data-send-bk]:not([disabled])').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.sendBk));
  panel.querySelectorAll('[data-status-order]').forEach(s=>s.onchange=()=>changeStatus(s.dataset.statusOrder,s.value));
 }
 
@@ -138,8 +139,43 @@ async function sendToBusinessKoro(id){
  }catch(e){alert('Could not send order: '+e.message)}
  finally{if(button){button.disabled=false;button.textContent='Send to Business Koro'}}
 }
+async function sendOrderEmail(orderNumber,type='status_updated'){
+ try{
+  const session=await sb.auth.getSession(), token=session?.data?.session?.access_token;
+  const headers={'Content-Type':'application/json'};
+  if(token)headers.Authorization='Bearer '+token;
+  const response=await fetch('/api/send-order-email',{method:'POST',headers,body:JSON.stringify({orderNumber,type})});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'Receipt email could not be sent.');
+  return true;
+ }catch(e){console.error('Order email:',e);return false}
+}
+async function confirmOrder(order){
+ const isDhaka=String(order.division||'').trim().toLowerCase()==='dhaka';
+ const updates={status:'Confirmed',updated_at:new Date().toISOString()};
+ if(isDhaka){
+  const subtotal=Number(order.subtotal||0), discount=Number(order.referral_discount||0);
+  updates.shipping_charge=DHAKA_DELIVERY_CHARGE;
+  updates.total=Math.max(0,subtotal+DHAKA_DELIVERY_CHARGE-discount);
+  updates.admin_note=[order.admin_note,'Dhaka delivery adjusted to ৳70.'].filter(Boolean).join(' — ');
+ }
+ const {error}=await sb.from('orders').update(updates).eq('id',order.id);
+ if(error)throw error;
+ Object.assign(order,updates);
+ const emailed=await sendOrderEmail(order.order_number,'status_updated');
+ renderOrders();
+ return emailed;
+}
 async function changeStatus(id,status){
  const order=orders.find(x=>x.id===id); if(!order||order.status===status)return;
+ if(status==='Confirmed'){
+  if(!confirm('Confirm '+order.order_number+'? Dhaka delivery will be adjusted to ৳70, then the customer receipt/status email will be sent.'))return;
+  try{
+   const emailed=await confirmOrder(order);
+   alert(emailed?'✓ Order confirmed. Dhaka delivery was adjusted to ৳70 and the customer email was sent.':'✓ Order confirmed and saved. Email could not be sent; check email settings.');
+  }catch(e){alert('Could not confirm order: '+e.message)}
+  return;
+ }
  const {error}=await sb.from('orders').update({status,updated_at:new Date().toISOString()}).eq('id',id);
  if(error){alert('Could not update status: '+error.message);renderOrders();return}
  order.status=status; renderOrders();
@@ -190,13 +226,14 @@ async function openEditor(id){
  if(error){alert(error.message);return}
  current={...base,items:items||[]};
  $('gzOrderEditorTitle').textContent=current.order_number;
+ $('gzOrderSendBk').disabled=current.status!=='Confirmed'||!!current.business_koro_sent_at;
  $('gzOrderEditorSub').textContent=`Placed ${current.created_at?new Date(current.created_at).toLocaleString():'—'} · Last updated ${current.updated_at?new Date(current.updated_at).toLocaleString():'—'}`;
  $('gzOrderEditorBody').innerHTML=`
  <div class="gz-order-grid">
  <label>Customer Name<input id="oeName" value="${esc(current.customer_name)}"></label><label>Mobile Number<input id="oePhone" value="${esc(current.phone)}"></label>
  <label>Email Address<input id="oeEmail" type="email" value="${esc(current.email)}"></label><label>Status<select id="oeStatus">${statuses.map(s=>`<option ${s===current.status?'selected':''}>${s}</option>`).join('')}</select></label>
  <label>Division<input id="oeDivision" value="${esc(current.division)}"></label><label>District<input id="oeDistrict" value="${esc(current.district)}"></label>
- <label>Upazila / Thana<input id="oeUpazila" value="${esc(current.upazila||'')}"></label><label>Referral Code<input id="oeReferral" value="${esc(current.referral_code||'')}"></label>
+ <label>Thana<input id="oeUpazila" value="${esc(current.upazila||'')}"></label><label>Referral Code<input id="oeReferral" value="${esc(current.referral_code||'')}"></label>
  <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label>
  <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" value="${Number(current.shipping_charge||0)}"></label>
  <label>Referral Discount<input id="oeDiscount" type="number" step="0.01" min="0" value="${Number(current.referral_discount||0)}"></label>
