@@ -60,10 +60,10 @@ function fillDistrictOptions(){
   updatePickerText('district');
 }
 function fillUpazilaOptions(){
-  fillSelect('thana',thanaRecords(),'Select Thana');
-  setPickerEnabled('thana',true);
-  renderPicker('thana');
-  updatePickerText('thana');
+  fillSelect('upazila',thanaRecords(),'Select Thana');
+  setPickerEnabled('upazila',true);
+  renderPicker('upazila');
+  updatePickerText('upazila');
 }
 function useEmbeddedLocations(){
   const embedded=window.GRABZONE_BD_LOCATIONS;
@@ -79,7 +79,7 @@ async function loadLocations(){
   // Division selector is populated immediately and does not depend on a fetch.
   if(useEmbeddedLocations()){
     $('district').disabled=true;
-    $('thana').disabled=true;
+    $('upazila').disabled=true;
     return;
   }
 
@@ -92,7 +92,7 @@ async function loadLocations(){
     locationTree=json;
     fillSelect('division',divisions(),'Select Division');
     $('district').disabled=true;
-    $('thana').disabled=true;
+    $('upazila').disabled=true;
     return;
   }catch(e){ console.error('GrabZone location data failed:',e); }
 
@@ -191,7 +191,7 @@ function formData(){
     email:$('customerEmail').value.trim(),
     division:$('division').value.trim(),
     district:$('district').value.trim(),
-    upazila:$('thana').value.trim(),
+    upazila:$('upazila').value.trim(),
     address:$('address').value.trim(),
     referral_code:$('referralCode').value.trim().toUpperCase()
   };
