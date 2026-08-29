@@ -6,7 +6,7 @@
 
   <title>GRABZONE — Admin</title>
 
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css">\n  <link rel="stylesheet" href="billboard-admin.css">
 
 <style>
 /* =========================================================
@@ -449,6 +449,18 @@ body.gz-gallery-dragging-active{
         ✎
         <span>
           Text & Links
+        </span>
+      </button>
+
+
+      <button
+        class="side-link"
+        data-tab="billboards"
+        type="button"
+      >
+        ▣
+        <span>
+          Billboard Manager
         </span>
       </button>
 
@@ -1491,6 +1503,168 @@ body.gz-gallery-dragging-active{
 
 
       <!-- =================================================
+           BILLBOARD MANAGER
+      ================================================== -->
+
+      <section
+        id="tab-billboards"
+        class="tab"
+      >
+
+        <div class="page-title">
+          <div>
+            <div class="eyebrow">HOMEPAGE PROMOTION</div>
+            <h1>Billboard Manager</h1>
+            <p>Show one deal at a time. Customers can autoplay, click, use arrows, dots, or swipe.</p>
+          </div>
+          <button class="primary" type="button" onclick="gzResetBillboardForm();document.getElementById('billboardForm').scrollIntoView({behavior:'smooth'})">
+            ＋ New Billboard
+          </button>
+        </div>
+
+        <div class="gz-bb-layout">
+
+          <div>
+            <div class="panel" id="billboardForm">
+              <div class="page-title" style="margin-bottom:14px">
+                <div>
+                  <h2 id="billboardFormTitle">Add billboard</h2>
+                  <p>Upload a wide promotional image. The whole slide becomes clickable when a link is set.</p>
+                </div>
+                <button id="billboardCancelBtn" class="ghost" type="button" onclick="gzResetBillboardForm()" hidden>Cancel edit</button>
+              </div>
+
+              <div class="gz-bb-form">
+
+                <label>
+                  Billboard image
+                  <input id="bbImage" type="file" accept="image/*" onchange="previewFile(this,'bbImagePreview')">
+                  <div id="bbImagePreview" class="gz-bb-preview">Choose an image. Recommended: wide 16:6 or 16:7.</div>
+                </label>
+
+                <label>
+                  Image URL (optional)
+                  <input id="bbImageUrl" placeholder="https://...">
+                </label>
+
+                <label>
+                  Small label
+                  <input id="bbEyebrow" placeholder="LIMITED TIME OFFER">
+                </label>
+
+                <label>
+                  Title
+                  <input id="bbTitle" placeholder="Headphone Mega Deal">
+                </label>
+
+                <label class="full">
+                  Announcement / message
+                  <textarea id="bbMessage" placeholder="Up to 20% off selected headphones today."></textarea>
+                </label>
+
+                <label>
+                  Button text
+                  <input id="bbButton" value="Shop Now →">
+                </label>
+
+                <label>
+                  Product shortcut
+                  <select id="bbProduct" onchange="gzBillboardProductChanged()">
+                    <option value="">— No product shortcut —</option>
+                  </select>
+                </label>
+
+                <label class="full">
+                  Click destination
+                  <input id="bbLink" placeholder="product.html?id=PRODUCT_ID or /offers">
+                </label>
+
+                <label>
+                  Display order
+                  <input id="bbOrder" type="number" min="0" value="0">
+                </label>
+
+                <label>
+                  Status
+                  <select id="bbActive">
+                    <option value="true">Live — show on website</option>
+                    <option value="false">Hidden — keep saved</option>
+                  </select>
+                </label>
+
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
+                <button id="billboardSaveBtn" class="primary" type="button" onclick="gzSaveBillboard()">Add Billboard</button>
+                <span id="billboardMsg" class="save-message"></span>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="page-title" style="margin-bottom:10px">
+                <div>
+                  <h2>Billboards</h2>
+                  <p>Lower order numbers appear first.</p>
+                </div>
+              </div>
+              <div id="billboardList" class="gz-bb-list"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>Billboard Settings</h2>
+            <p class="gz-bb-note">These settings apply to the customer-facing homepage carousel.</p>
+
+            <div class="gz-bb-settings" style="margin-top:16px">
+
+              <label>
+                Autoplay
+                <select id="bbAutoplay">
+                  <option value="true">On</option>
+                  <option value="false">Off</option>
+                </select>
+              </label>
+
+              <label>
+                Autoplay interval (seconds)
+                <input id="bbInterval" type="number" min="3" max="60" value="5">
+              </label>
+
+              <label>
+                Transition
+                <select id="bbTransition">
+                  <option value="slide">Slide</option>
+                  <option value="fade">Fade</option>
+                </select>
+              </label>
+
+              <label>
+                Previous / next arrows
+                <select id="bbArrows">
+                  <option value="true">Show</option>
+                  <option value="false">Hide</option>
+                </select>
+              </label>
+
+              <label>
+                Slide dots
+                <select id="bbDots">
+                  <option value="true">Show</option>
+                  <option value="false">Hide</option>
+                </select>
+              </label>
+
+              <button class="primary" type="button" onclick="gzSaveBillboardSettings()">Save Billboard Settings</button>
+              <div id="billboardSettingsMsg" class="save-message"></div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- =================================================
            PRODUCTS
       ================================================== -->
 
@@ -1959,7 +2133,7 @@ body.gz-gallery-dragging-active{
 
 <script src="config.js"></script>
 
-<script src="admin.js"></script>
+<script src="admin.js"></script>\n  <script src="billboard-admin.js"></script>
 
 
 <script>
