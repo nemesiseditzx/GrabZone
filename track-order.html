@@ -18,10 +18,68 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
 </div></div>
 <script src="config.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-(()=>{const C=window.GRABZONE_CONFIG||{},$=id=>document.getElementById(id), statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
-async function loadSocial(){try{let s={};if(window.supabase&&C.supabaseUrl&&!String(C.supabaseUrl).includes('PASTE_')){const sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);const q=await sb.from('site_settings').select('whatsapp,instagram,messenger').eq('id',1).maybeSingle();s=q.data||{}}const wa=String(s.whatsapp||C.whatsapp||'').trim(),ig=String(s.instagram||C.instagram||'').trim(),fb=String(s.messenger||C.messenger||'').trim();if(wa&& !wa.includes('XXXXXXXX'))$('wa').href=wa;else $('wa').removeAttribute('href');if(ig&& !ig.includes('yourstore'))$('ig').href=ig;else $('ig').removeAttribute('href');if(fb&& !fb.includes('yourpage'))$('fb').href=fb;else $('fb').removeAttribute('href');}catch(e){console.error(e)}}loadSocial();
-function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])}
-function render(o){const idx=statuses.indexOf(o.status);$('result').hidden=false;$('result').innerHTML='<b>Order #'+esc(o.orderNumber)+'</b><div class="status-line">'+statuses.map((s,i)=>'<span class="step '+(i<=idx?'active':'')+'">'+esc(s)+'</span>').join('')+'</div>'+(o.tracking?.number||o.tracking?.courier||o.tracking?.url?'<div class="tracking-box"><b>Package Tracking</b><div>'+esc(o.tracking.courier||'Courier')+(o.tracking.number?' · '+esc(o.tracking.number):'')+'</div>'+(o.tracking.url?'<a class="tracking-link" href="'+esc(o.tracking.url)+'" target="_blank" rel="noopener">Track Package →</a>':'')+'</div>':'<div class="tracking-box">Courier tracking details will appear here once your package is shipped.</div>')+(o.items?.length?'<div class="items"><b>Order Items</b>'+o.items.map(i=>'<div class="item"><span>'+esc(i.name)+' × '+i.quantity+'</span><span>৳'+Number(i.price*i.quantity).toLocaleString('en-BD')+'</span></div>').join('')+'</div>':'');}
-$('trackForm').onsubmit=async e=>{e.preventDefault();$('msg').textContent='Checking order…';$('result').hidden=true;try{const id=$('orderId').value.trim();const r=await fetch('/api/track-order?orderId='+encodeURIComponent(id));const d=await r.json();if(!r.ok)throw new Error(d.error||'Order not found.');render(d.order);$('msg').textContent=''}catch(e){$('msg').textContent=e.message}};
+(()=> {
+ const C=window.GRABZONE_CONFIG||{};
+ const $=id=>document.getElementById(id);
+ const statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
+
+ async function loadSocial(){
+   try{
+     if(window.supabase&&C.supabaseUrl&&C.supabaseAnonKey){
+       const sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
+       const q=await sb.from('site_settings').select('whatsapp,instagram,messenger').eq('id',1).maybeSingle();
+       const s=q.data||{};
+       const wa=String(s.whatsapp||C.whatsapp||'').trim();
+       const ig=String(s.instagram||C.instagram||'').trim();
+       const fb=String(s.messenger||C.messenger||'').trim();
+       if(wa&&!wa.includes('XXXXXXXX')) $('wa').href=wa; else $('wa').removeAttribute('href');
+       if(ig&&!ig.includes('yourstore')) $('ig').href=ig; else $('ig').removeAttribute('href');
+       if(fb&&!fb.includes('yourpage')) $('fb').href=fb; else $('fb').removeAttribute('href');
+     }
+   }catch(e){console.error('Social links:',e)}
+ }
+ loadSocial();
+
+ function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+ function render(o){
+   const idx=statuses.indexOf(o.status);
+   $('result').hidden=false;
+   $('result').innerHTML='<b>Order #'+esc(o.orderNumber)+'</b><div class="status-line">'+statuses.map((s,i)=>'<span class="step '+(i<=idx?'active':'')+'">'+esc(s)+'</span>').join('')+'</div>'+
+   (o.tracking?.number||o.tracking?.courier||o.tracking?.url?
+     '<div class="tracking-box"><b>Package Tracking</b><div>'+esc(o.tracking.courier||'Courier')+(o.tracking.number?' · '+esc(o.tracking.number):'')+'</div>'+
+     (o.tracking.url?'<a class="tracking-link" href="'+esc(o.tracking.url)+'" target="_blank" rel="noopener">Track Package →</a>':'')+'</div>':
+     '<div class="tracking-box">Courier tracking details will appear here once your package is shipped.</div>')+
+   (o.items?.length?'<div class="items"><b>Order Items</b>'+o.items.map(i=>'<div class="item"><span>'+esc(i.name)+' × '+i.quantity+'</span><span>৳'+Number(i.price*i.quantity).toLocaleString('en-BD')+'</span></div>').join('')+'</div>':'');
+ }
+
+ async function getOrder(id){
+   const clean=String(id||'').trim().toUpperCase();
+   if(!clean) throw new Error('Please enter your Order ID.');
+   const orderNumber=/^GZ-/.test(clean)?clean:'GZ-'+clean.replace(/^GZ-/,'');
+   if(!window.supabase||!C.supabaseUrl||!C.supabaseAnonKey) throw new Error('Tracking service is not configured.');
+   const sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
+   const {data,error}=await sb.rpc('track_public_order',{p_order_number:orderNumber});
+   if(!error&&data) return {success:true,order:data};
+   console.warn('Direct tracking RPC failed:',error);
+   const response=await fetch('/api/track-order?orderId='+encodeURIComponent(orderNumber),{cache:'no-store'});
+   let body={}; try{body=await response.json()}catch{}
+   if(!response.ok) throw new Error(body.error||'Order not found. Please check your Order ID.');
+   return body;
+ }
+
+ $('trackForm').addEventListener('submit',async e=>{
+   e.preventDefault();
+   const msg=$('msg'),result=$('result');
+   msg.textContent='Checking order…'; result.hidden=true;
+   try{
+     const d=await getOrder($('orderId').value);
+     if(!d?.order) throw new Error('Order not found. Please check your Order ID.');
+     render(d.order);
+     msg.textContent='Order found ✓';
+   }catch(e){
+     console.error('Track order:',e);
+     msg.textContent=e.message||'Could not load the order. Please try again.';
+   }
+ });
 })();
-</script></body></html>
+</script>></body></html>
