@@ -55,22 +55,32 @@ function fillDistrictOptions(){
 function fillUpazilaOptions(){
   fillSelect('upazila',upazilaRecords(),'Select Upazila / Thana');
 }
+function useEmbeddedLocations(){
+  const embedded=window.GRABZONE_BD_LOCATIONS;
+  if(embedded&&Array.isArray(embedded.data)&&embedded.data.length===8){
+    locationTree=embedded;
+    fillSelect('division',divisions(),'Select Division');
+    return true;
+  }
+  return false;
+}
 async function loadLocations(){
+  // Populate immediately from the bundled dataset so the dropdown never waits on a network request.
+  const hasEmbedded=useEmbeddedLocations();
+  if(!hasEmbedded) msg('Loading Bangladesh locations…');
   try{
     const r=await fetch('/data/bangladesh-locations.json?v=20260828',{cache:'no-store'});
     if(!r.ok)throw new Error('Location data could not be loaded.');
     const json=await r.json();
-    locationTree=json&&Array.isArray(json.data)?json:[];
-    if(divisions().length!==8)console.warn('Expected 8 divisions, received',divisions().length);
-    const totalDistricts=divisions().reduce((n,d)=>n+(Array.isArray(d.district)?d.district.length:0),0);
-    const totalUpazilas=divisions().reduce((n,d)=>n+(Array.isArray(d.district)?d.district.reduce((m,x)=>m+(Array.isArray(x.upazila)?x.upazila.length:0),0):0),0);
-    console.info('Bangladesh locations loaded:',divisions().length,'divisions,',totalDistricts,'districts,',totalUpazilas,'upazilas/thanas');
-    fillSelect('division',divisions(),'Select Division');
+    if(json&&Array.isArray(json.data)&&json.data.length===8){
+      locationTree=json;
+      fillSelect('division',divisions(),'Select Division');
+    }else if(!hasEmbedded){
+      throw new Error('Invalid Bangladesh location data.');
+    }
   }catch(e){
     console.error(e);
-    locationTree=window.GRABZONE_BD_LOCATIONS&&Array.isArray(window.GRABZONE_BD_LOCATIONS.data)?window.GRABZONE_BD_LOCATIONS:[];
-    if(divisions().length===8) fillSelect('division',divisions(),'Select Division');
-    else msg('Could not load Bangladesh location data. Please refresh the page.',true);
+    if(!hasEmbedded) msg('Could not load Bangladesh location data. Please refresh the page.',true);
   }
 }
 function onDivisionChange(){
