@@ -19,3 +19,7 @@
 .location-search{width:100%;box-sizing:border-box;margin:0 0 7px;padding:11px 12px;border:1px solid #ddd;border-radius:10px;background:#fff;font:inherit;color:#111}.location-search:focus{outline:none;border-color:#111;box-shadow:0 0 0 3px rgba(0,0,0,.06)}.location-search:disabled{background:#f4f4f2;cursor:not-allowed}
 
 .location-search{margin-bottom:7px!important}.field select{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:13px 12px;background:#fff;font:inherit;color:#111;min-height:48px}.field select:disabled,.location-search:disabled{opacity:.55;cursor:not-allowed}@media(max-width:760px){.field select{font-size:16px}}
+/* Checkout location controls: keep native selects interactive above decorative layers. */
+.field select{position:relative;z-index:2;pointer-events:auto;appearance:auto;-webkit-appearance:auto;cursor:pointer;touch-action:manipulation}
+.field select:disabled{cursor:not-allowed}
+.field{position:relative;z-index:1}
