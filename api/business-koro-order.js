@@ -104,23 +104,18 @@ async function sendOne(apiKey,orderNumber,customer,item,productId){
 async function markSent(orderId,supplierIds){
   const ids=supplierIds.filter(Boolean);
   try{
+    const existingRes=await supabaseRequest('orders?id=eq.'+encodeURIComponent(orderId)+'&select=admin_note');
+    const existing=await readJson(existingRes);
+    const previous=Array.isArray(existing)&&existing[0]?String(existing[0].admin_note||''):''; 
+    const trackingMarker='[[GRABZONE_TRACKING]]';
+    const trackingPart=previous.includes(trackingMarker)?' '+previous.slice(previous.indexOf(trackingMarker)):'';
+    const baseNote=previous.includes(trackingMarker)?previous.slice(0,previous.indexOf(trackingMarker)).trim():previous;
+    const note=[baseNote,'Business Koro submitted: '+(ids.join(', ')||'submitted')].filter(Boolean).join(' — ')+trackingPart;
     await supabaseRequest('orders?id=eq.'+encodeURIComponent(orderId),{
       method:'PATCH',
-      body:JSON.stringify({
-        business_koro_sent_at:new Date().toISOString(),
-        business_koro_order_ids:ids,
-        admin_note:'Business Koro submitted: '+(ids.join(', ')||'submitted')
-      })
+      body:JSON.stringify({business_koro_sent_at:new Date().toISOString(),business_koro_order_ids:ids,admin_note:note})
     });
-  }catch(error){
-    console.error('Could not save Business Koro submission metadata:',error);
-    try{
-      await supabaseRequest('orders?id=eq.'+encodeURIComponent(orderId),{
-        method:'PATCH',
-        body:JSON.stringify({admin_note:'Business Koro submitted: '+(ids.join(', ')||'submitted')})
-      });
-    }catch{}
-  }
+  }catch(error){console.error('Could not save Business Koro submission metadata:',error);}
 }
 module.exports=async function handler(req,res){
   if(req.method!=='POST')return res.status(405).json({error:'Method not allowed.'});
