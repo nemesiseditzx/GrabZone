@@ -31,7 +31,7 @@ function districtRecords(){
   const d=divisions().find(x=>String(x?.name?.en||'').trim()===selected || String(x?.name?.local||'').trim()===selected);
   return Array.isArray(d?.district)?d.district:[];
 }
-function upazilaRecords(){
+function thanaRecords(){
   const selectedDivision=String($('division')?.value||'').trim();
   const selectedDistrict=String($('district')?.value||'').trim();
   if(!selectedDivision||!selectedDistrict)return [];
@@ -60,10 +60,10 @@ function fillDistrictOptions(){
   updatePickerText('district');
 }
 function fillUpazilaOptions(){
-  fillSelect('upazila',upazilaRecords(),'Select Upazila / Thana');
-  setPickerEnabled('upazila',true);
-  renderPicker('upazila');
-  updatePickerText('upazila');
+  fillSelect('thana',thanaRecords(),'Select Thana');
+  setPickerEnabled('thana',true);
+  renderPicker('thana');
+  updatePickerText('thana');
 }
 function useEmbeddedLocations(){
   const embedded=window.GRABZONE_BD_LOCATIONS;
@@ -79,7 +79,7 @@ async function loadLocations(){
   // Division selector is populated immediately and does not depend on a fetch.
   if(useEmbeddedLocations()){
     $('district').disabled=true;
-    $('upazila').disabled=true;
+    $('thana').disabled=true;
     return;
   }
 
@@ -92,7 +92,7 @@ async function loadLocations(){
     locationTree=json;
     fillSelect('division',divisions(),'Select Division');
     $('district').disabled=true;
-    $('upazila').disabled=true;
+    $('thana').disabled=true;
     return;
   }catch(e){ console.error('GrabZone location data failed:',e); }
 
@@ -104,7 +104,7 @@ async function loadLocations(){
 function locationRecords(type){
   if(type==='division') return divisions();
   if(type==='district') return districtRecords();
-  return upazilaRecords();
+  return thanaRecords();
 }
 function locationLabel(x){
   const en=String(x?.name?.en||'').trim(), local=String(x?.name?.local||'').trim();
@@ -191,7 +191,7 @@ function formData(){
     email:$('customerEmail').value.trim(),
     division:$('division').value.trim(),
     district:$('district').value.trim(),
-    upazila:$('upazila').value.trim(),
+    upazila:$('thana').value.trim(),
     address:$('address').value.trim(),
     referral_code:$('referralCode').value.trim().toUpperCase()
   };
