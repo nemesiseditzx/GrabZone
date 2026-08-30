@@ -8,6 +8,14 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const $=id=>document.getElementById(id);
 
+const BD_TIME_ZONE="Asia/Dhaka";
+function formatBdDateTime(value){
+  if(!value)return "—";
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime()))return "—";
+  return new Intl.DateTimeFormat("en-US",{timeZone:BD_TIME_ZONE,year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit",hour12:true}).format(d);
+}
+
 /* GrabZone in-app notifications/dialogs — avoids browser-native popups. */
 function gzUiToast(message,type='success'){
   let host=document.getElementById('gzUiToastHost');
@@ -148,7 +156,7 @@ function renderOrders(){
  <td>${o.referral_discount?'-'+money(o.referral_discount):'—'}</td>
  <td><b>${money(o.total)}</b></td>
  <td><select class="gz-status-select" data-status-order="${esc(o.id)}" aria-label="Change order status">${statuses.map(s=>`<option value="${esc(s)}" ${s===o.status?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
- <td>${o.created_at?new Date(o.created_at).toLocaleString():'—'}</td>
+ <td>${o.created_at?formatBdDateTime(o.created_at):'—'}</td>
  <td><div class="gz-order-actions-cell"><button class="gz-order-action edit" data-edit-order="${esc(o.id)}">Edit</button><button class="gz-order-action" data-send-bk="${esc(o.id)}" ${o.status!=='Confirmed'||o.business_koro_sent_at?'disabled':''}>${o.business_koro_sent_at?'Sent ✓':o.status==='Confirmed'?'Send to Business Koro':'Confirm order first'}</button><button class="gz-order-action delete" data-delete-order="${esc(o.id)}">Delete</button></div></td>
  </tr>`).join('')}</tbody></table></div>`;
  panel.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.order));
@@ -219,7 +227,7 @@ async function sendToBusinessKoro(id){
   const result=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(result.error||'Business Koro rejected the order.');
   const ids=(result.orders||[]).map(x=>x.supplierOrderId).filter(Boolean);
-  const note=[order.admin_note,'Business Koro submitted '+new Date().toLocaleString()+(ids.length?' · IDs: '+ids.join(', '):'')].filter(Boolean).join('\\n');
+  const note=[order.admin_note,'Business Koro submitted '+formatBdDateTime(new Date())+(ids.length?' · IDs: '+ids.join(', '):'')].filter(Boolean).join('\\n');
   const{error:updateError}=await sb.from('orders').update({admin_note:note,updated_at:new Date().toISOString()}).eq('id',id);
   if(updateError)throw updateError;order.admin_note=note;
   gzUiToast('✓ Order sent to Business Koro successfully.');
@@ -330,7 +338,7 @@ async function openEditor(id){
  current={...base,items:items||[]};
  $('gzOrderEditorTitle').textContent=current.order_number;
  $('gzOrderSendBk').disabled=current.status!=='Confirmed'||!!current.business_koro_sent_at;
- $('gzOrderEditorSub').textContent=`Placed ${current.created_at?new Date(current.created_at).toLocaleString():'—'} · Last updated ${current.updated_at?new Date(current.updated_at).toLocaleString():'—'}`;
+ $('gzOrderEditorSub').textContent=`Placed ${current.created_at?formatBdDateTime(current.created_at):'—'} · Last updated ${current.updated_at?formatBdDateTime(current.updated_at):'—'}`;
  $('gzOrderEditorBody').innerHTML=`
  <div class="gz-order-grid">
  <label>Internal Order Number<input value="${esc(current.order_number)}" readonly></label><label>Private Tracking ID<input value="${esc(current.public_tracking_id||'')}" readonly></label>
