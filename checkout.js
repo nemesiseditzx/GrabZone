@@ -304,6 +304,22 @@ async function hydrate(){
   }).filter(Boolean);
   render();
 }
+async function sendOrderEmail(orderNumber,type='order_created'){
+  try{
+    const response=await fetch('/api/send-order-email',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({orderNumber,type})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||'Email could not be sent.');
+    return true;
+  }catch(e){
+    console.error('GrabZone order email:',e);
+    return false;
+  }
+}
+
 async function submit(e){
   e.preventDefault();
   const d=formData(),bad=validate(d);
@@ -347,7 +363,10 @@ async function submit(e){
     $('successTrackingId').textContent=privateTrackingId;
     const trackLink=$('successTrackLink');
     if(trackLink) trackLink.href='track-order.html?tracking='+encodeURIComponent(privateTrackingId);
-    $('successEmailNote').textContent='Your order has been saved successfully. Our team will call you to verify the order.';
+    const emailSent=await sendOrderEmail(order.order_number,'order_created');
+    $('successEmailNote').textContent=emailSent
+      ?'A confirmation email has been sent to your email address. Our team will call you to verify the order.'
+      :'Your order has been saved successfully. Our team will call you to verify the order.';
     window.scrollTo({top:0,behavior:'smooth'});
   }catch(err){
     console.error(err);msg(err.message||'Could not place your order. Please try again.',true);
