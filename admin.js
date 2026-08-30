@@ -2,6 +2,40 @@ const C=window.GRABZONE_CONFIG;let sb=null,newProductMainIndex=0;
 if(C&&!C.supabaseUrl.includes("PASTE_")&&window.supabase)sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
 const $=id=>document.getElementById(id);
 
+/* GrabZone in-app notifications/dialogs — polished replacement for native browser popups. */
+function gzUiToast(message,type='success'){
+  let host=document.getElementById('gzUiToastHost');
+  if(!host){
+    host=document.createElement('div');
+    host.id='gzUiToastHost';
+    host.style.cssText='position:fixed;right:22px;bottom:22px;z-index:100001;display:grid;gap:10px;max-width:min(420px,calc(100vw - 30px));pointer-events:none;';
+    document.body.appendChild(host);
+  }
+  const el=document.createElement('div');
+  el.style.cssText='pointer-events:auto;padding:14px 16px;border-radius:14px;background:#111;color:#fff;box-shadow:0 14px 40px rgba(0,0,0,.24);font:700 13px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;white-space:pre-line;';
+  el.textContent=message;
+  if(type==='error')el.style.background='#9d1717';
+  host.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(6px)';el.style.transition='.2s ease';setTimeout(()=>el.remove(),220)},3200);
+}
+function gzUiConfirm(message){
+  return new Promise(resolve=>{
+    let modal=document.getElementById('gzUiConfirm');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.id='gzUiConfirm';
+      modal.style.cssText='position:fixed;inset:0;z-index:100002;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.58);backdrop-filter:blur(5px);';
+      modal.innerHTML='<div style="width:min(430px,100%);background:#fff;border-radius:20px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.28);font-family:system-ui,-apple-system,Segoe UI,sans-serif;"><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777;margin-bottom:8px">GRABZONE</div><div id="gzUiConfirmText" style="font-size:16px;line-height:1.5;font-weight:700;color:#111;white-space:pre-line"></div><div style="display:flex;justify-content:flex-end;gap:9px;margin-top:20px"><button id="gzUiConfirmNo" type="button" style="border:1px solid #ddd;background:#fff;color:#111;border-radius:10px;padding:10px 15px;font-weight:800;cursor:pointer">Cancel</button><button id="gzUiConfirmYes" type="button" style="border:0;background:#111;color:#fff;border-radius:10px;padding:10px 15px;font-weight:800;cursor:pointer">Continue</button></div></div>';
+      document.body.appendChild(modal);
+    }
+    document.getElementById('gzUiConfirmText').textContent=message;
+    modal.style.display='flex';
+    const finish=value=>{modal.style.display='none';resolve(value)};
+    document.getElementById('gzUiConfirmNo').onclick=()=>finish(false);
+    document.getElementById('gzUiConfirmYes').onclick=()=>finish(true);
+  });
+}
+
 const fields=["store_name","tagline","hero_eyebrow","hero_title","hero_title_em","hero_description","hero_button_text","hero_button_link","how_button_text","how_button_link","offer_title","offer_message","offer_code","collection_eyebrow","collection_title","how_eyebrow","how_title","step1_title","step1_body","step2_title","step2_body","step3_title","step3_body","referral_eyebrow","referral_title","referral_body","referral_button_text","footer_text","whatsapp","instagram","messenger","header_link1_label","header_link1_url","header_link2_label","header_link2_url","header_link3_label","header_link3_url","custom_css"];
 
 function esc(x){
@@ -533,7 +567,7 @@ async function toggleProduct(id,p){
 
 async function deleteProduct(id){
 
- if(confirm("Delete this product and its images?")){
+ if(await gzUiConfirm("Delete this product and its images?")){
 
    await sb
      .from("products")
@@ -554,7 +588,7 @@ async function addNotice(){
  const message=$("noticeMessage").value.trim();
 
  if(!title||!message)
-   return alert("Enter notice title and message.");
+   return gzUiToast("Enter notice title and message.","error");
 
  const{error}=await sb
    .from("notices")
@@ -565,7 +599,7 @@ async function addNotice(){
      active:true
    });
 
- if(error)return alert(error.message);
+ if(error)return gzUiToast(error.message,"error");
 
  $("noticeTitle").value="";
  $("noticeMessage").value="";
@@ -630,7 +664,7 @@ async function toggleNotice(id,p){
 
 async function deleteNotice(id){
 
- if(confirm("Delete this notice?")){
+ if(await gzUiConfirm("Delete this notice?")){
 
    await sb
      .from("notices")
