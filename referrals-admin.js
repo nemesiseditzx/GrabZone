@@ -53,8 +53,19 @@ function inject(){
   load();
 }
 function clearForm(){editingId=null;$('gzReferralFormTitle').textContent='Add referral code';$('gzReferralSave').textContent='Save referral code';['rfAdminName','rfAdminPhone','rfAdminEmail','rfCode','rfValue','rfMax','rfLimit','rfStarts','rfExpires','rfNote'].forEach(id=>$(id).value='');$('rfMin').value='0';$('rfType').value='fixed';$('rfActive').value='true';$('gzReferralMsg').textContent='';}
-function toInput(v){return v?new Date(v).toISOString().slice(0,16):''}
-function fromInput(v){return v?new Date(v).toISOString():null}
+const BD_TIME_ZONE="Asia/Dhaka";
+function toInput(v){
+  if(!v)return "";
+  const d=new Date(v);
+  if(Number.isNaN(d.getTime()))return "";
+  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:BD_TIME_ZONE,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(d);
+  const get=type=>parts.find(p=>p.type===type)?.value||"";
+  return get("year")+"-"+get("month")+"-"+get("day")+"T"+get("hour")+":"+get("minute");
+}
+function fromInput(v){
+  if(!v)return null;
+  return new Date(v+":00+06:00").toISOString();
+}
 function readForm(){
  return {
   admin_name:$('rfAdminName').value.trim(),admin_phone:$('rfAdminPhone').value.trim()||null,
