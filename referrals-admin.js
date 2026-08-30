@@ -40,9 +40,12 @@ function inject(){
         <label>Admin / Referrer Name<input id="rfAdminName" placeholder="Tonmoy"></label>
         <label>Admin Phone<input id="rfAdminPhone" placeholder="01XXXXXXXXX"></label>
         <label>Admin Email<input id="rfAdminEmail" type="email" placeholder="admin@example.com"></label>
+        <label>Admin Owner Name<input id="rfOwnerName" placeholder="Who owns this admin code?"></label>
         <label>Referral Code<input id="rfCode" placeholder="TONMOYB10"></label>
         <label>Benefit Type<select id="rfType"><option value="fixed">Fixed amount (৳)</option><option value="percentage">Percentage (%)</option></select></label>
         <label>Benefit Value<input id="rfValue" type="number" min="0" step="0.01" placeholder="10"></label>
+        <label>Commission Type<select id="rfCommissionType"><option value="percentage">Percentage of net sale (%)</option><option value="fixed">Fixed amount per order (৳)</option></select></label>
+        <label>Commission Value<input id="rfCommissionValue" type="number" min="0" step="0.01" placeholder="5"></label>
         <label>Minimum Order Amount<input id="rfMin" type="number" min="0" step="1" value="0"></label>
         <label>Maximum Discount <span class="muted">(optional)</span><input id="rfMax" type="number" min="0" step="1" placeholder="No limit"></label>
         <label>Usage Limit <span class="muted">(optional)</span><input id="rfLimit" type="number" min="0" step="1" placeholder="Unlimited"></label>
@@ -71,7 +74,7 @@ function inject(){
   load();
   syncAdminRecordsToSheet();
 }
-function clearForm(){editingId=null;$('gzReferralFormTitle').textContent='Add referral code';$('gzReferralSave').textContent='Save referral code';['rfAdminName','rfAdminPhone','rfAdminEmail','rfCode','rfValue','rfMax','rfLimit','rfStarts','rfExpires','rfNote'].forEach(id=>$(id).value='');$('rfMin').value='0';$('rfType').value='fixed';$('rfActive').value='true';$('gzReferralMsg').textContent='';}
+function clearForm(){editingId=null;$('gzReferralFormTitle').textContent='Add referral code';$('gzReferralSave').textContent='Save referral code';['rfAdminName','rfAdminPhone','rfAdminEmail','rfOwnerName','rfCode','rfValue','rfCommissionValue','rfMax','rfLimit','rfStarts','rfExpires','rfNote'].forEach(id=>$(id).value='');$('rfMin').value='0';$('rfType').value='fixed';$('rfCommissionType').value='percentage';$('rfActive').value='true';$('gzReferralMsg').textContent='';}
 const BD_TIME_ZONE="Asia/Dhaka";
 function toInput(v){
   if(!v)return "";
@@ -89,8 +92,10 @@ function readForm(){
  return {
   admin_name:$('rfAdminName').value.trim(),admin_phone:$('rfAdminPhone').value.trim()||null,
   admin_email:$('rfAdminEmail').value.trim().toLowerCase()||null,
+  owner_name:$('rfOwnerName').value.trim()||null,
   code:$('rfCode').value.trim().toUpperCase(),benefit_type:$('rfType').value,
-  benefit_value:Number($('rfValue').value||0),min_order_amount:Number($('rfMin').value||0),
+  benefit_value:Number($('rfValue').value||0),commission_type:$('rfCommissionType').value,
+  commission_value:Number($('rfCommissionValue').value||0),min_order_amount:Number($('rfMin').value||0),
   max_discount_amount:$('rfMax').value===''?null:Number($('rfMax').value),
   usage_limit:$('rfLimit').value===''?null:Number($('rfLimit').value),
   starts_at:fromInput($('rfStarts').value),expires_at:fromInput($('rfExpires').value),
@@ -103,7 +108,7 @@ async function save(){
  const p=readForm();
  const m=$('gzReferralMsg');
  if(!p.admin_name||!p.code){m.textContent='⚠ Admin/referrer name and code are required.';m.style.color='#a00';return}
- if(!p.benefit_value||p.benefit_value<0){m.textContent='⚠ Enter a valid benefit value.';m.style.color='#a00';return}
+ if(p.benefit_value<0||p.commission_value<0){m.textContent='⚠ Benefit and commission values cannot be negative.';m.style.color='#a00';return}
  if(p.benefit_type==='percentage'&&p.benefit_value>100){m.textContent='⚠ Percentage benefit cannot exceed 100%.';m.style.color='#a00';return}
  try{
   const q=editingId?sb.from('referral_codes').update(p).eq('id',editingId):sb.from('referral_codes').insert(p);
@@ -133,8 +138,9 @@ function editReferral(id){
  const r=referrals.find(x=>x.id===id);if(!r)return;editingId=id;
  $('gzReferralFormTitle').textContent='Edit referral code';
  $('gzReferralSave').textContent='Update referral code';
- $('rfAdminName').value=r.admin_name||'';$('rfAdminPhone').value=r.admin_phone||'';$('rfAdminEmail').value=r.admin_email||'';
+ $('rfAdminName').value=r.admin_name||'';$('rfAdminPhone').value=r.admin_phone||'';$('rfAdminEmail').value=r.admin_email||'';$('rfOwnerName').value=r.owner_name||'';
  $('rfCode').value=r.code||'';$('rfType').value=r.benefit_type||'fixed';$('rfValue').value=r.benefit_value??0;
+ $('rfCommissionType').value=r.commission_type||'percentage';$('rfCommissionValue').value=r.commission_value??0;
  $('rfMin').value=r.min_order_amount??0;$('rfMax').value=r.max_discount_amount??'';$('rfLimit').value=r.usage_limit??'';
  $('rfStarts').value=toInput(r.starts_at);$('rfExpires').value=toInput(r.expires_at);$('rfActive').value=String(!!r.active);$('rfNote').value=r.note||'';
  document.getElementById('tab-referrals').scrollIntoView({behavior:'smooth',block:'start'});
