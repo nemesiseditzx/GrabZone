@@ -304,6 +304,13 @@ async function hydrate(){
   }).filter(Boolean);
   render();
 }
+async function syncOrderToSheet(orderId){
+  try{
+    const response=await fetch('/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
+    if(!response.ok) console.warn('GrabZone Google Sheets sync:',await response.text().catch(()=>''));
+  }catch(e){console.warn('GrabZone Google Sheets sync:',e)}
+}
+
 async function sendOrderEmail(orderNumber,type='order_created'){
   try{
     const response=await fetch('/api/send-order-email',{
@@ -346,6 +353,9 @@ async function submit(e){
     const{data:order,error}=await sb.rpc('create_public_order',{payload});
     if(error)throw error;
     if(!order?.id||!order?.order_number)throw new Error('Order could not be created.');
+
+    // Keep the customer record synchronized without making checkout fail if Google Sheets is temporarily unavailable.
+    await syncOrderToSheet(order.id);
 
     // Some older create_public_order functions return only the order number.
     // Read the newly-created private tracking ID through the dedicated
