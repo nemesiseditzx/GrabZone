@@ -230,6 +230,7 @@ async function sendToBusinessKoro(id){
   const note=[order.admin_note,'Business Koro submitted '+formatBdDateTime(new Date())+(ids.length?' · IDs: '+ids.join(', '):'')].filter(Boolean).join('\\n');
   const{error:updateError}=await sb.from('orders').update({admin_note:note,updated_at:new Date().toISOString()}).eq('id',id);
   if(updateError)throw updateError;order.admin_note=note;
+  await syncOrderToSheet(id);
   gzUiToast('✓ Order sent to Business Koro successfully.');
  }catch(e){gzUiToast('Could not send order: '+e.message,'error')}
  finally{if(button){button.disabled=false;button.textContent='Send to Business Koro'}}
