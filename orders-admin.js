@@ -226,6 +226,14 @@ async function sendToBusinessKoro(id){
  }catch(e){gzUiToast('Could not send order: '+e.message,'error')}
  finally{if(button){button.disabled=false;button.textContent='Send to Business Koro'}}
 }
+async function syncOrderToSheet(orderId){
+ try{
+  const response=await fetch('/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
+  if(!response.ok)throw new Error((await response.json().catch(()=>({}))).error||'Google Sheets sync failed.');
+  return true;
+ }catch(e){console.warn('Google Sheets sync:',e);return false}
+}
+
 async function sendOrderEmail(orderNumber,type='status_updated'){
  try{
   const session=await sb.auth.getSession(), token=session?.data?.session?.access_token;
@@ -251,6 +259,7 @@ async function confirmOrder(order){
  if(error)throw error;
  Object.assign(order,updates);
  const emailed=await sendOrderEmail(order.order_number,'status_updated');
+ await syncOrderToSheet(order.id);
  renderOrders();
  return emailed;
 }
@@ -268,6 +277,7 @@ async function changeStatus(id,status){
  if(error){gzUiToast('Could not update status: '+error.message,'error');renderOrders();return}
  order.status=status;
  const emailed=await sendOrderEmail(order.order_number,'status_updated');
+ await syncOrderToSheet(order.id);
  renderOrders();
  gzUiToast(emailed
    ? '✓ Status updated and customer email sent.'
@@ -377,6 +387,7 @@ async function saveEditor(){
   if(payload.status!==current.status){
     statusEmailSent=await sendOrderEmail(current.order_number,'status_updated');
   }
+  await syncOrderToSheet(current.id);
   $('gzOrderEditorMsg').textContent=statusEmailSent
     ?'✓ Order updated successfully.'
     :'✓ Order updated, but the customer email could not be sent. Check email settings.';
