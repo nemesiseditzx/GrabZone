@@ -56,11 +56,14 @@ async function getGmailAccessToken(){
   return data.access_token;
 }
 
+function encodeMimeHeader(value){
+  return /[^\\x00-\\x7F]/.test(String(value||'')) ? '=?UTF-8?B?'+Buffer.from(String(value),'utf8').toString('base64')+'?=' : String(value||'');
+}
 function buildRawEmail(from,to,subject,html){
   const message=[
     'From: GrabZone <'+from+'>',
     'To: '+to,
-    'Subject: '+subject,
+    'Subject: '+encodeMimeHeader(subject),
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=UTF-8',
     '',html
