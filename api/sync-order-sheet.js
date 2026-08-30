@@ -130,7 +130,10 @@ async function rebuildAllSheets(headers,base,sbHeaders,{orderId='',full=true}={}
     const s=stats.get(key)||{
       code:key,
       adminName:admin?.admin_name||(key==='(No Admin Code)'?'Website':''),
+      ownerName:admin?.owner_name||'',
       adminEmail:admin?.admin_email||'',
+      commissionType:admin?.commission_type||'percentage',
+      commissionValue:Number(admin?.commission_value||0),
       orders:0,newCount:0,contacting:0,confirmed:0,processing:0,shipped:0,delivered:0,cancelled:0,
       grossSales:0,discount:0,netSales:0
     };
@@ -147,6 +150,7 @@ async function rebuildAllSheets(headers,base,sbHeaders,{orderId='',full=true}={}
     s.grossSales+=subtotal;
     s.discount+=discount;
     s.netSales+=total;
+    s.adminEarnings=(s.adminEarnings||0)+(s.commissionType==='fixed'?s.commissionValue:(total*s.commissionValue/100));
     stats.set(key,s);
   }
 
@@ -157,20 +161,23 @@ async function rebuildAllSheets(headers,base,sbHeaders,{orderId='',full=true}={}
     stats.set(code,{
       code,
       adminName:admin.admin_name||'',
+      ownerName:admin.owner_name||'',
       adminEmail:admin.admin_email||'',
+      commissionType:admin.commission_type||'percentage',
+      commissionValue:Number(admin.commission_value||0),
       orders:0,newCount:0,contacting:0,confirmed:0,processing:0,shipped:0,delivered:0,cancelled:0,
       grossSales:0,discount:0,netSales:0
     });
   }
 
   const adminRows=[[
-    'Admin Code','Admin Name','Admin Email','Admin Phone','Benefit Type','Benefit Value',
-    'Min Order','Max Discount','Usage Limit','Used Count','Active','Starts At','Expires At','Admin Note'
+    'Admin Code','Admin Name','Owner Name','Admin Email','Admin Phone','Benefit Type','Benefit Value',
+    'Commission Type','Commission Value','Min Order','Max Discount','Usage Limit','Used Count','Active','Starts At','Expires At','Admin Note'
   ]];
   for(const a of admins){
     adminRows.push([
-      a.code||'',a.admin_name||'',a.admin_email||'',a.admin_phone||'',
-      a.benefit_type||'',Number(a.benefit_value||0),Number(a.min_order_amount||0),
+      a.code||'',a.admin_name||'',a.owner_name||'',a.admin_email||'',a.admin_phone||'',
+      a.benefit_type||'',Number(a.benefit_value||0),a.commission_type||'percentage',Number(a.commission_value||0),Number(a.min_order_amount||0),
       a.max_discount_amount==null?'':Number(a.max_discount_amount),
       a.usage_limit==null?'':Number(a.usage_limit),Number(a.used_count||0),
       a.active===false?'Disabled':'Active',
@@ -179,23 +186,23 @@ async function rebuildAllSheets(headers,base,sbHeaders,{orderId='',full=true}={}
   }
 
   const summaryRows=[[
-    'Admin Code','Admin Name','Admin Email','Orders','New','Contacting','Confirmed',
-    'Processing','Shipped','Delivered','Cancelled','Gross Sales','Discount Given','Net Sales'
+    'Admin Code','Admin Name','Owner Name','Admin Email','Orders','New','Contacting','Confirmed',
+    'Processing','Shipped','Delivered','Cancelled','Gross Sales','Discount Given','Net Sales','Admin Earnings'
   ]];
   [...stats.values()]
     .sort((a,b)=>String(a.code).localeCompare(String(b.code)))
     .forEach(s=>summaryRows.push([
-      s.code,s.adminName,s.adminEmail,s.orders,s.newCount,s.contacting,s.confirmed,
-      s.processing,s.shipped,s.delivered,s.cancelled,s.grossSales,s.discount,s.netSales
+      s.code,s.adminName,s.ownerName,s.adminEmail,s.orders,s.newCount,s.contacting,s.confirmed,
+      s.processing,s.shipped,s.delivered,s.cancelled,s.grossSales,s.discount,s.netSales,s.adminEarnings||0
     ]));
 
   let totalOrders=0,newCount=0,contacting=0,confirmed=0,processing=0,shipped=0,delivered=0,cancelled=0;
-  let grossSales=0,discount=0,netSales=0;
+  let grossSales=0,discount=0,netSales=0,adminEarnings=0;
   for(const s of stats.values()){
     if(s.code==='(No Admin Code)'){}
     totalOrders+=s.orders;newCount+=s.newCount;contacting+=s.contacting;confirmed+=s.confirmed;
     processing+=s.processing;shipped+=s.shipped;delivered+=s.delivered;cancelled+=s.cancelled;
-    grossSales+=s.grossSales;discount+=s.discount;netSales+=s.netSales;
+    grossSales+=s.grossSales;discount+=s.discount;netSales+=s.netSales;adminEarnings+=s.adminEarnings||0;
   }
 
   const activeAdmins=admins.filter(a=>a.active!==false).length;
@@ -220,6 +227,7 @@ async function rebuildAllSheets(headers,base,sbHeaders,{orderId='',full=true}={}
     ['Gross Product Sales',grossSales],
     ['Customer Discount Given',discount],
     ['Net Customer Sales',netSales],
+    ['Total Admin Earnings',adminEarnings],
     [],
     ['Important','This sheet mirrors the Admin Panel referral/admin records and website orders.'],
     ['Profit note','Actual profit is not calculated because the Admin Panel does not store product cost/expense. Net Customer Sales is revenue after customer discounts, not profit.']
@@ -261,8 +269,8 @@ async function ensureBusinessSheets(headers,spreadsheetId){
   const widths={
     'GZ Dashboard':2,
     'GZ Orders':29,
-    'GZ Admin Registry':14,
-    'GZ Admin Summary':14
+    'GZ Admin Registry':18,
+    'GZ Admin Summary':15
   };
 
   const formatRequests=[];
