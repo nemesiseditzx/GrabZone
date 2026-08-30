@@ -28,15 +28,17 @@ module.exports = async function handler(req,res){
     const shipping=Number(o.shipping_charge||0);
     const customerTotal=Number(o.total ?? Math.max(0,productTotal+shipping-discount));
 
+    // Customer Record must match the current GrabZone sheet exactly: A:AA (27 columns).
+    // Email remains in Supabase for customer communication and is intentionally not written here.
     const customerRow=[
-      o.order_number||'',o.created_at||'',o.customer_name||'',o.phone||'',o.email||'',
-      o.address||'',o.district||'',o.division||'',o.upazila||'',names,totalQty||'',avgUnit||'',
-      '=IF(OR(K{ROW}="",L{ROW}=""),"",K{ROW}*L{ROW})',
+      o.order_number||'',o.created_at||'',o.customer_name||'',o.phone||'',o.address||'',
+      o.district||'',o.division||'',o.upazila||'',names,totalQty||'',avgUnit||'',
+      '=IF(OR(J{ROW}="",K{ROW}=""),"",J{ROW}*K{ROW})',
       o.referral_code||'',discount,shipping,
-      '=IF(M{ROW}="","",M{ROW}-IF(O{ROW}="",0,O{ROW})+IF(P{ROW}="",0,P{ROW}))',
+      '=IF(I{ROW}="","",I{ROW}*0+L{ROW}-IF(N{ROW}="",0,N{ROW})+IF(O{ROW}="",0,O{ROW}))',
       ref?.admin_name||o.referral_admin_name||'','', 'Website',
       o.payment_method||'Cash on Delivery',paymentStatus(o),o.status||'New',
-      '', '', o.tracking_provider||'',o.tracking_number||'',o.tracking_url||'',o.delivery_date||'',o.admin_note||''
+      o.tracking_provider||'',o.tracking_number||'',o.tracking_url||'',o.delivery_date||'',o.admin_note||''
     ];
 
     const adminRow=[
@@ -55,7 +57,7 @@ module.exports = async function handler(req,res){
     await ensureSheet(headers,spreadsheetId,'Customer Record');
     await ensureSheet(headers,spreadsheetId,'Admin & Profit');
 
-    const customerRecordRow=await upsertRow(headers,base,'Customer Record','A4:AD1003',customerRow,o.order_number);
+    const customerRecordRow=await upsertRow(headers,base,'Customer Record','A4:AA1003',customerRow,o.order_number);
     const adminProfitRow=await upsertRow(headers,base,'Admin & Profit','A4:T1003',adminRow,o.order_number);
 
     return res.status(200).json({ok:true,orderNumber:o.order_number,customerRecordRow,adminProfitRow});
