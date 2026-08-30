@@ -7,6 +7,24 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 let editingId=null,referrals=[];
 
+async function syncAdminRecordsToSheet(){
+  try{
+    const response=await fetch('/api/sync-order-sheet',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({syncAdmins:true})
+    });
+    if(!response.ok){
+      const data=await response.json().catch(()=>({}));
+      throw new Error(data.error||'Google Sheets admin sync failed.');
+    }
+    return true;
+  }catch(e){
+    console.warn('Google Sheets admin sync:',e);
+    return false;
+  }
+}
+
 function inject(){
   if($('gzReferralTab'))return;
   const main=document.querySelector('main.content');if(!main)return;
@@ -89,7 +107,7 @@ async function save(){
  try{
   const q=editingId?sb.from('referral_codes').update(p).eq('id',editingId):sb.from('referral_codes').insert(p);
   const{error}=await q;if(error)throw error;
-  m.textContent='✓ Referral code saved.';m.style.color='#176b2c';clearForm();await load();
+  m.textContent='✓ Referral code saved.';m.style.color='#176b2c';clearForm();await load();await syncAdminRecordsToSheet();
  }catch(e){m.textContent='⚠ '+e.message;m.style.color='#a00'}
 }
 async function load(){
@@ -122,12 +140,12 @@ function editReferral(id){
 }
 async function toggleReferral(id,active){
  const{error}=await sb.from('referral_codes').update({active:!active,updated_at:new Date().toISOString()}).eq('id',id);
- if(error)alert(error.message);else load();
+ if(error)alert(error.message);else{await load();await syncAdminRecordsToSheet();}
 }
 async function deleteReferral(id){
  if(!confirm('Delete this referral code?'))return;
  const{error}=await sb.from('referral_codes').delete().eq('id',id);
- if(error)alert(error.message);else load();
+ if(error)alert(error.message);else{await load();await syncAdminRecordsToSheet();}
 }
 document.addEventListener('DOMContentLoaded',inject);
 })();
