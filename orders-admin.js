@@ -201,7 +201,7 @@ async function sendToBusinessKoro(id){
   gzUiToast('✓ Order '+order.order_number+' was sent to Business Koro.');
   await loadOrders();
  }catch(e){
-  alert('⚠ '+e.message);
+  gzUiToast('⚠ '+e.message,'error');
  }finally{
   if(button){button.disabled=false;button.textContent='Send to Business Koro'}
  }
@@ -209,7 +209,7 @@ async function sendToBusinessKoro(id){
 
 async function sendToBusinessKoro(id){
  const order=orders.find(x=>x.id===id);if(!order)return;
- if(!confirm('Send '+order.order_number+' to Business Koro now?'))return;
+ if(!(await gzUiConfirm('Send '+order.order_number+' to Business Koro now?')))return;
  const button=document.querySelector('[data-bk-order="'+CSS.escape(id)+'"]');
  if(button){button.disabled=true;button.textContent='Sending…'}
  try{
@@ -308,7 +308,7 @@ async function deleteOrder(id){
  const ok=await gzUiConfirm(`Delete order ${order.order_number}? This will permanently remove the order and its products from the admin panel.`);
  if(!ok)return;
  const {error}=await sb.from('orders').delete().eq('id',id);
- if(error){alert('Could not delete order: '+error.message);return}
+ if(error){gzUiToast('Could not delete order: '+error.message,'error');return}
  orders=orders.filter(x=>x.id!==id);
  renderOrders();
 }
