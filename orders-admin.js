@@ -329,6 +329,7 @@ async function deleteOrder(id){
  const {error}=await sb.from('orders').delete().eq('id',id);
  if(error){gzUiToast('Could not delete order: '+error.message,'error');return}
  orders=orders.filter(x=>x.id!==id);
+ await syncAllToSheet();
  renderOrders();
 }
 
