@@ -42,7 +42,7 @@ module.exports = async function handler(req,res){
     ];
 
     const adminRow=[
-      o.order_number||'',o.created_at||'',o.customer_name||'',
+      o.order_number||'',formatBangladeshDateTime(o.created_at),o.customer_name||'',
       ref?.admin_name||o.referral_admin_name||'','',o.referral_code||'',customerTotal,
       '','','',discount,
       '=IF(G{ROW}="","",G{ROW}-IF(H{ROW}="",0,H{ROW})-IF(I{ROW}="",0,I{ROW})-IF(J{ROW}="",0,J{ROW})-IF(K{ROW}="",0,K{ROW}))',
