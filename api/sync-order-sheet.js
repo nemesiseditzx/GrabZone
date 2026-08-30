@@ -3,8 +3,7 @@ module.exports = async function handler(req,res){
   const missing=['GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','GOOGLE_REFRESH_TOKEN','GOOGLE_SHEETS_SPREADSHEET_ID'].filter(k=>!process.env[k]);
   if(missing.length) return res.status(503).json({error:'Google Sheets sync is not configured.',missing});
   try{
-    const body=req.body||{};
-    const orderId=String(body.orderId||'').trim();
+    const body=req.body||{}, orderId=String(body.orderId||'').trim();
     if(!orderId) return res.status(400).json({error:'Missing order ID.'});
     const token=await getGoogleAccessToken();
     const headers={Authorization:'Bearer '+token,'Content-Type':'application/json'};
@@ -25,64 +24,126 @@ module.exports = async function handler(req,res){
     const totalQty=items.reduce((n,i)=>n+Number(i.quantity||0),0);
     const productTotal=Number(o.subtotal||0);
     const avgUnit=totalQty?productTotal/totalQty:0;
-    const row=[
-      o.order_number||'',o.created_at||'',o.customer_name||'',o.phone||'',o.address||'',
-      o.district||'',o.division||'',o.upazila||'',names,totalQty||'',avgUnit,productTotal,
-      o.referral_code||'',Number(o.referral_discount||0),Number(o.shipping_charge||0),Number(o.total||0),
-      ref?.admin_name||'','', 'Website', o.payment_method||'Cash on Delivery',
-      paymentStatus(o),o.status||'New',o.tracking_provider||'',o.tracking_number||'',o.tracking_url||'',
-      o.delivery_date||'',o.admin_note||''
+    const discount=Number(o.referral_discount ?? o.discount_amount ?? 0);
+    const shipping=Number(o.shipping_charge||0);
+    const customerTotal=Number(o.total ?? Math.max(0,productTotal+shipping-discount));
+
+    const customerRow=[
+      o.order_number||'',o.created_at||'',o.customer_name||'',o.phone||'',o.email||'',
+      o.address||'',o.district||'',o.division||'',o.upazila||'',names,totalQty||'',avgUnit||'',
+      '=IF(OR(K{ROW}="",L{ROW}=""),"",K{ROW}*L{ROW})',
+      o.referral_code||'',discount,shipping,
+      '=IF(M{ROW}="","",M{ROW}-IF(O{ROW}="",0,O{ROW})+IF(P{ROW}="",0,P{ROW}))',
+      ref?.admin_name||o.referral_admin_name||'','', 'Website',
+      o.payment_method||'Cash on Delivery',paymentStatus(o),o.status||'New',
+      '', '', o.tracking_provider||'',o.tracking_number||'',o.tracking_url||'',o.delivery_date||'',o.admin_note||''
     ];
+
+    const adminRow=[
+      o.order_number||'',o.created_at||'',o.customer_name||'',
+      ref?.admin_name||o.referral_admin_name||'','',o.referral_code||'',customerTotal,
+      '','','',discount,
+      '=IF(G{ROW}="","",G{ROW}-IF(H{ROW}="",0,H{ROW})-IF(I{ROW}="",0,I{ROW})-IF(J{ROW}="",0,J{ROW})-IF(K{ROW}="",0,K{ROW}))',
+      '',
+      '=IF(L{ROW}="","",L{ROW}*IF(M{ROW}="",0,M{ROW}))',
+      '=IF(L{ROW}="","",L{ROW}-IF(N{ROW}="",0,N{ROW}))',
+      '',o.tracking_number||'',o.status||'New',paymentStatus(o),o.admin_note||''
+    ];
+
     const spreadsheetId=process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
     const base='https://sheets.googleapis.com/v4/spreadsheets/'+encodeURIComponent(spreadsheetId);
     await ensureSheet(headers,spreadsheetId,'Customer Record');
-    const read=await sheetsRequest('GET',base+'/values/'+encodeURIComponent('Customer Record!A4:AA'),headers);
-    const values=Array.isArray(read.values)?read.values:[];
-    let rowNumber=0;
-    for(let i=1;i<values.length;i++){
-      if(String(values[i]?.[0]||'').trim()===String(o.order_number||'').trim()){rowNumber=4+i;break;}
-    }
-    if(rowNumber){
-      await sheetsRequest('PUT',base+'/values/'+encodeURIComponent('Customer Record!A'+rowNumber+':AA'+rowNumber)+'?valueInputOption=USER_ENTERED',headers,{
-        range:'Customer Record!A'+rowNumber+':AA'+rowNumber,majorDimension:'ROWS',values:[row]
-      });
-    }else{
-      await sheetsRequest('POST',base+'/values/'+encodeURIComponent('Customer Record!A5:AA5')+':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS',headers,{
-        range:'Customer Record!A5:AA5',majorDimension:'ROWS',values:[row]
-      });
-    }
-    return res.status(200).json({ok:true,orderNumber:o.order_number,row:rowNumber||'appended'});
+    await ensureSheet(headers,spreadsheetId,'Admin & Profit');
+
+    const customerRecordRow=await upsertRow(headers,base,'Customer Record','A4:AD1003',customerRow,o.order_number);
+    const adminProfitRow=await upsertRow(headers,base,'Admin & Profit','A4:T1003',adminRow,o.order_number);
+
+    return res.status(200).json({ok:true,orderNumber:o.order_number,customerRecordRow,adminProfitRow});
   }catch(e){
     console.error('Google Sheets sync:',e);
     return res.status(500).json({error:e.message||'Google Sheets sync failed.'});
   }
 };
+
 function paymentStatus(o){
   return String(o.payment_method||'').toLowerCase().includes('paid')?'Paid':'Pending';
 }
+
+function putRowValues(row,rowNumber){
+  return row.map(value=>typeof value==='string'?value.replaceAll('{ROW}',String(rowNumber)):value);
+}
+
+async function upsertRow(headers,base,title,scanRange,row,orderNumber){
+  const read=await sheetsRequest('GET',base+'/values/'+encodeURIComponent(title+'!'+scanRange),headers);
+  const values=Array.isArray(read.values)?read.values:[];
+  const startRow=Number(scanRange.match(/(\d+)/)?.[1]||4);
+  let targetRow=0;
+
+  for(let i=0;i<values.length;i++){
+    if(String(values[i]?.[0]||'').trim()===String(orderNumber||'').trim()){
+      targetRow=startRow+i; break;
+    }
+  }
+  if(!targetRow){
+    for(let i=0;i<values.length;i++){
+      if(!String(values[i]?.[0]||'').trim()){
+        targetRow=startRow+i; break;
+      }
+    }
+  }
+  if(!targetRow) targetRow=startRow+values.length;
+
+  const endColumn=columnLetter(row.length);
+  const range=title+'!A'+targetRow+':'+endColumn+targetRow;
+  await sheetsRequest(
+    'PUT',
+    base+'/values/'+encodeURIComponent(range)+'?valueInputOption=USER_ENTERED',
+    headers,
+    {range,majorDimension:'ROWS',values:[putRowValues(row,targetRow)]}
+  );
+  return targetRow;
+}
+
+function columnLetter(n){
+  let out='';
+  while(n>0){const r=(n-1)%26;out=String.fromCharCode(65+r)+out;n=Math.floor((n-1)/26);}
+  return out;
+}
+
 async function getGoogleAccessToken(){
-  const body=new URLSearchParams({client_id:process.env.GOOGLE_CLIENT_ID,client_secret:process.env.GOOGLE_CLIENT_SECRET,refresh_token:process.env.GOOGLE_REFRESH_TOKEN,grant_type:'refresh_token'});
-  const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+  const body=new URLSearchParams({
+    client_id:process.env.GOOGLE_CLIENT_ID,
+    client_secret:process.env.GOOGLE_CLIENT_SECRET,
+    refresh_token:process.env.GOOGLE_REFRESH_TOKEN,
+    grant_type:'refresh_token'
+  });
+  const r=await fetch('https://oauth2.googleapis.com/token',{
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body
+  });
   const data=await r.json().catch(()=>({}));
   if(!r.ok||!data.access_token) throw new Error(data.error_description||data.error||'Could not authenticate with Google.');
   return data.access_token;
 }
+
 async function sheetsRequest(method,url,headers,body){
   const r=await fetch(url,{method,headers,body:body?JSON.stringify(body):undefined});
   const data=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(data.error?.message||data.error||'Google Sheets request failed.');
   return data;
 }
+
 async function getJson(url,headers){
   const r=await fetch(url,{headers});
   const data=await r.json().catch(()=>[]);
   if(!r.ok) throw new Error(data?.message||data?.error||'Supabase request failed.');
   return data;
 }
+
 async function ensureSheet(headers,spreadsheetId,title){
   const base='https://sheets.googleapis.com/v4/spreadsheets/'+encodeURIComponent(spreadsheetId);
   const data=await sheetsRequest('GET',base+'?fields=sheets.properties',headers);
-  const found=(data.sheets||[]).some(s=>s.properties?.title===title);
-  if(found)return;
+  if((data.sheets||[]).some(s=>s.properties?.title===title)) return;
   await sheetsRequest('POST',base+':batchUpdate',headers,{requests:[{addSheet:{properties:{title}}}]});
 }
