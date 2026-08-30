@@ -35,7 +35,7 @@ module.exports = async function handler(req,res){
       o.district||'',o.division||'',o.upazila||'',names,totalQty||'',avgUnit||'',
       '=IF(OR(J{ROW}="",K{ROW}=""),"",J{ROW}*K{ROW})',
       o.referral_code||'',discount,shipping,
-      '=IF(I{ROW}="","",I{ROW}*0+L{ROW}-IF(N{ROW}="",0,N{ROW})+IF(O{ROW}="",0,O{ROW}))',
+      '=IF(L{ROW}="","",L{ROW}-IF(N{ROW}="",0,N{ROW})+IF(O{ROW}="",0,O{ROW}))',
       ref?.admin_name||o.referral_admin_name||'','', 'Website',
       o.payment_method||'Cash on Delivery',paymentStatus(o),o.status||'New',
       o.tracking_provider||'',o.tracking_number||'',o.tracking_url||'',o.delivery_date||'',o.admin_note||''
