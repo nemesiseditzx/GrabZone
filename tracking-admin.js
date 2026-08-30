@@ -4,6 +4,13 @@ const C=window.GRABZONE_CONFIG||{};
 const sb=window.supabase&&C.supabaseUrl&&!String(C.supabaseUrl).includes('PASTE_') ? window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey) : null;
 const $=id=>document.getElementById(id);
 
+async function syncOrderToSheet(orderId){
+  try{
+    const response=await fetch('/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
+    if(!response.ok)console.warn('Google Sheets sync:',await response.text().catch(()=>''));
+  }catch(e){console.warn('Google Sheets sync:',e)}
+}
+
 const BD_TIME_ZONE="Asia/Dhaka";
 function formatBdDateTime(value){
   if(!value)return "—";
@@ -102,6 +109,7 @@ async function save(id){
     if(error)throw error;
     const item=rows.find(x=>x.id===id);
     if(item){item.tracking_provider=provider;item.tracking_number=number;item.tracking_url=url;item.status=status;}
+    await syncOrderToSheet(id);
     if(msg){msg.textContent='✓ Tracking saved. Customer Track Your Order is now updated.';msg.style.color='#176b2c';}
   }catch(e){
     console.error(e);
