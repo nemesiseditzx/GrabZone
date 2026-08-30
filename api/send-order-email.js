@@ -2,7 +2,7 @@ module.exports = async function handler(req,res){
   if(req.method!=='POST') return res.status(405).json({error:'Method not allowed'});
   const supabaseUrl=process.env.SUPABASE_URL;
   const supabaseSecret=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if(!process.env.GOOGLE_CLIENT_ID||!process.env.GOOGLE_CLIENT_SECRET||!process.env.GOOGLE_REFRESH_TOKEN||!process.env.GMAIL_FROM_EMAIL||!supabaseUrl||!supabaseSecret) return res.status(503).json({error:'Gmail email service is not configured.'});
+  const missing=[]; if(!process.env.GOOGLE_CLIENT_ID) missing.push('GOOGLE_CLIENT_ID'); if(!process.env.GOOGLE_CLIENT_SECRET) missing.push('GOOGLE_CLIENT_SECRET'); if(!process.env.GOOGLE_REFRESH_TOKEN) missing.push('GOOGLE_REFRESH_TOKEN'); if(!process.env.GMAIL_FROM_EMAIL) missing.push('GMAIL_FROM_EMAIL'); if(!supabaseUrl) missing.push('SUPABASE_URL'); if(!supabaseSecret) missing.push('SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY'); if(missing.length) return res.status(503).json({error:'Gmail email service is not configured.',missing});
   try{
     const body=req.body||{};
     const orderNumber=String(body.orderNumber||'').trim();
@@ -64,6 +64,6 @@ function buildRawEmail(from,to,subject,html){
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=UTF-8',
     '',html
-  ].join('\\r\\n');
+  ].join('\r\n');
   return Buffer.from(message,'utf8').toString('base64url');
 }
