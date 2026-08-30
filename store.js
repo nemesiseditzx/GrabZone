@@ -818,13 +818,12 @@ function applySiteSettings() {
 ========================================================= */
 
 function gzDailyDateKey(){
-  const now = new Date();
-
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2,"0");
-  const d = String(now.getDate()).padStart(2,"0");
-
-  return `${y}-${m}-${d}`;
+  // GrabZone uses Bangladesh local calendar days for daily product rotation.
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date());
+  const get = type => parts.find(p => p.type === type)?.value || "";
+  return get("year")+"-"+get("month")+"-"+get("day");
 }
 
 function gzHashString(value){
