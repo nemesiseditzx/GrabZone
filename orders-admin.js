@@ -231,7 +231,12 @@ async function changeStatus(id,status){
  }
  const {error}=await sb.from('orders').update({status,updated_at:new Date().toISOString()}).eq('id',id);
  if(error){alert('Could not update status: '+error.message);renderOrders();return}
- order.status=status; renderOrders();
+ order.status=status;
+ const emailed=await sendOrderEmail(order.order_number,'status_updated');
+ renderOrders();
+ alert(emailed
+   ? '✓ Status updated and customer email sent.'
+   : '✓ Status updated, but the customer email could not be sent. Check email settings.');
 }
 
 async function sendToBusinessKoro(id,force=false){
@@ -333,8 +338,13 @@ async function saveEditor(){
   const {error:e1}=await sb.from('orders').update(payload).eq('id',current.id);if(e1)throw e1;
   const {error:e2}=await sb.from('order_items').delete().eq('order_id',current.id);if(e2)throw e2;
   const {error:e3}=await sb.from('order_items').insert(items.map(it=>({...it,order_id:current.id,line_total:it.quantity*it.unit_price})));if(e3)throw e3;
-  $('gzOrderEditorMsg').textContent='✓ Order updated successfully.';
-  if(payload.status==='Confirmed'&&current.status!=='Confirmed')await sendOrderEmail(current.order_number,'status_updated');
+  let statusEmailSent=true;
+  if(payload.status!==current.status){
+    statusEmailSent=await sendOrderEmail(current.order_number,'status_updated');
+  }
+  $('gzOrderEditorMsg').textContent=statusEmailSent
+    ?'✓ Order updated successfully.'
+    :'✓ Order updated, but the customer email could not be sent. Check email settings.';
   await loadOrders();setTimeout(closeEditor,500);
  }catch(e){$('gzOrderEditorMsg').textContent='⚠ '+e.message}finally{$('gzOrderSave').disabled=false}
 }
