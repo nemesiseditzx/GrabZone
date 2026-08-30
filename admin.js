@@ -143,6 +143,7 @@ async function uploadImage(file){
    .from("product-images")
    .upload(path,file,{
      contentType:file.type,
+     cacheControl:'31536000',
      upsert:false
    });
 
