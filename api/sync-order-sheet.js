@@ -8,7 +8,7 @@ module.exports = async function handler(req,res){
   try{
     const body=req.body||{};
     const orderId=String(body.orderId||'').trim();
-    if(!orderId) return res.status(400).json({error:'Missing order ID.'});
+    const syncAll=Boolean(body.syncAll||body.syncAdmins);
 
     const token=await getGoogleAccessToken();
     const headers={Authorization:'Bearer '+token,'Content-Type':'application/json'};
@@ -16,138 +16,13 @@ module.exports = async function handler(req,res){
     if(!process.env.SUPABASE_URL||!secret) throw new Error('Supabase server credentials are not configured.');
     const sbHeaders={apikey:secret,Authorization:'Bearer '+secret};
 
-    const orderRows=await getJson(
-      process.env.SUPABASE_URL+'/rest/v1/orders?id=eq.'+encodeURIComponent(orderId)+'&select=*',
-      sbHeaders
-    );
-    if(!Array.isArray(orderRows)||!orderRows[0]) return res.status(404).json({error:'Order not found.'});
-    const o=orderRows[0];
-
-    const items=await getJson(
-      process.env.SUPABASE_URL+'/rest/v1/order_items?order_id=eq.'+encodeURIComponent(orderId)+'&select=*&order=id.asc',
-      sbHeaders
-    );
-    if(!Array.isArray(items)) throw new Error('Could not load order items.');
-
-    const refs=await getJson(
-      process.env.SUPABASE_URL+'/rest/v1/referral_codes?select=code,admin_name,admin_email,used_count&order=created_at.asc',
-      sbHeaders
-    );
-    const referralList=Array.isArray(refs)?refs:[];
-
     const spreadsheetId=process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
     const base='https://sheets.googleapis.com/v4/spreadsheets/'+encodeURIComponent(spreadsheetId);
 
-    const sheetInfo=await ensureBusinessSheets(headers,spreadsheetId);
-    const setupRows=await readSheetValues(headers,base,'GZ Admin Setup!A2:F1000');
-    const setupByCode=new Map();
+    await ensureBusinessSheets(headers,spreadsheetId);
 
-    for(const row of setupRows){
-      const code=String(row?.[0]||'').trim().toUpperCase();
-      if(!code) continue;
-      setupByCode.set(code,{
-        code,
-        adminName:String(row?.[1]||'').trim(),
-        ownerName:String(row?.[2]||'').trim(),
-        commissionType:String(row?.[3]||'Percentage').trim(),
-        commissionValue:Number(row?.[4]||0),
-        note:String(row?.[5]||'').trim()
-      });
-    }
-
-    // Keep the setup sheet synchronized with every active/known referral code.
-    const defaultOwner=String(process.env.GRABZONE_OWNER_NAME||'').trim();
-    for(const ref of referralList){
-      const code=String(ref.code||'').trim().toUpperCase();
-      if(!code) continue;
-      if(!setupByCode.has(code)){
-        setupByCode.set(code,{
-          code,
-          adminName:String(ref.admin_name||'').trim(),
-          ownerName:defaultOwner,
-          commissionType:'Percentage',
-          commissionValue:0,
-          note:''
-        });
-      }else{
-        const s=setupByCode.get(code);
-        if(!s.adminName) s.adminName=String(ref.admin_name||'').trim();
-        if(!s.ownerName&&defaultOwner) s.ownerName=defaultOwner;
-      }
-    }
-
-    const setupMatrix=[['Admin Code','Admin Name','Owner Name','Commission Type','Commission Value','Note']];
-    [...setupByCode.values()].forEach(s=>setupMatrix.push([
-      s.code,s.adminName,s.ownerName,s.commissionType,s.commissionValue,s.note
-    ]));
-    await writeValues(headers,base,'GZ Admin Setup!A1:F'+Math.max(1,setupMatrix.length),setupMatrix);
-
-    const code=String(o.referral_code||'').trim().toUpperCase();
-    const setup=code?setupByCode.get(code):null;
-    const adminName=setup?.adminName || referralList.find(r=>String(r.code||'').trim().toUpperCase()===code)?.admin_name || o.referral_admin_name || '';
-    const ownerName=setup?.ownerName || defaultOwner || '';
-
-    const productNames=items.map(i=>String(i.product_name||'Product')).join(' | ');
-    const totalQty=items.reduce((n,i)=>n+Number(i.quantity||0),0);
-    const subtotal=Number(o.subtotal||0);
-    const discount=Number(o.referral_discount ?? o.discount_amount ?? 0);
-    const shipping=Number(o.shipping_charge||0);
-    const total=Number(o.total ?? Math.max(0,subtotal+shipping-discount));
-
-    let adminEarnings=0;
-    if(setup&&setup.commissionValue>0){
-      if(String(setup.commissionType).toLowerCase().startsWith('fixed')){
-        adminEarnings=Math.min(Number(setup.commissionValue||0),Math.max(0,total));
-      }else{
-        adminEarnings=Math.max(0,(subtotal-discount))*Number(setup.commissionValue||0)/100;
-      }
-    }
-
-    const customerRow=[
-      o.order_number||'',
-      formatBangladeshDateTime(o.created_at),
-      o.customer_name||'',
-      o.phone||'',
-      o.email||'',
-      o.address||'',
-      o.district||'',
-      o.division||'',
-      o.upazila||'',
-      productNames,
-      totalQty,
-      subtotal,
-      discount,
-      shipping,
-      total,
-      o.payment_method||'Cash on Delivery',
-      o.status||'New',
-      code,
-      adminName,
-      ownerName,
-      adminEarnings,
-      o.tracking_provider||'',
-      o.tracking_number||'',
-      o.tracking_url||'',
-      formatBangladeshDateTime(o.updated_at),
-      o.admin_note||''
-    ];
-
-    await upsertSimpleRow(
-      headers,base,'GZ Orders','A2:Z10000',
-      customerRow,o.order_number
-    );
-
-    await rebuildAdminSummary(headers,base,setupByCode,defaultOwner);
-    await rebuildDashboard(headers,base);
-
-    return res.status(200).json({
-      ok:true,
-      orderNumber:o.order_number,
-      adminCode:code||null,
-      adminName:adminName||null,
-      ownerName:ownerName||null,
-      adminEarnings
-    });
+    const result=await rebuildAllSheets(headers,base,sbHeaders,{orderId,full:syncAll||!orderId});
+    return res.status(200).json({ok:true,...result});
   }catch(e){
     console.error('Google Sheets sync:',e);
     return res.status(500).json({error:e.message||'Google Sheets sync failed.'});
@@ -166,55 +41,261 @@ function formatBangladeshDateTime(value){
   }).format(d);
 }
 
+async function rebuildAllSheets(headers,base,sbHeaders,{orderId='',full=true}={}){
+  const refs=await getJson(
+    process.env.SUPABASE_URL+'/rest/v1/referral_codes?select=*&order=created_at.asc',
+    sbHeaders
+  );
+  const admins=Array.isArray(refs)?refs:[];
+
+  const orders=await getJson(
+    process.env.SUPABASE_URL+'/rest/v1/orders?select=*&order=created_at.asc',
+    sbHeaders
+  );
+  const orderList=Array.isArray(orders)?orders:[];
+
+  const items=await getJson(
+    process.env.SUPABASE_URL+'/rest/v1/order_items?select=*&order=id.asc',
+    sbHeaders
+  );
+  const itemList=Array.isArray(items)?items:[];
+
+  const itemsByOrder=new Map();
+  for(const item of itemList){
+    const id=String(item.order_id||'');
+    if(!itemsByOrder.has(id))itemsByOrder.set(id,[]);
+    itemsByOrder.get(id).push(item);
+  }
+
+  const adminByCode=new Map();
+  for(const admin of admins){
+    const code=String(admin.code||'').trim().toUpperCase();
+    if(code)adminByCode.set(code,admin);
+  }
+
+  const orderRows=[[
+    'Order ID','Order Date (BDT)','Customer Name','Phone','Email','Delivery Address',
+    'District','Division','Thana / Upazila','Products','Qty','Subtotal','Discount',
+    'Shipping','Total','Payment Method','Status','Admin Code','Admin Name','Admin Email',
+    'Admin Benefit Type','Admin Benefit Value','Admin Code Usage','Admin Active',
+    'Tracking Provider','Tracking Number','Tracking URL','Updated (BDT)','Admin Note'
+  ]];
+
+  const stats=new Map();
+
+  for(const o of orderList){
+    const code=String(o.referral_code||'').trim().toUpperCase();
+    const admin=code?adminByCode.get(code):null;
+    const orderItems=itemsByOrder.get(String(o.id||''))||[];
+    const productNames=orderItems.map(i=>String(i.product_name||'Product')).join(' | ');
+    const totalQty=orderItems.reduce((n,i)=>n+Number(i.quantity||0),0);
+    const subtotal=Number(o.subtotal||0);
+    const discount=Number(o.referral_discount ?? o.discount_amount ?? 0);
+    const shipping=Number(o.shipping_charge||0);
+    const total=Number(o.total ?? Math.max(0,subtotal+shipping-discount));
+
+    orderRows.push([
+      o.order_number||'',
+      formatBangladeshDateTime(o.created_at),
+      o.customer_name||'',
+      o.phone||'',
+      o.email||'',
+      o.address||'',
+      o.district||'',
+      o.division||'',
+      o.upazila||'',
+      productNames,
+      totalQty,
+      subtotal,
+      discount,
+      shipping,
+      total,
+      o.payment_method||'Cash on Delivery',
+      o.status||'New',
+      code,
+      admin?.admin_name||o.referral_admin_name||'',
+      admin?.admin_email||'',
+      admin?.benefit_type||'',
+      Number(admin?.benefit_value||0),
+      Number(admin?.used_count||0),
+      admin?.active===false?'Disabled':'Active',
+      o.tracking_provider||'',
+      o.tracking_number||'',
+      o.tracking_url||'',
+      formatBangladeshDateTime(o.updated_at),
+      o.admin_note||''
+    ]);
+
+    const key=code||'(No Admin Code)';
+    const s=stats.get(key)||{
+      code:key,
+      adminName:admin?.admin_name||(key==='(No Admin Code)'?'Website':''),
+      adminEmail:admin?.admin_email||'',
+      orders:0,newCount:0,contacting:0,confirmed:0,processing:0,shipped:0,delivered:0,cancelled:0,
+      grossSales:0,discount:0,netSales:0
+    };
+
+    s.orders++;
+    const status=String(o.status||'New');
+    if(status==='New')s.newCount++;
+    if(status==='Contacting')s.contacting++;
+    if(status==='Confirmed')s.confirmed++;
+    if(status==='Processing')s.processing++;
+    if(status==='Shipped')s.shipped++;
+    if(status==='Delivered')s.delivered++;
+    if(status==='Cancelled')s.cancelled++;
+    s.grossSales+=subtotal;
+    s.discount+=discount;
+    s.netSales+=total;
+    stats.set(key,s);
+  }
+
+  // Keep every admin/referral record visible even before its first order.
+  for(const admin of admins){
+    const code=String(admin.code||'').trim().toUpperCase();
+    if(!code||stats.has(code))continue;
+    stats.set(code,{
+      code,
+      adminName:admin.admin_name||'',
+      adminEmail:admin.admin_email||'',
+      orders:0,newCount:0,contacting:0,confirmed:0,processing:0,shipped:0,delivered:0,cancelled:0,
+      grossSales:0,discount:0,netSales:0
+    });
+  }
+
+  const adminRows=[[
+    'Admin Code','Admin Name','Admin Email','Admin Phone','Benefit Type','Benefit Value',
+    'Min Order','Max Discount','Usage Limit','Used Count','Active','Starts At','Expires At','Admin Note'
+  ]];
+  for(const a of admins){
+    adminRows.push([
+      a.code||'',a.admin_name||'',a.admin_email||'',a.admin_phone||'',
+      a.benefit_type||'',Number(a.benefit_value||0),Number(a.min_order_amount||0),
+      a.max_discount_amount==null?'':Number(a.max_discount_amount),
+      a.usage_limit==null?'':Number(a.usage_limit),Number(a.used_count||0),
+      a.active===false?'Disabled':'Active',
+      formatBangladeshDateTime(a.starts_at),formatBangladeshDateTime(a.expires_at),a.note||''
+    ]);
+  }
+
+  const summaryRows=[[
+    'Admin Code','Admin Name','Admin Email','Orders','New','Contacting','Confirmed',
+    'Processing','Shipped','Delivered','Cancelled','Gross Sales','Discount Given','Net Sales'
+  ]];
+  [...stats.values()]
+    .sort((a,b)=>String(a.code).localeCompare(String(b.code)))
+    .forEach(s=>summaryRows.push([
+      s.code,s.adminName,s.adminEmail,s.orders,s.newCount,s.contacting,s.confirmed,
+      s.processing,s.shipped,s.delivered,s.cancelled,s.grossSales,s.discount,s.netSales
+    ]));
+
+  let totalOrders=0,newCount=0,contacting=0,confirmed=0,processing=0,shipped=0,delivered=0,cancelled=0;
+  let grossSales=0,discount=0,netSales=0;
+  for(const s of stats.values()){
+    if(s.code==='(No Admin Code)'){}
+    totalOrders+=s.orders;newCount+=s.newCount;contacting+=s.contacting;confirmed+=s.confirmed;
+    processing+=s.processing;shipped+=s.shipped;delivered+=s.delivered;cancelled+=s.cancelled;
+    grossSales+=s.grossSales;discount+=s.discount;netSales+=s.netSales;
+  }
+
+  const activeAdmins=admins.filter(a=>a.active!==false).length;
+  const adminsWithOrders=[...stats.values()].filter(s=>s.code!=='(No Admin Code)'&&s.orders>0).length;
+
+  const dashboardRows=[
+    ['GRABZONE — BUSINESS DATABASE'],
+    ['Last updated (BDT)',formatBangladeshDateTime(new Date())],
+    [],
+    ['Metric','Value'],
+    ['Total Admins',admins.length],
+    ['Active Admins',activeAdmins],
+    ['Admins With Orders',adminsWithOrders],
+    ['Total Orders',totalOrders],
+    ['New Orders',newCount],
+    ['Contacting Orders',contacting],
+    ['Confirmed Orders',confirmed],
+    ['Processing Orders',processing],
+    ['Shipped Orders',shipped],
+    ['Delivered Orders',delivered],
+    ['Cancelled Orders',cancelled],
+    ['Gross Product Sales',grossSales],
+    ['Customer Discount Given',discount],
+    ['Net Customer Sales',netSales],
+    [],
+    ['Important','This sheet mirrors the Admin Panel referral/admin records and website orders.'],
+    ['Profit note','Actual profit is not calculated because the Admin Panel does not store product cost/expense. Net Customer Sales is revenue after customer discounts, not profit.']
+  ];
+
+  // Clear before rewriting so deleted admins/orders cannot remain as stale rows.
+  await clearValues(headers,base,'GZ Dashboard!A:Z');
+  await clearValues(headers,base,'GZ Admin Registry!A:Z');
+  await clearValues(headers,base,'GZ Admin Summary!A:Z');
+  await clearValues(headers,base,'GZ Orders!A:AC');
+
+  await writeValues(headers,base,'GZ Dashboard!A1:B'+dashboardRows.length,dashboardRows);
+  await writeValues(headers,base,'GZ Admin Registry!A1:N'+adminRows.length,adminRows);
+  await writeValues(headers,base,'GZ Admin Summary!A1:N'+summaryRows.length,summaryRows);
+  await writeValues(headers,base,'GZ Orders!A1:AC'+orderRows.length,orderRows);
+
+  return {
+    orders:orderList.length,
+    admins:admins.length,
+    syncedOrder:orderId||null
+  };
+}
+
 async function ensureBusinessSheets(headers,spreadsheetId){
   const base='https://sheets.googleapis.com/v4/spreadsheets/'+encodeURIComponent(spreadsheetId);
   const data=await sheetsRequest('GET',base+'?fields=sheets.properties',headers);
   const sheets=Array.isArray(data.sheets)?data.sheets:[];
-  const wanted=['GZ Dashboard','GZ Orders','GZ Admin Summary','GZ Admin Setup'];
+  const wanted=['GZ Dashboard','GZ Orders','GZ Admin Registry','GZ Admin Summary'];
   const existing=new Map(sheets.map(s=>[s.properties?.title,s.properties?.sheetId]));
-
   const requests=[];
   wanted.forEach(title=>{
-    if(!existing.has(title)) requests.push({addSheet:{properties:{title}}});
+    if(!existing.has(title))requests.push({addSheet:{properties:{title}}});
   });
-
-  if(requests.length) await sheetsRequest('POST',base+':batchUpdate',headers,{requests});
+  if(requests.length)await sheetsRequest('POST',base+':batchUpdate',headers,{requests});
 
   const after=await sheetsRequest('GET',base+'?fields=sheets.properties',headers);
   const map=new Map((after.sheets||[]).map(s=>[s.properties?.title,s.properties?.sheetId]));
 
-  await sheetsRequest('POST',base+':batchUpdate',headers,{
-    requests:wanted.flatMap(title=>{
-      const sheetId=map.get(title);
-      if(sheetId==null)return [];
-      const isDashboard=title==='GZ Dashboard';
-      return [
-        {updateSheetProperties:{
-          properties:{sheetId,gridProperties:{frozenRowCount:isDashboard?0:1}},
-          fields:'gridProperties.frozenRowCount'
-        }},
-        {repeatCell:{
-          range:{sheetId,startRowIndex:0,endRowIndex:1},
-          cell:{
-            userEnteredFormat:{
-              backgroundColor:{red:0.06,green:0.08,blue:0.14},
-              textFormat:{foregroundColor:{red:1,green:1,blue:1},bold:true,fontSize:10},
-              horizontalAlignment:'CENTER',
-              verticalAlignment:'MIDDLE'
-            }
-          },
-          fields:'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
-        }},
-        {updateDimensionProperties:{
-          range:{sheetId,dimension:'COLUMNS',startIndex:0,endIndex:isDashboard?10:26},
-          properties:{pixelSize:isDashboard?150:125},
-          fields:'pixelSize'
-        }}
-      ];
-    })
-  });
+  const widths={
+    'GZ Dashboard':2,
+    'GZ Orders':29,
+    'GZ Admin Registry':14,
+    'GZ Admin Summary':14
+  };
 
+  const formatRequests=[];
+  for(const title of wanted){
+    const sheetId=map.get(title);
+    if(sheetId==null)continue;
+    formatRequests.push(
+      {updateSheetProperties:{
+        properties:{sheetId,gridProperties:{frozenRowCount:title==='GZ Dashboard'?0:1}},
+        fields:'gridProperties.frozenRowCount'
+      }},
+      {repeatCell:{
+        range:{sheetId,startRowIndex:0,endRowIndex:1},
+        cell:{userEnteredFormat:{
+          backgroundColor:{red:0.06,green:0.08,blue:0.14},
+          textFormat:{foregroundColor:{red:1,green:1,blue:1},bold:true,fontSize:10},
+          horizontalAlignment:'CENTER',verticalAlignment:'MIDDLE'
+        }},
+        fields:'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+      }},
+      {updateDimensionProperties:{
+        range:{sheetId,dimension:'COLUMNS',startIndex:0,endIndex:widths[title]},
+        properties:{pixelSize:title==='GZ Dashboard'?170:125},
+        fields:'pixelSize'
+      }}
+    );
+  }
+  if(formatRequests.length)await sheetsRequest('POST',base+':batchUpdate',headers,{requests:formatRequests});
   return map;
+}
+
+async function clearValues(headers,base,range){
+  await sheetsRequest('POST',base+'/values/'+encodeURIComponent(range)+':clear',headers,{});
 }
 
 async function writeValues(headers,base,range,values){
@@ -224,127 +305,6 @@ async function writeValues(headers,base,range,values){
     headers,
     {range,majorDimension:'ROWS',values}
   );
-}
-
-async function readSheetValues(headers,base,range){
-  const data=await sheetsRequest('GET',base+'/values/'+encodeURIComponent(range),headers);
-  return Array.isArray(data.values)?data.values:[];
-}
-
-async function upsertSimpleRow(headers,base,titleRange,row,orderNumber){
-  const match=String(orderNumber||'').trim();
-  const read=await readSheetValues(headers,base,titleRange);
-  const values=read;
-  const startRow=2;
-  let target=0;
-
-  for(let i=0;i<values.length;i++){
-    if(String(values[i]?.[0]||'').trim()===match){
-      target=startRow+i;
-      break;
-    }
-  }
-  if(!target){
-    for(let i=0;i<values.length;i++){
-      if(!String(values[i]?.[0]||'').trim()){
-        target=startRow+i;
-        break;
-      }
-    }
-  }
-  if(!target)target=startRow+values.length;
-
-  const range=titleRange.split('!')[0]+'!A'+target+':Z'+target;
-  await writeValues(headers,base,range,[row]);
-}
-
-async function rebuildAdminSummary(headers,base,setupByCode,defaultOwner){
-  const orders=await readSheetValues(headers,base,'GZ Orders!A2:Z10000');
-  const stats=new Map();
-
-  for(const row of orders){
-    const orderId=String(row?.[0]||'').trim();
-    if(!orderId)continue;
-    const code=String(row?.[17]||'').trim().toUpperCase()||'(No Admin Code)';
-    const existing=stats.get(code)||{
-      code,
-      adminName:code==='(No Admin Code)'?'Website':String(row?.[18]||'').trim(),
-      ownerName:code==='(No Admin Code)'?'':String(row?.[19]||'').trim()||defaultOwner,
-      orders:0,confirmed:0,delivered:0,cancelled:0,
-      sales:0,discount:0,adminEarnings:0
-    };
-
-    existing.orders++;
-    const status=String(row?.[16]||'').trim();
-    if(status==='Confirmed')existing.confirmed++;
-    if(status==='Delivered')existing.delivered++;
-    if(status==='Cancelled')existing.cancelled++;
-    existing.sales+=Number(row?.[14]||0);
-    existing.discount+=Number(row?.[12]||0);
-    existing.adminEarnings+=Number(row?.[20]||0);
-    stats.set(code,existing);
-  }
-
-  for(const s of setupByCode.values()){
-    if(!stats.has(s.code)){
-      stats.set(s.code,{
-        code:s.code,adminName:s.adminName,ownerName:s.ownerName||defaultOwner,
-        orders:0,confirmed:0,delivered:0,cancelled:0,sales:0,discount:0,adminEarnings:0
-      });
-    }
-  }
-
-  const rows=[[
-    'Admin Code','Admin Name','Owner Name','Orders','Confirmed','Delivered',
-    'Cancelled','Customer Sales','Discount Given','Admin Earnings'
-  ]];
-
-  [...stats.values()].sort((a,b)=>String(a.code).localeCompare(String(b.code))).forEach(s=>{
-    rows.push([
-      s.code,s.adminName,s.ownerName,s.orders,s.confirmed,s.delivered,
-      s.cancelled,s.sales,s.discount,s.adminEarnings
-    ]);
-  });
-
-  await writeValues(headers,base,'GZ Admin Summary!A1:J'+rows.length,rows);
-}
-
-async function rebuildDashboard(headers,base){
-  const orders=await readSheetValues(headers,base,'GZ Orders!A2:Z10000');
-  let totalOrders=0,confirmed=0,delivered=0,cancelled=0,sales=0,discount=0,adminEarnings=0;
-
-  for(const row of orders){
-    if(!String(row?.[0]||'').trim())continue;
-    totalOrders++;
-    const status=String(row?.[16]||'').trim();
-    if(status==='Confirmed')confirmed++;
-    if(status==='Delivered')delivered++;
-    if(status==='Cancelled')cancelled++;
-    sales+=Number(row?.[14]||0);
-    discount+=Number(row?.[12]||0);
-    adminEarnings+=Number(row?.[20]||0);
-  }
-
-  const rows=[
-    ['GRABZONE — BUSINESS DASHBOARD'],
-    ['Last updated (BDT)',formatBangladeshDateTime(new Date())],
-    [],
-    ['Metric','Value'],
-    ['Total Orders',totalOrders],
-    ['Confirmed Orders',confirmed],
-    ['Delivered Orders',delivered],
-    ['Cancelled Orders',cancelled],
-    ['Customer Sales',sales],
-    ['Discount Given',discount],
-    ['Admin Earnings',adminEarnings],
-    ['Sales After Admin Earnings',sales-adminEarnings],
-    [],
-    ['How it works'],
-    ['Orders','Every website order is stored here with customer + admin/referral details.'],
-    ['Admin Summary','Automatically groups sales, order counts and admin earnings by admin code.'],
-    ['Admin Setup','Set Owner Name and Commission Type/Value once per admin code.']
-  ];
-  await writeValues(headers,base,'GZ Dashboard!A1:B'+rows.length,rows);
 }
 
 async function getGoogleAccessToken(){
@@ -360,20 +320,20 @@ async function getGoogleAccessToken(){
     body
   });
   const data=await r.json().catch(()=>({}));
-  if(!r.ok||!data.access_token) throw new Error(data.error_description||data.error||'Could not authenticate with Google.');
+  if(!r.ok||!data.access_token)throw new Error(data.error_description||data.error||'Could not authenticate with Google.');
   return data.access_token;
 }
 
 async function sheetsRequest(method,url,headers,body){
   const r=await fetch(url,{method,headers,body:body?JSON.stringify(body):undefined});
   const data=await r.json().catch(()=>({}));
-  if(!r.ok) throw new Error(data.error?.message||data.error||'Google Sheets request failed.');
+  if(!r.ok)throw new Error(data.error?.message||data.error||'Google Sheets request failed.');
   return data;
 }
 
 async function getJson(url,headers){
   const r=await fetch(url,{headers});
   const data=await r.json().catch(()=>[]);
-  if(!r.ok) throw new Error(data?.message||data?.error||'Supabase request failed.');
+  if(!r.ok)throw new Error(data?.message||data?.error||'Supabase request failed.');
   return data;
 }
