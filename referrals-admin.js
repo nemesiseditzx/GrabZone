@@ -69,6 +69,7 @@ function inject(){
     const tog=e.target.closest('[data-ref-toggle]');if(tog)toggleReferral(tog.dataset.refToggle,tog.dataset.active==='true');
   });
   load();
+  syncAdminRecordsToSheet();
 }
 function clearForm(){editingId=null;$('gzReferralFormTitle').textContent='Add referral code';$('gzReferralSave').textContent='Save referral code';['rfAdminName','rfAdminPhone','rfAdminEmail','rfCode','rfValue','rfMax','rfLimit','rfStarts','rfExpires','rfNote'].forEach(id=>$(id).value='');$('rfMin').value='0';$('rfType').value='fixed';$('rfActive').value='true';$('gzReferralMsg').textContent='';}
 const BD_TIME_ZONE="Asia/Dhaka";
