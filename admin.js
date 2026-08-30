@@ -134,25 +134,41 @@ function setNewProductMain(index){
 
 async function uploadImage(file){
  if(!file)throw new Error("Choose an image.");
+ if(!file.type.startsWith("image/"))throw new Error("Only image files are allowed.");
 
- const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
+ const{data:{session},error:sessionError}=await sb.auth.getSession();
+ if(sessionError)throw sessionError;
+ if(!session?.access_token)throw new Error("Admin session expired. Please sign in again.");
 
- const path=`${crypto.randomUUID()}.${ext}`;
+ const response=await fetch("/api/r2-presign",{
+   method:"POST",
+   headers:{
+     "Content-Type":"application/json",
+     "Authorization":`Bearer ${session.access_token}`
+   },
+   body:JSON.stringify({
+     filename:file.name,
+     contentType:file.type
+   })
+ });
 
- const{error}=await sb.storage
-   .from("product-images")
-   .upload(path,file,{
-     contentType:file.type,
-     cacheControl:'31536000',
-     upsert:false
-   });
+ const result=await response.json().catch(()=>({}));
+ if(!response.ok)throw new Error(result.error||"Could not prepare image upload.");
 
- if(error)throw error;
+ const upload=await fetch(result.uploadUrl,{
+   method:"PUT",
+   headers:{
+     "Content-Type":file.type
+   },
+   body:file
+ });
 
- return sb.storage
-   .from("product-images")
-   .getPublicUrl(path)
-   .data.publicUrl
+ if(!upload.ok){
+   const text=await upload.text().catch(()=> "");
+   throw new Error(`R2 upload failed (${upload.status})${text?`: ${text.slice(0,180)}`:""}`);
+ }
+
+ return result.publicUrl;
 }
 
 async function uploadImages(files){
