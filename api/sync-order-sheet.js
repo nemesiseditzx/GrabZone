@@ -31,7 +31,7 @@ module.exports = async function handler(req,res){
     // Customer Record must match the current GrabZone sheet exactly: A:AA (27 columns).
     // Email remains in Supabase for customer communication and is intentionally not written here.
     const customerRow=[
-      o.order_number||'',o.created_at||'',o.customer_name||'',o.phone||'',o.address||'',
+      o.order_number||'',formatBangladeshDateTime(o.created_at),o.customer_name||'',o.phone||'',o.address||'',
       o.district||'',o.division||'',o.upazila||'',names,totalQty||'',avgUnit||'',
       '=IF(OR(J{ROW}="",K{ROW}=""),"",J{ROW}*K{ROW})',
       o.referral_code||'',discount,shipping,
@@ -69,6 +69,13 @@ module.exports = async function handler(req,res){
 
 function paymentStatus(o){
   return String(o.payment_method||'').toLowerCase().includes('paid')?'Paid':'Pending';
+}
+
+function formatBangladeshDateTime(value){
+  if(!value)return '';
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime()))return String(value||'');
+  return new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Dhaka',year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true}).format(d);
 }
 
 function putRowValues(row,rowNumber){
