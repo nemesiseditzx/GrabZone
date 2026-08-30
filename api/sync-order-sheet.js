@@ -28,7 +28,8 @@ module.exports = async function handler(req,res){
     const row=[
       o.order_number||'',o.created_at||'',o.customer_name||'',o.phone||'',o.address||'',
       o.district||'',o.division||'',o.upazila||'',names,totalQty||'',avgUnit,productTotal,
-      o.referral_code||'',ref?.admin_name||'','Website',o.payment_method||'Cash on Delivery',
+      o.referral_code||'',Number(o.referral_discount||0),Number(o.shipping_charge||0),Number(o.total||0),
+      ref?.admin_name||'','', 'Website', o.payment_method||'Cash on Delivery',
       paymentStatus(o),o.status||'New',o.tracking_provider||'',o.tracking_number||'',o.tracking_url||'',
       o.delivery_date||'',o.admin_note||''
     ];
