@@ -7,6 +7,41 @@ let orders=[], current=null;
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const $=id=>document.getElementById(id);
+
+/* GrabZone in-app notifications/dialogs — avoids browser-native popups. */
+function gzUiToast(message,type='success'){
+  let host=document.getElementById('gzUiToastHost');
+  if(!host){
+    host=document.createElement('div');
+    host.id='gzUiToastHost';
+    host.style.cssText='position:fixed;right:22px;bottom:22px;z-index:100001;display:grid;gap:10px;max-width:min(420px,calc(100vw - 30px));pointer-events:none;';
+    document.body.appendChild(host);
+  }
+  const el=document.createElement('div');
+  el.style.cssText='pointer-events:auto;padding:14px 16px;border-radius:14px;background:#111;color:#fff;box-shadow:0 14px 40px rgba(0,0,0,.24);font:700 13px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;white-space:pre-line;';
+  el.textContent=message;
+  if(type==='error')el.style.background='#9d1717';
+  host.appendChild(el);
+  requestAnimationFrame(()=>{el.style.opacity='1';});
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(6px)';el.style.transition='.2s ease';setTimeout(()=>el.remove(),220)},3200);
+}
+function gzUiConfirm(message){
+  return new Promise(resolve=>{
+    let modal=document.getElementById('gzUiConfirm');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.id='gzUiConfirm';
+      modal.style.cssText='position:fixed;inset:0;z-index:100002;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.58);backdrop-filter:blur(5px);';
+      modal.innerHTML='<div style="width:min(430px,100%);background:#fff;border-radius:20px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.28);font-family:system-ui,-apple-system,Segoe UI,sans-serif;"><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777;margin-bottom:8px">GRABZONE</div><div id="gzUiConfirmText" style="font-size:16px;line-height:1.5;font-weight:700;color:#111;white-space:pre-line"></div><div style="display:flex;justify-content:flex-end;gap:9px;margin-top:20px"><button id="gzUiConfirmNo" type="button" style="border:1px solid #ddd;background:#fff;color:#111;border-radius:10px;padding:10px 15px;font-weight:800;cursor:pointer">Cancel</button><button id="gzUiConfirmYes" type="button" style="border:0;background:#111;color:#fff;border-radius:10px;padding:10px 15px;font-weight:800;cursor:pointer">Continue</button></div></div>';
+      document.body.appendChild(modal);
+    }
+    document.getElementById('gzUiConfirmText').textContent=message;
+    modal.style.display='flex';
+    const finish=value=>{modal.style.display='none';resolve(value)};
+    document.getElementById('gzUiConfirmNo').onclick=()=>finish(false);
+    document.getElementById('gzUiConfirmYes').onclick=()=>finish(true);
+  });
+}
 const statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
 const TRACK_MARKER='[[GRABZONE_TRACKING]]',TRACK_END='[[/GRABZONE_TRACKING]]';
 function parseTracking(note){const m=String(note||'').split(TRACK_MARKER)[1];if(!m)return{number:'',courier:'',url:''};try{return{number:'',courier:'',url:'',...JSON.parse(m.split(TRACK_END)[0])}}catch{return{number:'',courier:'',url:''}}}
@@ -128,8 +163,8 @@ function renderOrders(){
 async function sendToBusinessKoro(id){
  const order=orders.find(x=>x.id===id); if(!order)return;
  const {data:items,error}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
- if(error){alert(error.message);return}
- if(!items?.length){alert('This order has no products.');return}
+ if(error){gzUiToast(error.message,'error');return}
+ if(!items?.length){gzUiToast('This order has no products.','error');return}
  const productIds=[...new Set(items.map(x=>x.product_id).filter(Boolean))];
  const {data:productRows}=productIds.length
    ?await sb.from('products').select('id,business_koro_product_id').in('id',productIds)
@@ -163,7 +198,7 @@ async function sendToBusinessKoro(id){
   });
   const result=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(result.error||'Business Koro submission failed.');
-  alert('✓ Order '+order.order_number+' was sent to Business Koro.');
+  gzUiToast('✓ Order '+order.order_number+' was sent to Business Koro.');
   await loadOrders();
  }catch(e){
   alert('⚠ '+e.message);
@@ -187,8 +222,8 @@ async function sendToBusinessKoro(id){
   const note=[order.admin_note,'Business Koro submitted '+new Date().toLocaleString()+(ids.length?' · IDs: '+ids.join(', '):'')].filter(Boolean).join('\\n');
   const{error:updateError}=await sb.from('orders').update({admin_note:note,updated_at:new Date().toISOString()}).eq('id',id);
   if(updateError)throw updateError;order.admin_note=note;
-  alert('✓ Order sent to Business Koro successfully.');
- }catch(e){alert('Could not send order: '+e.message)}
+  gzUiToast('✓ Order sent to Business Koro successfully.');
+ }catch(e){gzUiToast('Could not send order: '+e.message,'error')}
  finally{if(button){button.disabled=false;button.textContent='Send to Business Koro'}}
 }
 async function sendOrderEmail(orderNumber,type='status_updated'){
@@ -222,27 +257,27 @@ async function confirmOrder(order){
 async function changeStatus(id,status){
  const order=orders.find(x=>x.id===id); if(!order||order.status===status)return;
  if(status==='Confirmed'){
-  if(!confirm('Confirm '+order.order_number+'? If this is Dhaka City, delivery will be adjusted from ৳130 to ৳70. The customer receipt/status email will be sent.'))return;
+  if(!(await gzUiConfirm('Confirm '+order.order_number+'? If this is Dhaka City, delivery will be adjusted from ৳130 to ৳70. The customer receipt/status email will be sent.')))return;
   try{
    const emailed=await confirmOrder(order);
-   alert(emailed?(String(order.division||'').trim().toLowerCase()==='dhaka'?'✓ Order confirmed. Dhaka delivery adjusted to ৳70 and the customer email was sent.':'✓ Order confirmed and the customer email was sent.'):'✓ Order confirmed and saved. Email could not be sent; check email settings.');
-  }catch(e){alert('Could not confirm order: '+e.message)}
+   gzUiToast(emailed?(String(order.division||'').trim().toLowerCase()==='dhaka'?'✓ Order confirmed. Dhaka delivery adjusted to ৳70 and the customer email was sent.':'✓ Order confirmed and the customer email was sent.'):'✓ Order confirmed and saved. Email could not be sent; check email settings.');
+  }catch(e){gzUiToast('Could not confirm order: '+e.message,'error')}
   return;
  }
  const {error}=await sb.from('orders').update({status,updated_at:new Date().toISOString()}).eq('id',id);
- if(error){alert('Could not update status: '+error.message);renderOrders();return}
+ if(error){gzUiToast('Could not update status: '+error.message,'error');renderOrders();return}
  order.status=status;
  const emailed=await sendOrderEmail(order.order_number,'status_updated');
  renderOrders();
- alert(emailed
+ gzUiToast(emailed
    ? '✓ Status updated and customer email sent.'
-   : '✓ Status updated, but the customer email could not be sent. Check email settings.');
+   : '✓ Status updated, but the customer email could not be sent. Check email settings.', emailed?'success':'error');
 }
 
 async function sendToBusinessKoro(id,force=false){
  const order=orders.find(x=>x.id===id);if(!order)return;
  const button=[...document.querySelectorAll('[data-send-bk]')].find(x=>x.dataset.sendBk===id);
- if(!force&&!confirm('Send '+order.order_number+' to Business Koro now? This will submit the order for fulfillment.'))return;
+ if(!force&&!(await gzUiConfirm('Send '+order.order_number+' to Business Koro now? This will submit the order for fulfillment.')))return;
  if(button){button.disabled=true;button.textContent='Sending…';}
  try{
    const sessionResult=await sb.auth.getSession();
@@ -255,14 +290,14 @@ async function sendToBusinessKoro(id,force=false){
    });
    const data=await response.json().catch(()=>({}));
    if(response.status===409&&!force){
-     if(confirm((data.error||'This order was already submitted.')+'\n\nSend it again anyway?')) return sendToBusinessKoro(id,true);
+     if(await gzUiConfirm((data.error||'This order was already submitted.')+'\n\nSend it again anyway?')) return sendToBusinessKoro(id,true);
      return;
    }
    if(!response.ok)throw new Error(data.error||'Business Koro submission failed.');
-   alert('✓ '+order.order_number+' sent to Business Koro. '+(data.submitted||0)+' supplier order(s) created.');
+   gzUiToast('✓ '+order.order_number+' sent to Business Koro. '+(data.submitted||0)+' supplier order(s) created.');
    await loadOrders();
  }catch(e){
-   alert('Business Koro: '+e.message);
+   gzUiToast('Business Koro: '+e.message,'error');
  }finally{
    if(button){button.disabled=false;button.textContent='Send to Business Koro';}
  }
@@ -270,7 +305,7 @@ async function sendToBusinessKoro(id,force=false){
 
 async function deleteOrder(id){
  const order=orders.find(x=>x.id===id); if(!order)return;
- const ok=window.confirm(`Delete order ${order.order_number}? This will permanently remove the order and its products from the admin panel.`);
+ const ok=await gzUiConfirm(`Delete order ${order.order_number}? This will permanently remove the order and its products from the admin panel.`);
  if(!ok)return;
  const {error}=await sb.from('orders').delete().eq('id',id);
  if(error){alert('Could not delete order: '+error.message);return}
@@ -281,7 +316,7 @@ async function deleteOrder(id){
 async function openEditor(id){
  const base=orders.find(x=>x.id===id);if(!base)return;
  const {data:items,error}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
- if(error){alert(error.message);return}
+ if(error){gzUiToast(error.message,'error');return}
  current={...base,items:items||[]};
  $('gzOrderEditorTitle').textContent=current.order_number;
  $('gzOrderSendBk').disabled=current.status!=='Confirmed'||!!current.business_koro_sent_at;
