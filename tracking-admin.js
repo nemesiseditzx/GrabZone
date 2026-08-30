@@ -3,6 +3,14 @@
 const C=window.GRABZONE_CONFIG||{};
 const sb=window.supabase&&C.supabaseUrl&&!String(C.supabaseUrl).includes('PASTE_') ? window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey) : null;
 const $=id=>document.getElementById(id);
+
+const BD_TIME_ZONE="Asia/Dhaka";
+function formatBdDateTime(value){
+  if(!value)return "—";
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime()))return "—";
+  return new Intl.DateTimeFormat("en-US",{timeZone:BD_TIME_ZONE,year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit",hour12:true}).format(d);
+}
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
 let rows=[];
@@ -59,7 +67,7 @@ function render(){
   if(!list.length){panel.innerHTML='<div class="gz-track-empty">No orders found.</div>';return;}
   panel.innerHTML='<div class="gz-track-list">'+list.map(o=>
     '<div class="gz-track-card" data-track-card="'+esc(o.id)+'">'+
-      '<div class="gz-track-head"><div><div class="gz-track-order">'+esc(o.order_number)+'</div><div class="gz-track-meta">'+esc(o.customer_name)+' · '+esc(o.phone)+' · '+(o.created_at?new Date(o.created_at).toLocaleString():'—')+'</div></div>'+
+      '<div class="gz-track-head"><div><div class="gz-track-order">'+esc(o.order_number)+'</div><div class="gz-track-meta">'+esc(o.customer_name)+' · '+esc(o.phone)+' · '+(o.created_at?formatBdDateTime(o.created_at):'—')+'</div></div>'+
       '<select class="gz-track-status" data-track-status="'+esc(o.id)+'">'+statuses.map(s=>'<option value="'+esc(s)+'" '+(s===o.status?'selected':'')+'>'+esc(s)+'</option>').join('')+'</select></div>'+
       '<div class="gz-track-grid">'+
         '<label>Courier / Provider<input data-track-provider="'+esc(o.id)+'" value="'+esc(o.tracking_provider||'')+'" placeholder="e.g. Steadfast"></label>'+
