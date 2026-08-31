@@ -32,9 +32,9 @@ async function requireAdmin(req) {
     .find(x=>x.startsWith('gz_admin_session='))
     ?.slice('gz_admin_session='.length) || '';
 
-  const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID;
-  const database=process.env.D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
-  const cfToken=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN;
+  const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID||process.env.CLOUDFLARE_ACCOUNT_ID;
+  const database=process.env.D1_DATABASE_ID||process.env.CLOUDFLARE_D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
+  const cfToken=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY;
 
   if(token && account && database && cfToken){
     const tokenHash=crypto.createHash('sha256').update(decodeURIComponent(token)).digest('hex');
