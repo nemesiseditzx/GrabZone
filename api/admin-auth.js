@@ -18,9 +18,9 @@ function cookieValue(req,name){
 }
 
 async function cfQuery(sql,params=[]){
-  const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID;
-  const database=process.env.D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
-  const token=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN;
+  const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID||process.env.CLOUDFLARE_ACCOUNT_ID;
+  const database=process.env.D1_DATABASE_ID||process.env.CLOUDFLARE_D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
+  const token=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY;
   if(!account||!database||!token)throw new Error('D1 is not configured.');
   const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${database}/query`,{
     method:'POST',
