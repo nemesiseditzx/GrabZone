@@ -13,9 +13,9 @@ function ident(v){if(!IDENT.test(v))throw new Error(`Invalid identifier: ${v}`);
 function now(){return new Date().toISOString();}
 
 async function cfQuery(sql,params=[]){
-  const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID;
-  const database=process.env.D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
-  const token=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN;
+  const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID||process.env.CLOUDFLARE_ACCOUNT_ID;
+  const database=process.env.D1_DATABASE_ID||process.env.CLOUDFLARE_D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
+  const token=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY;
   if(!account||!database||!token)throw new Error('D1 is not configured. Add CF_API_TOKEN in Vercel Production environment variables.');
   const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${database}/query`,{
     method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
@@ -71,7 +71,7 @@ async function verifyAdmin(req){
 }
 
 function d1Configured(){
-  return Boolean((process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID) && (process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN));
+  return Boolean((process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID||process.env.CLOUDFLARE_ACCOUNT_ID) && (process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY));
 }
 function supaHeaders(req){
   const h={'apikey':process.env.SUPABASE_ANON_KEY||'','Content-Type':'application/json','Prefer':'return=representation'};
@@ -212,9 +212,9 @@ async function tableRequest(req,p,isAdmin){
       }
       return {sql,params:cols.map(c=>val(row?.[c]))};
     });
-    const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID;
-    const database=process.env.D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
-    const token=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN;
+    const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID||process.env.CLOUDFLARE_ACCOUNT_ID;
+    const database=process.env.D1_DATABASE_ID||process.env.CLOUDFLARE_D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
+    const token=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY;
     if(!account||!database||!token)throw new Error('D1 is not configured.');
     const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${database}/query`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({batch})});
     const b=await r.json().catch(()=>({}));if(!r.ok||b.success===false)throw new Error(b?.errors?.map(x=>x.message).join('; ')||'D1 batch write failed.');
