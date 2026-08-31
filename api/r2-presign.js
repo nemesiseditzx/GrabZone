@@ -26,26 +26,50 @@ function cleanName(name) {
 }
 
 async function requireAdmin(req) {
-  const auth = req.headers.authorization || "";
-  if (!auth.startsWith("Bearer ")) throw new Error("Missing admin session.");
+  const cookie = String(req.headers.cookie || '');
+  const token = cookie.split(';')
+    .map(x=>x.trim())
+    .find(x=>x.startsWith('gz_admin_session='))
+    ?.slice('gz_admin_session='.length) || '';
 
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    throw new Error("Supabase server authentication is not configured.");
+  const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID;
+  const database=process.env.D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
+  const cfToken=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN;
+
+  if(token && account && database && cfToken){
+    const tokenHash=crypto.createHash('sha256').update(decodeURIComponent(token)).digest('hex');
+    const response=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${database}/query`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${cfToken}`,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        sql:`SELECT u.id,u.email
+              FROM admin_sessions s
+              JOIN admin_users u ON u.id=s.admin_user_id
+              WHERE s.token_hash=? AND s.expires_at>?
+              LIMIT 1`,
+        params:[tokenHash,new Date().toISOString()]
+      })
+    });
+    const body=await response.json().catch(()=>({}));
+    const user=body?.result?.[0]?.results?.[0];
+    if(response.ok && body.success!==false && user?.id)return user;
   }
 
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: {
-      Authorization: auth,
-      apikey: SUPABASE_ANON_KEY
+  /* Temporary compatibility for any legacy Supabase session. */
+  const auth = req.headers.authorization || '';
+  if(auth.startsWith('Bearer ') && SUPABASE_URL && SUPABASE_ANON_KEY){
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers:{Authorization:auth,apikey:SUPABASE_ANON_KEY}
+    });
+    if(response.ok){
+      const user=await response.json();
+      if(user?.id)return user;
     }
-  });
+  }
 
-  if (!response.ok) throw new Error("Admin session is invalid or expired.");
-
-  const user = await response.json();
-  if (!user?.id) throw new Error("Admin session is invalid.");
-  return user;
+  throw new Error('Admin session is invalid or expired.');
 }
+
 
 function presignPut(key, contentType) {
   const region = "auto";
