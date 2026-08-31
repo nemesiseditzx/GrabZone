@@ -52,16 +52,78 @@
     }
   }
 
+  function createAdminAuth(){
+    const authKey='grabzone_admin_auth';
+
+    async function getSession(){
+      try{
+        const response=await fetch('/api/admin-auth',{method:'GET',credentials:'same-origin'});
+        const body=await response.json().catch(()=>({}));
+        if(!response.ok||!body.authenticated)return {data:{session:null}};
+        return {
+          data:{
+            session:{
+              access_token:'',
+              user:body.user,
+              expires_at:null
+            }
+          }
+        };
+      }catch(e){
+        return {data:{session:null}};
+      }
+    }
+
+    return {
+      async signInWithPassword({email,password}){
+        const response=await fetch('/api/admin-auth',{
+          method:'POST',
+          credentials:'same-origin',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({action:'login',email,password})
+        });
+        const body=await response.json().catch(()=>({}));
+        if(!response.ok)return {data:{user:null,session:null},error:{message:body.error||'Authentication failed.'}};
+        localStorage.setItem(authKey,'1');
+        return {
+          data:{
+            user:body.user||null,
+            session:{access_token:'',user:body.user||null,expires_at:null}
+          },
+          error:null
+        };
+      },
+
+      async signOut(){
+        try{
+          await fetch('/api/admin-auth',{
+            method:'POST',
+            credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action:'logout'})
+          });
+        }finally{
+          localStorage.removeItem(authKey);
+        }
+        return {error:null};
+      },
+
+      async getSession(){ return getSession(); },
+
+      onAuthStateChange(callback){
+        return {data:{subscription:{unsubscribe(){}}}};
+      }
+    };
+  }
+
   function createWrappedClient(url, anonKey, options) {
-    const authClient = nativeCreateClient(url, anonKey, options);
     const client = {
-      auth: authClient.auth,
+      auth: createAdminAuth(),
       __d1Request: async payload => {
-        const session = await authClient.auth.getSession().catch(() => ({data:{session:null}}));
-        const token = session?.data?.session?.access_token || '';
         const response = await fetch('/api/d1', {
           method:'POST',
-          headers:{'Content-Type':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {})},
+          credentials:'same-origin',
+          headers:{'Content-Type':'application/json'},
           body:JSON.stringify(payload)
         });
         const body = await response.json().catch(() => ({}));
