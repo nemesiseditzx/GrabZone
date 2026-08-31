@@ -271,13 +271,12 @@ module.exports=async(req,res)=>{
   try{
     const payload=req.body||(typeof req.body==='string'?JSON.parse(req.body):{});
     const isAdmin=await verifyAdmin(req);
-    const result=!d1Configured()
-      ? await supabaseFallback(req,payload)
-      : payload.type==='rpc'
-        ? await rpcRequest(payload.fn,payload.args||{},isAdmin)
-        : payload.type==='table'
-          ? await tableRequest(req,payload,isAdmin)
-          : (()=>{throw new Error('Invalid database request.')})();
+    if(!d1Configured())throw new Error('Cloudflare D1 is not configured. Add CLOUDFLARE_API_TOKEN and R2_ACCOUNT_ID (or CF_ACCOUNT_ID) in Vercel Production environment variables.');
+    const result=payload.type==='rpc'
+      ? await rpcRequest(payload.fn,payload.args||{},isAdmin)
+      : payload.type==='table'
+        ? await tableRequest(req,payload,isAdmin)
+        : (()=>{throw new Error('Invalid database request.')})();
     return json(res,200,result);
   }catch(e){return json(res,400,{error:e.message||'Database request failed.'});}
 };
