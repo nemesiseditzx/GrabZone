@@ -32,16 +32,52 @@ function gzBillboardProductChanged(){
 
 function gzResetBillboardForm(){
   gzBillboardEditingId=null;
-  const form=document.getElementById("billboardForm");
-  if(!form)return;
-  form.reset();
-  document.getElementById("bbActive").value="true";
-  document.getElementById("bbButton").value="Shop Now →";
-  document.getElementById("bbOrder").value="0";
-  document.getElementById("billboardFormTitle").textContent="Add billboard";
-  document.getElementById("billboardSaveBtn").textContent="Add Billboard";
-  document.getElementById("billboardCancelBtn").hidden=true;
-  document.getElementById("billboardMsg").textContent="";
+
+  /* billboardForm is a panel <div>, not a native <form>, so form.reset()
+     is not available here. Reset the controls explicitly instead. */
+  const fields={
+    bbImage:"",
+    bbImageUrl:"",
+    bbEyebrow:"",
+    bbTitle:"",
+    bbMessage:"",
+    bbLink:""
+  };
+
+  Object.entries(fields).forEach(([id,value])=>{
+    const el=document.getElementById(id);
+    if(el) el.value=value;
+  });
+
+  const fileInput=document.getElementById("bbImage");
+  if(fileInput) fileInput.value="";
+
+  const preview=document.getElementById("bbImagePreview");
+  if(preview) preview.textContent="Choose an image. Recommended: wide 16:6 or 16:7.";
+
+  const product=document.getElementById("bbProduct");
+  if(product) product.value="";
+
+  const active=document.getElementById("bbActive");
+  if(active) active.value="true";
+
+  const button=document.getElementById("bbButton");
+  if(button) button.value="Shop Now →";
+
+  const order=document.getElementById("bbOrder");
+  if(order) order.value="0";
+
+  const title=document.getElementById("billboardFormTitle");
+  if(title) title.textContent="Add billboard";
+
+  const saveButton=document.getElementById("billboardSaveBtn");
+  if(saveButton) saveButton.textContent="Add Billboard";
+
+  const cancelButton=document.getElementById("billboardCancelBtn");
+  if(cancelButton) cancelButton.hidden=true;
+
+  const msg=document.getElementById("billboardMsg");
+  if(msg) msg.textContent="";
 }
 
 function gzEditBillboardById(id){
