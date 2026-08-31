@@ -1,3 +1,4 @@
+const {d1Query,verifySupabaseBearer}=require('./d1-server');
 const BASE_URL='https://api.businesskoro.com/api/v1/storefront';
 
 function normalize(value){
@@ -15,52 +16,23 @@ async function requireAdmin(req){
   const auth=String(req.headers.authorization||'');
   if(!auth.startsWith('Bearer '))throw Object.assign(new Error('Admin authentication required.'),{status:401});
   const url=process.env.SUPABASE_URL;
-  const key=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if(!url||!key)throw new Error('Supabase server credentials are not configured.');
-  const response=await fetch(url+'/auth/v1/user',{
-    headers:{apikey:key,Authorization:auth}
-  });
-  if(!response.ok)throw Object.assign(new Error('Admin authentication failed.'),{status:401});
-  return response.json();
+  if(!await verifySupabaseBearer(req))throw Object.assign(new Error('Admin authentication failed.'),{status:401});
+  return true;
 }
 
-async function supabaseRequest(path,options={}){
-  const url=process.env.SUPABASE_URL;
-  const key=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if(!url||!key)throw new Error('Supabase server credentials are not configured.');
-  return fetch(url+'/rest/v1/'+path,{
-    ...options,
-    headers:{
-      apikey:key,Authorization:'Bearer '+key,
-      'Content-Type':'application/json',
-      Prefer:'return=representation',
-      ...(options.headers||{})
-    }
-  });
-}
 async function loadOrder(orderId){
-  const orderRes=await supabaseRequest('orders?id=eq.'+encodeURIComponent(orderId)+'&select=*');
-  const orders=await readJson(orderRes);
-  if(!orderRes.ok||!Array.isArray(orders)||!orders[0])throw new Error('Order not found.');
-  const order=orders[0];
-  const itemRes=await supabaseRequest('order_items?order_id=eq.'+encodeURIComponent(orderId)+'&select=*');
-  const items=await readJson(itemRes);
-  if(!itemRes.ok||!Array.isArray(items))throw new Error('Order items could not be loaded.');
-
+  const orderResult=await d1Query('SELECT * FROM orders WHERE id=? LIMIT 1',[orderId]);
+  const order=orderResult.results?.[0];
+  if(!order)throw new Error('Order not found.');
+  const itemResult=await d1Query('SELECT * FROM order_items WHERE order_id=? ORDER BY id',[orderId]);
+  const items=itemResult.results||[];
   const productIds=[...new Set(items.map(x=>x.product_id).filter(Boolean))];
   const productMap=new Map();
   for(const id of productIds){
-    const pRes=await supabaseRequest('products?id=eq.'+encodeURIComponent(id)+'&select=id,name,business_koro_product_id');
-    const ps=await readJson(pRes);
-    if(pRes.ok&&Array.isArray(ps)&&ps[0])productMap.set(id,ps[0]);
+    const p=(await d1Query('SELECT id,name,business_koro_product_id FROM products WHERE id=? LIMIT 1',[id])).results?.[0];
+    if(p)productMap.set(id,p);
   }
-  return {
-    order,
-    items:items.map(x=>({
-      ...x,
-      business_koro_product_id:productMap.get(x.product_id)?.business_koro_product_id||null
-    }))
-  };
+  return {order,items:items.map(x=>({...x,business_koro_product_id:productMap.get(x.product_id)?.business_koro_product_id||null}))};
 }
 async function getBusinessProducts(apiKey){
   const response=await fetch(BASE_URL+'/products',{
@@ -104,17 +76,13 @@ async function sendOne(apiKey,orderNumber,customer,item,productId){
 async function markSent(orderId,supplierIds){
   const ids=supplierIds.filter(Boolean);
   try{
-    const existingRes=await supabaseRequest('orders?id=eq.'+encodeURIComponent(orderId)+'&select=admin_note');
-    const existing=await readJson(existingRes);
-    const previous=Array.isArray(existing)&&existing[0]?String(existing[0].admin_note||''):''; 
+    const existing=(await d1Query('SELECT admin_note FROM orders WHERE id=? LIMIT 1',[orderId])).results?.[0];
+    const previous=String(existing?.admin_note||'');
     const trackingMarker='[[GRABZONE_TRACKING]]';
     const trackingPart=previous.includes(trackingMarker)?' '+previous.slice(previous.indexOf(trackingMarker)):'';
     const baseNote=previous.includes(trackingMarker)?previous.slice(0,previous.indexOf(trackingMarker)).trim():previous;
     const note=[baseNote,'Business Koro submitted: '+(ids.join(', ')||'submitted')].filter(Boolean).join(' — ')+trackingPart;
-    await supabaseRequest('orders?id=eq.'+encodeURIComponent(orderId),{
-      method:'PATCH',
-      body:JSON.stringify({business_koro_sent_at:new Date().toISOString(),business_koro_order_ids:ids,admin_note:note})
-    });
+    await d1Query('UPDATE orders SET business_koro_sent_at=?,business_koro_order_ids=?,admin_note=?,updated_at=? WHERE id=?',[new Date().toISOString(),JSON.stringify(ids),note,new Date().toISOString(),orderId]);
   }catch(error){console.error('Could not save Business Koro submission metadata:',error);}
 }
 module.exports=async function handler(req,res){
