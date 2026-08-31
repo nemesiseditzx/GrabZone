@@ -4,6 +4,7 @@
 const ALLOWED_TABLES = new Set(['products','product_images','orders','order_items','billboards','billboard_settings','notices','referral_codes','site_settings','store_policies']);
 const PUBLIC_READ_TABLES = new Set(['products','product_images','notices','site_settings','billboards','billboard_settings','store_policies']);
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const AUTO_UPDATED = new Set(['products','orders','billboards','billboard_settings','referral_codes','site_settings','store_policies']);
 
 function json(res,status,body){res.status(status).setHeader('Content-Type','application/json');res.end(JSON.stringify(body));}
 function val(v){if(v===undefined||v===null)return null;if(typeof v==='boolean')return v?1:0;return v;}
@@ -88,7 +89,16 @@ async function tableRequest(req,p,isAdmin){
   }
 
   if(action==='insert'||action==='upsert'){
-    const rows=Array.isArray(p.values)?p.values:[p.values];if(!rows.length)return {data:[],count:0};
+    let rows=Array.isArray(p.values)?p.values:[p.values];if(!rows.length)return {data:[],count:0};
+    const stamp=now();
+    rows=rows.map(row=>{
+      const x={...(row||{})};
+      if(x.id===undefined&&['products','product_images','notices','orders','order_items','billboards','referral_codes'].includes(table))x.id=crypto.randomUUID();
+      if(['products','notices','billboards','referral_codes'].includes(table)&&x.created_at===undefined)x.created_at=stamp;
+      if(AUTO_UPDATED.has(table)&&x.updated_at===undefined)x.updated_at=stamp;
+      if(table==='orders'&&x.public_tracking_id===undefined)x.public_tracking_id='GZ-'+crypto.randomUUID().replace(/-/g,'').slice(0,16).toUpperCase();
+      return x;
+    });
     const cols=Array.from(new Set(rows.flatMap(r=>Object.keys(r||{}))));cols.forEach(ident);
     const batch=rows.map(row=>{
       let sql=`INSERT INTO ${ident(table)} (${cols.map(ident).join(',')}) VALUES (${cols.map(()=>'?').join(',')})`;
@@ -114,8 +124,9 @@ async function tableRequest(req,p,isAdmin){
     const entries=Object.entries(p.values||{});if(!entries.length)return {data:null,count:0};
     const set=entries.map(([k])=>`${ident(k)}=?`).join(', ');
     const filterParams=[];const where=whereSql(p.filters,filterParams);const params=entries.map(([,v])=>val(v));
-    if(!entries.some(([k])=>k==='updated_at')){set;params.push(now());}
-    const setSql=entries.some(([k])=>k==='updated_at')?set:`${set}, "updated_at"=?`;
+    const addUpdated=!entries.some(([k])=>k==='updated_at')&&AUTO_UPDATED.has(table);
+    if(addUpdated)params.push(now());
+    const setSql=addUpdated?`${set}, "updated_at"=?`:set;
     params.push(...filterParams);
     const r=await cfQuery(`UPDATE ${ident(table)} SET ${setSql}${where}`,params);
     if(!p.returning)return {data:null,count:r.meta?.changes??0};
