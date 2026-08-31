@@ -7,7 +7,7 @@ const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const AUTO_UPDATED = new Set(['products','orders','billboards','billboard_settings','referral_codes','site_settings','store_policies']);
 
 function json(res,status,body){res.status(status).setHeader('Content-Type','application/json');res.end(JSON.stringify(body));}
-function val(v){if(v===undefined||v===null)return null;if(typeof v==='boolean')return v?1:0;return v;}
+function val(v){if(v===undefined||v===null)return null;if(typeof v==='boolean')return v?1:0;if(typeof v==='object')return JSON.stringify(v);return v;}
 function ident(v){if(!IDENT.test(v))throw new Error(`Invalid identifier: ${v}`);return `"${v}"`;}
 function now(){return new Date().toISOString();}
 
