@@ -53,7 +53,15 @@ function whereSql(filters,params){
 }
 
 const BOOL_COLS=new Set(['published','active','is_main','autoplay','show_arrows','show_dots','enabled','animation_enabled','show_notice','show_offer','show_how','show_referral','animations_enabled','page_load','scroll_reveal','product_hover','button_effects','hero_animation','floating_effects','notice_animation','magnetic_cursor','text_reveal','image_parallax','scroll_velocity','product_stagger','marquee_motion','header_scroll','premium_hover_glow','section_transitions','product_entrance','product_3d_tilt','product_image_zoom','product_image_parallax','product_cursor_spotlight','product_shine','product_hover_lift','product_featured_glow']);
-function normalizeRow(row){if(!row||typeof row!=='object')return row;const o={...row};for(const k of Object.keys(o))if((o[k]===0||o[k]===1)&&BOOL_COLS.has(k))o[k]=Boolean(o[k]);return o;}
+function normalizeRow(row){
+  if(!row||typeof row!=='object')return row;
+  const o={...row};
+  for(const k of Object.keys(o))if((o[k]===0||o[k]===1)&&BOOL_COLS.has(k))o[k]=Boolean(o[k]);
+  if(typeof o.payment_methods==='string'){try{o.payment_methods=JSON.parse(o.payment_methods);}catch(e){}}
+  if(typeof o.content==='string'&&(o.content.trim().startsWith('{')||o.content.trim().startsWith('['))){try{o.content=JSON.parse(o.content);}catch(e){}}
+  if(typeof o.business_koro_order_ids==='string'&&(o.business_koro_order_ids.trim().startsWith('[')||o.business_koro_order_ids.trim().startsWith('{'))){try{o.business_koro_order_ids=JSON.parse(o.business_koro_order_ids);}catch(e){}}
+  return o;
+}
 
 async function tableRequest(req,p,isAdmin){
   const table=String(p.table||'');
