@@ -25,14 +25,47 @@ async function cfQuery(sql,params=[]){
   return b.result?.[0]||{results:[],meta:{}};
 }
 
+function authCookie(req,name){
+  const raw=String(req.headers.cookie||'');
+  for(const part of raw.split(';')){
+    const [k,...rest]=part.trim().split('=');
+    if(k===name)return decodeURIComponent(rest.join('='));
+  }
+  return '';
+}
+
+function sessionTokenHash(token){
+  return require('crypto').createHash('sha256').update(String(token)).digest('hex');
+}
+
 async function verifyAdmin(req){
+  /*
+   * Primary authentication: D1-backed HttpOnly session cookie.
+   * Supabase bearer verification remains only as a temporary compatibility
+   * bridge for any legacy session while the migration is being completed.
+   */
+  const cookieToken=authCookie(req,'gz_admin_session');
+  if(cookieToken){
+    const session=await cfQuery(
+      `SELECT u.id
+       FROM admin_sessions s
+       JOIN admin_users u ON u.id=s.admin_user_id
+       WHERE s.token_hash=? AND s.expires_at>?
+       LIMIT 1`,
+      [sessionTokenHash(cookieToken),new Date().toISOString()]
+    );
+    if(session.results?.[0])return true;
+  }
+
   const auth=String(req.headers.authorization||'');
   if(!auth.startsWith('Bearer '))return false;
   const token=auth.slice(7).trim();
   const supabaseUrl=process.env.SUPABASE_URL;
   const anonKey=process.env.SUPABASE_ANON_KEY;
   if(!token||!supabaseUrl||!anonKey)return false;
-  const r=await fetch(`${supabaseUrl.replace(/\/$/,'')}/auth/v1/user`,{headers:{apikey:anonKey,Authorization:`Bearer ${token}`}});
+  const r=await fetch(`${supabaseUrl.replace(/\\/$/,'')}/auth/v1/user`,{
+    headers:{apikey:anonKey,Authorization:auth}
+  });
   return r.ok;
 }
 
