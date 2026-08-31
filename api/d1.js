@@ -36,6 +36,75 @@ async function verifyAdmin(req){
   return r.ok;
 }
 
+function d1Configured(){
+  return Boolean((process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID) && (process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN));
+}
+function supaHeaders(req){
+  const h={'apikey':process.env.SUPABASE_ANON_KEY||'','Content-Type':'application/json','Prefer':'return=representation'};
+  const auth=String(req.headers.authorization||'');
+  if(auth.startsWith('Bearer '))h.Authorization=auth;
+  return h;
+}
+function supaFilterParts(filters){
+  const out=[];
+  for(const f of filters||[]){
+    const col=encodeURIComponent(String(f.column));
+    if(f.op==='eq')out.push(col+'=eq.'+encodeURIComponent(String(f.value)));
+    else if(f.op==='neq')out.push(col+'=neq.'+encodeURIComponent(String(f.value)));
+    else if(f.op==='gt')out.push(col+'=gt.'+encodeURIComponent(String(f.value)));
+    else if(f.op==='gte')out.push(col+'=gte.'+encodeURIComponent(String(f.value)));
+    else if(f.op==='lt')out.push(col+'=lt.'+encodeURIComponent(String(f.value)));
+    else if(f.op==='lte')out.push(col+'=lte.'+encodeURIComponent(String(f.value)));
+    else if(f.op==='is')out.push(col+'=is.'+(f.value===null?'null':'not.null'));
+    else if(f.op==='in')out.push(col+'=in.('+((Array.isArray(f.value)?f.value:[]).map(v=>encodeURIComponent(String(v))).join(','))+')');
+  }
+  return out;
+}
+async function supabaseFallback(req,p){
+  const base=String(process.env.SUPABASE_URL||'').replace(/\/$/,'');
+  if(!base||!process.env.SUPABASE_ANON_KEY)throw new Error('Supabase fallback is not configured.');
+  if(p.type==='rpc'){
+    const args=p.args||{};
+    const response=await fetch(base+'/rest/v1/rpc/'+encodeURIComponent(p.fn),{method:'POST',headers:supaHeaders(req),body:JSON.stringify(args)});
+    const data=await response.json().catch(()=>null);
+    if(!response.ok)throw new Error(data?.message||data?.hint||data?.details||'Supabase RPC failed.');
+    return {data,error:null};
+  }
+  const table=String(p.table||'');
+  let url=base+'/rest/v1/'+encodeURIComponent(table);
+  const q=[];
+  if(p.action==='select'){
+    q.push('select='+encodeURIComponent(p.columns||'*'));
+    q.push(...supaFilterParts(p.filters));
+    if((p.orders||[]).length)q.push('order='+p.orders.map(o=>encodeURIComponent(String(o.column))+'.'+(o.ascending===false?'desc':'asc')).join(','));
+    if(p.limit!==null&&p.limit!==undefined)q.push('limit='+encodeURIComponent(String(p.limit)));
+    const response=await fetch(url+'?'+q.join('&'),{headers:supaHeaders(req)});
+    const data=await response.json().catch(()=>[]);
+    if(!response.ok)throw new Error(data?.message||'Supabase read failed.');
+    let rows=Array.isArray(data)?data:[];
+    if(p.single==='single'){if(rows.length!==1)throw new Error(rows.length?'Multiple rows returned.':'No rows found.');return {data:rows[0],error:null};}
+    if(p.single==='maybe')return {data:rows[0]||null,error:null};
+    return {data,error:null,count:rows.length};
+  }
+  const filters=supaFilterParts(p.filters);
+  if(p.action==='insert'||p.action==='upsert'){
+    const headers=supaHeaders(req);
+    if(p.action==='upsert')headers.Prefer='resolution=merge-duplicates,return=representation';
+    if(p.conflict)q.push('on_conflict='+encodeURIComponent(p.conflict));
+    const response=await fetch(url+(q.length?'?'+q.join('&'):''),{method:'POST',headers,body:JSON.stringify(p.values)});
+    const data=await response.json().catch(()=>null);
+    if(!response.ok)throw new Error(data?.message||'Supabase write failed.');
+    return {data:p.single==='single'?(data?.[0]||null):(p.single==='maybe'?(data?.[0]||null):data),error:null,count:Array.isArray(data)?data.length:null};
+  }
+  if(p.action==='update'||p.action==='delete'){
+    const response=await fetch(url+(filters.length?'?'+filters.join('&'):''),{method:p.action==='update'?'PATCH':'DELETE',headers:supaHeaders(req),body:p.action==='update'?JSON.stringify(p.values):undefined});
+    const data=await response.json().catch(()=>null);
+    if(!response.ok)throw new Error(data?.message||'Supabase write failed.');
+    return {data:p.action==='update'?data:null,error:null,count:Array.isArray(data)?data.length:null};
+  }
+  throw new Error('Unsupported fallback database action.');
+}
+
 function whereSql(filters,params){
   const parts=[];
   for(const f of filters||[]){
@@ -202,7 +271,13 @@ module.exports=async(req,res)=>{
   try{
     const payload=req.body||(typeof req.body==='string'?JSON.parse(req.body):{});
     const isAdmin=await verifyAdmin(req);
-    const result=payload.type==='rpc'?await rpcRequest(payload.fn,payload.args||{},isAdmin):payload.type==='table'?await tableRequest(req,payload,isAdmin):(()=>{throw new Error('Invalid database request.')})();
+    const result=!d1Configured()
+      ? await supabaseFallback(req,payload)
+      : payload.type==='rpc'
+        ? await rpcRequest(payload.fn,payload.args||{},isAdmin)
+        : payload.type==='table'
+          ? await tableRequest(req,payload,isAdmin)
+          : (()=>{throw new Error('Invalid database request.')})();
     return json(res,200,result);
   }catch(e){return json(res,400,{error:e.message||'Database request failed.'});}
 };
