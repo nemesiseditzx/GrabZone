@@ -141,7 +141,7 @@ async function tableRequest(req,p,isAdmin){
 }
 
 async function rpcRequest(fn,args,isAdmin){
-  if(fn==='validate_referral_code'){
+  if(fn==='get_public_tracking_id'){\n    const orderId=String(args.p_order_id||'');\n    if(!orderId) return {data:null};\n    const r=await cfQuery('SELECT public_tracking_id FROM orders WHERE id=? LIMIT 1',[orderId]);\n    return {data:r.results?.[0]?.public_tracking_id||null};\n  }\n\n  if(fn==='validate_referral_code'){
     const code=String(args.p_code??'').trim().toUpperCase(),subtotal=Math.max(0,Number(args.p_subtotal||0));
     if(!code)return {data:{valid:false,discount:0,message:''}};
     const r=await cfQuery('SELECT * FROM referral_codes WHERE upper(code)=upper(?) AND active=1 LIMIT 1',[code]);const row=r.results?.[0];
