@@ -5,6 +5,7 @@ const crypto = require('crypto');
 function json(res,status,body){
   res.status(status);
   res.setHeader('Content-Type','application/json');
+  res.setHeader('Cache-Control','no-store, no-cache, must-revalidate');
   res.end(JSON.stringify(body));
 }
 
@@ -68,8 +69,17 @@ function newToken(){
 function tokenHash(token){
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
+function authSecrets(){
+  return [...new Set([
+    process.env.D1_AUTH_SECRET,
+    process.env.GRABZONE_ADMIN_PASSWORD,
+    process.env.CF_API_TOKEN,
+    process.env.CLOUDFLARE_API_TOKEN,
+    process.env.CLOUDFLARE_API_KEY
+  ].map(v=>String(v||'').trim()).filter(Boolean))];
+}
 function authSecret(){
-  return process.env.D1_AUTH_SECRET||process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY||'';
+  return authSecrets()[0]||'';
 }
 function base64url(value){
   return Buffer.from(value).toString('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
@@ -85,12 +95,13 @@ function createBridgeToken(user){
 function verifyBridgeToken(token){
   const parts=String(token||'').split('.');
   if(parts.length!==2)return null;
-  const secret=authSecret();
-  if(!secret)return null;
-  const expected=crypto.createHmac('sha256',secret).update(parts[0]).digest('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
   const a=Buffer.from(parts[1]);
-  const b=Buffer.from(expected);
-  if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return null;
+  const valid=authSecrets().some(secret=>{
+    const expected=crypto.createHmac('sha256',secret).update(parts[0]).digest('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    const b=Buffer.from(expected);
+    return a.length===b.length&&crypto.timingSafeEqual(a,b);
+  });
+  if(!valid)return null;
   try{
     const payload=JSON.parse(Buffer.from(parts[0].replace(/-/g,'+').replace(/_/g,'/'),'base64').toString('utf8'));
     if(!payload?.sub||!payload?.email||Number(payload.exp||0)<=Math.floor(Date.now()/1000))return null;
