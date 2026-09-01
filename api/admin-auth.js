@@ -102,18 +102,23 @@ function sessionCookie(token,maxAge){
   return `gz_admin_session=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
 }
 
-async function supabasePasswordLogin(email,password){
-  const url=String(process.env.SUPABASE_URL||'').replace(/\/$/,'');
-  const key=process.env.SUPABASE_ANON_KEY||'';
-  if(!url||!key)throw new Error('The existing Supabase authentication configuration is missing. Complete the D1 auth migration before removing it.');
-  const r=await fetch(url+'/auth/v1/token?grant_type=password',{
-    method:'POST',
-    headers:{apikey:key,'Content-Type':'application/json'},
-    body:JSON.stringify({email,password})
-  });
-  const b=await r.json().catch(()=>({}));
-  if(!r.ok||!b.access_token)throw new Error(b.error_description||b.msg||'Invalid email or password.');
-  return b;
+async function ensureBootstrapAdmin(){
+  const email=String(process.env.GRABZONE_ADMIN_EMAIL||'').trim().toLowerCase();
+  const password=String(process.env.GRABZONE_ADMIN_PASSWORD||'');
+  if(!email||!password)return null;
+
+  const count=await cfQuery('SELECT COUNT(*) AS n FROM admin_users');
+  if(Number(count.results?.[0]?.n||0)>0)return null;
+
+  const id=crypto.randomUUID();
+  const salt=crypto.randomBytes(16).toString('hex');
+  const hash=hashPassword(password,salt);
+  const now=new Date().toISOString();
+  await cfQuery(
+    'INSERT INTO admin_users (id,email,password_hash,password_salt,created_at,updated_at) VALUES (?,?,?,?,?,?)',
+    [id,email,hash,salt,now,now]
+  );
+  return {id,email};
 }
 
 async function createSession(user){
@@ -146,6 +151,7 @@ module.exports=async(req,res)=>{
   }
   try{
     await ensureTables();
+    await ensureBootstrapAdmin();
 
     if(req.method==='GET'){
       const session=await currentSession(req);
@@ -176,19 +182,7 @@ module.exports=async(req,res)=>{
         return json(res,401,{error:'Invalid email or password.'});
       }
     }else{
-      /*
-       * One-time migration bridge:
-       * the first successful login is verified by the existing Supabase Auth,
-       * then only a salted scrypt hash is stored in D1. The password itself
-       * is never written to D1.
-       */
-      await supabasePasswordLogin(email,password);
-      const id=crypto.randomUUID();
-      const salt=crypto.randomBytes(16).toString('hex');
-      const hash=hashPassword(password,salt);
-      const now=new Date().toISOString();
-      await cfQuery('INSERT INTO admin_users (id,email,password_hash,password_salt,created_at,updated_at) VALUES (?,?,?,?,?,?)',[id,email,hash,salt,now,now]);
-      user={id,email};
+      return json(res,401,{error:'No admin account exists. Configure GRABZONE_ADMIN_EMAIL and GRABZONE_ADMIN_PASSWORD in Vercel Production environment variables, then redeploy.'});
     }
 
     const session=await createSession(user);
