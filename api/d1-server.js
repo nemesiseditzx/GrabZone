@@ -17,13 +17,5 @@ async function d1Query(sql,params=[]){
   if(!r.ok||b.success===false)throw new Error(b?.errors?.map(x=>x.message).join('; ')||`D1 query failed (${r.status})`);
   return b.result?.[0]||{results:[],meta:{}};
 }
-async function verifySupabaseBearer(req){
-  const auth=String(req.headers.authorization||'');
-  if(!auth.startsWith('Bearer '))return false;
-  const url=process.env.SUPABASE_URL;
-  const key=process.env.SUPABASE_ANON_KEY;
-  if(!url||!key)return false;
-  const r=await fetch(url.replace(/\/$/,'')+'/auth/v1/user',{headers:{apikey:key,Authorization:auth}});
-  return r.ok;
-}
-module.exports={d1Query,verifySupabaseBearer};
+
+module.exports={d1Query};
