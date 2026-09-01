@@ -9,7 +9,8 @@ function setToken(t){try{if(t){localStorage.setItem(KEY,t);sessionStorage.setIte
 async function refreshBridgeToken(){
  try{
   const existing=getToken();
-  const r=await fetch(apiPath('/api/admin-auth'),{method:'GET',credentials:'omit',cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+  const headers={'Cache-Control':'no-cache'}; if(existing)headers.Authorization='Bearer '+existing;
+  const r=await fetch(apiPath('/api/admin-auth'),{method:'GET',credentials:'omit',cache:'no-store',headers});
   const b=await r.json().catch(()=>({}));
   if(r.ok&&b.authenticated&&b.session_token){setToken(b.session_token);return b.session_token}
   /* Some deployments sit behind a proxy that does not forward the HttpOnly
