@@ -50,10 +50,15 @@
 
   function createAdminAuth(){
     const authKey='grabzone_admin_auth';
+    const tokenKey='grabzone_admin_session_token';
+    const getToken=()=>sessionStorage.getItem(tokenKey)||'';
 
     async function getSession(){
       try{
-        const response=await fetch('/api/admin-auth',{method:'GET',credentials:'same-origin'});
+        const headers={};
+        const token=getToken();
+        if(token)headers.Authorization='Bearer '+token;
+        const response=await fetch('/api/admin-auth',{method:'GET',credentials:'same-origin',headers});
         const body=await response.json().catch(()=>({}));
         if(!response.ok||!body.authenticated)return {data:{session:null}};
         return {
@@ -81,6 +86,7 @@
         const body=await response.json().catch(()=>({}));
         if(!response.ok)return {data:{user:null,session:null},error:{message:body.error||'Authentication failed.'}};
         localStorage.setItem(authKey,'1');
+        if(body.session_token)sessionStorage.setItem(tokenKey,body.session_token);
         return {
           data:{
             user:body.user||null,
@@ -100,6 +106,7 @@
           });
         }finally{
           localStorage.removeItem(authKey);
+          sessionStorage.removeItem(tokenKey);
         }
         return {error:null};
       },
@@ -119,7 +126,7 @@
         const response = await fetch('/api/d1', {
           method:'POST',
           credentials:'same-origin',
-          headers:{'Content-Type':'application/json'},
+          headers:{'Content-Type':'application/json',...(getToken()?{Authorization:'Bearer '+getToken()}: {})},
           body:JSON.stringify(payload)
         });
         const body = await response.json().catch(() => ({}));
