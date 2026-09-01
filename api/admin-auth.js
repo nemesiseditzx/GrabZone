@@ -72,14 +72,14 @@ function authSecret(){
   return process.env.D1_AUTH_SECRET||process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY||'';
 }
 function base64url(value){
-  return Buffer.from(value).toString('base64').replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');
+  return Buffer.from(value).toString('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
 }
 function createBridgeToken(user){
   const exp=Math.floor(Date.now()/1000)+7*24*60*60;
   const payload=base64url(JSON.stringify({sub:user.id,email:user.email,exp}));
   const secret=authSecret();
   if(!secret)throw new Error('D1 authentication secret is not configured.');
-  const sig=crypto.createHmac('sha256',secret).update(payload).digest('base64').replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');
+  const sig=crypto.createHmac('sha256',secret).update(payload).digest('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
   return payload+'.'+sig;
 }
 function verifyBridgeToken(token){
@@ -87,7 +87,7 @@ function verifyBridgeToken(token){
   if(parts.length!==2)return null;
   const secret=authSecret();
   if(!secret)return null;
-  const expected=crypto.createHmac('sha256',secret).update(parts[0]).digest('base64').replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');
+  const expected=crypto.createHmac('sha256',secret).update(parts[0]).digest('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
   const a=Buffer.from(parts[1]);
   const b=Buffer.from(expected);
   if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return null;
