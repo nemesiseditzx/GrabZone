@@ -102,7 +102,7 @@
         return {
           data:{
             user:body.user||null,
-            session:{access_token:'',user:body.user||null,expires_at:null}
+            session:{access_token:getAdminToken(),user:body.user||null,expires_at:null}
           },
           error:null
         };
