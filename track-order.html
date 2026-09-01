@@ -38,8 +38,8 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
 
  async function loadSocial(){
    try{
-     if(window.supabase&&C.supabaseUrl&&C.supabaseAnonKey){
-       const sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
+     if(window.grabzoneD1){
+       const sb=window.grabzoneD1;
        const q=await sb.from('site_settings').select('whatsapp,instagram,messenger').eq('id',1).maybeSingle();
        const s=q.data||{};
        const wa=String(s.whatsapp||C.whatsapp||'').trim();
@@ -86,8 +86,8 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
  async function getOrder(id){
    const clean=String(id||'').trim().toUpperCase();
    if(!clean) throw new Error('Please enter your private Tracking ID.');
-   if(!window.supabase||!C.supabaseUrl||!C.supabaseAnonKey) throw new Error('Tracking service is not configured.');
-   const sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
+   if(!window.grabzoneD1) throw new Error('Tracking service is not configured.');
+   const sb=window.grabzoneD1;
    const {data,error}=await sb.rpc('track_public_order',{p_tracking_id:clean});
    if(!error&&data) return {success:true,order:data};
    console.warn('Direct tracking RPC failed:',error);
