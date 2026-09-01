@@ -24,38 +24,40 @@ function cleanName(name) {
 }
 
 async function requireAdmin(req) {
-  const cookie = String(req.headers.cookie || '');
-  const token = cookie.split(';')
-    .map(x=>x.trim())
-    .find(x=>x.startsWith('gz_admin_session='))
-    ?.slice('gz_admin_session='.length) || '';
+  const auth=String(req.headers.authorization||'');
+  const bearer=auth.startsWith('Bearer ')?auth.slice(7).trim():'';
+  const secret=process.env.D1_AUTH_SECRET||process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY||'';
+  if(bearer&&secret){
+    const parts=bearer.split('.');
+    if(parts.length===2){
+      const expected=crypto.createHmac('sha256',secret).update(parts[0]).digest('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+      const a=Buffer.from(parts[1]),b=Buffer.from(expected);
+      if(a.length===b.length&&crypto.timingSafeEqual(a,b)){
+        try{
+          const payload=JSON.parse(Buffer.from(parts[0].replace(/-/g,'+').replace(/_/g,'/'),'base64').toString('utf8'));
+          if(payload?.sub&&Number(payload.exp||0)>Math.floor(Date.now()/1000))return payload;
+        }catch{}
+      }
+    }
+  }
 
+  const cookie = String(req.headers.cookie || '');
+  const token = cookie.split(';').map(x=>x.trim()).find(x=>x.startsWith('gz_admin_session='))?.slice('gz_admin_session='.length) || '';
   const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID||process.env.CLOUDFLARE_ACCOUNT_ID;
   const database=process.env.D1_DATABASE_ID||process.env.CLOUDFLARE_D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
   const cfToken=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY;
-
   if(token && account && database && cfToken){
     const tokenHash=crypto.createHash('sha256').update(decodeURIComponent(token)).digest('hex');
     const response=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${database}/query`,{
-      method:'POST',
-      headers:{Authorization:`Bearer ${cfToken}`,'Content-Type':'application/json'},
-      body:JSON.stringify({
-        sql:`SELECT u.id,u.email
-              FROM admin_sessions s
-              JOIN admin_users u ON u.id=s.admin_user_id
-              WHERE s.token_hash=? AND s.expires_at>?
-              LIMIT 1`,
-        params:[tokenHash,new Date().toISOString()]
-      })
+      method:'POST',headers:{Authorization:`Bearer ${cfToken}`,'Content-Type':'application/json'},
+      body:JSON.stringify({sql:`SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1`,params:[tokenHash,new Date().toISOString()]})
     });
     const body=await response.json().catch(()=>({}));
     const user=body?.result?.[0]?.results?.[0];
-    if(response.ok && body.success!==false && user?.id)return user;
+    if(response.ok&&body.success!==false&&user?.id)return user;
   }
-
-
-
   throw new Error('Admin session is invalid or expired.');
+}  throw new Error('Admin session is invalid or expired.');
 }
 
 
