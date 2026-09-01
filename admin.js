@@ -42,7 +42,7 @@ function esc(x){
 }
 
 async function login(){
- if(!sb){$("loginMsg").textContent="Supabase is not configured.";return}
+ if(!sb){$("loginMsg").textContent="Database service is not configured.";return}
  const{error}=await sb.auth.signInWithPassword({
    email:$("email").value.trim(),
    password:$("password").value
