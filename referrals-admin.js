@@ -116,7 +116,7 @@ async function save(){
  }catch(e){m.textContent='⚠ '+e.message;m.style.color='#a00'}
 }
 async function load(){
- if(!sb){$('gzReferralList').innerHTML='<div>Supabase is not configured.</div>';return}
+ if(!sb){$('gzReferralList').innerHTML='<div>Database service is not configured.</div>';return}
  const{data,error}=await sb.from('referral_codes').select('*').order('created_at',{ascending:false});
  if(error){$('gzReferralList').innerHTML='<div>'+esc(error.message)+'</div>';return}
  referrals=data||[];render();
