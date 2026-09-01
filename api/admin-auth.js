@@ -116,7 +116,8 @@ module.exports=async(req,res)=>{
 
     if(req.method==='GET'){
       const session=await currentSession(req);
-      return json(res,200,{authenticated:Boolean(session),user:session?{id:session.id,email:session.email}:null});
+      const sessionToken=cookieValue(req,'gz_admin_session');
+      return json(res,200,{authenticated:Boolean(session),user:session?{id:session.id,email:session.email}:null,session_token:session?sessionToken:null});
     }
 
     const action=String(req.body?.action||'login');
