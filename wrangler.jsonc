@@ -1,0 +1,28 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+  "name": "grabzone",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-28",
+  "keep_vars": true,
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "grabzone-db-test",
+      "database_id": "ffaa2c49-c89e-439f-9a71-89144b07dfce"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ASSETS_BUCKET",
+      "bucket_name": "grabzone-assets"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
