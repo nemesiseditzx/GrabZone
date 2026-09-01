@@ -59,6 +59,7 @@
         if(token)headers.Authorization='Bearer '+token;
         const response=await fetch('/api/admin-auth',{method:'GET',credentials:'same-origin',headers});
         const body=await response.json().catch(()=>({}));
+        if(body.session_token)try{sessionStorage.setItem(adminTokenKey,body.session_token)}catch{}
         if(!response.ok||!body.authenticated)return {data:{session:null}};
         return {
           data:{
@@ -124,7 +125,8 @@
       __d1Request: async payload => {
         const response = await fetch('/api/d1', {
           method:'POST',
-          credentials:'same-origin',
+          credentials:'include',
+          cache:'no-store',
           headers:{'Content-Type':'application/json',...(getAdminToken()?{Authorization:'Bearer '+getAdminToken()}: {})},
           body:JSON.stringify(payload)
         });
