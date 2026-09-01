@@ -1,10 +1,6 @@
 (() => {
   'use strict';
 
-  const nativeSupabase = window.supabase;
-  if (!nativeSupabase || typeof nativeSupabase.createClient !== 'function') return;
-
-  const nativeCreateClient = nativeSupabase.createClient.bind(nativeSupabase);
   const publicRpc = new Set(['validate_referral_code','create_public_order','track_public_order']);
 
   function cleanColumns(columns) {
@@ -63,7 +59,7 @@
         return {
           data:{
             session:{
-              access_token:'',
+              access_token:'cookie',
               user:body.user,
               expires_at:null
             }
@@ -138,5 +134,6 @@
     return client;
   }
 
-  window.supabase = {...nativeSupabase, createClient:createWrappedClient};
+  // D1-backed compatibility client. No Supabase network access is used.
+  window.supabase = {createClient:createWrappedClient};
 })();
