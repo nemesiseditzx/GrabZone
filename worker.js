@@ -64,7 +64,7 @@ export default{async fetch(req,env){
  try{
   if(req.method==="OPTIONS")return cors(new Response(null,{status:204}));
   const a=await api(req,env);
-  return cors(a||await env.ASSETS.fetch(req));
+  return cors(a||(env.ASSETS?await env.ASSETS.fetch(req):json({ok:true,backend:"cloudflare-worker",d1:!!env.DB,r2:!!env.ASSETS_BUCKET})));
  }catch(e){
   console.error(e);
   return cors(json({error:e?.message||"Internal server error."},500));
