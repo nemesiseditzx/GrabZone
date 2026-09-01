@@ -50,7 +50,7 @@ function inject(){
 async function load(){
   const panel=$('gzTrackingPanel');
   if(!panel)return;
-  if(!sb){panel.innerHTML='<div class="muted">⚠ Supabase is not configured.</div>';return;}
+  if(!sb){panel.innerHTML='<div class="muted">⚠ Database service is not configured.</div>';return;}
   panel.innerHTML='<div class="muted">Loading tracking records…</div>';
   try{
     const sessionData=(await sb.auth.getSession()).data;
