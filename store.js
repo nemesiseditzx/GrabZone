@@ -74,18 +74,8 @@ let allProducts = [];
 let activeCategory = "All";
 let SITE = {};
 
-const C = window.GRABZONE_CONFIG;
-
-if (
-  C &&
-  !C.supabaseUrl.includes("PASTE_") &&
-  window.supabase
-) {
-  sb = window.supabase.createClient(
-    C.supabaseUrl,
-    C.supabaseAnonKey
-  );
-}
+const C = window.GRABZONE_CONFIG || {};
+sb = window.grabzoneD1 || null;
 
 /* =========================================================
    HELPERS
@@ -606,7 +596,7 @@ function setupDMChooser() {
 
 async function load() {
   if (!sb) {
-    console.error("Supabase is not configured.");
+    console.error("Database service is not configured.");
     return;
   }
 
