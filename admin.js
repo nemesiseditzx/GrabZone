@@ -139,7 +139,7 @@ async function uploadImage(file){
  if(!session)throw new Error("Admin session expired. Please sign in again.");
  const form=new FormData();
  form.append("file",file,file.name);
- const response=await fetch("/api/r2-upload",{method:"POST",headers:{Authorization:"Bearer "+session.access_token},body:form});
+ const response=await fetch((C.backendUrl||"")+"/api/r2-upload",{method:"POST",headers:{Authorization:"Bearer "+session.access_token},body:form});
  const result=await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(result.error||"Could not upload image.");
  return result.publicUrl;
