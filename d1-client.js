@@ -39,11 +39,12 @@ window.grabzoneD1={from:builder,rpc:(fn,args={})=>request({type:'rpc',fn,args}),
   const headers={'Cache-Control':'no-cache'};if(existing){headers.Authorization='Bearer '+existing;headers['X-GrabZone-Token']=existing;}
   const r=await fetch(apiPath('/api/admin-auth'),{method:'GET',credentials:'omit',cache:'no-store',headers});
   const b=await r.json().catch(()=>({}));
-  const bridge=(r.ok&&b.authenticated&&b.session_token)?b.session_token:existing;
+  const bridge=(r.ok&&b.authenticated&&b.session_token)?b.session_token:'';
   if(bridge){
    setToken(bridge);
    return{data:{session:{access_token:bridge,user:b.user||null,expires_at:b.expires_at||null}},error:null};
   }
+  if(existing)setToken('');
   return{data:{session:null},error:null};
  }catch(e){
   const existing=getToken();
