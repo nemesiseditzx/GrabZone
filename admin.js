@@ -134,39 +134,14 @@ function setNewProductMain(index){
 async function uploadImage(file){
  if(!file)throw new Error("Choose an image.");
  if(!file.type.startsWith("image/"))throw new Error("Only image files are allowed.");
-
- const{data:{session},error:sessionError}=await sb.auth.getSession();
+ const {data:{session},error:sessionError}=await sb.auth.getSession();
  if(sessionError)throw sessionError;
  if(!session)throw new Error("Admin session expired. Please sign in again.");
-
- const response=await fetch("/api/r2-presign",{
-   method:"POST",
-   headers:{
-     "Content-Type":"application/json",
-     "Authorization":`Bearer ${session.access_token}`
-   },
-   body:JSON.stringify({
-     filename:file.name,
-     contentType:file.type
-   })
- });
-
+ const form=new FormData();
+ form.append("file",file,file.name);
+ const response=await fetch("/api/r2-upload",{method:"POST",headers:{Authorization:"Bearer "+session.access_token},body:form});
  const result=await response.json().catch(()=>({}));
- if(!response.ok)throw new Error(result.error||"Could not prepare image upload.");
-
- const upload=await fetch(result.uploadUrl,{
-   method:"PUT",
-   headers:{
-     "Content-Type":file.type
-   },
-   body:file
- });
-
- if(!upload.ok){
-   const text=await upload.text().catch(()=> "");
-   throw new Error(`R2 upload failed (${upload.status})${text?`: ${text.slice(0,180)}`:""}`);
- }
-
+ if(!response.ok)throw new Error(result.error||"Could not upload image.");
  return result.publicUrl;
 }
 
