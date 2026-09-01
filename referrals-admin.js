@@ -8,7 +8,7 @@ let editingId=null,referrals=[];
 
 async function syncAdminRecordsToSheet(){
   try{
-    const response=await fetch('/api/sync-order-sheet',{
+    const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({syncAdmins:true})
