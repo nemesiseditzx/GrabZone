@@ -97,7 +97,7 @@ async function createSession(user){
 }
 
 async function currentSession(req){
-  const token=cookieValue(req,'gz_admin_session');
+  const token=cookieValue(req,'gz_admin_session') || String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');
   if(!token)return null;
   const r=await cfQuery(`SELECT u.id,u.email,s.expires_at
     FROM admin_sessions s
@@ -159,7 +159,7 @@ module.exports=async(req,res)=>{
 
     const session=await createSession(user);
     res.setHeader('Set-Cookie',sessionCookie(session.token,7*24*60*60));
-    return json(res,200,{ok:true,user:{id:user.id,email:user.email},expires_at:session.expires});
+    return json(res,200,{ok:true,user:{id:user.id,email:user.email},expires_at:session.expires,session_token:session.token});
   }catch(e){
     return json(res,500,{error:e.message||'Authentication failed.'});
   }
