@@ -1,6 +1,6 @@
 window.GRABZONE_CONFIG = {
-  supabaseUrl: "https://omfmecdugwadwskennyr.supabase.co",
-  supabaseAnonKey: "sb_publishable_mO4ASdgjeNFnoxxls8YDlg_hm1qsNSu",
+  supabaseUrl: "d1://grabzone",
+  supabaseAnonKey: "d1-client",
   storeName: "GRABZONE",
   tagline: "Grab What's Trending.",
   currency: "৳",
