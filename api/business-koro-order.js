@@ -1,4 +1,5 @@
-const {d1Query,verifySupabaseBearer}=require('./d1-server');
+const crypto=require('crypto');
+const {d1Query}=require('./d1-server');
 const BASE_URL='https://api.businesskoro.com/api/v1/storefront';
 
 function normalize(value){
@@ -13,10 +14,17 @@ async function readJson(response){
   catch{return {raw:text}}
 }
 async function requireAdmin(req){
-  const auth=String(req.headers.authorization||'');
-  if(!auth.startsWith('Bearer '))throw Object.assign(new Error('Admin authentication required.'),{status:401});
-  const url=process.env.SUPABASE_URL;
-  if(!await verifySupabaseBearer(req))throw Object.assign(new Error('Admin authentication failed.'),{status:401});
+  const raw=String(req.headers.cookie||'');
+  const tokenPart=raw.split(';').map(x=>x.trim()).find(x=>x.startsWith('gz_admin_session='));
+  const token=tokenPart?decodeURIComponent(tokenPart.slice('gz_admin_session='.length)):'';
+  if(!token)throw Object.assign(new Error('Admin authentication required.'),{status:401});
+  const tokenHash=crypto.createHash('sha256').update(token).digest('hex');
+  const r=await d1Query(`SELECT u.id,u.email
+    FROM admin_sessions s
+    JOIN admin_users u ON u.id=s.admin_user_id
+    WHERE s.token_hash=? AND s.expires_at>?
+    LIMIT 1`,[tokenHash,new Date().toISOString()]);
+  if(!r.results?.[0])throw Object.assign(new Error('Admin authentication failed.'),{status:401});
   return true;
 }
 
