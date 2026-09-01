@@ -181,7 +181,7 @@ async function sendToBusinessKoro(id){
  const button=[...document.querySelectorAll('[data-bk-order]')].find(x=>x.dataset.bkOrder===id);
  if(button){button.disabled=true;button.textContent='Sending…'}
  try{
-  const response=await fetch('/api/business-koro-order',{
+  const response=await fetch((C.backendUrl||'')+'/api/business-koro-order',{
    method:'POST',
    headers:{'Content-Type':'application/json'},
    body:JSON.stringify({
@@ -223,7 +223,7 @@ async function sendToBusinessKoro(id){
  try{
   const{data:items,error}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
   if(error)throw error;if(!items?.length)throw new Error('This order has no products.');
-  const response=await fetch('/api/business-koro-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:order.id,orderNumber:order.order_number,customer:{name:order.customer_name,phone:order.phone,address:order.address,division:order.division,district:order.district,area:order.upazila,note:order.admin_note||''},items:items.map(it=>({productId:it.business_koro_product_id||null,productName:it.product_name,quantity:Number(it.quantity||1),sellingPrice:Number(it.unit_price||0)}))})});
+  const response=await fetch((C.backendUrl||'')+'/api/business-koro-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:order.id,orderNumber:order.order_number,customer:{name:order.customer_name,phone:order.phone,address:order.address,division:order.division,district:order.district,area:order.upazila,note:order.admin_note||''},items:items.map(it=>({productId:it.business_koro_product_id||null,productName:it.product_name,quantity:Number(it.quantity||1),sellingPrice:Number(it.unit_price||0)}))})});
   const result=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(result.error||'Business Koro rejected the order.');
   const ids=(result.orders||[]).map(x=>x.supplierOrderId).filter(Boolean);
@@ -237,7 +237,7 @@ async function sendToBusinessKoro(id){
 }
 async function syncOrderToSheet(orderId){
  try{
-  const response=await fetch('/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
+  const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
   if(!response.ok)throw new Error((await response.json().catch(()=>({}))).error||'Google Sheets sync failed.');
   return true;
  }catch(e){console.warn('Google Sheets sync:',e);return false}
@@ -248,7 +248,7 @@ async function sendOrderEmail(orderNumber,type='status_updated'){
   const session=await sb.auth.getSession(), token=session?.data?.session?.access_token;
   const headers={'Content-Type':'application/json'};
   if(token)headers.Authorization='Bearer '+token;
-  const response=await fetch('/api/send-order-email',{method:'POST',headers,body:JSON.stringify({orderNumber,type})});
+  const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{method:'POST',headers,body:JSON.stringify({orderNumber,type})});
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.error||'Receipt email could not be sent.');
   return true;
@@ -302,7 +302,7 @@ async function sendToBusinessKoro(id,force=false){
    const sessionResult=await sb.auth.getSession();
    const token=sessionResult?.data?.session?.access_token;
    if(!token)throw new Error('Your admin session has expired. Please log in again.');
-   const response=await fetch('/api/business-koro-order',{
+   const response=await fetch((C.backendUrl||'')+'/api/business-koro-order',{
      method:'POST',
      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
      body:JSON.stringify({orderId:id,force})
