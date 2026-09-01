@@ -138,7 +138,7 @@ async function uploadImage(file){
 
  const{data:{session},error:sessionError}=await sb.auth.getSession();
  if(sessionError)throw sessionError;
- if(!session?.access_token)throw new Error("Admin session expired. Please sign in again.");
+ if(!session)throw new Error("Admin session expired. Please sign in again.");
 
  const response=await fetch("/api/r2-presign",{
    method:"POST",
