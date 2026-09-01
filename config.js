@@ -1,7 +1,7 @@
 window.GRABZONE_CONFIG = {
   supabaseUrl: "",
   supabaseAnonKey: "",
-  backendUrl: "/api",
+  backendUrl: "",
   storeName: "GRABZONE",
   tagline: "Grab What's Trending.",
   currency: "৳",
