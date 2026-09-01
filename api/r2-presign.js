@@ -57,7 +57,6 @@ async function requireAdmin(req) {
     if(response.ok&&body.success!==false&&user?.id)return user;
   }
   throw new Error('Admin session is invalid or expired.');
-}  throw new Error('Admin session is invalid or expired.');
 }
 
 
