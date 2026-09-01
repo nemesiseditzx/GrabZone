@@ -3,7 +3,19 @@
 
   const publicRpc = new Set(['validate_referral_code','create_public_order','track_public_order']);
   const adminTokenKey='grabzone_admin_session_token';
-  const getAdminToken=()=>{try{return sessionStorage.getItem(adminTokenKey)||'';}catch{return ''}};
+  const getAdminToken=()=>{
+    try{return sessionStorage.getItem(adminTokenKey)||localStorage.getItem(adminTokenKey)||'';}
+    catch{return ''}
+  };
+  const setAdminToken=(token)=>{
+    if(!token)return;
+    try{sessionStorage.setItem(adminTokenKey,token)}catch{}
+    try{localStorage.setItem(adminTokenKey,token)}catch{}
+  };
+  const clearAdminToken=()=>{
+    try{sessionStorage.removeItem(adminTokenKey)}catch{}
+    try{localStorage.removeItem(adminTokenKey)}catch{}
+  };
 
   function cleanColumns(columns) {
     return String(columns || '*').trim() || '*';
@@ -59,7 +71,7 @@
         if(token)headers.Authorization='Bearer '+token;
         const response=await fetch('/api/admin-auth',{method:'GET',credentials:'same-origin',headers});
         const body=await response.json().catch(()=>({}));
-        if(body.session_token)try{sessionStorage.setItem(adminTokenKey,body.session_token)}catch{}
+        if(body.session_token)setAdminToken(body.session_token)
         if(!response.ok||!body.authenticated)return {data:{session:null}};
         return {
           data:{
@@ -86,7 +98,7 @@
         const body=await response.json().catch(()=>({}));
         if(!response.ok)return {data:{user:null,session:null},error:{message:body.error||'Authentication failed.'}};
         localStorage.setItem(authKey,'1');
-        if(body.session_token)sessionStorage.setItem(adminTokenKey,body.session_token);
+        if(body.session_token)setAdminToken(body.session_token);
         return {
           data:{
             user:body.user||null,
@@ -106,7 +118,7 @@
           });
         }finally{
           localStorage.removeItem(authKey);
-          sessionStorage.removeItem(adminTokenKey);
+          clearAdminToken();
         }
         return {error:null};
       },
@@ -136,7 +148,7 @@
           const authBody=await authResponse.json().catch(()=>({}));
           if(authBody.session_token){
             adminToken=authBody.session_token;
-            try{sessionStorage.setItem(adminTokenKey,adminToken)}catch{}
+            setAdminToken(adminToken);
           }
           if(!authBody.authenticated)throw new Error('Admin session expired. Please sign in again.');
         }catch(error){
