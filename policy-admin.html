@@ -231,7 +231,7 @@ function applyPolicyToEditor(){
 async function init(){
   POLICY=clonePolicy(DEFAULT_POLICY); applyPolicyToEditor();
   if(!(C.supabaseUrl&&!C.supabaseUrl.includes('PASTE_')&&window.supabase)){setStatus('⚠️ Local defaults — Supabase is not configured.');return;}
-  sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
+  sb=window.grabzoneD1;
   try{
     const session=await sb.auth.getSession();
     if(!session?.data?.session){setStatus('⚠️ Admin session not found. Sign in from Admin first.');return;}
@@ -242,7 +242,7 @@ async function init(){
   }catch(e){console.error(e);setStatus('⚠️ Could not load saved policy. Defaults are editable.');}
 }
 async function save(){
-  if(!sb){setStatus('✕ Cannot save: Supabase is not configured.');return;}
+  if(!sb){setStatus('✕ Cannot save: database service is not configured.');return;}
   setStatus('Saving…');
   const payload={id:1,enabled:$('enabled').value==='true',animation_enabled:$('animation').value==='true',accent_color:$('accent').value,accent_color_2:$('accent2').value,background_color:$('bg').value,card_color:$('card').value,content:{bn:getFields('bn'),en:getFields('en')},updated_at:new Date().toISOString()};
   try{
