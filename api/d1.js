@@ -38,34 +38,46 @@ function authCookie(req,name){
 function sessionTokenHash(token){
   return require('crypto').createHash('sha256').update(String(token)).digest('hex');
 }
+function authSecret(){
+  return process.env.D1_AUTH_SECRET||process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY||'';
+}
+function verifyBridgeToken(token){
+  const parts=String(token||'').split('.');
+  if(parts.length!==2)return false;
+  const secret=authSecret();
+  if(!secret)return false;
+  const expected=crypto.createHmac('sha256',secret).update(parts[0]).digest('base64').replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');
+  const a=Buffer.from(parts[1]),b=Buffer.from(expected);
+  if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return false;
+  try{
+    const payload=JSON.parse(Buffer.from(parts[0].replace(/-/g,'+').replace(/_/g,'/'),'base64').toString('utf8'));
+    return Boolean(payload?.sub&&payload?.email&&Number(payload.exp||0)>Math.floor(Date.now()/1000));
+  }catch{return false}
+}
 
 async function verifyAdmin(req){
-  /*
-   * Admin authentication: D1-backed HttpOnly session cookie only.
-   */
+  /* Prefer the signed bridge token so protected admin requests do not depend
+     on browser cookie persistence. Keep the database session as a fallback. */
+  const auth=String(req.headers.authorization||'');
+  if(auth.startsWith('Bearer ')&&verifyBridgeToken(auth.slice(7).trim()))return true;
+
   const cookieToken=authCookie(req,'gz_admin_session');
   if(cookieToken){
     const session=await cfQuery(
-      `SELECT u.id
-       FROM admin_sessions s
+      `SELECT u.id FROM admin_sessions s
        JOIN admin_users u ON u.id=s.admin_user_id
-       WHERE s.token_hash=? AND s.expires_at>?
-       LIMIT 1`,
+       WHERE s.token_hash=? AND s.expires_at>? LIMIT 1`,
       [sessionTokenHash(cookieToken),new Date().toISOString()]
     );
     if(session.results?.[0])return true;
   }
-
-  const auth=String(req.headers.authorization||'');
   if(auth.startsWith('Bearer ')){
     const bearer=auth.slice(7).trim();
     if(bearer){
       const session=await cfQuery(
-        `SELECT u.id
-         FROM admin_sessions s
+        `SELECT u.id FROM admin_sessions s
          JOIN admin_users u ON u.id=s.admin_user_id
-         WHERE s.token_hash=? AND s.expires_at>?
-         LIMIT 1`,
+         WHERE s.token_hash=? AND s.expires_at>? LIMIT 1`,
         [sessionTokenHash(bearer),new Date().toISOString()]
       );
       if(session.results?.[0])return true;
