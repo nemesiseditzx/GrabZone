@@ -224,8 +224,8 @@ async function rebuildAllSheets(headers,base,sbHeaders,{orderId='',full=true}={}
   await clearValues(headers,base,'GZ Orders!A:AC');
 
   await writeValues(headers,base,'GZ Dashboard!A1:B'+dashboardRows.length,dashboardRows);
-  await writeValues(headers,base,'GZ Admin Registry!A1:N'+adminRows.length,adminRows);
-  await writeValues(headers,base,'GZ Admin Summary!A1:N'+summaryRows.length,summaryRows);
+  await writeValues(headers,base,'GZ Admin Registry!A1:Q'+adminRows.length,adminRows);
+  await writeValues(headers,base,'GZ Admin Summary!A1:P'+summaryRows.length,summaryRows);
   await writeValues(headers,base,'GZ Orders!A1:AC'+orderRows.length,orderRows);
 
   return {
@@ -253,8 +253,8 @@ async function ensureBusinessSheets(headers,spreadsheetId){
   const widths={
     'GZ Dashboard':2,
     'GZ Orders':29,
-    'GZ Admin Registry':18,
-    'GZ Admin Summary':15
+    'GZ Admin Registry':17,
+    'GZ Admin Summary':16
   };
 
   const formatRequests=[];
