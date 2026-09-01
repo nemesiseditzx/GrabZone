@@ -297,7 +297,7 @@ async function safeInit(){
       return;
     }
 
-    sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
+    sb=window.grabzoneD1;
 
     const {data:sessionData,error:sessionError}=await sb.auth.getSession();
     if(sessionError) throw sessionError;
