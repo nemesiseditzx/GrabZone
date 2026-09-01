@@ -22,7 +22,7 @@ async function request(payload,retried=false){
  const h={'Content-Type':'application/json','Cache-Control':'no-cache'},t=getToken();if(t){h.Authorization='Bearer '+t;h['X-GrabZone-Token']=t;}
  const r=await fetch(apiPath('/api/d1'),{method:'POST',headers:h,credentials:'omit',cache:'no-store',body:JSON.stringify(payload)});
  const b=await r.json().catch(()=>({}));
- if(r.status===401&&!retried){const fresh=await refreshBridgeToken();if(fresh)return request(payload,true)}
+ if(r.status===401&&!retried){const fresh=await refreshBridgeToken();if(fresh&&fresh!==t)return request(payload,true);if(!fresh)setToken('')}
  return r.ok?b:{data:null,error:{message:b.error||'Database request failed.',status:r.status}}
 }
 function builder(table){
@@ -32,7 +32,7 @@ function builder(table){
  return a
 }
 window.grabzoneD1={from:builder,rpc:(fn,args={})=>request({type:'rpc',fn,args}),auth:{
- async signInWithPassword({email,password}){try{const r=await fetch(apiPath('/api/admin-auth'),{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',cache:'no-store',headers:{'Content-Type':'application/json','Cache-Control':'no-cache'},body:JSON.stringify({action:'login',email,password})}),b=await r.json().catch(()=>({}));if(!r.ok||!b.ok)return{data:{user:null,session:null},error:{message:b.error||'Invalid email or password.',status:r.status}};setToken(b.session_token||'');return{data:{user:b.user||null,session:b.session_token?{access_token:b.session_token,user:b.user||null,expires_at:b.expires_at}:null},error:null}}catch(e){return{data:{user:null,session:null},error:{message:e.message||'Authentication failed.'}}}},
+ async signInWithPassword({email,password}){try{const r=await fetch(apiPath('/api/admin-auth'),{method:'POST',credentials:'omit',cache:'no-store',headers:{'Content-Type':'application/json','Cache-Control':'no-cache'},body:JSON.stringify({action:'login',email,password})}),b=await r.json().catch(()=>({}));if(!r.ok||!b.ok)return{data:{user:null,session:null},error:{message:b.error||'Invalid email or password.',status:r.status}};setToken(b.session_token||'');return{data:{user:b.user||null,session:b.session_token?{access_token:b.session_token,user:b.user||null,expires_at:b.expires_at}:null},error:null}}catch(e){return{data:{user:null,session:null},error:{message:e.message||'Authentication failed.'}}}},
  async getSession(){
  try{
   const existing=getToken();
