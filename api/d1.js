@@ -60,14 +60,8 @@ async function verifyAdmin(req){
 
   const auth=String(req.headers.authorization||'');
   if(!auth.startsWith('Bearer '))return false;
-  const token=auth.slice(7).trim();
-  const supabaseUrl=process.env.SUPABASE_URL;
-  const anonKey=process.env.SUPABASE_ANON_KEY;
-  if(!token||!supabaseUrl||!anonKey)return false;
-  const r=await fetch(`${supabaseUrl.replace(/\\/$/,'')}/auth/v1/user`,{
-    headers:{apikey:anonKey,Authorization:auth}
-  });
-  return r.ok;
+  // Legacy bearer sessions are intentionally no longer trusted.
+  return false;
 }
 
 function d1Configured(){
