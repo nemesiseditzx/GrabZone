@@ -46,7 +46,7 @@ function verifyBridgeToken(token){
   if(parts.length!==2)return false;
   const secret=authSecret();
   if(!secret)return false;
-  const expected=crypto.createHmac('sha256',secret).update(parts[0]).digest('base64').replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');
+  const expected=crypto.createHmac('sha256',secret).update(parts[0]).digest('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
   const a=Buffer.from(parts[1]),b=Buffer.from(expected);
   if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return false;
   try{
