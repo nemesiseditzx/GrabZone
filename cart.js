@@ -1,7 +1,7 @@
 (() => {
 'use strict';
-const C=window.GRABZONE_CONFIG||{},SUPABASE=window.supabase;
-const sb=SUPABASE&&C.supabaseUrl&&!String(C.supabaseUrl).includes('PASTE_')?SUPABASE.createClient(C.supabaseUrl,C.supabaseAnonKey):null;
+const C=window.GRABZONE_CONFIG||{};
+const sb=window.grabzoneD1||null;
 const KEY='grabzone_cart_v2',BUY='grabzone_buy_now_v2',currency=C.currency||'৳';
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
