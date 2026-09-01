@@ -1,7 +1,5 @@
 const crypto = require("crypto");
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
@@ -55,17 +53,7 @@ async function requireAdmin(req) {
     if(response.ok && body.success!==false && user?.id)return user;
   }
 
-  /* Temporary compatibility for any legacy Supabase session. */
-  const auth = req.headers.authorization || '';
-  if(auth.startsWith('Bearer ') && SUPABASE_URL && SUPABASE_ANON_KEY){
-    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers:{Authorization:auth,apikey:SUPABASE_ANON_KEY}
-    });
-    if(response.ok){
-      const user=await response.json();
-      if(user?.id)return user;
-    }
-  }
+
 
   throw new Error('Admin session is invalid or expired.');
 }
