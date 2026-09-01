@@ -14,16 +14,28 @@ async function readJson(response){
   catch{return {raw:text}}
 }
 async function requireAdmin(req){
+  const auth=String(req.headers.authorization||'');
+  const bearer=auth.startsWith('Bearer ')?auth.slice(7).trim():'';
+  const secret=process.env.D1_AUTH_SECRET||process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY||'';
+  if(bearer&&secret){
+    const parts=bearer.split('.');
+    if(parts.length===2){
+      const expected=crypto.createHmac('sha256',secret).update(parts[0]).digest('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+      const a=Buffer.from(parts[1]),b=Buffer.from(expected);
+      if(a.length===b.length&&crypto.timingSafeEqual(a,b)){
+        try{
+          const payload=JSON.parse(Buffer.from(parts[0].replace(/-/g,'+').replace(/_/g,'/'),'base64').toString('utf8'));
+          if(payload?.sub&&Number(payload.exp||0)>Math.floor(Date.now()/1000))return true;
+        }catch{}
+      }
+    }
+  }
   const raw=String(req.headers.cookie||'');
   const tokenPart=raw.split(';').map(x=>x.trim()).find(x=>x.startsWith('gz_admin_session='));
   const token=tokenPart?decodeURIComponent(tokenPart.slice('gz_admin_session='.length)):'';
   if(!token)throw Object.assign(new Error('Admin authentication required.'),{status:401});
   const tokenHash=crypto.createHash('sha256').update(token).digest('hex');
-  const r=await d1Query(`SELECT u.id,u.email
-    FROM admin_sessions s
-    JOIN admin_users u ON u.id=s.admin_user_id
-    WHERE s.token_hash=? AND s.expires_at>?
-    LIMIT 1`,[tokenHash,new Date().toISOString()]);
+  const r=await d1Query(`SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1`,[tokenHash,new Date().toISOString()]);
   if(!r.results?.[0])throw Object.assign(new Error('Admin authentication failed.'),{status:401});
   return true;
 }
