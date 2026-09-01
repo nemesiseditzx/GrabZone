@@ -13,10 +13,10 @@ function ident(v){if(!IDENT.test(v))throw new Error(`Invalid identifier: ${v}`);
 function now(){return new Date().toISOString();}
 
 async function cfQuery(sql,params=[]){
-  const account=process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID||process.env.CLOUDFLARE_ACCOUNT_ID;
+  const account=process.env.D1_ACCOUNT_ID||process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID||process.env.CLOUDFLARE_ACCOUNT_ID;
   const database=process.env.D1_DATABASE_ID||process.env.CLOUDFLARE_D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce';
   const token=process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY;
-  if(!account||!database||!token)throw new Error('D1 is not configured. Add CF_API_TOKEN in Vercel Production environment variables.');
+  if(!account||!database||!token)throw new Error('D1 is not configured. Add D1_ACCOUNT_ID, D1_DATABASE_ID and CLOUDFLARE_API_TOKEN in Vercel Production environment variables.');
   const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${database}/query`,{
     method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
     body:JSON.stringify({sql,params:params.map(val)})
@@ -71,7 +71,11 @@ async function verifyAdmin(req){
 }
 
 function d1Configured(){
-  return Boolean((process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID||process.env.CLOUDFLARE_ACCOUNT_ID) && (process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY));
+  return Boolean(
+    (process.env.D1_ACCOUNT_ID||process.env.R2_ACCOUNT_ID||process.env.CF_ACCOUNT_ID||process.env.CLOUDFLARE_ACCOUNT_ID) &&
+    (process.env.D1_DATABASE_ID||process.env.CLOUDFLARE_D1_DATABASE_ID||'ffaa2c49-c89e-439f-9a71-89144b07dfce') &&
+    (process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY)
+  );
 }
 function supaHeaders(req){
   const h={'apikey':process.env.SUPABASE_ANON_KEY||'','Content-Type':'application/json','Prefer':'return=representation'};
@@ -308,16 +312,36 @@ async function rpcRequest(fn,args,isAdmin){
 }
 
 module.exports=async(req,res)=>{
+  if(req.method==='GET'){
+    try{
+      if(!d1Configured())throw new Error('D1 configuration is incomplete.');
+      const r=await cfQuery('SELECT 1 AS ok');
+      return json(res,200,{ok:true,d1:true,rows:r.results||[]});
+    }catch(e){
+      console.error('D1 health check failed:',e);
+      return json(res,500,{ok:false,d1:false,error:e.message||'D1 health check failed.'});
+    }
+  }
   if(req.method!=='POST')return json(res,405,{error:'Method not allowed.'});
   try{
     const payload=req.body||(typeof req.body==='string'?JSON.parse(req.body):{});
-    const isAdmin=await verifyAdmin(req);
-    if(!d1Configured())throw new Error('Cloudflare D1 is not configured. Add CLOUDFLARE_API_TOKEN and R2_ACCOUNT_ID (or CF_ACCOUNT_ID) in Vercel Production environment variables.');
+    if(!d1Configured())throw new Error('Cloudflare D1 is not configured. Add D1_ACCOUNT_ID, D1_DATABASE_ID and CLOUDFLARE_API_TOKEN in Vercel Production environment variables.');
+    const needsAdmin = payload.type==='table'
+      ? payload.action!=='select'
+      : payload.type==='rpc'
+        ? !['get_public_tracking_id','validate_referral_code','track_public_order','create_public_order'].includes(String(payload.fn||''))
+        : true;
+    const isAdmin=needsAdmin ? await verifyAdmin(req) : false;
     const result=payload.type==='rpc'
       ? await rpcRequest(payload.fn,payload.args||{},isAdmin)
       : payload.type==='table'
         ? await tableRequest(req,payload,isAdmin)
         : (()=>{throw new Error('Invalid database request.')})();
     return json(res,200,result);
-  }catch(e){return json(res,400,{error:e.message||'Database request failed.'});}
+  }catch(e){
+    const message=e.message||'Database request failed.';
+    const status=/Unauthorized|authentication required|Admin session/i.test(message)?401:(/Invalid database request|Unknown database table|Unsupported database action|Unsupported RPC/i.test(message)?400:500);
+    console.error('D1 API error:',e);
+    return json(res,status,{error:message});
+  }
 };
