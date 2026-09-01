@@ -1,9 +1,8 @@
 (() => {
 'use strict';
 
-const C=window.GRABZONE_CONFIG||{}, SUPABASE=window.supabase;
-const sb=SUPABASE&&C.supabaseUrl&&!String(C.supabaseUrl).includes('PASTE_')
-  ?SUPABASE.createClient(C.supabaseUrl,C.supabaseAnonKey):null;
+const C=window.GRABZONE_CONFIG||{};
+const sb=window.grabzoneD1||null;
 
 const CART_KEY='grabzone_cart_v2';
 const BUY_NOW_KEY='grabzone_buy_now_v2';
