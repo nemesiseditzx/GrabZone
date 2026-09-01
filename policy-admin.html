@@ -230,7 +230,7 @@ function applyPolicyToEditor(){
 }
 async function init(){
   POLICY=clonePolicy(DEFAULT_POLICY); applyPolicyToEditor();
-  if(!(C.supabaseUrl&&!C.supabaseUrl.includes('PASTE_')&&window.supabase)){setStatus('⚠️ Local defaults — Database service is not configured.');return;}
+  if(!window.grabzoneD1){setStatus('⚠️ Local defaults — database service is not configured.');return;}
   sb=window.grabzoneD1;
   try{
     const session=await sb.auth.getSession();
@@ -292,7 +292,7 @@ async function safeInit(){
     applyPolicyToEditor();
     setStatus('Loading saved policy…');
 
-    if(!(C.supabaseUrl && !C.supabaseUrl.includes('PASTE_') && C.supabaseAnonKey && window.supabase)){
+    if(!window.grabzoneD1){
       setStatus('⚠️ Database service is not configured. Default policy is loaded.');
       return;
     }
