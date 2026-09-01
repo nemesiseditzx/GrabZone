@@ -68,6 +68,35 @@ function newToken(){
 function tokenHash(token){
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
+function authSecret(){
+  return process.env.D1_AUTH_SECRET||process.env.CF_API_TOKEN||process.env.CLOUDFLARE_API_TOKEN||process.env.CLOUDFLARE_API_KEY||'';
+}
+function base64url(value){
+  return Buffer.from(value).toString('base64').replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');
+}
+function createBridgeToken(user){
+  const exp=Math.floor(Date.now()/1000)+7*24*60*60;
+  const payload=base64url(JSON.stringify({sub:user.id,email:user.email,exp}));
+  const secret=authSecret();
+  if(!secret)throw new Error('D1 authentication secret is not configured.');
+  const sig=crypto.createHmac('sha256',secret).update(payload).digest('base64').replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');
+  return payload+'.'+sig;
+}
+function verifyBridgeToken(token){
+  const parts=String(token||'').split('.');
+  if(parts.length!==2)return null;
+  const secret=authSecret();
+  if(!secret)return null;
+  const expected=crypto.createHmac('sha256',secret).update(parts[0]).digest('base64').replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');
+  const a=Buffer.from(parts[1]);
+  const b=Buffer.from(expected);
+  if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return null;
+  try{
+    const payload=JSON.parse(Buffer.from(parts[0].replace(/-/g,'+').replace(/_/g,'/'),'base64').toString('utf8'));
+    if(!payload?.sub||!payload?.email||Number(payload.exp||0)<=Math.floor(Date.now()/1000))return null;
+    return payload;
+  }catch{return null}
+}
 
 function sessionCookie(token,maxAge){
   return `gz_admin_session=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
@@ -97,7 +126,11 @@ async function createSession(user){
 }
 
 async function currentSession(req){
-  const token=cookieValue(req,'gz_admin_session') || String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');
+  const cookieToken=cookieValue(req,'gz_admin_session');
+  const bearer=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'').trim();
+  const bridgeToken=verifyBridgeToken(bearer);
+  if(bridgeToken)return {id:bridgeToken.sub,email:bridgeToken.email,expires_at:new Date(bridgeToken.exp*1000).toISOString()};
+  const token=cookieToken || bearer;
   if(!token)return null;
   const r=await cfQuery(`SELECT u.id,u.email,s.expires_at
     FROM admin_sessions s
@@ -117,7 +150,7 @@ module.exports=async(req,res)=>{
     if(req.method==='GET'){
       const session=await currentSession(req);
       const sessionToken=cookieValue(req,'gz_admin_session');
-      return json(res,200,{authenticated:Boolean(session),user:session?{id:session.id,email:session.email}:null,session_token:session?sessionToken:null});
+      return json(res,200,{authenticated:Boolean(session),user:session?{id:session.id,email:session.email}:null,session_token:session?createBridgeToken({id:session.id,email:session.email}):null});
     }
 
     const action=String(req.body?.action||'login');
@@ -160,7 +193,8 @@ module.exports=async(req,res)=>{
 
     const session=await createSession(user);
     res.setHeader('Set-Cookie',sessionCookie(session.token,7*24*60*60));
-    return json(res,200,{ok:true,user:{id:user.id,email:user.email},expires_at:session.expires,session_token:session.token});
+    const bridgeToken=createBridgeToken({id:user.id,email:user.email});
+    return json(res,200,{ok:true,user:{id:user.id,email:user.email},expires_at:session.expires,session_token:bridgeToken});
   }catch(e){
     return json(res,500,{error:e.message||'Authentication failed.'});
   }
