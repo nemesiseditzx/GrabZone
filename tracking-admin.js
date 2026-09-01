@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 const C=window.GRABZONE_CONFIG||{};
-const sb=window.supabase&&C.supabaseUrl&&!String(C.supabaseUrl).includes('PASTE_') ? window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey) : null;
+const sb=window.grabzoneD1||null;
 const $=id=>document.getElementById(id);
 
 async function syncOrderToSheet(orderId){
