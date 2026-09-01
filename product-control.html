@@ -141,8 +141,8 @@ let editingProduct = null;
 let gallery = [];
 let dragIndex = null;
 
-if (C.supabaseUrl && C.supabaseAnonKey && window.supabase) {
-  sb = window.supabase.createClient(C.supabaseUrl, C.supabaseAnonKey);
+if (window.grabzoneD1) {
+  sb = window.grabzoneD1;
 }
 
 function esc(v){
