@@ -1,5 +1,4 @@
-const C=window.GRABZONE_CONFIG;let sb=null,newProductMainIndex=0;
-if(C&&!C.supabaseUrl.includes("PASTE_")&&window.supabase)sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
+const C=window.GRABZONE_CONFIG||{};let sb=window.grabzoneD1||null,newProductMainIndex=0;
 const $=id=>document.getElementById(id);
 
 /* GrabZone in-app notifications/dialogs — polished replacement for native browser popups. */
