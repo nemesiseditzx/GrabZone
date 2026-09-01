@@ -123,11 +123,31 @@
     const client = {
       auth: createAdminAuth(),
       __d1Request: async payload => {
+        // Refresh the D1-backed admin session first. This keeps the HttpOnly
+        // cookie and the optional sessionStorage bearer token in sync.
+        let adminToken=getAdminToken();
+        try{
+          const authResponse=await fetch('/api/admin-auth',{
+            method:'GET',
+            credentials:'same-origin',
+            cache:'no-store',
+            headers:adminToken?{Authorization:'Bearer '+adminToken}:{}
+          });
+          const authBody=await authResponse.json().catch(()=>({}));
+          if(authBody.session_token){
+            adminToken=authBody.session_token;
+            try{sessionStorage.setItem(adminTokenKey,adminToken)}catch{}
+          }
+          if(!authBody.authenticated)throw new Error('Admin session expired. Please sign in again.');
+        }catch(error){
+          throw new Error(error.message||'Admin authentication failed.');
+        }
+
         const response = await fetch('/api/d1', {
           method:'POST',
           credentials:'include',
           cache:'no-store',
-          headers:{'Content-Type':'application/json',...(getAdminToken()?{Authorization:'Bearer '+getAdminToken()}: {})},
+          headers:{'Content-Type':'application/json',...(adminToken?{Authorization:'Bearer '+adminToken}: {})},
           body:JSON.stringify(payload)
         });
         const body = await response.json().catch(() => ({}));
