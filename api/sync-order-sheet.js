@@ -326,6 +326,6 @@ async function sheetsRequest(method,url,headers,body){
 async function getJson(url,headers){
   const r=await fetch(url,{headers});
   const data=await r.json().catch(()=>[]);
-  if(!r.ok)throw new Error(data?.message||data?.error||'Supabase request failed.');
+  if(!r.ok)throw new Error(data?.message||data?.error||'Database request failed.');
   return data;
 }
