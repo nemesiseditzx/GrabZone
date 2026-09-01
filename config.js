@@ -1,7 +1,7 @@
 window.GRABZONE_CONFIG = {
   supabaseUrl: "",
   supabaseAnonKey: "",
-  backendUrl: "https://grabzone.nemesiseditzx984.workers.dev",
+  backendUrl: "/api",
   storeName: "GRABZONE",
   tagline: "Grab What's Trending.",
   currency: "৳",
