@@ -57,8 +57,20 @@ async function verifyAdmin(req){
   }
 
   const auth=String(req.headers.authorization||'');
-  if(!auth.startsWith('Bearer '))return false;
-  // Legacy bearer sessions are intentionally no longer trusted.
+  if(auth.startsWith('Bearer ')){
+    const bearer=auth.slice(7).trim();
+    if(bearer){
+      const session=await cfQuery(
+        `SELECT u.id
+         FROM admin_sessions s
+         JOIN admin_users u ON u.id=s.admin_user_id
+         WHERE s.token_hash=? AND s.expires_at>?
+         LIMIT 1`,
+        [sessionTokenHash(bearer),new Date().toISOString()]
+      );
+      if(session.results?.[0])return true;
+    }
+  }
   return false;
 }
 
