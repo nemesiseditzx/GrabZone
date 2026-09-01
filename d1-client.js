@@ -76,7 +76,7 @@
         return {
           data:{
             session:{
-              access_token:'cookie',
+              access_token:getAdminToken(),
               user:body.user,
               expires_at:null
             }
