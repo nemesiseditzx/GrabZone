@@ -3,7 +3,17 @@
 const KEY='gz_d1_bridge_token';
 function getToken(){try{return localStorage.getItem(KEY)||sessionStorage.getItem(KEY)||''}catch{return''}}
 function setToken(t){try{if(t){localStorage.setItem(KEY,t);sessionStorage.setItem(KEY,t)}else{localStorage.removeItem(KEY);sessionStorage.removeItem(KEY)}}catch{}}
-async function refreshBridgeToken(){try{const r=await fetch('/api/admin-auth',{method:'GET',credentials:'include',cache:'no-store',headers:{'Cache-Control':'no-cache'}}),b=await r.json().catch(()=>({}));if(!r.ok||!b.authenticated||!b.session_token){setToken('');return''}setToken(b.session_token);return b.session_token}catch{return''}}
+async function refreshBridgeToken(){
+ try{
+  const existing=getToken();
+  const r=await fetch('/api/admin-auth',{method:'GET',credentials:'include',cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+  const b=await r.json().catch(()=>({}));
+  if(r.ok&&b.authenticated&&b.session_token){setToken(b.session_token);return b.session_token}
+  /* Some deployments sit behind a proxy that does not forward the HttpOnly
+     admin cookie. Keep the signed bridge token; /api/d1 can verify it directly. */
+  return existing;
+ }catch{return getToken()}
+}
 async function request(payload,retried=false){
  const h={'Content-Type':'application/json','Cache-Control':'no-cache'},t=getToken();if(t)h.Authorization='Bearer '+t;
  const r=await fetch('/api/d1',{method:'POST',headers:h,credentials:'include',cache:'no-store',body:JSON.stringify(payload)});
