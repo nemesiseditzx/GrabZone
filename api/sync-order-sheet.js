@@ -1,3 +1,5 @@
+const {d1Query}=require('./d1-server');
+
 module.exports = async function handler(req,res){
   if(req.method!=='POST') return res.status(405).json({error:'Method not allowed'});
 
@@ -12,16 +14,12 @@ module.exports = async function handler(req,res){
 
     const token=await getGoogleAccessToken();
     const headers={Authorization:'Bearer '+token,'Content-Type':'application/json'};
-    const secret=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if(!process.env.SUPABASE_URL||!secret) throw new Error('Supabase server credentials are not configured.');
-    const sbHeaders={apikey:secret,Authorization:'Bearer '+secret};
-
     const spreadsheetId=process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
     const base='https://sheets.googleapis.com/v4/spreadsheets/'+encodeURIComponent(spreadsheetId);
 
     await ensureBusinessSheets(headers,spreadsheetId);
 
-    const result=await rebuildAllSheets(headers,base,sbHeaders,{orderId,full:syncAll||!orderId});
+    const result=await rebuildAllSheets(headers,base,{orderId,full:syncAll||!orderId});
     return res.status(200).json({ok:true,...result});
   }catch(e){
     console.error('Google Sheets sync:',e);
@@ -42,23 +40,9 @@ function formatBangladeshDateTime(value){
 }
 
 async function rebuildAllSheets(headers,base,sbHeaders,{orderId='',full=true}={}){
-  const refs=await getJson(
-    process.env.SUPABASE_URL+'/rest/v1/referral_codes?select=*&order=created_at.asc',
-    sbHeaders
-  );
-  const admins=Array.isArray(refs)?refs:[];
-
-  const orders=await getJson(
-    process.env.SUPABASE_URL+'/rest/v1/orders?select=*&order=created_at.asc',
-    sbHeaders
-  );
-  const orderList=Array.isArray(orders)?orders:[];
-
-  const items=await getJson(
-    process.env.SUPABASE_URL+'/rest/v1/order_items?select=*&order=id.asc',
-    sbHeaders
-  );
-  const itemList=Array.isArray(items)?items:[];
+  const admins=(await d1Query('SELECT * FROM referral_codes ORDER BY created_at ASC')).results||[];
+  const orderList=(await d1Query('SELECT * FROM orders ORDER BY created_at ASC')).results||[];
+  const itemList=(await d1Query('SELECT * FROM order_items ORDER BY id ASC')).results||[];
 
   const itemsByOrder=new Map();
   for(const item of itemList){
