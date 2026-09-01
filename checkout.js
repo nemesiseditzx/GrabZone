@@ -305,14 +305,14 @@ async function hydrate(){
 }
 async function syncOrderToSheet(orderId){
   try{
-    const response=await fetch('/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
+    const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
     if(!response.ok) console.warn('GrabZone Google Sheets sync:',await response.text().catch(()=>''));
   }catch(e){console.warn('GrabZone Google Sheets sync:',e)}
 }
 
 async function sendOrderEmail(orderNumber,type='order_created'){
   try{
-    const response=await fetch('/api/send-order-email',{
+    const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({orderNumber,type})
