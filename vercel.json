@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://grabzone.nemesiseditzx984.workers.dev/api/:path*" }
+  ],
+  "cleanUrls": true
+}
