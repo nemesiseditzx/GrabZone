@@ -9,7 +9,7 @@ function setToken(t){try{if(t){localStorage.setItem(KEY,t);sessionStorage.setIte
 async function refreshBridgeToken(){
  try{
   const existing=getToken();
-  const headers={'Cache-Control':'no-cache'}; if(existing)headers.Authorization='Bearer '+existing;
+  const headers={'Cache-Control':'no-cache'}; if(existing){headers.Authorization='Bearer '+existing;headers['X-GrabZone-Token']=existing;}
   const r=await fetch(apiPath('/api/admin-auth'),{method:'GET',credentials:'omit',cache:'no-store',headers});
   const b=await r.json().catch(()=>({}));
   if(r.ok&&b.authenticated&&b.session_token){setToken(b.session_token);return b.session_token}
@@ -19,7 +19,7 @@ async function refreshBridgeToken(){
  }catch{return getToken()}
 }
 async function request(payload,retried=false){
- const h={'Content-Type':'application/json','Cache-Control':'no-cache'},t=getToken();if(t)h.Authorization='Bearer '+t;
+ const h={'Content-Type':'application/json','Cache-Control':'no-cache'},t=getToken();if(t){h.Authorization='Bearer '+t;h['X-GrabZone-Token']=t;}
  const r=await fetch(apiPath('/api/d1'),{method:'POST',headers:h,credentials:'omit',cache:'no-store',body:JSON.stringify(payload)});
  const b=await r.json().catch(()=>({}));
  if(r.status===401&&!retried){const fresh=await refreshBridgeToken();if(fresh)return request(payload,true)}
@@ -36,7 +36,7 @@ window.grabzoneD1={from:builder,rpc:(fn,args={})=>request({type:'rpc',fn,args}),
  async getSession(){
  try{
   const existing=getToken();
-  const headers={'Cache-Control':'no-cache'};if(existing)headers.Authorization='Bearer '+existing;
+  const headers={'Cache-Control':'no-cache'};if(existing){headers.Authorization='Bearer '+existing;headers['X-GrabZone-Token']=existing;}
   const r=await fetch(apiPath('/api/admin-auth'),{method:'GET',credentials:'omit',cache:'no-store',headers});
   const b=await r.json().catch(()=>({}));
   const bridge=(r.ok&&b.authenticated&&b.session_token)?b.session_token:existing;
