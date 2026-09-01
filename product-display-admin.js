@@ -1,6 +1,6 @@
 /* =========================================================
    GRABZONE PRODUCT DISPLAY CONTROL
-   Requires the existing authenticated Supabase client `sb`.
+   Uses the existing authenticated D1 client `sb`.
 ========================================================= */
 
 (function(){
@@ -14,7 +14,7 @@
 
   async function gzPDSession(){
     if(typeof sb === "undefined" || !sb){
-      throw new Error("Supabase is not configured.");
+      throw new Error("Database service is not configured.");
     }
 
     const {data,error} =
