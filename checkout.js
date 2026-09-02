@@ -9,7 +9,7 @@ const BUY_NOW_KEY='grabzone_buy_now_v2';
 const currency=C.currency||'৳';
 const flatShippingCharge=130;
 
-let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0};
+let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},grabPointsState={balance:0,use:0,discount:0};
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const read=(key,fallback)=>{try{const v=JSON.parse(localStorage.getItem(key)||'null');return v??fallback}catch{return fallback}};
@@ -222,7 +222,9 @@ function formData(){
     district:$('district').value.trim(),
     upazila:$('upazila').value.trim(),
     address:$('address').value.trim(),
-    referral_code:$('referralCode').value.trim().toUpperCase()
+    referral_code:$('referralCode').value.trim().toUpperCase(),
+    grabpoints_tracking_id:$('grabpointsTracking')?.value.trim().toUpperCase()||'',
+    grabpoints_redeem:Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0)))
   };
 }
 function validate(d){
@@ -252,12 +254,13 @@ function render(){
     <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
-  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||''),discount=Number(referralState.discount||0);
+  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||''),discount=Number(referralState.discount||0),pointsDiscount=Number(grabPointsState.discount||0);
   $('checkoutSubtotal').textContent=money(sub);
   $('checkoutShipping').textContent=money(shipping);
   $('checkoutDiscount').textContent='-'+money(discount);
   $('checkoutDiscountRow').hidden=discount<=0;
-  $('checkoutTotal').textContent=money(Math.max(0,sub+shipping-discount));
+  const pointsRow=$('checkoutPointsRow');if(pointsRow)pointsRow.hidden=pointsDiscount<=0;const pointsEl=$('checkoutPointsDiscount');if(pointsEl)pointsEl.textContent='-'+money(pointsDiscount);
+  $('checkoutTotal').textContent=money(Math.max(0,sub+shipping-discount-pointsDiscount));
   renderDeliveryEta();
 }
 async function applyReferral(){
@@ -346,7 +349,7 @@ function openOrderConfirm(d){
     const modal=$('orderConfirmModal');
     if(!modal){resolve(window.confirm('Please review your order details carefully before placing the order.'));return}
     const shipping=shippingForLocation(d.division);
-    const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0));
+    const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0));
     const address=[d.address,d.upazila,d.district,d.division].filter(Boolean).join(', ');
     $('confirmCustomer').textContent=d.customer_name||'—';
     $('confirmPhone').textContent=d.phone||'—';
@@ -395,7 +398,7 @@ async function submit(e){
     referral_code:d.referral_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
     items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price)})),
-    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0))
+    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),grabpoints_redeem:Number(grabPointsState.use||0),grabpoints_tracking_id:String($('grabpointsTracking')?.value||'').trim().toUpperCase(),total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0))
   };
   try{
     if(!sb)throw new Error('Order service is not configured.');
@@ -438,7 +441,9 @@ async function submit(e){
         shipping_charge:130,
         subtotal:subtotal(),
         referral_discount:Number(referralState.discount||0),
-        total:Math.max(0,subtotal()+130-Number(referralState.discount||0)),
+        points_redeemed:Number(order.points_redeemed||grabPointsState.use||0),
+        points_discount:Number(order.points_discount||grabPointsState.discount||0),
+        total:Math.max(0,subtotal()+130-Number(referralState.discount||0)-Number(order.points_discount||grabPointsState.discount||0)),
         public_tracking_id:privateTrackingId
       },
       checkoutItems.map(i=>({
@@ -464,6 +469,33 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('district')?.addEventListener('change',onDistrictChange);
   bindLocationPickers();
   $('applyReferralBtn')?.addEventListener('click',applyReferral);
+  async function checkGrabPoints(){
+    const phone=String($('customerPhone')?.value||'').replace(/\D/g,'');
+    const bal=$('grabpointsBalance'),msgp=$('grabpointsMsg');
+    if(!/^01[3-9]\d{8}$/.test(phone)){if(bal)bal.textContent='Enter your phone';if(msgp)msgp.textContent='Enter a valid mobile number first.';return}
+    try{
+      const{data,error}=await sb.rpc('grabpoints_balance',{p_phone:phone});
+      if(error)throw error;
+      grabPointsState.balance=Number(data?.points||0);
+      if(bal)bal.textContent=grabPointsState.balance+' GP · ৳'+Number(data?.value||0).toLocaleString('en-BD')+' value';
+      if(msgp)msgp.textContent=grabPointsState.balance?'Your points are ready to use.':'No GrabPoints yet. Points are added after delivered orders.';
+    }catch(e){if(msgp)msgp.textContent='Could not check points right now.'}
+  }
+  function applyGrabPoints(){
+    const requested=Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0)));
+    const msgp=$('grabpointsMsg');
+    if(!requested){grabPointsState={...grabPointsState,use:0,discount:0};if(msgp)msgp.textContent='Points discount cleared.';render();return}
+    if(requested%10!==0){if(msgp)msgp.textContent='Use points in multiples of 10.';return}
+    if(requested>Number(grabPointsState.balance||0)){if(msgp)msgp.textContent='Not enough GrabPoints.';return}
+    const discount=Math.min(subtotal(),requested/10);
+    grabPointsState={...grabPointsState,use:requested,discount};
+    if(msgp)msgp.textContent='✓ '+requested+' GP applied · ৳'+discount.toLocaleString('en-BD')+' off. A previous Delivered Tracking ID is required at checkout.';
+    render();
+  }
+  $('checkGrabPoints')?.addEventListener('click',checkGrabPoints);
+  $('applyGrabPoints')?.addEventListener('click',applyGrabPoints);
+  $('customerPhone')?.addEventListener('blur',checkGrabPoints);
+
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
   await loadLocations();await loadSite();await hydrate();
 });
