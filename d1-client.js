@@ -23,7 +23,7 @@ async function parse(r){
 async function api(path,options={},includeToken=true){
  const h={'Content-Type':'application/json','Accept':'application/json',...(options.headers||{})};
  const token=includeToken?read(TOKEN_KEY):'';
- if(token&&!h.Authorization)h.Authorization='Bearer '+token;
+ if(token){if(!h.Authorization)h.Authorization='Bearer '+token;h['X-GrabZone-Token']=token;}
  return parse(await fetch(BASE+path,{...options,headers:h}));
 }
 async function d1(payload){
