@@ -179,7 +179,11 @@ async function sendOrderEmail(orderNumber,type='status_updated',statusOverride='
   const session=await sb.auth.getSession(), token=session?.data?.session?.access_token;
   const headers={'Content-Type':'application/json'};
   if(token)headers.Authorization='Bearer '+token;
-  const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{method:'POST',headers,body:JSON.stringify({orderNumber,type,status:statusOverride||orders.find(x=>x.order_number===orderNumber)?.status||''})});
+  const payload=JSON.stringify({orderNumber,type,status:statusOverride||orders.find(x=>x.order_number===orderNumber)?.status||''});
+  const base=String(C.backendUrl||'').replace(/\\/$/,'');
+  let response=await fetch(base+'/api/send-order-email',{method:'POST',headers,body:payload});
+  // Compatibility fallback for older Worker deployments that exposed the route without /api.
+  if(response.status===404)response=await fetch(base+'/send-order-email',{method:'POST',headers,body:payload});
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.error||'Receipt email could not be sent.');
   return true;
