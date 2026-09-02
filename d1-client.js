@@ -27,6 +27,10 @@ async function api(path,options={},includeToken=true,retryAuth=true){
  const response=await fetch(BASE+path,{...options,headers:h,credentials:'include',cache:'no-store'});
  if(response.status===401&&includeToken&&retryAuth&&path!=='/api/admin-auth'){
    try{
+     // A D1 migration or Worker redeploy can invalidate the raw token kept in
+     // localStorage while the secure HttpOnly session cookie is still valid.
+     // Drop the stale bearer first and let /api/admin-auth recover from cookie.
+     write(TOKEN_KEY,'');userWrite(null);
      const refresh=await fetch(BASE+'/api/admin-auth',{method:'GET',headers:{Accept:'application/json'},credentials:'include',cache:'no-store'});
      const session=await refresh.json().catch(()=>null);
      if(refresh.ok&&session?.authenticated&&session?.session_token){
