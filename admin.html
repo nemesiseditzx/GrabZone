@@ -497,6 +497,16 @@ body.gz-gallery-dragging-active{
           Drops
         </span>
       </button>
+      <button
+        class="side-link"
+        data-tab="loyalty"
+        type="button"
+      >
+        🎮
+        <span>
+          GrabPoints
+        </span>
+      </button>
 
 
       <button
@@ -1998,6 +2008,22 @@ body.gz-gallery-dragging-active{
   <div class="panel"><h2>Scheduled & Active Drops</h2><p class="muted">Manage product drops here.</p><div id="dropList"></div></div>
 </section>
 
+<!-- GRABPOINTS -->
+<section id="tab-loyalty" class="tab">
+  <div class="section-head">
+    <div><h1>🎮 GrabPoints</h1><p>Phone-based loyalty rewards for repeat customers.</p></div>
+    <button class="primary" type="button" onclick="gzLoadLoyalty()">↻ Refresh</button>
+  </div>
+  <div class="panel">
+    <h2>How it works</h2>
+    <p class="muted">Customers earn <b>10 GP per ৳1,000</b> after an order is marked Delivered. <b>100 GP = ৳10 off.</b> A previous Delivered Tracking ID is required to redeem points at checkout.</p>
+  </div>
+  <div class="panel">
+    <h2>Customer balances</h2>
+    <div id="loyaltyList"></div>
+  </div>
+</section>
+
 <!-- PRODUCTS -->
 
         <div class="panel">
@@ -2302,6 +2328,15 @@ async function gzEditDrop(id){
 }
 async function gzDisableDrop(id){const {error}=await sb.from('products').update({drop_enabled:false,updated_at:new Date().toISOString()}).eq('id',id);if(error)alert(error.message);else gzLoadDrops();}
 document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadDrops,800));
+</script>
+<script>
+async function gzLoadLoyalty(){
+ const list=document.getElementById('loyaltyList');if(!list)return;list.innerHTML='Loading…';
+ const {data,error}=await sb.from('customer_points').select('*').order('updated_at',{ascending:false});
+ if(error){list.textContent=error.message;return}
+ list.innerHTML=(data||[]).filter(x=>Number(x.points||0)>0||Number(x.total_earned||0)>0).map(x=>'<div class="item" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:15px"><div><b>'+esc(x.phone)+'</b><div class="meta">'+Number(x.total_earned||0)+' earned · '+Number(x.total_redeemed||0)+' redeemed</div></div><strong>'+Number(x.points||0)+' GP · ৳'+(Number(x.points||0)/10).toLocaleString('en-BD')+'</strong></div></div>').join('')||'<div class="empty">No GrabPoints customers yet.</div>';
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadLoyalty,900));
 </script>
 <script src="billboard-admin.js"></script>
   <script src="phase5-admin.js?v=20260902p5"></script>
