@@ -54,6 +54,54 @@ async function table(req,env,p,isAdmin){const table=String(p.table||"");if(!TABL
 async function rpc(env,fn,a,isAdmin){if(fn==="get_public_tracking_id"){const r=await q(env,"SELECT public_tracking_id FROM orders WHERE id=? LIMIT 1",[String(a.p_order_id||"")]);return{data:r.results?.[0]?.public_tracking_id||null}}if(fn==="validate_referral_code"){const code=String(a.p_code||"").trim().toUpperCase(),sub=Math.max(0,Number(a.p_subtotal||0));if(!code)return{data:{valid:false,discount:0,message:""}};const r=(await q(env,"SELECT * FROM referral_codes WHERE upper(code)=upper(?) AND active=1 LIMIT 1",[code])).results?.[0];if(!r)return{data:{valid:false,discount:0,message:"Invalid or inactive referral code."}};if(r.starts_at&&new Date(r.starts_at)>new Date())return{data:{valid:false,discount:0,message:"This referral code is not active yet."}};if(r.expires_at&&new Date(r.expires_at)<new Date())return{data:{valid:false,discount:0,message:"This referral code has expired."}};if(r.usage_limit!==null&&Number(r.used_count||0)>=Number(r.usage_limit))return{data:{valid:false,discount:0,message:"This referral code has reached its usage limit."}};if(sub<Number(r.min_order_amount||0))return{data:{valid:false,discount:0,message:"Minimum order amount for this code is ৳"+Number(r.min_order_amount||0).toLocaleString("en-BD")+"."}};let d=r.benefit_type==="percentage"?Math.round(sub*Number(r.benefit_value||0)/100*100)/100:Number(r.benefit_value||0);if(r.max_discount_amount!==null)d=Math.min(d,Number(r.max_discount_amount));d=Math.max(0,Math.min(d,sub));return{data:{valid:true,discount:d,code:String(r.code).toUpperCase(),label:r.benefit_type==="percentage"?r.benefit_value+"% off":"৳"+r.benefit_value+" off",admin_name:r.admin_name}}}
 if(fn==="track_public_order"){const id=String(a.p_tracking_id||"").trim().toUpperCase(),o=(await q(env,"SELECT * FROM orders WHERE upper(public_tracking_id)=upper(?) LIMIT 1",[id])).results?.[0];if(!o)throw new Error("Order not found. Please check your private Tracking ID.");const items=(await q(env,"SELECT product_name AS name,quantity,unit_price AS price FROM order_items WHERE order_id=? ORDER BY id",[o.id])).results||[];return{data:{trackingId:o.public_tracking_id,orderNumber:o.order_number,status:o.status,createdAt:o.created_at,updatedAt:o.updated_at,tracking:{number:o.tracking_number||"",courier:o.tracking_provider||"",url:o.tracking_url||""},items}}}
 if(fn==="create_public_order"){const p=a.payload||a,req=["customer_name","email","phone","division","district","upazila","address"];if(req.some(k=>!String(p[k]??"").trim()))throw new Error("Please complete all required fields.");if(!/^01[3-9]\d{8}$/.test(String(p.phone).trim()))throw new Error("Please enter a valid 11-digit Bangladesh mobile number (01XXXXXXXXX).");if(!Array.isArray(p.items)||!p.items.length)throw new Error("Your order is empty.");const shipping=String(p.division).trim().toLowerCase()==="dhaka"&&DHAKA_METRO.has(String(p.upazila).trim())?70:130;const t=now(),n=Number((await q(env,"SELECT COALESCE(MAX(order_no),0)+1 AS n FROM orders")).results?.[0]?.n||1),id=crypto.randomUUID(),orderNumber="GZ-"+String(n).padStart(4,"0"),tracking="GZ-"+crypto.randomUUID().replace(/-/g,"").slice(0,16).toUpperCase();const items=[];let subtotal=0;for(const x of p.items){const pr=(await q(env,"SELECT * FROM products WHERE id=? AND published=1 LIMIT 1",[String(x.product_id||"")])).results?.[0];if(!pr)throw new Error("One of the selected products is no longer available.");const qty=Math.max(1,parseInt(x.quantity,10)||1),line=Number(pr.price||0)*qty;subtotal+=line;items.push({id:crypto.randomUUID(),product_id:pr.id,product_name:pr.name,image_url:pr.image_url,quantity:qty,unit_price:Number(pr.price||0),line_total:line})}const code=String(p.referral_code||"").trim().toUpperCase()||null;let discount=0,admin=null;if(code){const r=(await q(env,"SELECT * FROM referral_codes WHERE upper(code)=upper(?) AND active=1 LIMIT 1",[code])).results?.[0];if(!r)throw new Error("Invalid or inactive referral code.");if(r.starts_at&&new Date(r.starts_at)>new Date())throw new Error("This referral code is not active yet.");if(r.expires_at&&new Date(r.expires_at)<new Date())throw new Error("This referral code has expired.");if(r.usage_limit!==null&&Number(r.used_count||0)>=Number(r.usage_limit))throw new Error("This referral code has reached its usage limit.");if(subtotal<Number(r.min_order_amount||0))throw new Error("Minimum order amount for this referral code is ৳"+Number(r.min_order_amount||0)+".");discount=r.benefit_type==="percentage"?Math.round(subtotal*Number(r.benefit_value||0)/100*100)/100:Number(r.benefit_value||0);if(r.max_discount_amount!==null)discount=Math.min(discount,Number(r.max_discount_amount));discount=Math.max(0,Math.min(discount,subtotal));admin=r.admin_name||null}const total=Math.max(0,subtotal+shipping-discount);const stmts=[env.DB.prepare("INSERT INTO orders(id,order_no,order_number,customer_name,email,phone,division,district,upazila,address,referral_code,referral_discount,discount_amount,referral_admin_name,payment_method,shipping_charge,subtotal,total,status,public_tracking_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,n,orderNumber,String(p.customer_name).trim(),String(p.email).trim().toLowerCase(),String(p.phone).trim(),String(p.division).trim(),String(p.district).trim(),String(p.upazila).trim(),String(p.address).trim(),code,discount,discount,admin,"Cash on Delivery",shipping,subtotal,total,"New",tracking,t,t),...items.map(i=>env.DB.prepare("INSERT INTO order_items(id,order_id,product_id,product_name,image_url,quantity,unit_price,line_total) VALUES(?,?,?,?,?,?,?,?)").bind(i.id,id,i.product_id,i.product_name,i.image_url,i.quantity,i.unit_price,i.line_total))];if(code)stmts.push(env.DB.prepare("UPDATE referral_codes SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?)").bind(t,code));await env.DB.batch(stmts);return{data:{id,order_number:orderNumber,public_tracking_id:tracking,subtotal,shipping_charge:shipping,referral_discount:discount,total,status:"New"}}}
+if(fn==="admin_analytics"){
+ if(!isAdmin)throw new Error("Unauthorized.");
+ const today=new Date();
+ const dayKey=d=>d.toISOString().slice(0,10);
+ const start=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate()-29));
+ const orders=(await q(env,"SELECT id,order_number,customer_name,email,phone,subtotal,total,status,created_at FROM orders WHERE created_at>=? ORDER BY created_at DESC",[start.toISOString()])).results||[];
+ const items=(await q(env,"SELECT order_id,product_name,quantity,unit_price,line_total FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE created_at>=?)",[start.toISOString()])).results||[];
+ const products=(await q(env,"SELECT id,name,price,published,created_at FROM products")).results||[];
+ const allOrderCount=Number((await q(env,"SELECT COUNT(*) AS n FROM orders")).results?.[0]?.n||0);
+ const allRevenue=Number((await q(env,"SELECT COALESCE(SUM(total),0) AS n FROM orders WHERE status NOT IN ('Cancelled')")).results?.[0]?.n||0);
+ const statusCounts={};
+ for(const o of orders)statusCounts[o.status||"New"]=(statusCounts[o.status||"New"]||0)+1;
+ const todayKey=dayKey(today);
+ const todayOrders=orders.filter(o=>String(o.created_at||"").slice(0,10)===todayKey);
+ const todaySales=todayOrders.filter(o=>o.status!=="Cancelled").reduce((n,o)=>n+Number(o.total||0),0);
+ const validOrders=orders.filter(o=>o.status!=="Cancelled");
+ const revenue30=validOrders.reduce((n,o)=>n+Number(o.total||0),0);
+ const customerMap=new Map();
+ for(const o of orders){
+   const key=String(o.phone||o.email||o.customer_name||"").trim().toLowerCase();
+   if(!key)continue;
+   const c=customerMap.get(key)||{name:o.customer_name||"Unknown",phone:o.phone||"",email:o.email||"",orders:0,spent:0,last:o.created_at};
+   c.orders++;
+   if(o.status!=="Cancelled")c.spent+=Number(o.total||0);
+   if(new Date(o.created_at)>new Date(c.last))c.last=o.created_at;
+   customerMap.set(key,c);
+ }
+ const customers=[...customerMap.values()];
+ const uniqueCustomers=customers.length;
+ const repeatCustomers=customers.filter(c=>c.orders>1).length;
+ const avgOrder=validOrders.length?revenue30/validOrders.length:0;
+ const pmap=new Map();
+ for(const i of items){
+   const p=pmap.get(i.product_name)||{name:i.product_name||"Unknown",units:0,revenue:0,orders:0};
+   p.units+=Number(i.quantity||0);p.revenue+=Number(i.line_total||0);p.orders++;
+   pmap.set(i.product_name,p);
+ }
+ const topProducts=[...pmap.values()].sort((a,b)=>b.revenue-a.revenue).slice(0,8);
+ const topCustomers=customers.sort((a,b)=>b.spent-a.spent).slice(0,8);
+ const trend=[];
+ for(let n=6;n>=0;n--){
+   const d=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate()-n));
+   const key=dayKey(d);
+   const xs=orders.filter(o=>String(o.created_at||"").slice(0,10)===key);
+   trend.push({date:key,orders:xs.length,revenue:xs.filter(o=>o.status!=="Cancelled").reduce((s,o)=>s+Number(o.total||0),0)});
+ }
+ return{data:{generatedAt:now(),allOrderCount,allRevenue,today:{orders:todayOrders.length,sales:todaySales},last30:{orders:orders.length,revenue:revenue30,avgOrder},statusCounts,customers:{unique:uniqueCustomers,repeat:repeatCustomers},topProducts,topCustomers,trend,productCount:products.length,publishedProducts:products.filter(p=>p.published).length}};
+}
 if(!isAdmin)throw new Error("Unauthorized.");throw new Error("Unsupported RPC.")}
 async function d1(req,env){await ensureSchema(env);if(req.method==="GET"){try{await q(env,"SELECT 1 AS ok");return json({ok:true,d1:true})}catch(e){return json({ok:false,d1:false,error:e.message},500)}}if(req.method!=="POST")return json({error:"Method not allowed."},405);let p={};try{p=await req.json()}catch{return json({error:"Invalid JSON."},400)}try{const pub=p.type==="rpc"&&["get_public_tracking_id","validate_referral_code","track_public_order","create_public_order"].includes(String(p.fn||""));const needs=p.type==="table"?p.action!=="select":p.type==="rpc"?!pub:true;const s=needs?await session(req,env):null;if(needs&&!s)throw new Error("Unauthorized.");return p.type==="table"?json(await table(req,env,p,!!s)):p.type==="rpc"?json(await rpc(env,p.fn,p.args||{},!!s)):json({error:"Invalid database request."},400)}catch(e){return json({error:e.message||"Database request failed."},/Unauthorized|authentication/i.test(e.message||"")?401:/Invalid|Unknown|Unsupported/i.test(e.message||"")?400:500)}}
 async function track(req,env){const id=new URL(req.url).searchParams.get("trackingId");if(!id)return json({error:"Tracking ID is required."},400);try{return json({success:true,order:(await rpc(env,"track_public_order",{p_tracking_id:id},false)).data})}catch(e){return json({error:e.message},404)}}
