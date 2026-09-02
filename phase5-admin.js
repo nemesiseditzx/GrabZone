@@ -24,7 +24,7 @@ async function reviews(){
  }catch(e){box.innerHTML='<div class="message">'+esc(e.message)+'</div>'}
 }
 async function reviewAction(id,action){
- try{const t=window.getToken?window.getToken():'';if(action==='delete'){if(!await gzUiConfirm('Delete this review permanently?'))return;let r=await fetch(BACKEND+'/api/product-reviews?id='+encodeURIComponent(id),{method:'DELETE',headers:{Authorization:'Bearer '+t},credentials:'include'});if(!r.ok)const er=await r.json().catch(()=>({}));throw Error(er.error||'Delete failed')}else{let row=document.querySelector('[data-id="'+CSS.escape(id)+'"]');let approved=row?.textContent.includes('Hide');let r=await fetch(BACKEND+'/api/product-reviews',{method:'PATCH',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({id,approved:!approved})});if(!r.ok)throw Error('Update failed')}reviews()}catch(e){gzUiToast(e.message,'error')}
+ try{const t=window.getToken?window.getToken():'';if(action==='delete'){if(!await gzUiConfirm('Delete this review permanently?'))return;let r=await fetch(BACKEND+'/api/product-reviews?id='+encodeURIComponent(id),{method:'DELETE',headers:{Authorization:'Bearer '+t},credentials:'include'});if(!r.ok){const er=await r.json().catch(()=>({}));throw Error(er.error||'Delete failed')}}else{let row=document.querySelector('[data-id="'+CSS.escape(id)+'"]');let approved=row?.textContent.includes('Hide');let r=await fetch(BACKEND+'/api/product-reviews',{method:'PATCH',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({id,approved:!approved})});if(!r.ok)throw Error('Update failed')}reviews()}catch(e){gzUiToast(e.message,'error')}
 }
 function inject(){
  if($('gzPhase5AdminPanel'))return;
