@@ -4,6 +4,34 @@ const C=window.GRABZONE_CONFIG||{};
 const sb=window.grabzoneD1||null;
 const $=id=>document.getElementById(id);
 
+async function adminBackendUpdateOrder(orderId,updates){
+  const sessionResult=await sb.auth.getSession();
+  const token=sessionResult?.data?.session?.access_token;
+  if(!token)throw new Error('Admin session expired. Please sign in again.');
+  const response=await fetch((C.backendUrl||'')+'/api/d1',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+    body:JSON.stringify({type:'table',action:'update',table:'orders',values:updates,filters:[{column:'id',op:'eq',value:orderId}]})
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'Order update failed.');
+  if(Number(data.count||0)<1)throw new Error('Order was not found in the live D1 database.');
+  return data;
+}
+async function sendTrackingStatusEmail(orderNumber){
+  const sessionResult=await sb.auth.getSession();
+  const token=sessionResult?.data?.session?.access_token;
+  if(!token)throw new Error('Admin session expired. Please sign in again.');
+  const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+    body:JSON.stringify({orderNumber,type:'status_updated'})
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'Customer email could not be sent.');
+  return data;
+}
+
 async function syncOrderToSheet(orderId){
   try{
     const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
@@ -105,18 +133,40 @@ async function save(id){
   const status=document.querySelector('[data-track-status="'+CSS.escape(id)+'"]')?.value;
   if(url&&!/^https?:\/\//i.test(url)){if(msg)msg.textContent='⚠ Tracking URL must start with http:// or https://.';return;}
   try{
-    const {error}=await sb.from('orders').update({tracking_provider:provider,tracking_number:number,tracking_url:url,status:status||'New',updated_at:new Date().toISOString()}).eq('id',id);
-    if(error)throw error;
     const item=rows.find(x=>x.id===id);
-    if(item){item.tracking_provider=provider;item.tracking_number=number;item.tracking_url=url;item.status=status;}
+    const previousStatus=String(item?.status||'New');
+    const nextStatus=String(status||'New');
+    await adminBackendUpdateOrder(id,{
+      tracking_provider:provider,
+      tracking_number:number,
+      tracking_url:url,
+      status:nextStatus,
+      shipping_charge:130,
+      updated_at:new Date().toISOString()
+    });
+    if(item){
+      item.tracking_provider=provider;
+      item.tracking_number=number;
+      item.tracking_url=url;
+      item.status=nextStatus;
+    }
+    let emailSent=true;
+    if(nextStatus!==previousStatus){
+      try{await sendTrackingStatusEmail(item?.order_number||'');}
+      catch(e){emailSent=false;console.warn('Tracking status email:',e);}
+    }
     await syncOrderToSheet(id);
-    if(msg){msg.textContent='✓ Tracking saved. Customer Track Your Order is now updated.';msg.style.color='#176b2c';}
+    if(msg){
+      msg.textContent=emailSent
+        ?'✓ Tracking saved. Customer Track Your Order and the status email are updated.'
+        :'✓ Tracking saved. Customer Track Your Order is updated, but the status email could not be sent.';
+      msg.style.color=emailSent?'#176b2c':'#a00';
+    }
   }catch(e){
     console.error(e);
     if(msg){msg.textContent='⚠ '+(e.message||'Could not save tracking.');msg.style.color='#a00';}
   }
 }
-
 document.addEventListener('DOMContentLoaded',inject);
 window.gzLoadTracking=load;
 })();
