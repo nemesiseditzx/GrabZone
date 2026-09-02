@@ -2446,29 +2446,45 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadMystery,1000))
 <script>
 async function gzLoadGrowth(){
   try{
-    const {data,error}=await sb.from('site_settings').select('grabpoints_enabled,grabpoints_earn_rate,grabpoints_value,mystery_enabled,mystery_min_percent,mystery_max_percent').eq('id',1).maybeSingle();
-    if(error)throw error;
-    $('growthGpEnabled').value=Number(data?.grabpoints_enabled??1)?'1':'0';
-    $('growthGpEarnRate').value=Number(data?.grabpoints_earn_rate??10);
-    $('growthGpValue').value=Number(data?.grabpoints_value??0.1);
-    $('growthMysteryEnabled').value=Number(data?.mystery_enabled??0)?'1':'0';
-    $('growthMysteryMin').value=Number(data?.mystery_min_percent??5);
-    $('growthMysteryMax').value=Number(data?.mystery_max_percent??15);
-    $('growthGpStatus').textContent=Number(data?.grabpoints_enabled??1)?'ACTIVE':'OFF';
-    $('growthMysteryStatus').textContent=Number(data?.mystery_enabled??0)?'ACTIVE':'OFF';
+    const r=await gzD1({type:"table",table:"site_settings",action:"select",columns:"grabpoints_enabled,grabpoints_earn_rate,grabpoints_value,mystery_enabled,mystery_min_percent,mystery_max_percent",filters:[{column:"id",op:"eq",value:1}],single:"maybe"});
+    const data=r.data||{};
+    $('growthGpEnabled').value=Number(data.grabpoints_enabled??1)?'1':'0';
+    $('growthGpEarnRate').value=Number(data.grabpoints_earn_rate??10);
+    $('growthGpValue').value=Number(data.grabpoints_value??0.1);
+    $('growthMysteryEnabled').value=Number(data.mystery_enabled??0)?'1':'0';
+    $('growthMysteryMin').value=Number(data.mystery_min_percent??5);
+    $('growthMysteryMax').value=Number(data.mystery_max_percent??15);
+    $('growthGpStatus').textContent=Number(data.grabpoints_enabled??1)?'ACTIVE':'OFF';
+    $('growthMysteryStatus').textContent=Number(data.mystery_enabled??0)?'ACTIVE':'OFF';
+    $('growthGpMsg').textContent='';
   }catch(e){$('growthGpMsg').textContent='✕ '+e.message}
 }
 async function gzSaveGrowth(){
   const gpEnabled=Number($('growthGpEnabled').value),earn=Math.max(0,Number($('growthGpEarnRate').value||0)),value=Math.max(0,Number($('growthGpValue').value||0)),mEnabled=Number($('growthMysteryEnabled').value),mMin=Math.max(1,Number($('growthMysteryMin').value||5)),mMax=Math.max(mMin,Number($('growthMysteryMax').value||15));
   const msg=$('growthGpMsg');
   try{
-    const {error}=await sb.from('site_settings').update({grabpoints_enabled:gpEnabled,grabpoints_earn_rate:earn,grabpoints_value:value,mystery_enabled:mEnabled,mystery_min_percent:mMin,mystery_max_percent:mMax,updated_at:new Date().toISOString()}).eq('id',1);
-    if(error)throw error;
+    await gzD1({type:"table",table:"site_settings",action:"update",filters:[{column:"id",op:"eq",value:1}],values:{grabpoints_enabled:gpEnabled,grabpoints_earn_rate:earn,grabpoints_value:value,mystery_enabled:mEnabled,mystery_min_percent:mMin,mystery_max_percent:mMax}});
     msg.textContent='✓ Phase B settings saved.';
     $('growthGpStatus').textContent=gpEnabled?'ACTIVE':'OFF';$('growthMysteryStatus').textContent=mEnabled?'ACTIVE':'OFF';
   }catch(e){msg.textContent='✕ '+e.message}
 }
+async function gzLoadMystery(){
+ try{
+  const r=await gzD1({type:"table",table:"site_settings",action:"select",columns:"mystery_enabled,mystery_min_percent,mystery_max_percent",filters:[{column:"id",op:"eq",value:1}],single:"maybe"}),data=r.data||{};
+  $('mysteryEnabled').value=Number(data.mystery_enabled??0)?'1':'0';
+  $('mysteryMin').value=Number(data.mystery_min_percent??5);
+  $('mysteryMax').value=Number(data.mystery_max_percent??15);
+ }catch(e){$('mysteryMsg').textContent='✕ '+e.message}
+}
+async function gzSaveMystery(){
+ const enabled=Number($('mysteryEnabled').value),min=Math.max(1,Number($('mysteryMin').value||5)),max=Math.max(min,Number($('mysteryMax').value||15)),msg=$('mysteryMsg');
+ try{
+  await gzD1({type:"table",table:"site_settings",action:"update",filters:[{column:"id",op:"eq",value:1}],values:{mystery_enabled:enabled,mystery_min_percent:min,mystery_max_percent:max}});
+  msg.textContent='✓ Mystery Deal settings saved.';
+ }catch(e){msg.textContent='✕ '+e.message}
+}
 document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadGrowth,1100));
+document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadMystery,1000));
 </script>
 <script src="billboard-admin.js"></script>
   <script src="phase5-admin.js?v=20260902p5"></script>
