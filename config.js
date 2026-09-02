@@ -1,6 +1,4 @@
 window.GRABZONE_CONFIG = {
-  supabaseUrl: "https://omfmecdugwadwskennyr.supabase.co",
-  supabaseAnonKey: "sb_publishable_mO4ASdgjeNFnoxxls8YDlg_hm1qsNSu",
   backendUrl: "https://grabzone.nemesiseditzx984.workers.dev",
   storeName: "GRABZONE",
   tagline: "Grab What's Trending.",
