@@ -90,7 +90,7 @@ const auth={
  },
  async getSession(){
   try{
-   const b=await api('/api/admin-auth',{method:'GET'},true);
+   const b=await api('/api/admin-auth',{method:'GET'},false);
    if(!b?.authenticated||!b.session_token){
     write(TOKEN_KEY,'');userWrite(null);
     return {data:{session:null},error:null};
