@@ -157,6 +157,29 @@
       <div class="security-note">🛡️ Your information is used only to process and verify your GrabZone order.</div>
     </aside>
   </div>
+  <div id="orderConfirmModal" class="order-confirm-modal" hidden aria-hidden="true">
+    <div class="order-confirm-backdrop" data-confirm-cancel></div>
+    <section class="order-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="orderConfirmTitle">
+      <button type="button" class="order-confirm-close" data-confirm-cancel aria-label="Close">×</button>
+      <div class="order-confirm-icon">✓</div>
+      <span class="order-confirm-eyebrow">GRABZONE • FINAL CHECK</span>
+      <h2 id="orderConfirmTitle">Ready to place your order?</h2>
+      <p class="order-confirm-subtitle">একবার দেখে নিন — সব তথ্য ঠিক থাকলে অর্ডারটি নিশ্চিত করুন।</p>
+      <div class="order-confirm-summary">
+        <div><span>Customer</span><strong id="confirmCustomer">—</strong></div>
+        <div><span>Phone</span><strong id="confirmPhone">—</strong></div>
+        <div><span>Delivery</span><strong id="confirmAddress">—</strong></div>
+        <div><span>Payment</span><strong>Cash on Delivery</strong></div>
+      </div>
+      <div class="order-confirm-total"><span>Total</span><strong id="confirmTotal">৳0</strong></div>
+      <p class="order-confirm-note">আপনার অর্ডার দেওয়ার পর আমাদের টিম প্রয়োজন হলে ফোন করে তথ্য যাচাই করবে।</p>
+      <div class="order-confirm-actions">
+        <button type="button" class="confirm-secondary" data-confirm-cancel>Go Back</button>
+        <button type="button" class="confirm-primary" data-confirm-ok>✓ Confirm Order</button>
+      </div>
+    </section>
+  </div>
+
 </main>
 
 <script src="config.js"></script>
