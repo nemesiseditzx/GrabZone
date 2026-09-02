@@ -75,8 +75,6 @@ const auth={
  },
  async getSession(){
   try{
-   let token=read(TOKEN_KEY);
-   if(!token)return {data:{session:null},error:null};
    const b=await api('/api/admin-auth',{method:'GET'},true);
    if(!b?.authenticated||!b.session_token){
     write(TOKEN_KEY,'');userWrite(null);
