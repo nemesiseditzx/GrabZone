@@ -83,3 +83,4 @@ async function handle(req,env){
  }
 }
 addEventListener("fetch",event=>event.respondWith(handle(event.request,self)));
+// Deployment trigger: latest Worker entrypoint fix
