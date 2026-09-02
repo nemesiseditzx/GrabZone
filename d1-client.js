@@ -25,13 +25,13 @@ async function refreshSession(){
  if(authRefreshPromise)return authRefreshPromise;
  authRefreshPromise=(async()=>{
   const current=read(TOKEN_KEY);
-  const headers={Accept:'application/json'};
-  if(current)headers.Authorization='Bearer '+current;
-  const requestSession=async(extraHeaders={})=>{
+  const requestSession=async(token='')=>{
    try{
+    const headers={Accept:'application/json'};
+    if(token)headers.Authorization='Bearer '+token;
     const response=await fetch(BASE+'/api/admin-auth',{
      method:'GET',
-     headers:{...headers,...extraHeaders},
+     headers,
      credentials:'same-origin',
      cache:'no-store'
     });
@@ -43,11 +43,11 @@ async function refreshSession(){
   // First validate the cached D1 token. If it is stale, fall back to the
   // HttpOnly D1 session cookie instead of immediately declaring the admin
   // logged out. This is important after the auth migration from Supabase.
-  let session=await requestSession();
+  let session=await requestSession(current);
   if(!session&&current){
     write(TOKEN_KEY,'');
     userWrite(null);
-    session=await requestSession({});
+    session=await requestSession('');
   }
   if(session?.authenticated&&session?.session_token){
     write(TOKEN_KEY,session.session_token);
