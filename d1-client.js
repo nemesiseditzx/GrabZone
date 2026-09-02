@@ -27,26 +27,32 @@ async function refreshSession(){
   const current=read(TOKEN_KEY);
   const headers={Accept:'application/json'};
   if(current)headers.Authorization='Bearer '+current;
-  try{
-   const response=await fetch(BASE+'/api/admin-auth',{
-    method:'GET',
-    headers,
-    credentials:'same-origin',
-    cache:'no-store'
-   });
-   const session=await response.json().catch(()=>null);
-   if(response.ok&&session?.authenticated&&session?.session_token){
+  const requestSession=async(extraHeaders={})=>{
+   try{
+    const response=await fetch(BASE+'/api/admin-auth',{
+     method:'GET',
+     headers:{...headers,...extraHeaders},
+     credentials:'same-origin',
+     cache:'no-store'
+    });
+    const session=await response.json().catch(()=>null);
+    if(response.ok&&session?.authenticated&&session?.session_token)return session;
+   }catch{}
+   return null;
+  };
+  // First validate the cached D1 token. If it is stale, fall back to the
+  // HttpOnly D1 session cookie instead of immediately declaring the admin
+  // logged out. This is important after the auth migration from Supabase.
+  let session=await requestSession();
+  if(!session&&current){
+    write(TOKEN_KEY,'');
+    userWrite(null);
+    session=await requestSession({});
+  }
+  if(session?.authenticated&&session?.session_token){
     write(TOKEN_KEY,session.session_token);
     userWrite(session.user||null);
     return session;
-   }
-  }catch{}
-  // Never trust a cached token after the Worker rejects it.
-  // A previous Supabase/D1 token can otherwise make the admin UI look
-  // authenticated while every protected D1 endpoint returns 401.
-  if(current){
-    write(TOKEN_KEY,'');
-    userWrite(null);
   }
   return null;
  })().finally(()=>{authRefreshPromise=null});
