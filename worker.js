@@ -83,5 +83,5 @@ async function handle(req,env){
   return cors(json({error:e?.message||"Internal server error."},500));
  }
 }
-addEventListener("fetch",event=>event.respondWith(handle(event.request,self)));
+export default { fetch: handle };
 // Deployment trigger: latest Worker entrypoint fix
