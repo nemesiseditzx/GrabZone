@@ -20,11 +20,22 @@ async function parse(r){
  }
  return b;
 }
-async function api(path,options={},includeToken=true){
+async function api(path,options={},includeToken=true,retryAuth=true){
  const h={'Content-Type':'application/json','Accept':'application/json',...(options.headers||{})};
  const token=includeToken?read(TOKEN_KEY):'';
  if(token){if(!h.Authorization)h.Authorization='Bearer '+token;h['X-GrabZone-Token']=token;}
- return parse(await fetch(BASE+path,{...options,headers:h,credentials:'include',cache:'no-store'}));
+ const response=await fetch(BASE+path,{...options,headers:h,credentials:'include',cache:'no-store'});
+ if(response.status===401&&includeToken&&retryAuth&&path!=='/api/admin-auth'){
+   try{
+     const refresh=await fetch(BASE+'/api/admin-auth',{method:'GET',headers:{Accept:'application/json'},credentials:'include',cache:'no-store'});
+     const session=await refresh.json().catch(()=>null);
+     if(refresh.ok&&session?.authenticated&&session?.session_token){
+       write(TOKEN_KEY,session.session_token);userWrite(session.user||null);
+       return api(path,options,true,false);
+     }
+   }catch{}
+ }
+ return parse(response);
 }
 async function d1(payload){
  return api('/api/d1',{method:'POST',body:JSON.stringify(payload)});
