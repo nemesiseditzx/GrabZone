@@ -72,7 +72,7 @@ function cors(r){
  h.set("Access-Control-Max-Age","86400");
  return new Response(r.body,{status:r.status,statusText:r.statusText,headers:h});
 }
-export default{async fetch(req,env){
+async function handle(req,env){
  try{
   if(req.method==="OPTIONS")return cors(new Response(null,{status:204}));
   const a=await api(req,env);
@@ -81,4 +81,5 @@ export default{async fetch(req,env){
   console.error(e);
   return cors(json({error:e?.message||"Internal server error."},500));
  }
-}};
+}
+addEventListener("fetch",event=>event.respondWith(handle(event.request,self)));
