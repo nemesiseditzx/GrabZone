@@ -269,7 +269,7 @@ async function uploadImage(file){
  if(!session)throw new Error("Admin session expired. Please sign in again.");
  const form=new FormData();
  form.append("file",file,file.name);
- const response=await fetch((C.backendUrl||"")+"/api/r2-upload",{method:"POST",headers:{Authorization:"Bearer "+session.access_token},body:form});
+ const response=await (window.gzAuthFetch||fetch)((C.backendUrl||"")+"/api/r2-upload",{method:"POST",headers:{Authorization:"Bearer "+session.access_token},body:form});
  const result=await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(result.error||"Could not upload image.");
  return result.publicUrl;
@@ -293,7 +293,7 @@ async function gzD1(payload){
  if(error)throw error;
  if(!session?.access_token)throw new Error("Admin session expired. Please sign in again.");
  const base=String(C.backendUrl||"").replace(/\/$/,"");
- const r=await fetch(base+"/api/d1",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json","Cache-Control":"no-store"},body:JSON.stringify(payload)});
+ const r=await (window.gzAuthFetch||fetch)(base+"/api/d1",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json","Cache-Control":"no-store"},body:JSON.stringify(payload)});
  const out=await r.json().catch(()=>({}));
  if(!r.ok)throw new Error(out.error||"D1 request failed.");
  return out;
