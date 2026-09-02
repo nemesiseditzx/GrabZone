@@ -292,7 +292,7 @@ async function gzD1(payload){
  const {data:{session},error}=await sb.auth.getSession();
  if(error)throw error;
  if(!session?.access_token)throw new Error("Admin session expired. Please sign in again.");
- const base=String(C.backendUrl||"").replace(/\\/$/,"");
+ const base=String(C.backendUrl||"").replace(/\/$/,"");
  const r=await fetch(base+"/api/d1",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json","Cache-Control":"no-store"},body:JSON.stringify(payload)});
  const out=await r.json().catch(()=>({}));
  if(!r.ok)throw new Error(out.error||"D1 request failed.");
