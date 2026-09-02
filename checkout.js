@@ -20,9 +20,7 @@ const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.qua
 const shippingForLocation=()=>flatShippingCharge;
 function deliveryEtaForLocation(division,district){
   const d=String(district||'').toLowerCase(),v=String(division||'').toLowerCase();
-  if(d.includes('dhaka')||v==='dhaka')return '1–2 days';
-  if(d.includes('chattogram')||d.includes('chittagong')||v.includes('chattogram')||v.includes('chittagong'))return '2–4 days';
-  if(v)return '2–5 days';
+  if(d||v)return '2–7 days';
   return '';
 }
 function renderDeliveryEta(){
