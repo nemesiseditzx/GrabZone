@@ -507,6 +507,16 @@ body.gz-gallery-dragging-active{
           GrabPoints
         </span>
       </button>
+      <button
+        class="side-link"
+        data-tab="mystery"
+        type="button"
+      >
+        🎁
+        <span>
+          Mystery Deal
+        </span>
+      </button>
 
 
       <button
@@ -2024,6 +2034,23 @@ body.gz-gallery-dragging-active{
   </div>
 </section>
 
+<!-- MYSTERY DEAL -->
+<section id="tab-mystery" class="tab">
+  <div class="section-head">
+    <div><h1>🎁 Mystery Deal</h1><p>Let shoppers pick a box and reveal a one-time discount.</p></div>
+  </div>
+  <div class="panel">
+    <h2>Campaign settings</h2>
+    <p class="muted">Use a bounded range so the surprise stays fun without giving away your margin. Each reveal expires after 15 minutes and can be used once.</p>
+    <div class="form-grid">
+      <label>Enabled<select id="mysteryEnabled"><option value="0">Off</option><option value="1">On</option></select></label>
+      <label>Minimum discount %<input id="mysteryMin" type="number" min="1" max="50" step="0.5" value="5"></label>
+      <label>Maximum discount %<input id="mysteryMax" type="number" min="1" max="50" step="0.5" value="15"></label>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:14px"><button class="primary" type="button" onclick="gzSaveMystery()">Save Mystery Deal</button><span id="mysteryMsg" class="save-message"></span></div>
+  </div>
+</section>
+
 <!-- PRODUCTS -->
 
         <div class="panel">
@@ -2337,6 +2364,18 @@ async function gzLoadLoyalty(){
  list.innerHTML=(data||[]).filter(x=>Number(x.points||0)>0||Number(x.total_earned||0)>0).map(x=>'<div class="item" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:15px"><div><b>'+esc(x.phone)+'</b><div class="meta">'+Number(x.total_earned||0)+' earned · '+Number(x.total_redeemed||0)+' redeemed</div></div><strong>'+Number(x.points||0)+' GP · ৳'+(Number(x.points||0)/10).toLocaleString('en-BD')+'</strong></div></div>').join('')||'<div class="empty">No GrabPoints customers yet.</div>';
 }
 document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadLoyalty,900));
+</script>
+<script>
+async function gzLoadMystery(){
+ const {data,error}=await sb.from('site_settings').select('mystery_enabled,mystery_min_percent,mystery_max_percent').eq('id',1).maybeSingle();if(error)return;
+ document.getElementById('mysteryEnabled').value=Number(data?.mystery_enabled||0)?'1':'0';document.getElementById('mysteryMin').value=Number(data?.mystery_min_percent||5);document.getElementById('mysteryMax').value=Number(data?.mystery_max_percent||15);
+}
+async function gzSaveMystery(){
+ const enabled=Number(document.getElementById('mysteryEnabled').value),min=Math.max(1,Number(document.getElementById('mysteryMin').value||5)),max=Math.max(min,Number(document.getElementById('mysteryMax').value||15)),msg=document.getElementById('mysteryMsg');
+ const {error}=await sb.from('site_settings').update({mystery_enabled:enabled,mystery_min_percent:min,mystery_max_percent:max,updated_at:new Date().toISOString()}).eq('id',1);
+ msg.textContent=error?'✕ '+error.message:'✓ Mystery Deal settings saved.';
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadMystery,1000));
 </script>
 <script src="billboard-admin.js"></script>
   <script src="phase5-admin.js?v=20260902p5"></script>
