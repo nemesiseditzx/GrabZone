@@ -9,12 +9,13 @@ const BUY_NOW_KEY='grabzone_buy_now_v2';
 const currency=C.currency||'৳';
 const flatShippingCharge=130;
 
-let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},grabPointsState={balance:0,use:0,discount:0};
+let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},grabPointsState={balance:0,use:0,discount:0},mysteryState={token:'',discount:0};
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const read=(key,fallback)=>{try{const v=JSON.parse(localStorage.getItem(key)||'null');return v??fallback}catch{return fallback}};
 const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const getSource=()=>{const buy=read(BUY_NOW_KEY,null);return Array.isArray(buy)&&buy.length?buy:read(CART_KEY,[])};
+function loadMystery(){const x=read('grabzone_mystery_v1',null);if(x?.token&&x?.expires_at&&Date.parse(x.expires_at)>Date.now())mysteryState={token:String(x.token),discount:Number(x.discount||0)};else{mysteryState={token:'',discount:0};try{localStorage.removeItem('grabzone_mystery_v1')}catch{}}}
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
 const shippingForLocation=()=>flatShippingCharge;
@@ -224,7 +225,8 @@ function formData(){
     address:$('address').value.trim(),
     referral_code:$('referralCode').value.trim().toUpperCase(),
     grabpoints_tracking_id:$('grabpointsTracking')?.value.trim().toUpperCase()||'',
-    grabpoints_redeem:Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0)))
+    grabpoints_redeem:Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0))),
+    mystery_token:mysteryState.token
   };
 }
 function validate(d){
@@ -254,13 +256,14 @@ function render(){
     <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
-  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||''),discount=Number(referralState.discount||0),pointsDiscount=Number(grabPointsState.discount||0);
+  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||''),discount=Number(referralState.discount||0),pointsDiscount=Number(grabPointsState.discount||0),mysteryDiscount=Math.min(sub,sub*Number(mysteryState.discount||0)/100);
   $('checkoutSubtotal').textContent=money(sub);
   $('checkoutShipping').textContent=money(shipping);
   $('checkoutDiscount').textContent='-'+money(discount);
   $('checkoutDiscountRow').hidden=discount<=0;
   const pointsRow=$('checkoutPointsRow');if(pointsRow)pointsRow.hidden=pointsDiscount<=0;const pointsEl=$('checkoutPointsDiscount');if(pointsEl)pointsEl.textContent='-'+money(pointsDiscount);
-  $('checkoutTotal').textContent=money(Math.max(0,sub+shipping-discount-pointsDiscount));
+  const mysteryRow=$('checkoutMysteryRow');if(mysteryRow)mysteryRow.hidden=mysteryDiscount<=0;const mysteryEl=$('checkoutMysteryDiscount');if(mysteryEl)mysteryEl.textContent='-'+money(mysteryDiscount);
+  $('checkoutTotal').textContent=money(Math.max(0,sub+shipping-discount-pointsDiscount-mysteryDiscount));
   renderDeliveryEta();
 }
 async function applyReferral(){
@@ -349,7 +352,7 @@ function openOrderConfirm(d){
     const modal=$('orderConfirmModal');
     if(!modal){resolve(window.confirm('Please review your order details carefully before placing the order.'));return}
     const shipping=shippingForLocation(d.division);
-    const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0));
+    const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100));
     const address=[d.address,d.upazila,d.district,d.division].filter(Boolean).join(', ');
     $('confirmCustomer').textContent=d.customer_name||'—';
     $('confirmPhone').textContent=d.phone||'—';
@@ -398,7 +401,7 @@ async function submit(e){
     referral_code:d.referral_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
     items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price)})),
-    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),grabpoints_redeem:Number(grabPointsState.use||0),grabpoints_tracking_id:String($('grabpointsTracking')?.value||'').trim().toUpperCase(),total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0))
+    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_redeem:Number(grabPointsState.use||0),grabpoints_tracking_id:String($('grabpointsTracking')?.value||'').trim().toUpperCase(),total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0))
   };
   try{
     if(!sb)throw new Error('Order service is not configured.');
@@ -443,6 +446,7 @@ async function submit(e){
         referral_discount:Number(referralState.discount||0),
         points_redeemed:Number(order.points_redeemed||grabPointsState.use||0),
         points_discount:Number(order.points_discount||grabPointsState.discount||0),
+        mystery_discount:Number(order.mystery_discount||0),
         total:Math.max(0,subtotal()+130-Number(referralState.discount||0)-Number(order.points_discount||grabPointsState.discount||0)),
         public_tracking_id:privateTrackingId
       },
@@ -498,6 +502,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('customerPhone')?.addEventListener('input',()=>{grabPointsState={balance:0,use:0,discount:0};const b=$('grabpointsBalance');if(b)b.textContent='Check your points';});
 
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
-  await loadLocations();await loadSite();await hydrate();
+  loadMystery();await loadLocations();await loadSite();await hydrate();
 });
 })();
