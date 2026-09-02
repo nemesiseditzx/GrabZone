@@ -477,6 +477,17 @@ body.gz-gallery-dragging-active{
         </span>
       </button>
 
+      <button
+        class="side-link"
+        data-tab="flash-sales"
+        type="button"
+      >
+        ⚡
+        <span>
+          Flash Sales
+        </span>
+      </button>
+
 
       <button
         class="side-link"
@@ -1938,7 +1949,27 @@ body.gz-gallery-dragging-active{
         </div>
 
 
-        <!-- PRODUCTS -->
+        <!-- FLASH SALES -->
+<section id="tab-flash-sales" class="admin-tab" hidden>
+  <div class="section-head">
+    <div><h1>⚡ Flash Sales</h1><p>Create, schedule and manage limited-time product offers.</p></div>
+    <button class="primary" type="button" onclick="gzLoadFlashSales()">↻ Refresh</button>
+  </div>
+  <div class="panel">
+    <h2>Create Flash Sale</h2>
+    <p class="muted">Choose a product, set the sale price and schedule. The storefront countdown ends automatically.</p>
+    <div class="form-grid">
+      <label>Product<select id="fsProduct"></select></label>
+      <label>Flash Sale Price<input id="fsPrice" type="number" min="0" placeholder="1299"></label>
+      <label>Starts<input id="fsStart" type="datetime-local"></label>
+      <label>Ends<input id="fsEnd" type="datetime-local"></label>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:14px"><button class="primary" type="button" onclick="gzSaveFlashSale()">⚡ Save Flash Sale</button><span id="flashSaleMsg" class="save-message"></span></div>
+  </div>
+  <div class="panel"><h2>Scheduled & Active Sales</h2><p class="muted">Manage all flash-sale campaigns from one place.</p><div id="flashSaleList"></div></div>
+</section>
+
+<!-- PRODUCTS -->
 
         <div class="panel">
 
@@ -2196,7 +2227,30 @@ body.gz-gallery-dragging-active{
 <script src="d1-client.js?v=20260901z"></script>
 
 <script src="admin.js?v=20260902analyticsfix1"></script>
-  <script src="billboard-admin.js"></script>
+  <script>
+async function gzLoadFlashSales(){
+ const list=document.getElementById('flashSaleList'),sel=document.getElementById('fsProduct');if(!list||!sel)return;list.innerHTML='Loading…';
+ const {data:products,error}=await sb.from('products').select('*').order('created_at',{ascending:false});if(error){list.textContent=error.message;return}
+ sel.innerHTML='<option value="">Select product</option>'+(products||[]).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' — ৳'+Number(p.price||0).toLocaleString()+'</option>').join('');
+ const sales=(products||[]).filter(p=>Number(p.flash_price)>0&&p.flash_ends_at);
+ if(!sales.length){list.innerHTML='<div class="empty">No flash sales scheduled yet.</div>';return}
+ const now=Date.now();
+ list.innerHTML=sales.map(p=>{const active=!!p.flash_enabled&&Date.parse(p.flash_ends_at)>now&&(!p.flash_starts_at||Date.parse(p.flash_starts_at)<=now);return '<div class="item" style="margin-bottom:10px"><div style="display:flex;gap:12px;align-items:center"><img src="'+esc(p.image_url||'')+'" style="width:56px;height:56px;object-fit:cover;border-radius:10px"><div style="flex:1"><b>'+esc(p.name)+'</b><div class="meta">৳'+Number(p.price||0).toLocaleString()+' → <strong>৳'+Number(p.flash_price).toLocaleString()+'</strong> · '+(active?'🟢 ACTIVE':'🕒 SCHEDULED / ENDED')+'</div><div class="meta">'+(p.flash_starts_at?'Starts: '+new Date(p.flash_starts_at).toLocaleString():'Starts immediately')+' · Ends: '+new Date(p.flash_ends_at).toLocaleString()+'</div></div><button class="ghost" type="button" onclick="gzEditFlashSale(\''+p.id+'\')">Edit</button><button class="ghost" type="button" onclick="gzDisableFlashSale(\''+p.id+'\')">Disable</button></div></div>'}).join('');
+}
+async function gzSaveFlashSale(){
+ const id=document.getElementById('fsProduct').value,price=Number(document.getElementById('fsPrice').value),start=document.getElementById('fsStart').value,end=document.getElementById('fsEnd').value,msg=document.getElementById('flashSaleMsg');
+ if(!id||!price||!end){msg.textContent='Please select a product, sale price and end time.';return}
+ const {error}=await sb.from('products').update({flash_price:price,flash_starts_at:start?new Date(start).toISOString():null,flash_ends_at:new Date(end).toISOString(),flash_enabled:true,updated_at:new Date().toISOString()}).eq('id',id);
+ msg.textContent=error?'✕ '+error.message:'✓ Flash sale saved.';if(!error)gzLoadFlashSales();
+}
+async function gzEditFlashSale(id){
+ const {data:p}=await sb.from('products').select('*').eq('id',id).single();if(!p)return;
+ document.getElementById('fsProduct').value=p.id;document.getElementById('fsPrice').value=p.flash_price||'';document.getElementById('fsStart').value=p.flash_starts_at?new Date(p.flash_starts_at).toISOString().slice(0,16):'';document.getElementById('fsEnd').value=p.flash_ends_at?new Date(p.flash_ends_at).toISOString().slice(0,16):'';window.scrollTo({top:0,behavior:'smooth'});
+}
+async function gzDisableFlashSale(id){const {error}=await sb.from('products').update({flash_enabled:false,updated_at:new Date().toISOString()}).eq('id',id);if(error)alert(error.message);else gzLoadFlashSales();}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadFlashSales,700));
+</script>
+<script src="billboard-admin.js"></script>
   <script src="phase5-admin.js?v=20260902p5"></script>
 
 
