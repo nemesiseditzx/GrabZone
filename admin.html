@@ -2493,7 +2493,7 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadMystery,1000))
 <script>
 /* =========================================================
    GRABZONE PRODUCT EDITOR
-   Uses the existing Admin authentication + Supabase client.
+   Uses the existing Cloudflare Worker + D1 authentication client.
 ========================================================= */
 let gzEditProduct = null;
 let gzEditGallery = [];
@@ -2511,17 +2511,7 @@ function gzEscapeAttr(value){
 
 function gzGetClient(){
   if (typeof sb !== "undefined" && sb) return sb;
-
-  const cfg = window.GRABZONE_CONFIG || {};
-  if (window.supabase && cfg.supabaseUrl && cfg.supabaseAnonKey){
-    window.__gzEditorClient ||= window.supabase.createClient(
-      cfg.supabaseUrl,
-      cfg.supabaseAnonKey
-    );
-    return window.__gzEditorClient;
-  }
-
-  throw new Error("Supabase is not configured.");
+  throw new Error("GrabZone authentication is not configured.");
 }
 
 async function gzRequireLogin(){
@@ -3051,7 +3041,7 @@ document.addEventListener("keydown",event=>{
 /* =========================================================
    GRABZONE PRODUCT DISPLAY CONTROL
    Daily Automatic Shuffle + Manual Shuffle
-   Uses the existing Supabase client: sb
+   Uses the existing Cloudflare Worker + D1 client: sb
 ========================================================= */
 (function(){
   function gzPDMsg(text, ok){
@@ -3144,7 +3134,7 @@ document.addEventListener("keydown",event=>{
       gzPDLoad();
     }catch(e){
       console.error(e);
-      gzPDMsg("⚠ Shuffle failed. Check your Supabase settings.",false);
+      gzPDMsg("⚠ Shuffle failed. Check your GrabZone Worker settings.",false);
     }
   }
 
