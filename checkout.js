@@ -9,12 +9,13 @@ const BUY_NOW_KEY='grabzone_buy_now_v2';
 const currency=C.currency||'৳';
 const flatShippingCharge=130;
 
-let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},grabPointsState={balance:0,use:0,discount:0},mysteryState={token:'',discount:0};
+let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},grabPointsState={balance:0,use:0,discount:0},mysteryState={token:'',discount:0},grabPointsEnabled=true,grabPointsEarnRate=10,grabPointsValue=0.1;
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const read=(key,fallback)=>{try{const v=JSON.parse(localStorage.getItem(key)||'null');return v??fallback}catch{return fallback}};
 const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const getSource=()=>{const buy=read(BUY_NOW_KEY,null);return Array.isArray(buy)&&buy.length?buy:read(CART_KEY,[])};
+async function loadGrabPointsSettings(){try{const{data,error}=await sb.from('site_settings').select('grabpoints_enabled,grabpoints_earn_rate,grabpoints_value').eq('id',1).maybeSingle();if(error)throw error;grabPointsEnabled=Number(data?.grabpoints_enabled??1)===1;grabPointsEarnRate=Number(data?.grabpoints_earn_rate??10);grabPointsValue=Number(data?.grabpoints_value??0.1);const box=document.querySelector('.grabpoints-box'),opt=document.querySelector('.grabpoints-optin');if(box)box.hidden=!grabPointsEnabled;if(opt)opt.hidden=!grabPointsEnabled;}catch{grabPointsEnabled=true;}}
 function loadMystery(){const x=read('grabzone_mystery_v1',null);if(x?.token&&x?.expires_at&&Date.parse(x.expires_at)>Date.now())mysteryState={token:String(x.token),discount:Number(x.discount||0)};else{mysteryState={token:'',discount:0};try{localStorage.removeItem('grabzone_mystery_v1')}catch{}}}
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
@@ -225,7 +226,8 @@ function formData(){
     address:$('address').value.trim(),
     referral_code:$('referralCode').value.trim().toUpperCase(),
     grabpoints_tracking_id:$('grabpointsTracking')?.value.trim().toUpperCase()||'',
-    grabpoints_redeem:Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0))),
+    grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,
+    grabpoints_redeem:$('grabpointsOptIn')?.checked?Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0))):0,
     mystery_token:mysteryState.token
   };
 }
@@ -474,6 +476,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   bindLocationPickers();
   $('applyReferralBtn')?.addEventListener('click',applyReferral);
   async function checkGrabPoints(){
+    if(!grabPointsEnabled||!$('grabpointsOptIn')?.checked){if($('grabpointsMsg'))$('grabpointsMsg').textContent='Turn on GrabPoints above to check or use points.';return}
     const phone=String($('customerPhone')?.value||'').replace(/\D/g,'');
     const bal=$('grabpointsBalance'),msgp=$('grabpointsMsg');
     if(!/^01[3-9]\d{8}$/.test(phone)){if(bal)bal.textContent='Enter your phone';if(msgp)msgp.textContent='Enter a valid mobile number first.';return}
@@ -486,12 +489,13 @@ document.addEventListener('DOMContentLoaded',async()=>{
     }catch(e){if(msgp)msgp.textContent='Could not check points right now.'}
   }
   function applyGrabPoints(){
+    if(!grabPointsEnabled||!$('grabpointsOptIn')?.checked){if($('grabpointsMsg'))$('grabpointsMsg').textContent='Turn on GrabPoints first.';return}
     const requested=Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0)));
     const msgp=$('grabpointsMsg');
     if(!requested){grabPointsState={...grabPointsState,use:0,discount:0};if(msgp)msgp.textContent='Points discount cleared.';render();return}
     if(requested%10!==0){if(msgp)msgp.textContent='Use points in multiples of 10.';return}
     if(requested>Number(grabPointsState.balance||0)){if(msgp)msgp.textContent='Not enough GrabPoints.';return}
-    const discount=Math.min(subtotal(),requested/10);
+    const discount=Math.min(subtotal(),requested*grabPointsValue);
     grabPointsState={...grabPointsState,use:requested,discount};
     if(msgp)msgp.textContent='✓ '+requested+' GP applied · ৳'+discount.toLocaleString('en-BD')+' off. A previous Delivered Tracking ID is required at checkout.';
     render();
@@ -499,9 +503,10 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('checkGrabPoints')?.addEventListener('click',checkGrabPoints);
   $('applyGrabPoints')?.addEventListener('click',applyGrabPoints);
   $('customerPhone')?.addEventListener('blur',checkGrabPoints);
-  $('customerPhone')?.addEventListener('input',()=>{grabPointsState={balance:0,use:0,discount:0};const b=$('grabpointsBalance');if(b)b.textContent='Check your points';});
+  $('customerPhone')?.addEventListener('input',()=>{grabPointsState={balance:0,use:0,discount:0};const b=$('grabpointsBalance');if(b)b.textContent='Check your points';render()});
+  $('grabpointsOptIn')?.addEventListener('change',()=>{const on=$('grabpointsOptIn').checked;grabPointsState={...grabPointsState,use:0,discount:0};const t=$('grabpointsTracking'),u=$('grabpointsUse');if(t)t.disabled=!on;if(u)u.disabled=!on;const m=$('grabpointsMsg');if(m)m.textContent=on?'GrabPoints enabled for this order. You can earn points after delivery.':'GrabPoints disabled for this order — no points will be added.';render();if(on)checkGrabPoints()});
 
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
-  loadMystery();await loadLocations();await loadSite();await hydrate();
+  loadMystery();await loadGrabPointsSettings();await loadLocations();await loadSite();await hydrate();
 });
 })();
