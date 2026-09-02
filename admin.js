@@ -114,8 +114,11 @@ function showApp(){
  loadSettings();
  loadProducts();
  loadNotices();
+ loadDashboardAnalytics();
 }
 
+document.addEventListener("grabzone:orders-updated",()=>{ if(typeof loadDashboardAnalytics==="function") loadDashboardAnalytics(); });
+ 
 function previewFile(input,id){
  const f=input.files?.[0],box=$(id);
  if(!f||!box)return;
