@@ -332,6 +332,20 @@ async function saveSettings(){
    p.show_how=$("s_show_how").value==="true";
    p.show_referral=$("s_show_ref").value==="true";
 
+   /*
+     Preserve Phase 5 feature flags when the main Website Design
+     form is saved. They live in a managed marker inside custom_css
+     so no existing design settings are overwritten.
+   */
+   try{
+     const existing=await sb.from("site_settings").select("custom_css").eq("id",1).maybeSingle();
+     const marker=String(existing.data?.custom_css||"").match(/\/\*\s*GZ_PHASE5_CONFIG\s*[\s\S]*?\*\//);
+     if(marker){
+       const base=String(p.custom_css||"").replace(/\/\*\s*GZ_PHASE5_CONFIG\s*[\s\S]*?\*\//g,"").trim();
+       p.custom_css=(base?base+"\\n\\n":"")+marker[0];
+     }
+   }catch(e){ console.warn("Could not preserve Phase 5 settings:",e); }
+
    p.updated_at=new Date().toISOString();
 
    const{error}=await sb
