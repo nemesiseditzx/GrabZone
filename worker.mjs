@@ -60,7 +60,7 @@ if(fn==="admin_analytics"){
  const dayKey=d=>d.toISOString().slice(0,10);
  const start=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate()-29));
  const orders=(await q(env,"SELECT id,order_number,customer_name,email,phone,subtotal,total,status,created_at FROM orders WHERE created_at>=? ORDER BY created_at DESC",[start.toISOString()])).results||[];
- const items=(await q(env,"SELECT order_id,product_name,quantity,unit_price,line_total FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE created_at>=?)",[start.toISOString()])).results||[];
+ const items=(await q(env,"SELECT oi.order_id,oi.product_name,oi.quantity,oi.unit_price,oi.line_total FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE o.status!='Cancelled'")).results||[];
  const products=(await q(env,"SELECT id,name,price,published,created_at FROM products")).results||[];
  const allOrderCount=Number((await q(env,"SELECT COUNT(*) AS n FROM orders")).results?.[0]?.n||0);
  const allRevenue=Number((await q(env,"SELECT COALESCE(SUM(total),0) AS n FROM orders WHERE status NOT IN ('Cancelled')")).results?.[0]?.n||0);
@@ -91,7 +91,7 @@ if(fn==="admin_analytics"){
    p.units+=Number(i.quantity||0);p.revenue+=Number(i.line_total||0);p.orders++;
    pmap.set(i.product_name,p);
  }
- const topProducts=[...pmap.values()].sort((a,b)=>b.revenue-a.revenue).slice(0,8);
+ const topProducts=[...pmap.values()].sort((a,b)=>b.units-a.units).slice(0,8);
  const topCustomers=customers.sort((a,b)=>b.spent-a.spent).slice(0,8);
  const trend=[];
  for(let n=6;n>=0;n--){
