@@ -25,7 +25,11 @@ async function sendTrackingStatusEmail(orderNumber){
   const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{
     method:'POST',
     headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
-    body:JSON.stringify({orderNumber,type:'status_updated'})
+    body:JSON.stringify({
+      orderNumber,
+      type:'status_updated',
+      status:rows.find(x=>x.order_number===orderNumber)?.status||''
+    })
   });
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.error||'Customer email could not be sent.');
