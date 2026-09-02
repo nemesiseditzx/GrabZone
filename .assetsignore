@@ -5,3 +5,4 @@ README.md
 *.sql
 api/
 supabase/
+node_modules/
