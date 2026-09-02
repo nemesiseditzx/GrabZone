@@ -126,18 +126,11 @@ const auth={
   }
  },
  async getSession(){
-  try{
-   const b=await api('/api/admin-auth',{method:'GET'},false);
-   if(!b?.authenticated||!b.session_token){
-    write(TOKEN_KEY,'');userWrite(null);
-    return {data:{session:null},error:null};
-   }
-   write(TOKEN_KEY,b.session_token);userWrite(b.user||null);
-   return {data:{session:{access_token:b.session_token,user:b.user||null}},error:null};
-  }catch(e){
-   write(TOKEN_KEY,'');userWrite(null);
+  const b=await refreshSession();
+  if(!b?.authenticated||!b.session_token){
    return {data:{session:null},error:null};
   }
+  return {data:{session:{access_token:b.session_token,user:b.user||null}},error:null};
  },
  async signOut(){
   try{await api('/api/admin-auth',{method:'POST',body:JSON.stringify({action:'logout'})},false)}catch{}
