@@ -476,6 +476,16 @@ body.gz-gallery-dragging-active{
           Products
         </span>
       </button>
+      <button
+        class="side-link"
+        data-tab="growth"
+        type="button"
+      >
+        ⚡
+        <span>
+          Phase B · Growth
+        </span>
+      </button>
 
       <button
         class="side-link"
@@ -1979,7 +1989,64 @@ body.gz-gallery-dragging-active{
         </div>
 
 
-        <!-- FLASH SALES -->
+        <!-- PHASE B · GROWTH CONTROL CENTER -->
+<section id="tab-growth" class="tab">
+  <div class="page-title">
+    <div>
+      <div class="eyebrow">PHASE B · GROWTH</div>
+      <h1>Growth & rewards control.</h1>
+      <p>Control customer rewards and the Phase B engagement tools from one place.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div><h2>🎮 GrabPoints</h2><p>Customers explicitly choose whether this order participates in GrabPoints.</p></div>
+      <span id="growthGpStatus" class="status-badge">Loading…</span>
+    </div>
+    <div class="form-grid">
+      <label>GrabPoints system
+        <select id="growthGpEnabled"><option value="1">ON — customers can join</option><option value="0">OFF — completely disabled</option></select>
+      </label>
+      <label>Points earned per ৳1,000
+        <input id="growthGpEarnRate" type="number" min="0" step="1" value="10">
+      </label>
+      <label>Value of 1 GP (৳)
+        <input id="growthGpValue" type="number" min="0" step="0.01" value="0.10">
+      </label>
+      <div class="field-help"><b>Example:</b> 10 GP / ৳1,000 + 1 GP = ৳0.10 means ৳1,000 delivered order earns 10 GP, worth ৳1.</div>
+    </div>
+    <div style="display:flex;gap:9px;align-items:center;margin-top:14px"><button class="primary" type="button" onclick="gzSaveGrowth()">Save GrabPoints Settings</button><span id="growthGpMsg" class="save-message"></span></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div><h2>🎁 Mystery Deal</h2><p>One-time surprise discount with admin-controlled range.</p></div><span id="growthMysteryStatus" class="status-badge">Loading…</span></div>
+    <div class="form-grid">
+      <label>Mystery Deal
+        <select id="growthMysteryEnabled"><option value="1">ON</option><option value="0">OFF</option></select>
+      </label>
+      <label>Minimum discount %
+        <input id="growthMysteryMin" type="number" min="1" max="50" step="0.5" value="5">
+      </label>
+      <label>Maximum discount %
+        <input id="growthMysteryMax" type="number" min="1" max="50" step="0.5" value="15">
+      </label>
+    </div>
+    <div style="display:flex;gap:9px;align-items:center;margin-top:14px"><button class="primary" type="button" onclick="gzSaveGrowth()">Save Mystery Settings</button></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div><h2>⚡ Phase B Campaigns</h2><p>Open the existing campaign managers without changing their data.</p></div></div>
+    <div class="form-grid">
+      <button class="ghost" type="button" onclick="switchTab('flash-sales')">⚡ Manage Flash Sales →</button>
+      <button class="ghost" type="button" onclick="switchTab('drops')">✦ Manage Drops →</button>
+      <button class="ghost" type="button" onclick="switchTab('appearance')">🎛️ Storefront UI Controls →</button>
+      <button class="ghost" type="button" onclick="switchTab('loyalty')">🎮 View GrabPoints Customers →</button>
+    </div>
+  </div>
+</section>
+
+<!-- FLASH SALES -->
 <section id="tab-flash-sales" class="tab">
   <div class="section-head">
     <div><h1>⚡ Flash Sales</h1><p>Create, schedule and manage limited-time product offers.</p></div>
@@ -2376,6 +2443,33 @@ async function gzSaveMystery(){
  msg.textContent=error?'✕ '+error.message:'✓ Mystery Deal settings saved.';
 }
 document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadMystery,1000));
+</script>
+<script>
+async function gzLoadGrowth(){
+  try{
+    const {data,error}=await sb.from('site_settings').select('grabpoints_enabled,grabpoints_earn_rate,grabpoints_value,mystery_enabled,mystery_min_percent,mystery_max_percent').eq('id',1).maybeSingle();
+    if(error)throw error;
+    $('growthGpEnabled').value=Number(data?.grabpoints_enabled??1)?'1':'0';
+    $('growthGpEarnRate').value=Number(data?.grabpoints_earn_rate??10);
+    $('growthGpValue').value=Number(data?.grabpoints_value??0.1);
+    $('growthMysteryEnabled').value=Number(data?.mystery_enabled??0)?'1':'0';
+    $('growthMysteryMin').value=Number(data?.mystery_min_percent??5);
+    $('growthMysteryMax').value=Number(data?.mystery_max_percent??15);
+    $('growthGpStatus').textContent=Number(data?.grabpoints_enabled??1)?'ACTIVE':'OFF';
+    $('growthMysteryStatus').textContent=Number(data?.mystery_enabled??0)?'ACTIVE':'OFF';
+  }catch(e){$('growthGpMsg').textContent='✕ '+e.message}
+}
+async function gzSaveGrowth(){
+  const gpEnabled=Number($('growthGpEnabled').value),earn=Math.max(0,Number($('growthGpEarnRate').value||0)),value=Math.max(0,Number($('growthGpValue').value||0)),mEnabled=Number($('growthMysteryEnabled').value),mMin=Math.max(1,Number($('growthMysteryMin').value||5)),mMax=Math.max(mMin,Number($('growthMysteryMax').value||15));
+  const msg=$('growthGpMsg');
+  try{
+    const {error}=await sb.from('site_settings').update({grabpoints_enabled:gpEnabled,grabpoints_earn_rate:earn,grabpoints_value:value,mystery_enabled:mEnabled,mystery_min_percent:mMin,mystery_max_percent:mMax,updated_at:new Date().toISOString()}).eq('id',1);
+    if(error)throw error;
+    msg.textContent='✓ Phase B settings saved.';
+    $('growthGpStatus').textContent=gpEnabled?'ACTIVE':'OFF';$('growthMysteryStatus').textContent=mEnabled?'ACTIVE':'OFF';
+  }catch(e){msg.textContent='✕ '+e.message}
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadGrowth,1100));
 </script>
 <script src="billboard-admin.js"></script>
   <script src="phase5-admin.js?v=20260902p5"></script>
