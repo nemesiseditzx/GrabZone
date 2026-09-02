@@ -907,6 +907,9 @@ async function loadProducts() {
     gzGetProductDisplaySeed()
   );
 
+  /* Phase 5 storefront features consume the live product list. */
+  window.__grabzoneProducts = allProducts;
+
   renderProducts();
 }
 
