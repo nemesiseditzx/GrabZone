@@ -1,6 +1,7 @@
 (() => {
 'use strict';
 const BACKEND=String((window.GRABZONE_CONFIG||{}).backendUrl||'').replace(/\/$/,'');
+const D1=window.grabzoneD1||null;
 const DEFAULTS={quick_view:true,wishlist:true,recently_viewed:true,quick_add:true,discount_badge:true,stock_indicator:true,reviews:true};
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -9,14 +10,14 @@ let state={...DEFAULTS};
 function parse(css){const m=String(css||'').match(/\/\*\s*GZ_PHASE5_CONFIG\s*([\s\S]*?)\*\//);if(!m)return {...DEFAULTS};try{return {...DEFAULTS,...JSON.parse(m[1].trim())}}catch{return {...DEFAULTS}}}
 function merge(css,obj){const clean=String(css||'').replace(/\/\*\s*GZ_PHASE5_CONFIG\s*[\s\S]*?\*\//g,'').trim();return clean+'\\n\\n/* GZ_PHASE5_CONFIG '+JSON.stringify(obj)+' */\\n'}
 async function load(){
- try{const r=await sb.from('site_settings').select('custom_css').eq('id',1).maybeSingle();if(r.error)throw r.error;state=parse(r.data?.custom_css);for(const k of Object.keys(DEFAULTS)){$('p5_'+k).checked=!!state[k]}$('p5_msg').textContent='Loaded.'}catch(e){$('p5_msg').textContent='Could not load settings: '+e.message}
+ try{const r=await D1.from('site_settings').select('custom_css').eq('id',1).maybeSingle();if(r.error)throw r.erroror;state=parse(r.data?.custom_css);for(const k of Object.keys(DEFAULTS)){$('p5_'+k).checked=!!state[k]}$('p5_msg').textContent='Loaded.'}catch(e){$('p5_msg').textContent='Could not load settings: '+e.message}
 }
 async function save(){
  const next={};for(const k of Object.keys(DEFAULTS))next[k]=!!$('p5_'+k)?.checked;
- try{const r=await sb.from('site_settings').select('custom_css').eq('id',1).maybeSingle();if(r.error)throw r.error;const css=merge(r.data?.custom_css,next);const u=await sb.from('site_settings').update({custom_css:css,updated_at:new Date().toISOString()}).eq('id',1);if(u.error)throw u.error;state=next;$('p5_msg').textContent='✓ Phase 5 settings saved. Refresh the storefront to apply.'}catch(e){$('p5_msg').textContent='✕ '+e.message}
+ try{const r=await D1.from('site_settings').select('custom_css').eq('id',1).maybeSingle();if(r.error)throw r.error;const css=merge(r.data?.custom_css,next);const u=await D1.from('site_settings').update({custom_css:css,updated_at:new Date().toISOString()}).eq('id',1);if(u.error)throw u.error;state=next;$('p5_msg').textContent='✓ Phase 5 settings saved. Refresh the storefront to apply.'}catch(e){$('p5_msg').textContent='✕ '+e.message}
 }
 async function reviews(){
- const box=$('p5_reviews');if(!box||!BACKEND)return;box.innerHTML='<div class="muted">Loading reviews…</div>';
+ const box=$('p5_reviews');if(!box||!BACKEND||!D1)return;box.innerHTML='<div class="muted">Loading reviews…</div>';
  try{
   const t=window.getToken?window.getToken():'';let r=await fetch(BACKEND+'/api/product-reviews?product_id='+encodeURIComponent($('p5_product').value)+'&admin=1',{headers:{Authorization:'Bearer '+t}});let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Could not load reviews');
   const rows=d.reviews||[];box.innerHTML=rows.map(x=>'<div class="p5-review-row"><div><b>'+esc(x.customer_name)+'</b> · '+esc(x.rating)+'/5 <span class="muted">· '+new Date(x.created_at).toLocaleString()+'</span><p>'+esc(x.review_text)+'</p></div><div><button class="ghost" data-review-action="toggle" data-id="'+esc(x.id)+'">'+(x.approved?'Hide':'Approve')+'</button> <button class="ghost" data-review-action="delete" data-id="'+esc(x.id)+'">Delete</button></div></div>').join('')||'<div class="muted">No reviews for this product.</div>';
@@ -33,7 +34,7 @@ function inject(){
  tab.appendChild(panel);
  const style=document.createElement('style');style.textContent='.p5-toggle-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.p5-toggle{display:flex;justify-content:space-between;gap:15px;align-items:center;border:1px solid #e5e7eb;border-radius:13px;padding:12px;background:#fff}.p5-toggle small{display:block;color:#777;margin-top:4px;font-weight:500}.p5-toggle input{width:20px;height:20px;margin:0}.p5-review-row{display:flex;justify-content:space-between;gap:15px;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-top:8px}.p5-review-row p{margin:6px 0;color:#555}.p5-review-row button{font-size:11px}@media(max-width:700px){.p5-toggle-grid{grid-template-columns:1fr}.p5-review-row{flex-direction:column}}';document.head.appendChild(style);
  $('p5_save').onclick=save;$('p5_load_reviews').onclick=reviews;$('p5_reviews').onclick=e=>{const b=e.target.closest('[data-review-action]');if(b)reviewAction(b.dataset.id,b.dataset.reviewAction)};
- const loadProducts=async()=>{const r=await sb.from('products').select('id,name').order('name');if(r.error)return; $('p5_product').innerHTML='<option value="">Select product</option>'+(r.data||[]).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('')};loadProducts();load();
+ const loadProducts=async()=>{const r=await D1.from('products').select('id,name').order('name');if(r.error)return; $('p5_product').innerHTML='<option value="">Select product</option>'+(r.data||[]).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('')};loadProducts();load();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',inject);else inject();
 })();
