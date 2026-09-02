@@ -8,7 +8,7 @@ let editingId=null,referrals=[];
 
 async function syncAdminRecordsToSheet(){
   try{
-    const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{
+    const response=await (window.gzAuthFetch||fetch)((C.backendUrl||'')+'/api/sync-order-sheet',{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+(window.getToken?window.getToken():'')},
       credentials:'include',
