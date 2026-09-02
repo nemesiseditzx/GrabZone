@@ -207,6 +207,7 @@ async function changeStatus(id,status){
   if(!(await gzUiConfirm('Confirm '+order.order_number+'? Delivery charge is ৳130. The customer receipt/status email will be sent.')))return;
   try{
    const emailed=await confirmOrder(order);
+   document.dispatchEvent(new CustomEvent('grabzone:orders-updated'));
    gzUiToast(emailed?'✓ Order confirmed with ৳130 delivery charge and the customer email was sent.':'✓ Order confirmed and saved. Email could not be sent; check email settings.');
   }catch(e){gzUiToast('Could not confirm order: '+e.message,'error')}
   return;
@@ -217,6 +218,7 @@ async function changeStatus(id,status){
  const emailed=await sendOrderEmail(order.order_number,'status_updated',status);
  await syncOrderToSheet(order.id);
  renderOrders();
+ document.dispatchEvent(new CustomEvent('grabzone:orders-updated'));
  gzUiToast(emailed
    ? '✓ Status updated and customer email sent.'
    : '✓ Status updated, but the customer email could not be sent. Check email settings.', emailed?'success':'error');
@@ -272,6 +274,7 @@ async function deleteOrder(id){
  orders=orders.filter(x=>x.id!==id);
  await syncOrderToSheet(id);
  renderOrders();
+ document.dispatchEvent(new CustomEvent('grabzone:orders-updated'));
 }
 
 async function openEditor(id){
