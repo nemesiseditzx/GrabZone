@@ -299,29 +299,41 @@ async function sendToBusinessKoro(id,force=false){
  if(!force&&!(await gzUiConfirm('Send '+order.order_number+' to Business Koro now? This will submit the order for fulfillment.')))return;
  if(button){button.disabled=true;button.textContent='Sending…';}
  try{
-   const sessionResult=await sb.auth.getSession();
-   const token=sessionResult?.data?.session?.access_token;
-   if(!token)throw new Error('Your admin session has expired. Please log in again.');
-   const response=await fetch((C.backendUrl||'')+'/api/business-koro-order',{
-     method:'POST',
-     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-     body:JSON.stringify({orderId:id,force})
-   });
-   const data=await response.json().catch(()=>({}));
-   if(response.status===409&&!force){
-     if(await gzUiConfirm((data.error||'This order was already submitted.')+'\n\nSend it again anyway?')) return sendToBusinessKoro(id,true);
-     return;
-   }
-   if(!response.ok)throw new Error(data.error||'Business Koro submission failed.');
-   gzUiToast('✓ '+order.order_number+' sent to Business Koro. '+(data.submitted||0)+' supplier order(s) created.');
-   await loadOrders();
+  const sessionResult=await sb.auth.getSession();
+  const token=sessionResult?.data?.session?.access_token;
+  if(!token)throw new Error('Your admin session has expired. Please log in again.');
+  const {data:items,error:itemError}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
+  if(itemError)throw itemError;
+  if(!items?.length)throw new Error('This order has no products.');
+  const response=await fetch((C.backendUrl||'')+'/api/business-koro-order',{
+   method:'POST',
+   headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+   body:JSON.stringify({
+    orderId:id,
+    orderNumber:order.order_number,
+    force,
+    customer:{name:order.customer_name,phone:order.phone,address:order.address,division:order.division,district:order.district,area:order.upazila,note:order.admin_note||''},
+    items:items.map(it=>({productId:it.business_koro_product_id||null,product_id:it.product_id||null,productName:it.product_name,quantity:Number(it.quantity||1),sellingPrice:Number(it.unit_price||0)}))
+   })
+  });
+  const data=await response.json().catch(()=>({}));
+  if(response.status===409&&!force){
+   if(await gzUiConfirm((data.error||'This order was already submitted.')+'\\n\\nSend it again anyway?'))return sendToBusinessKoro(id,true);
+   return;
+  }
+  if(!response.ok)throw new Error(data.error||'Business Koro submission failed.');
+  const ids=(data.orders||[]).map(x=>x.supplierOrderId).filter(Boolean);
+  const updates={business_koro_sent_at:new Date().toISOString(),business_koro_order_ids:ids};
+  const {error:updateError}=await sb.from('orders').update(updates).eq('id',id);
+  if(updateError)console.warn('Business Koro status save:',updateError);
+  gzUiToast('✓ '+order.order_number+' sent to Business Koro. '+(data.submitted||0)+' supplier order(s) created.');
+  await loadOrders();
  }catch(e){
-   gzUiToast('Business Koro: '+e.message,'error');
+  gzUiToast('Business Koro: '+e.message,'error');
  }finally{
-   if(button){button.disabled=false;button.textContent='Send to Business Koro';}
+  if(button){button.disabled=false;button.textContent='Send to Business Koro';}
  }
 }
-
 async function deleteOrder(id){
  const order=orders.find(x=>x.id===id); if(!order)return;
  const ok=await gzUiConfirm(`Delete order ${order.order_number}? This will permanently remove the order and its products from the admin panel.`);
