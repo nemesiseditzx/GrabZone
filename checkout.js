@@ -315,7 +315,18 @@ async function sendOrderEmail(orderNumber,type='order_created'){
     const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({orderNumber,type})
+      body:JSON.stringify({
+        orderNumber,
+        type,
+        order,
+        items:checkoutItems.map(i=>({
+          product_name:i.name,
+          quantity:Number(i.quantity||1),
+          unit_price:Number(i.price||0),
+          line_total:Number(i.price||0)*Number(i.quantity||1),
+          image_url:i.image_url||''
+        }))
+      })
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data.error||'Email could not be sent.');
