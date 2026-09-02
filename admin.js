@@ -632,7 +632,17 @@ async function loadProducts(){
 
          </div>
 
-         <div class="product-actions">
+           <div class="flash-admin-box" style="grid-column:1/-1;margin-top:10px;padding:10px;border:1px solid #e7e7e2;border-radius:12px;background:#fafaf8">
+           <b style="font-size:12px">⚡ Flash Sale</b>
+           <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:7px;margin-top:7px;align-items:end">
+             <label style="font-size:10px">Sale price<input id="flash_price_'+p.id+'" type="number" min="0" value="'+(p.flash_price??'')+'" placeholder="1299" style="width:100%;box-sizing:border-box"></label>
+             <label style="font-size:10px">Starts<input id="flash_start_'+p.id+'" type="datetime-local" value="'+(p.flash_starts_at?new Date(p.flash_starts_at).toISOString().slice(0,16):'')+'" style="width:100%;box-sizing:border-box"></label>
+             <label style="font-size:10px">Ends<input id="flash_end_'+p.id+'" type="datetime-local" value="'+(p.flash_ends_at?new Date(p.flash_ends_at).toISOString().slice(0,16):'')+'" style="width:100%;box-sizing:border-box"></label>
+             <button type="button" class="ghost" onclick="saveFlashSale(\''+p.id+'\')">Save</button>
+           </div>
+         </div>
+
+       <div class="product-actions">
 
            <button
              class="ghost"
@@ -676,6 +686,16 @@ async function loadProducts(){
 /* =========================
    PRODUCT ACTIONS
 ========================= */
+
+async function saveFlashSale(id){
+  const price=Number(document.getElementById('flash_price_'+id)?.value||0);
+  const start=document.getElementById('flash_start_'+id)?.value||'';
+  const end=document.getElementById('flash_end_'+id)?.value||'';
+  try{
+    const{error}=await sb.from('products').update({flash_price:price||null,flash_starts_at:start?new Date(start).toISOString():null,flash_ends_at:end?new Date(end).toISOString():null,flash_enabled:!!(price&&end),updated_at:new Date().toISOString()}).eq('id',id);
+    if(error)throw error;$('productMsg').textContent='✓ Flash sale saved.';loadProducts();
+  }catch(e){$('productMsg').textContent='✕ '+e.message}
+}
 
 async function toggleProduct(id,p){
 
