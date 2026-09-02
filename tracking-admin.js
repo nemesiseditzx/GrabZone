@@ -8,7 +8,7 @@ async function adminBackendUpdateOrder(orderId,updates){
   const sessionResult=await sb.auth.getSession();
   const token=sessionResult?.data?.session?.access_token;
   if(!token)throw new Error('Admin session expired. Please sign in again.');
-  const response=await fetch((C.backendUrl||'')+'/api/d1',{
+  const response=await (window.gzAuthFetch||fetch)((C.backendUrl||'')+'/api/d1',{
     method:'POST',
     headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
     body:JSON.stringify({type:'table',action:'update',table:'orders',values:updates,filters:[{column:'id',op:'eq',value:orderId}]})
@@ -22,7 +22,7 @@ async function sendTrackingStatusEmail(orderNumber){
   const sessionResult=await sb.auth.getSession();
   const token=sessionResult?.data?.session?.access_token;
   if(!token)throw new Error('Admin session expired. Please sign in again.');
-  const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{
+  const response=await (window.gzAuthFetch||fetch)((C.backendUrl||'')+'/api/send-order-email',{
     method:'POST',
     headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
     body:JSON.stringify({
@@ -38,7 +38,7 @@ async function sendTrackingStatusEmail(orderNumber){
 
 async function syncOrderToSheet(orderId){
   try{
-    const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(window.getToken?window.getToken():'')},credentials:'include',body:JSON.stringify({orderId})});
+    const response=await (window.gzAuthFetch||fetch)((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(window.getToken?window.getToken():'')},credentials:'include',body:JSON.stringify({orderId})});
     if(!response.ok)console.warn('Google Sheets sync:',await response.text().catch(()=>''));
   }catch(e){console.warn('Google Sheets sync:',e)}
 }
