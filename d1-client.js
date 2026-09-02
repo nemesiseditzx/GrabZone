@@ -63,6 +63,21 @@ async function api(path,options={},includeToken=true,retryAuth=true){
  }
  return parse(response);
 }
+async function authFetch(url,options={}){
+ const make=()=>{
+  const h=new Headers(options.headers||{});
+  const token=read(TOKEN_KEY);
+  if(token&&!h.has('Authorization'))h.set('Authorization','Bearer '+token);
+  if(token&&!h.has('X-GrabZone-Token'))h.set('X-GrabZone-Token',token);
+  return fetch(url,{...options,headers:h,credentials:'include',cache:'no-store'});
+ };
+ let response=await make();
+ if(response.status===401){
+  const session=await refreshSession();
+  if(session?.authenticated&&session?.session_token)response=await make();
+ }
+ return response;
+}
 async function d1(payload){
  return api('/api/d1',{method:'POST',body:JSON.stringify(payload)});
 }
@@ -131,6 +146,7 @@ const auth={
  }
 };
 
+window.gzAuthFetch=authFetch;
 window.grabzoneD1={from:builder,rpc:async(fn,args={})=>{
  try{return {data:(await d1({type:'rpc',fn,args}))?.data??null,error:null}}
  catch(e){return {data:null,error:{message:e.message,status:e.status}}}
