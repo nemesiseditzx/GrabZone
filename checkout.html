@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Checkout — GRABZONE</title>
 <link rel="icon" type="image/png" href="favicon.png">
-<link rel="stylesheet" href="checkout.css">
+<link rel="stylesheet" href="checkout.css"><style>.delivery-eta{margin-top:14px;padding:12px 14px;border:1px solid #e7e7e2;border-radius:14px;background:#fafaf8;display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:12px}.delivery-eta b{font-size:12px;text-align:right}.delivery-eta[hidden]{display:none}</style>
 </head>
 <body>
 <header class="checkout-header">
@@ -154,7 +154,7 @@
       <div class="summary-line"><span>Shipping Charge</span><b id="checkoutShipping">৳0</b></div>
       <div class="summary-line" id="checkoutDiscountRow" hidden><span>Referral Discount</span><b id="checkoutDiscount">-৳0</b></div>
       <div class="summary-total"><span>Total Bill</span><b id="checkoutTotal">৳0</b></div>
-      <div class="security-note">🛡️ Your information is used only to process and verify your GrabZone order.</div>
+      <div id="deliveryEta" class="delivery-eta" hidden><span>📦 Estimated Delivery</span><b id="deliveryEtaText">Select your location</b></div><div class="security-note">🛡️ Your information is used only to process and verify your GrabZone order.</div>
     </aside>
   </div>
   <div id="orderConfirmModal" class="order-confirm-modal" hidden aria-hidden="true">
