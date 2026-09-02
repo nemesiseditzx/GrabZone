@@ -31,7 +31,7 @@ async function refreshSession(){
    const response=await fetch(BASE+'/api/admin-auth',{
     method:'GET',
     headers,
-    credentials:'include',
+    credentials:'same-origin',
     cache:'no-store'
    });
    const session=await response.json().catch(()=>null);
@@ -54,7 +54,7 @@ async function api(path,options={},includeToken=true,retryAuth=true){
   if(!h.Authorization)h.Authorization='Bearer '+token;
   h['X-GrabZone-Token']=token;
  }
- const response=await fetch(BASE+path,{...options,headers:h,credentials:'include',cache:'no-store'});
+ const response=await fetch(BASE+path,{...options,headers:h,credentials:'same-origin',cache:'no-store'});
  if(response.status===401&&includeToken&&retryAuth&&path!=='/api/admin-auth'){
   const session=await refreshSession();
   if(session?.authenticated&&session?.session_token){
@@ -69,7 +69,7 @@ async function authFetch(url,options={}){
   const token=read(TOKEN_KEY);
   if(token&&!h.has('Authorization'))h.set('Authorization','Bearer '+token);
   if(token&&!h.has('X-GrabZone-Token'))h.set('X-GrabZone-Token',token);
-  return fetch(url,{...options,headers:h,credentials:'include',cache:'no-store'});
+  return fetch(url,{...options,headers:h,credentials:'same-origin',cache:'no-store'});
  };
  let response=await make();
  if(response.status===401){
