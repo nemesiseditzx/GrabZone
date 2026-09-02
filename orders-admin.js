@@ -162,79 +162,10 @@ function renderOrders(){
  panel.querySelectorAll('[data-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.order));
  panel.querySelectorAll('[data-edit-order]').forEach(b=>b.onclick=()=>openEditor(b.dataset.editOrder));
  panel.querySelectorAll('[data-delete-order]').forEach(b=>b.onclick=()=>deleteOrder(b.dataset.deleteOrder));
- panel.querySelectorAll('[data-bk-order]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.bkOrder));
- panel.querySelectorAll('[data-bk-order]').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.bkOrder));
  panel.querySelectorAll('[data-send-bk]:not([disabled])').forEach(b=>b.onclick=()=>sendToBusinessKoro(b.dataset.sendBk));
  panel.querySelectorAll('[data-status-order]').forEach(s=>s.onchange=()=>changeStatus(s.dataset.statusOrder,s.value));
 }
 
-async function sendToBusinessKoro(id){
- const order=orders.find(x=>x.id===id); if(!order)return;
- const {data:items,error}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
- if(error){gzUiToast(error.message,'error');return}
- if(!items?.length){gzUiToast('This order has no products.','error');return}
- const productIds=[...new Set(items.map(x=>x.product_id).filter(Boolean))];
- const {data:productRows}=productIds.length
-   ?await sb.from('products').select('id,business_koro_product_id').in('id',productIds)
-   :{data:[]};
- const bkMap=new Map((productRows||[]).map(p=>[p.id,p.business_koro_product_id]));
- const button=[...document.querySelectorAll('[data-bk-order]')].find(x=>x.dataset.bkOrder===id);
- if(button){button.disabled=true;button.textContent='Sending…'}
- try{
-  const response=await fetch((C.backendUrl||'')+'/api/business-koro-order',{
-   method:'POST',
-   headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({
-    orderId:order.id,
-    orderNumber:order.order_number,
-    customer:{
-     name:order.customer_name,
-     phone:order.phone,
-     address:order.address,
-     division:order.division,
-     district:order.district,
-     area:order.upazila,
-     note:order.admin_note||''
-    },
-    items:items.map(it=>({
-     productId:bkMap.get(it.product_id)||null,
-     productName:it.product_name,
-     quantity:Number(it.quantity||1),
-     sellingPrice:Number(it.unit_price||0)
-    }))
-   })
-  });
-  const result=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(result.error||'Business Koro submission failed.');
-  gzUiToast('✓ Order '+order.order_number+' was sent to Business Koro.');
-  await loadOrders();
- }catch(e){
-  gzUiToast('⚠ '+e.message,'error');
- }finally{
-  if(button){button.disabled=false;button.textContent='Send to Business Koro'}
- }
-}
-
-async function sendToBusinessKoro(id){
- const order=orders.find(x=>x.id===id);if(!order)return;
- if(!(await gzUiConfirm('Send '+order.order_number+' to Business Koro now?')))return;
- const button=document.querySelector('[data-bk-order="'+CSS.escape(id)+'"]');
- if(button){button.disabled=true;button.textContent='Sending…'}
- try{
-  const{data:items,error}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
-  if(error)throw error;if(!items?.length)throw new Error('This order has no products.');
-  const response=await fetch((C.backendUrl||'')+'/api/business-koro-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:order.id,orderNumber:order.order_number,customer:{name:order.customer_name,phone:order.phone,address:order.address,division:order.division,district:order.district,area:order.upazila,note:order.admin_note||''},items:items.map(it=>({productId:it.business_koro_product_id||null,productName:it.product_name,quantity:Number(it.quantity||1),sellingPrice:Number(it.unit_price||0)}))})});
-  const result=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(result.error||'Business Koro rejected the order.');
-  const ids=(result.orders||[]).map(x=>x.supplierOrderId).filter(Boolean);
-  const note=[order.admin_note,'Business Koro submitted '+formatBdDateTime(new Date())+(ids.length?' · IDs: '+ids.join(', '):'')].filter(Boolean).join('\\n');
-  const{error:updateError}=await sb.from('orders').update({admin_note:note,updated_at:new Date().toISOString()}).eq('id',id);
-  if(updateError)throw updateError;order.admin_note=note;
-  await syncOrderToSheet(id);
-  gzUiToast('✓ Order sent to Business Koro successfully.');
- }catch(e){gzUiToast('Could not send order: '+e.message,'error')}
- finally{if(button){button.disabled=false;button.textContent='Send to Business Koro'}}
-}
 async function syncOrderToSheet(orderId){
  try{
   const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
@@ -255,14 +186,8 @@ async function sendOrderEmail(orderNumber,type='status_updated'){
  }catch(e){console.error('Order email:',e);return false}
 }
 async function confirmOrder(order){
- const isDhaka=String(order.division||'').trim().toLowerCase()==='dhaka';
- const updates={status:'Confirmed',updated_at:new Date().toISOString()};
- if(isDhaka){
-  const subtotal=Number(order.subtotal||0), discount=Number(order.referral_discount||0);
-  updates.shipping_charge=130;
-  updates.total=Math.max(0,subtotal+130-discount);
-  
- }
+ const subtotal=Number(order.subtotal||0), discount=Number(order.referral_discount||0);
+ const updates={status:'Confirmed',shipping_charge:130,total:Math.max(0,subtotal+130-discount),updated_at:new Date().toISOString()};
 
  const {error}=await sb.from('orders').update(updates).eq('id',order.id);
  if(error)throw error;
@@ -341,7 +266,7 @@ async function deleteOrder(id){
  const {error}=await sb.from('orders').delete().eq('id',id);
  if(error){gzUiToast('Could not delete order: '+error.message,'error');return}
  orders=orders.filter(x=>x.id!==id);
- await syncAllToSheet();
+ await syncOrderToSheet(id);
  renderOrders();
 }
 
@@ -361,7 +286,7 @@ async function openEditor(id){
  <label>Division<input id="oeDivision" value="${esc(current.division)}"></label><label>District<input id="oeDistrict" value="${esc(current.district)}"></label>
  <label>Thana<input id="oeUpazila" value="${esc(current.upazila||'')}"></label><label>Referral Code<input id="oeReferral" value="${esc(current.referral_code||'')}"></label>
  <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label>
- <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" value="${Number(current.shipping_charge||0)}"></label>
+ <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" min="130" max="130" value="130" readonly></label>
  <label>Referral Discount<input id="oeDiscount" type="number" step="0.01" min="0" value="${Number(current.referral_discount||0)}"></label>
  <label class="gz-order-full">Admin Note<textarea id="oeNote">${esc(String(current.admin_note||'').split(TRACK_MARKER)[0].trim())}</textarea></label><label>Courier / Tracking Provider<input id="oeTrackingCourier" value="${esc(trackingFor(current).courier)}" placeholder="e.g. Steadfast"></label><label>Tracking Number<input id="oeTrackingNumber" value="${esc(trackingFor(current).number)}" placeholder="Courier tracking number"></label><label class="gz-order-full">Tracking URL<input id="oeTrackingUrl" type="url" value="${esc(trackingFor(current).url)}" placeholder="https://courier-tracking-link..."></label></div>
  <div class="gz-items-editor"><h3>Products in this order</h3><div id="oeItems">${current.items.map((it,i)=>itemRow(it,i)).join('')}</div><button type="button" class="ghost" id="oeAddItem">＋ Add item</button><div id="oePreview" class="gz-order-total-preview"></div></div>`;
@@ -373,7 +298,7 @@ async function openEditor(id){
 function itemRow(it,i){return`<div class="gz-item-edit" data-item-index="${i}"><input class="it-name" placeholder="Product name" value="${esc(it.product_name)}"><input class="it-qty" type="number" min="1" value="${Math.max(1,Number(it.quantity||1))}"><input class="it-price" type="number" step="1" min="0" value="${Number(it.unit_price||0)}"><input class="it-image" placeholder="Image URL" value="${esc(it.image_url||'')}"><button type="button" class="it-remove">×</button></div>`}
 function bindItemRow(i){const row=document.querySelector(`.gz-item-edit[data-item-index="${i}"]`);if(!row)return;const sync=()=>{current.items[i].product_name=row.querySelector('.it-name').value.trim();current.items[i].quantity=Math.max(1,Number(row.querySelector('.it-qty').value||1));current.items[i].unit_price=Math.max(0,Number(row.querySelector('.it-price').value||0));current.items[i].image_url=row.querySelector('.it-image').value.trim();updatePreview()};row.querySelectorAll('input').forEach(x=>x.oninput=sync);row.querySelector('.it-remove').onclick=()=>{current.items.splice(i,1);renderItemEditor();updatePreview()}}
 function renderItemEditor(){const box=$('oeItems');box.innerHTML=current.items.map((it,i)=>itemRow(it,i)).join('');current.items.forEach((_,i)=>bindItemRow(i))}
-function updatePreview(){const sub=current.items.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0),ship=Number($('oeShipping')?.value||0);$('oePreview').textContent=`Subtotal: ${money(sub)} · Total: ${money(sub+ship)}`}
+function updatePreview(){const sub=current.items.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0),ship=130;$('oePreview').textContent=`Subtotal: ${money(sub)} · Total: ${money(sub+ship)}`}
 function closeEditor(){$('gzOrderModal')?.classList.remove('open');document.body.style.overflow='';current=null}
 
 async function saveEditor(){
@@ -382,7 +307,7 @@ async function saveEditor(){
   customer_name:$('oeName').value.trim(),phone:$('oePhone').value.trim(),email:$('oeEmail').value.trim(),
   division:$('oeDivision').value.trim(),district:$('oeDistrict').value.trim(),upazila:$('oeUpazila').value.trim(),
   address:$('oeAddress').value.trim(),referral_code:$('oeReferral').value.trim()||null,
-  payment_method:$('oePayment').value.trim()||'Cash on Delivery',shipping_charge:Number($('oeShipping').value||0),referral_discount:Math.max(0,Number($('oeDiscount').value||0)),
+  payment_method:$('oePayment').value.trim()||'Cash on Delivery',shipping_charge:130,referral_discount:Math.max(0,Number($('oeDiscount').value||0)),
   status:$('oeStatus').value,
   admin_note:saveTrackingNote($('oeNote').value.trim()),
   tracking_provider:$('oeTrackingCourier').value.trim()||null,
@@ -399,7 +324,7 @@ async function saveEditor(){
  if(!/^01[3-9]\d{8}$/.test(payload.phone.replace(/\D/g,''))){$('gzOrderEditorMsg').textContent='⚠ Mobile number must be a valid 11-digit Bangladesh number (01XXXXXXXXX).';return}
  if(!items.length){$('gzOrderEditorMsg').textContent='⚠ Add at least one product.';return}
  payload.phone=payload.phone.replace(/\D/g,'');
- payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.total=Math.max(0,payload.subtotal+payload.shipping_charge-payload.referral_discount);payload.updated_at=new Date().toISOString();
+ payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.shipping_charge=130;payload.total=Math.max(0,payload.subtotal+130-payload.referral_discount);payload.updated_at=new Date().toISOString();
  $('gzOrderSave').disabled=true;
  try{
   const {error:e1}=await sb.from('orders').update(payload).eq('id',current.id);if(e1)throw e1;
