@@ -326,6 +326,41 @@ async function sendOrderEmail(orderNumber,type='order_created'){
   }
 }
 
+function openOrderConfirm(d){
+  return new Promise(resolve=>{
+    const modal=$('orderConfirmModal');
+    if(!modal){resolve(window.confirm('Please review your order details carefully before placing the order.'));return}
+    const shipping=shippingForLocation(d.division);
+    const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0));
+    const address=[d.address,d.upazila,d.district,d.division].filter(Boolean).join(', ');
+    $('confirmCustomer').textContent=d.customer_name||'—';
+    $('confirmPhone').textContent=d.phone||'—';
+    $('confirmAddress').textContent=address||'—';
+    $('confirmTotal').textContent=money(total);
+    const ok=modal.querySelector('[data-confirm-ok]');
+    const cancel=modal.querySelectorAll('[data-confirm-cancel]');
+    const finish=value=>{
+      modal.hidden=true;
+      modal.setAttribute('aria-hidden','true');
+      document.body.style.overflow='';
+      ok?.removeEventListener('click',onOk);
+      cancel.forEach(x=>x.removeEventListener('click',onCancel));
+      document.removeEventListener('keydown',onKey);
+      resolve(value);
+    };
+    const onOk=()=>finish(true);
+    const onCancel=()=>finish(false);
+    const onKey=e=>{if(e.key==='Escape')finish(false)};
+    ok?.addEventListener('click',onOk);
+    cancel.forEach(x=>x.addEventListener('click',onCancel));
+    document.addEventListener('keydown',onKey);
+    modal.hidden=false;
+    modal.setAttribute('aria-hidden','false');
+    document.body.style.overflow='hidden';
+    requestAnimationFrame(()=>ok?.focus());
+  });
+}
+
 async function submit(e){
   e.preventDefault();
   const d=formData(),bad=validate(d);
@@ -335,7 +370,7 @@ async function submit(e){
     if(d.referral_code&&!referralState.code){msg('Please apply a valid referral code or remove it.',true);return}
   }
   d.phone=d.phone.replace(/\D/g,'');
-  const confirmed=window.confirm('Please review your order details carefully. By clicking OK, you are confirming that your name, phone number, delivery address and order items are correct and that you want to place this order.');
+  const confirmed=await openOrderConfirm(d);
   if(!confirmed)return;
   const b=$('placeOrderBtn');b.disabled=true;b.textContent='Placing order…';msg('');
   const shipping=shippingForLocation(d.division);
