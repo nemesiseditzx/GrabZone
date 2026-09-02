@@ -1,7 +1,13 @@
 {
   "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
   "name": "grabzone",
-  "main": "worker.mjs",
+  "main": "./worker.mjs",
+  "build": {
+    "upload": {
+      "format": "modules",
+      "main": "./worker.mjs"
+    }
+  },
   "compatibility_date": "2026-08-28",
   "keep_vars": true,
   "assets": {
