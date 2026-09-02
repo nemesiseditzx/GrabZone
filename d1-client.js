@@ -41,12 +41,13 @@ async function refreshSession(){
     return session;
    }
   }catch{}
+  // Never trust a cached token after the Worker rejects it.
+  // A previous Supabase/D1 token can otherwise make the admin UI look
+  // authenticated while every protected D1 endpoint returns 401.
   if(current){
-    const cachedUser=userRead();
-    return {authenticated:true,user:cachedUser,session_token:current,stale:true};
+    write(TOKEN_KEY,'');
+    userWrite(null);
   }
-  write(TOKEN_KEY,'');
-  userWrite(null);
   return null;
  })().finally(()=>{authRefreshPromise=null});
  return authRefreshPromise;
