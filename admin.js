@@ -42,14 +42,29 @@ function esc(x){
 }
 
 async function login(){
- if(!sb){$("loginMsg").textContent="Database service is not configured.";return}
- const{error}=await sb.auth.signInWithPassword({
-   email:$("email").value.trim(),
-   password:$("password").value
- });
- $("loginMsg").textContent=error?error.message:"";
- if(!error)showApp()
+ const msg=$("loginMsg"),button=$("loginButton");
+ try{
+   if(!sb)throw new Error("Database service is not configured.");
+   const email=$("email").value.trim(),password=$("password").value;
+   if(!email||!password)throw new Error("Enter your admin email and password.");
+   if(button){button.disabled=true;button.textContent="Signing in…";}
+   msg.textContent="";
+   const result=await sb.auth.signInWithPassword({email,password});
+   if(result?.error)throw new Error(result.error.message||"Invalid email or password.");
+   msg.textContent="";
+   showApp();
+ }catch(e){
+   console.error("GrabZone admin login:",e);
+   msg.textContent="✕ "+(e?.message||"Sign in failed.");
+ }finally{
+   if(button){button.disabled=false;button.textContent="Sign in";}
+ }
 }
+document.addEventListener("DOMContentLoaded",()=>{
+ const button=$("loginButton");
+ if(button)button.addEventListener("click",login);
+ $("password")?.addEventListener("keydown",e=>{if(e.key==="Enter")login()});
+});
 
 async function logout(){
  await sb.auth.signOut();
