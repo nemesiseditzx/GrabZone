@@ -38,7 +38,7 @@ async function sendTrackingStatusEmail(orderNumber){
 
 async function syncOrderToSheet(orderId){
   try{
-    const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
+    const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(window.getToken?window.getToken():'')},credentials:'include',body:JSON.stringify({orderId})});
     if(!response.ok)console.warn('Google Sheets sync:',await response.text().catch(()=>''));
   }catch(e){console.warn('Google Sheets sync:',e)}
 }
