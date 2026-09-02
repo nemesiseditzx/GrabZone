@@ -20,24 +20,46 @@ async function parse(r){
  }
  return b;
 }
+let authRefreshPromise=null;
+async function refreshSession(){
+ if(authRefreshPromise)return authRefreshPromise;
+ authRefreshPromise=(async()=>{
+  const current=read(TOKEN_KEY);
+  const headers={Accept:'application/json'};
+  if(current)headers.Authorization='Bearer '+current;
+  try{
+   const response=await fetch(BASE+'/api/admin-auth',{
+    method:'GET',
+    headers,
+    credentials:'include',
+    cache:'no-store'
+   });
+   const session=await response.json().catch(()=>null);
+   if(response.ok&&session?.authenticated&&session?.session_token){
+    write(TOKEN_KEY,session.session_token);
+    userWrite(session.user||null);
+    return session;
+   }
+  }catch{}
+  write(TOKEN_KEY,'');
+  userWrite(null);
+  return null;
+ })().finally(()=>{authRefreshPromise=null});
+ return authRefreshPromise;
+}
 async function api(path,options={},includeToken=true,retryAuth=true){
  const h={'Content-Type':'application/json','Accept':'application/json',...(options.headers||{})};
  const token=includeToken?read(TOKEN_KEY):'';
- if(token){if(!h.Authorization)h.Authorization='Bearer '+token;h['X-GrabZone-Token']=token;}
+ if(token){
+  if(!h.Authorization)h.Authorization='Bearer '+token;
+  h['X-GrabZone-Token']=token;
+ }
  const response=await fetch(BASE+path,{...options,headers:h,credentials:'include',cache:'no-store'});
  if(response.status===401&&includeToken&&retryAuth&&path!=='/api/admin-auth'){
-   try{
-     // A D1 migration or Worker redeploy can invalidate the raw token kept in
-     // localStorage while the secure HttpOnly session cookie is still valid.
-     // Drop the stale bearer first and let /api/admin-auth recover from cookie.
-     write(TOKEN_KEY,'');userWrite(null);
-     const refresh=await fetch(BASE+'/api/admin-auth',{method:'GET',headers:{Accept:'application/json'},credentials:'include',cache:'no-store'});
-     const session=await refresh.json().catch(()=>null);
-     if(refresh.ok&&session?.authenticated&&session?.session_token){
-       write(TOKEN_KEY,session.session_token);userWrite(session.user||null);
-       return api(path,options,true,false);
-     }
-   }catch{}
+  const session=await refreshSession();
+  if(session?.authenticated&&session?.session_token){
+   return api(path,options,true,false);
+  }
  }
  return parse(response);
 }
