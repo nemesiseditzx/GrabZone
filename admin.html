@@ -487,6 +487,16 @@ body.gz-gallery-dragging-active{
           Flash Sales
         </span>
       </button>
+      <button
+        class="side-link"
+        data-tab="drops"
+        type="button"
+      >
+        ✦
+        <span>
+          Drops
+        </span>
+      </button>
 
 
       <button
@@ -1969,6 +1979,25 @@ body.gz-gallery-dragging-active{
   <div class="panel"><h2>Scheduled & Active Sales</h2><p class="muted">Manage all flash-sale campaigns from one place.</p><div id="flashSaleList"></div></div>
 </section>
 
+<!-- DROPS -->
+<section id="tab-drops" class="tab">
+  <div class="section-head">
+    <div><h1>✦ Drops</h1><p>Schedule limited-time product drops with a live countdown.</p></div>
+    <button class="primary" type="button" onclick="gzLoadDrops()">↻ Refresh</button>
+  </div>
+  <div class="panel">
+    <h2>Create a Drop</h2>
+    <p class="muted">Drops are separate from Flash Sales. Use them for launches, limited releases or hype campaigns.</p>
+    <div class="form-grid">
+      <label>Product<select id="dropProduct"></select></label>
+      <label>Starts<input id="dropStart" type="datetime-local"></label>
+      <label>Ends<input id="dropEnd" type="datetime-local"></label>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:14px"><button class="primary" type="button" onclick="gzSaveDrop()">✦ Schedule Drop</button><span id="dropMsg" class="save-message"></span></div>
+  </div>
+  <div class="panel"><h2>Scheduled & Active Drops</h2><p class="muted">Manage product drops here.</p><div id="dropList"></div></div>
+</section>
+
 <!-- PRODUCTS -->
 
         <div class="panel">
@@ -2249,6 +2278,30 @@ async function gzEditFlashSale(id){
 }
 async function gzDisableFlashSale(id){const {error}=await sb.from('products').update({flash_enabled:false,updated_at:new Date().toISOString()}).eq('id',id);if(error)alert(error.message);else gzLoadFlashSales();}
 document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadFlashSales,700));
+</script>
+<script>
+async function gzLoadDrops(){
+ const list=document.getElementById('dropList'),sel=document.getElementById('dropProduct');if(!list||!sel)return;list.innerHTML='Loading…';
+ const {data:ps,error}=await sb.from('products').select('*').order('created_at',{ascending:false});if(error){list.textContent=error.message;return}
+ sel.innerHTML='<option value="">Select product</option>'+(ps||[]).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('');
+ const xs=(ps||[]).filter(p=>p.drop_ends_at);
+ if(!xs.length){list.innerHTML='<div class="empty">No drops scheduled yet.</div>';return}
+ const now=Date.now();
+ list.innerHTML=xs.map(p=>{const active=!!p.drop_enabled&&Date.parse(p.drop_ends_at)>now&&(!p.drop_starts_at||Date.parse(p.drop_starts_at)<=now);return '<div class="item" style="margin-bottom:10px"><div style="display:flex;gap:12px;align-items:center"><img src="'+esc(p.image_url||'')+'" style="width:56px;height:56px;object-fit:cover;border-radius:10px"><div style="flex:1"><b>'+esc(p.name)+'</b><div class="meta">'+(active?'🟢 ACTIVE':'🕒 SCHEDULED / ENDED')+' · Ends: '+new Date(p.drop_ends_at).toLocaleString()+'</div></div><button class="ghost" type="button" onclick="gzEditDrop(\''+p.id+'\')">Edit</button><button class="ghost" type="button" onclick="gzDisableDrop(\''+p.id+'\')">Disable</button></div></div>'}).join('');
+}
+async function gzSaveDrop(){
+ const id=document.getElementById('dropProduct').value,start=document.getElementById('dropStart').value,end=document.getElementById('dropEnd').value,msg=document.getElementById('dropMsg');
+ if(!id||!end){msg.textContent='Select a product and end time.';return}
+ const {error}=await sb.from('products').update({drop_starts_at:start?new Date(start).toISOString():null,drop_ends_at:new Date(end).toISOString(),drop_enabled:true,updated_at:new Date().toISOString()}).eq('id',id);
+ msg.textContent=error?'✕ '+error.message:'✓ Drop scheduled.';if(!error)gzLoadDrops();
+}
+async function gzEditDrop(id){
+ const {data:p}=await sb.from('products').select('*').eq('id',id).single();if(!p)return;
+ document.getElementById('dropProduct').value=p.id;document.getElementById('dropStart').value=p.drop_starts_at?new Date(p.drop_starts_at).toISOString().slice(0,16):'';document.getElementById('dropEnd').value=p.drop_ends_at?new Date(p.drop_ends_at).toISOString().slice(0,16):'';
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+async function gzDisableDrop(id){const {error}=await sb.from('products').update({drop_enabled:false,updated_at:new Date().toISOString()}).eq('id',id);if(error)alert(error.message);else gzLoadDrops();}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadDrops,800));
 </script>
 <script src="billboard-admin.js"></script>
   <script src="phase5-admin.js?v=20260902p5"></script>
