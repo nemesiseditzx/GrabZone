@@ -1041,7 +1041,7 @@ function initFlashCountdowns(){
   });
 }
 
-function initDropCountdowns(){document.querySelectorAll('.gz-drop-badge[data-drop-end]').forEach(function(el){if(el.dataset.gzTimer==='1')return;el.dataset.gzTimer='1';const end=Date.parse(el.dataset.dropEnd);const tick=()=>{const left=Math.max(0,end-Date.now());if(left<=0){el.textContent='⚡ DROP ENDED';return}const h=Math.floor(left/3600000),m=Math.floor(left%3600000/60000),sec=Math.floor(left%60000/1000),pad=n=>String(n).padStart(2,'0'),cd=el.querySelector('.gz-drop-countdown');if(cd)cd.textContent=pad(h)+':'+pad(m)+':'+pad(sec);setTimeout(tick,1000)};tick()}
+function initDropCountdowns(){document.querySelectorAll('.gz-drop-badge[data-drop-end]').forEach(function(el){if(el.dataset.gzTimer==='1')return;el.dataset.gzTimer='1';const end=Date.parse(el.dataset.dropEnd);const tick=()=>{const left=Math.max(0,end-Date.now());if(left<=0){el.textContent='⚡ DROP ENDED';return}const h=Math.floor(left/3600000),m=Math.floor(left%3600000/60000),sec=Math.floor(left%60000/1000),pad=n=>String(n).padStart(2,'0'),cd=el.querySelector('.gz-drop-countdown');if(cd)cd.textContent=pad(h)+':'+pad(m)+':'+pad(sec);setTimeout(tick,1000)};tick()})}
 function renderCategories() {
   const container =
     document.getElementById("categories");
