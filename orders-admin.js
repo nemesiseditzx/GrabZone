@@ -168,7 +168,7 @@ function renderOrders(){
 
 async function syncOrderToSheet(orderId){
  try{
-  const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(window.getToken?window.getToken():'')},credentials:'include',body:JSON.stringify({orderId})});
+  const response=await (window.gzAuthFetch||fetch)((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(window.getToken?window.getToken():'')},credentials:'include',body:JSON.stringify({orderId})});
   if(!response.ok)throw new Error((await response.json().catch(()=>({}))).error||'Google Sheets sync failed.');
   return true;
  }catch(e){console.warn('Google Sheets sync:',e);return false}
@@ -181,9 +181,9 @@ async function sendOrderEmail(orderNumber,type='status_updated',statusOverride='
   if(token)headers.Authorization='Bearer '+token;
   const payload=JSON.stringify({orderNumber,type,status:statusOverride||orders.find(x=>x.order_number===orderNumber)?.status||''});
   const base=String(C.backendUrl||'').replace(/\/$/,'');
-  let response=await fetch(base+'/api/send-order-email',{method:'POST',headers,body:payload});
+  let response=await (window.gzAuthFetch||fetch)(base+'/api/send-order-email',{method:'POST',headers,body:payload});
   // Compatibility fallback for older Worker deployments that exposed the route without /api.
-  if(response.status===404)response=await fetch(base+'/send-order-email',{method:'POST',headers,body:payload});
+  if(response.status===404)response=await (window.gzAuthFetch||fetch)(base+'/send-order-email',{method:'POST',headers,body:payload});
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.error||'Receipt email could not be sent.');
   return true;
@@ -236,7 +236,7 @@ async function sendToBusinessKoro(id,force=false){
   const {data:items,error:itemError}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
   if(itemError)throw itemError;
   if(!items?.length)throw new Error('This order has no products.');
-  const response=await fetch((C.backendUrl||'')+'/api/business-koro-order',{
+  const response=await (window.gzAuthFetch||fetch)((C.backendUrl||'')+'/api/business-koro-order',{
    method:'POST',
    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
    body:JSON.stringify({
