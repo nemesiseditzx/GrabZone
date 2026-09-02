@@ -164,7 +164,7 @@ async function email(req,env){
  "</div><div style='padding:18px 10px;text-align:center;color:#98a2b3;font-size:11px;line-height:1.6'>© GrabZone • Bangladesh<br>এই মেইলটি স্বয়ংক্রিয়ভাবে পাঠানো হয়েছে।</div></div></body></html>";
  const subject=isUpdate?"GrabZone — Order "+o.order_number+" Status Update":"GrabZone — Order "+o.order_number+" Received";
  const raw=["From: GrabZone <"+env.GMAIL_FROM_EMAIL+">","To: "+o.email,"Subject: "+subject,"MIME-Version: 1.0","Content-Type: text/html; charset=UTF-8","Content-Transfer-Encoding: 8bit","",html].join("\r\n");
- const r=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+await gmailToken(env),"Content-Type":"application/json"},body:JSON.stringify({raw:btoa(unescape(encodeURIComponent(raw))).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=/g,"")})});
+ const r=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+await gmailToken(env),"Content-Type":"application/json"},body:JSON.stringify({raw:btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"")})});
  const d=await r.json().catch(()=>({}));
  return r.ok?json({ok:true,id:d.id||null}):json({error:d?.error?.message||"Gmail rejected the request."},r.status);
 }
