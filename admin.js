@@ -56,6 +56,58 @@ async function logout(){
  location.reload()
 }
 
+async function loadDashboardAnalytics(){
+  const msg=$("gzAnalyticsMsg");
+  if(msg)msg.textContent="Loading live analytics…";
+  try{
+    const{data,error}=await sb.auth.getSession();
+    if(error)throw error;
+    if(!data?.session)throw new Error("Admin session expired. Please sign in again.");
+    const r=await fetch((C.backendUrl||"")+"/api/d1",{
+      method:"POST",
+      headers:{Authorization:"Bearer "+data.session.access_token,"Content-Type":"application/json"},
+      body:JSON.stringify({type:"rpc",fn:"admin_analytics",args:{}})
+    });
+    const payload=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(payload.error||"Could not load analytics.");
+    const d=payload.data||{};
+    const money=n=>"৳"+Number(n||0).toLocaleString("en-BD",{maximumFractionDigits:0});
+    $("gzKpiTodaySales").textContent=money(d.today?.sales);
+    $("gzKpiTodayOrders").textContent=Number(d.today?.orders||0).toLocaleString();
+    $("gzKpiRevenue30").textContent=money(d.last30?.revenue);
+    $("gzKpiAov").textContent=money(d.last30?.avgOrder);
+    $("gzKpiCustomers").textContent=Number(d.customers?.unique||0).toLocaleString();
+    $("gzKpiRepeat").textContent=Number(d.customers?.repeat||0).toLocaleString();
+
+    const statuses=["New","Contacting","Confirmed","Processing","Shipped","Delivered","Cancelled"];
+    const maxStatus=Math.max(1,...statuses.map(s=>Number(d.statusCounts?.[s]||0)));
+    $("gzStatusBars").innerHTML=statuses.map(s=>{
+      const n=Number(d.statusCounts?.[s]||0);
+      return "<div class='gz-status-row'><div><b>"+esc(s)+"</b><span>"+n+"</span></div><div class='gz-bar'><i style='width:"+Math.round(n/maxStatus*100)+"%'></i></div></div>";
+    }).join("");
+
+    const trend=d.trend||[];
+    const maxRev=Math.max(1,...trend.map(x=>Number(x.revenue||0)));
+    $("gzTrend").innerHTML=trend.map(x=>{
+      const label=new Date(x.date+"T00:00:00Z").toLocaleDateString("en-US",{month:"short",day:"numeric",timeZone:"UTC"});
+      return "<div class='gz-trend-row'><div class='gz-trend-label'><b>"+label+"</b><span>"+Number(x.orders||0)+" orders</span></div><div class='gz-bar'><i style='width:"+Math.round(Number(x.revenue||0)/maxRev*100)+"%'></i></div><strong>"+money(x.revenue)+"</strong></div>";
+    }).join("")||"<div class='meta'>No order data yet.</div>";
+
+    const products=d.topProducts||[];
+    const maxP=Math.max(1,...products.map(x=>Number(x.revenue||0)));
+    $("gzTopProducts").innerHTML=products.map((x,i)=>"<div class='gz-rank'><span class='gz-rank-no'>"+(i+1)+"</span><div><b>"+esc(x.name||"Unknown product")+"</b><small>"+Number(x.units||0)+" units · "+Number(x.orders||0)+" order lines</small></div><strong>"+money(x.revenue)+"</strong><div class='gz-mini-bar'><i style='width:"+Math.round(Number(x.revenue||0)/maxP*100)+"%'></i></div></div>").join("")||"<div class='meta'>No product sales yet.</div>";
+
+    const customers=d.topCustomers||[];
+    const maxC=Math.max(1,...customers.map(x=>Number(x.spent||0)));
+    $("gzTopCustomers").innerHTML=customers.map((x,i)=>"<div class='gz-rank'><span class='gz-rank-no'>"+(i+1)+"</span><div><b>"+esc(x.name||"Customer")+"</b><small>"+esc(x.phone||x.email||"")+" · "+Number(x.orders||0)+" orders</small></div><strong>"+money(x.spent)+"</strong><div class='gz-mini-bar'><i style='width:"+Math.round(Number(x.spent||0)/maxC*100)+"%'></i></div></div>").join("")||"<div class='meta'>No customers yet.</div>";
+
+    if(msg)msg.textContent="✓ Analytics updated just now.";
+  }catch(e){
+    console.error(e);
+    if(msg)msg.textContent="✕ "+(e.message||"Analytics failed.");
+  }
+}
+
 function showApp(){
  $("loginBox").classList.add("hidden");
  $("app").classList.remove("hidden");
