@@ -342,7 +342,9 @@ async function saveEditor(){
   $('gzOrderEditorMsg').textContent=statusEmailSent
     ?'✓ Order updated successfully.'
     :'✓ Order updated, but the customer email could not be sent. Check email settings.';
-  await loadOrders();setTimeout(closeEditor,500);
+  await loadOrders();
+  document.dispatchEvent(new CustomEvent('grabzone:orders-updated'));
+  setTimeout(closeEditor,500);
  }catch(e){$('gzOrderEditorMsg').textContent='⚠ '+e.message}finally{$('gzOrderSave').disabled=false}
 }
 
