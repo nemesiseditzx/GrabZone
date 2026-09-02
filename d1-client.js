@@ -41,6 +41,10 @@ async function refreshSession(){
     return session;
    }
   }catch{}
+  if(current){
+    const cachedUser=userRead();
+    return {authenticated:true,user:cachedUser,session_token:current,stale:true};
+  }
   write(TOKEN_KEY,'');
   userWrite(null);
   return null;
@@ -67,8 +71,8 @@ async function authFetch(url,options={}){
  const make=()=>{
   const h=new Headers(options.headers||{});
   const token=read(TOKEN_KEY);
-  if(token&&!h.has('Authorization'))h.set('Authorization','Bearer '+token);
-  if(token&&!h.has('X-GrabZone-Token'))h.set('X-GrabZone-Token',token);
+  if(token)h.set('Authorization','Bearer '+token);
+  if(token)h.set('X-GrabZone-Token',token);
   return fetch(url,{...options,headers:h,credentials:'same-origin',cache:'no-store'});
  };
  let response=await make();
