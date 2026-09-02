@@ -60,46 +60,107 @@ async function loadDashboardAnalytics(){
   const msg=$("gzAnalyticsMsg");
   if(msg)msg.textContent="Loading live analytics…";
   try{
-    const{data,error}=await sb.auth.getSession();
-    if(error)throw error;
-    if(!data?.session)throw new Error("Admin session expired. Please sign in again.");
-    const r=await fetch((C.backendUrl||"")+"/api/d1",{
-      method:"POST",
-      headers:{Authorization:"Bearer "+data.session.access_token,"Content-Type":"application/json"},
-      body:JSON.stringify({type:"rpc",fn:"admin_analytics",args:{}})
-    });
-    const payload=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(payload.error||"Could not load analytics.");
-    const d=payload.data||{};
-    const money=n=>"৳"+Number(n||0).toLocaleString("en-BD",{maximumFractionDigits:0});
-    $("gzKpiTodaySales").textContent=money(d.today?.sales);
-    $("gzKpiTodayOrders").textContent=Number(d.today?.orders||0).toLocaleString();
-    $("gzKpiRevenue30").textContent=money(d.last30?.revenue);
-    $("gzKpiAov").textContent=money(d.last30?.avgOrder);
-    $("gzKpiCustomers").textContent=Number(d.customers?.unique||0).toLocaleString();
-    $("gzKpiRepeat").textContent=Number(d.customers?.repeat||0).toLocaleString();
+    if(!sb)throw new Error("Database service is not configured.");
+    const [ordersResult,itemsResult,productsResult]=await Promise.all([
+      sb.from("orders").select("id,order_number,customer_name,email,phone,subtotal,total,status,created_at").order("created_at",{ascending:false}),
+      sb.from("order_items").select("order_id,product_name,quantity,unit_price,line_total"),
+      sb.from("products").select("id,name,price,published,created_at")
+    ]);
+    if(ordersResult.error)throw ordersResult.error;
+    if(itemsResult.error)throw itemsResult.error;
+    if(productsResult.error)throw productsResult.error;
 
-    const statuses=["New","Contacting","Confirmed","Processing","Shipped","Delivered","Cancelled"];
-    const maxStatus=Math.max(1,...statuses.map(s=>Number(d.statusCounts?.[s]||0)));
-    $("gzStatusBars").innerHTML=statuses.map(s=>{
-      const n=Number(d.statusCounts?.[s]||0);
+    const allOrders=Array.isArray(ordersResult.data)?ordersResult.data:[];
+    const allItems=Array.isArray(itemsResult.data)?itemsResult.data:[];
+    const products=Array.isArray(productsResult.data)?productsResult.data:[];
+
+    const now=new Date();
+    const cutoff=new Date(now.getTime()-29*24*60*60*1000);
+    const orders=allOrders.filter(o=>{
+      const d=new Date(o.created_at);
+      return !Number.isNaN(d.getTime())&&d>=cutoff;
+    });
+
+    const money=n=>"৳"+Number(n||0).toLocaleString("en-BD",{maximumFractionDigits:0});
+    const statusList=["New","Contacting","Confirmed","Processing","Shipped","Delivered","Cancelled"];
+    const statusCounts={};
+    for(const s of statusList)statusCounts[s]=0;
+    for(const o of orders){
+      const s=statusList.includes(o.status)?o.status:"New";
+      statusCounts[s]++;
+    }
+
+    const todayKey=now.toISOString().slice(0,10);
+    const todayOrders=orders.filter(o=>String(o.created_at||"").slice(0,10)===todayKey);
+    const todaySales=todayOrders.filter(o=>o.status!=="Cancelled").reduce((n,o)=>n+Number(o.total||0),0);
+    const validOrders=orders.filter(o=>o.status!=="Cancelled");
+    const revenue30=validOrders.reduce((n,o)=>n+Number(o.total||0),0);
+    const avgOrder=validOrders.length?revenue30/validOrders.length:0;
+
+    const customerMap=new Map();
+    for(const o of orders){
+      const key=String(o.phone||o.email||o.customer_name||"").trim().toLowerCase();
+      if(!key)continue;
+      const c=customerMap.get(key)||{name:o.customer_name||"Unknown",phone:o.phone||"",email:o.email||"",orders:0,spent:0,last:o.created_at};
+      c.orders++;
+      if(o.status!=="Cancelled")c.spent+=Number(o.total||0);
+      if(new Date(o.created_at)>new Date(c.last))c.last=o.created_at;
+      customerMap.set(key,c);
+    }
+    const customers=[...customerMap.values()];
+    const uniqueCustomers=customers.length;
+    const repeatCustomers=customers.filter(c=>c.orders>1).length;
+
+    const activeOrderIds=new Set(allOrders.filter(o=>o.status!=="Cancelled").map(o=>o.id));
+    const pmap=new Map();
+    for(const i of allItems){
+      if(!activeOrderIds.has(i.order_id))continue;
+      const name=String(i.product_name||"Unknown product");
+      const p=pmap.get(name)||{name,units:0,revenue:0,orders:0};
+      p.units+=Number(i.quantity||0);
+      p.revenue+=Number(i.line_total||0);
+      p.orders++;
+      pmap.set(name,p);
+    }
+    const topProducts=[...pmap.values()].sort((a,b)=>b.units-a.units).slice(0,8);
+    const topCustomers=customers.sort((a,b)=>b.spent-a.spent).slice(0,8);
+
+    const trend=[];
+    for(let n=6;n>=0;n--){
+      const d=new Date(now.getTime()-n*24*60*60*1000);
+      const key=d.toISOString().slice(0,10);
+      const xs=orders.filter(o=>String(o.created_at||"").slice(0,10)===key);
+      trend.push({
+        date:key,
+        orders:xs.length,
+        revenue:xs.filter(o=>o.status!=="Cancelled").reduce((s,o)=>s+Number(o.total||0),0)
+      });
+    }
+
+    const maxStatus=Math.max(1,...statusList.map(s=>Number(statusCounts[s]||0)));
+    $("gzKpiTodaySales").textContent=money(todaySales);
+    $("gzKpiTodayOrders").textContent=Number(todayOrders.length||0).toLocaleString();
+    $("gzKpiRevenue30").textContent=money(revenue30);
+    $("gzKpiAov").textContent=money(avgOrder);
+    $("gzKpiCustomers").textContent=Number(uniqueCustomers||0).toLocaleString();
+    $("gzKpiRepeat").textContent=Number(repeatCustomers||0).toLocaleString();
+
+    $("gzStatusBars").innerHTML=statusList.map(s=>{
+      const n=Number(statusCounts[s]||0);
       return "<div class='gz-status-row'><div><b>"+esc(s)+"</b><span>"+n+"</span></div><div class='gz-bar'><i style='width:"+Math.round(n/maxStatus*100)+"%'></i></div></div>";
     }).join("");
 
-    const trend=d.trend||[];
     const maxRev=Math.max(1,...trend.map(x=>Number(x.revenue||0)));
     $("gzTrend").innerHTML=trend.map(x=>{
       const label=new Date(x.date+"T00:00:00Z").toLocaleDateString("en-US",{month:"short",day:"numeric",timeZone:"UTC"});
       return "<div class='gz-trend-row'><div class='gz-trend-label'><b>"+label+"</b><span>"+Number(x.orders||0)+" orders</span></div><div class='gz-bar'><i style='width:"+Math.round(Number(x.revenue||0)/maxRev*100)+"%'></i></div><strong>"+money(x.revenue)+"</strong></div>";
     }).join("")||"<div class='meta'>No order data yet.</div>";
 
-    const products=d.topProducts||[];
-    const maxP=Math.max(1,...products.map(x=>Number(x.revenue||0)));
-    $("gzTopProducts").innerHTML=products.map((x,i)=>"<div class='gz-rank'><span class='gz-rank-no'>"+(i+1)+"</span><div><b>"+esc(x.name||"Unknown product")+"</b><small>"+Number(x.units||0)+" units sold · "+Number(x.orders||0)+" order lines</small></div><strong>"+Number(x.units||0).toLocaleString()+" sold</strong><div class='gz-mini-bar'><i style='width:"+Math.round(Number(x.units||0)/maxP*100)+"%'></i></div></div>").join("")||"<div class='meta'>No product sales yet.</div>";
+    const maxP=Math.max(1,...topProducts.map(x=>Number(x.units||0)));
+    $("gzTopProducts").innerHTML=topProducts.map((x,i)=>"<div class='gz-rank'><span class='gz-rank-no'>"+(i+1)+"</span><div><b>"+esc(x.name||"Unknown product")+"</b><small>"+Number(x.units||0)+" units sold · "+Number(x.orders||0)+" order lines</small></div><strong>"+Number(x.units||0).toLocaleString()+" sold</strong><div class='gz-mini-bar'><i style='width:"+Math.round(Number(x.units||0)/maxP*100)+"%'></i></div></div>").join("")||"<div class='meta'>No product sales yet.</div>";
 
-    const customers=d.topCustomers||[];
-    const maxC=Math.max(1,...customers.map(x=>Number(x.spent||0)));
-    $("gzTopCustomers").innerHTML=customers.map((x,i)=>"<div class='gz-rank'><span class='gz-rank-no'>"+(i+1)+"</span><div><b>"+esc(x.name||"Customer")+"</b><small>"+esc(x.phone||x.email||"")+" · "+Number(x.orders||0)+" orders</small></div><strong>"+money(x.spent)+"</strong><div class='gz-mini-bar'><i style='width:"+Math.round(Number(x.spent||0)/maxC*100)+"%'></i></div></div>").join("")||"<div class='meta'>No customers yet.</div>";
+    const maxC=Math.max(1,...topCustomers.map(x=>Number(x.spent||0)));
+    $("gzTopCustomers").innerHTML=topCustomers.map((x,i)=>"<div class='gz-rank'><span class='gz-rank-no'>"+(i+1)+"</span><div><b>"+esc(x.name||"Customer")+"</b><small>"+esc(x.phone||x.email||"")+" · "+Number(x.orders||0)+" orders</small></div><strong>"+money(x.spent)+"</strong><div class='gz-mini-bar'><i style='width:"+Math.round(Number(x.spent||0)/maxC*100)+"%'></i></div></div>").join("")||"<div class='meta'>No customers yet.</div>";
 
     if(msg)msg.textContent="✓ Analytics updated just now.";
   }catch(e){
@@ -107,7 +168,6 @@ async function loadDashboardAnalytics(){
     if(msg)msg.textContent="✕ "+(e.message||"Analytics failed.");
   }
 }
-
 function showApp(){
  $("loginBox").classList.add("hidden");
  $("app").classList.remove("hidden");
