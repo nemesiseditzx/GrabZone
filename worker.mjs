@@ -146,8 +146,170 @@ async function supabaseOrderItems(req,env,orderId){
  const rows=await r.json().catch(()=>[]);
  return Array.isArray(rows)?rows:[];
 }
-async function email(req,env){const b=await req.json().catch(()=>({})),num=String(b.orderNumber||"").trim(),type=String(b.type||"status_updated").trim(),requestedStatus=String(b.status||"").trim();if(!num)return json({error:"Missing order number."},400);let o=null,items=[];if(type==="status_updated"){if(!(await supabaseUser(req,env)))return json({error:"Unauthorized."},401);o=await supabaseOrderLookup(req,env,num);if(o)items=await supabaseOrderItems(req,env,o.id);if(!o)o=(await q(env,"SELECT * FROM orders WHERE order_number=? LIMIT 1",[num])).results?.[0];if(!o)return json({error:"Order not found in Supabase or D1."},404);if(!items.length)items=(await q(env,"SELECT * FROM order_items WHERE order_id=? ORDER BY id",[o.id])).results||[];}else{o=(await q(env,"SELECT * FROM orders WHERE order_number=? LIMIT 1",[num])).results?.[0]||b.order||null;items=(await q(env,"SELECT * FROM order_items WHERE order_id=? ORDER BY id",[o?.id||""])).results||b.items||[];if(!o)return json({error:"Order details are required for the confirmation email."},404);}if(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET||!env.GOOGLE_REFRESH_TOKEN||!env.GMAIL_FROM_EMAIL)return json({error:"Gmail email service is not configured.",code:"GMAIL_CONFIG_MISSING"},503);try{const items=(await q(env,"SELECT * FROM order_items WHERE order_id=? ORDER BY id",[o.id])).results||[],esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])),status=String(o.status||"New").trim()||"New",statusText={New:"অর্ডার গ্রহণ করা হয়েছে",Contacting:"কাস্টমারের সাথে যোগাযোগ করা হচ্ছে",Confirmed:"অর্ডার কনফার্ম হয়েছে",Processing:"অর্ডার প্রস্তুত করা হচ্ছে",Shipped:"অর্ডার শিপ করা হয়েছে",Delivered:"অর্ডার ডেলিভারি সম্পন্ন হয়েছে",Cancelled:"অর্ডার বাতিল করা হয়েছে"}[status]||"অর্ডারের স্ট্যাটাস আপডেট হয়েছে",rows=items.map(i=>"<tr><td style='padding:14px 12px;border-bottom:1px solid #e5e7eb;color:#111827;font-size:14px'>"+esc(i.product_name)+"</td><td style='padding:14px 12px;border-bottom:1px solid #e5e7eb;text-align:center;color:#374151;font-size:14px'>"+Number(i.quantity||1)+"</td><td style='padding:14px 12px;border-bottom:1px solid #e5e7eb;text-align:right;color:#111827;font-weight:700;font-size:14px'>৳"+Number(i.line_total||0).toLocaleString("en-BD")+"</td></tr>").join(""),subject=type==="status_updated"?"GrabZone Order "+o.order_number+" | "+status:"GrabZone Order "+o.order_number+" | New Order",html="<!doctype html><html><body style='margin:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#111827'><div style='max-width:680px;margin:0 auto;padding:24px 12px'><div style='background:#111827;border-radius:20px 20px 0 0;padding:28px;color:#fff'><div style='font-size:13px;font-weight:800;letter-spacing:2px'>GRABZONE</div><div style='font-size:25px;font-weight:800;margin-top:10px'>অর্ডার আপডেট</div><div style='font-size:14px;color:#d1d5db;margin-top:6px'>আপনার অর্ডারের বর্তমান অবস্থা</div></div><div style='background:#fff;border-radius:0 0 20px 20px;padding:28px;box-shadow:0 8px 30px rgba(0,0,0,.07)'><div style='font-size:12px;color:#6b7280;font-weight:700'>ORDER STATUS</div><div style='font-size:25px;font-weight:800;margin-top:7px'>"+esc(statusText)+"</div><div style='display:inline-block;margin-top:12px;padding:8px 13px;border-radius:999px;background:#f1f3f5;color:#111827;font-size:13px;font-weight:800'>● "+esc(status)+"</div><div style='margin-top:22px;border:1px solid #e5e7eb;border-radius:15px;padding:17px'><div style='font-size:11px;font-weight:800;letter-spacing:1px;color:#6b7280'>ORDER DETAILS</div><div style='margin-top:9px;font-size:14px'>Order ID: <b>"+esc(o.order_number)+"</b></div><div style='margin-top:6px;font-size:14px'>Tracking ID: <b>"+esc(o.public_tracking_id||"")+"</b></div></div><div style='margin-top:18px;border:1px solid #e5e7eb;border-radius:15px;overflow:hidden'><table style='width:100%;border-collapse:collapse'><tr style='background:#f9fafb'><th style='padding:12px;text-align:left;font-size:11px;color:#6b7280'>PRODUCT</th><th style='padding:12px;text-align:center;font-size:11px;color:#6b7280'>QTY</th><th style='padding:12px;text-align:right;font-size:11px;color:#6b7280'>AMOUNT</th></tr>"+rows+"</table></div><div style='margin-top:18px;border:1px solid #e5e7eb;border-radius:15px;padding:17px;font-size:14px;color:#4b5563'><div style='padding:4px 0'>Subtotal <b style='float:right;color:#111827'>৳"+Number(o.subtotal||0).toLocaleString("en-BD")+"</b></div><div style='padding:4px 0'>Delivery <b style='float:right;color:#111827'>৳"+130+"</b></div><div style='margin-top:9px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:18px;font-weight:800;color:#111827'>Total <span style='float:right'>৳"+Number(o.total||0).toLocaleString("en-BD")+"</span></div></div><div style='margin-top:18px;background:#f8f9fa;border-radius:15px;padding:17px'><div style='font-size:11px;font-weight:800;letter-spacing:1px;color:#6b7280'>DELIVERY ADDRESS</div><div style='margin-top:8px;font-size:14px;line-height:1.6;color:#374151'>"+esc(o.address||"")+", "+esc(o.upazila||"")+", "+esc(o.district||"")+", "+esc(o.division||"")+"</div></div><div style='margin-top:22px;text-align:center;color:#6b7280;font-size:12px'>GrabZone • আপনার অর্ডারের আপডেট অনুযায়ী আমরা আপনাকে জানাব।</div></div></div></body></html>",htmlB64=base64Bytes(new TextEncoder().encode(html)),raw=["From: GrabZone <"+String(env.GMAIL_FROM_EMAIL).trim()+">","To: "+String(o.email).trim(),"Subject: "+subject,"MIME-Version: 1.0","Content-Type: text/html; charset=UTF-8","Content-Transfer-Encoding: base64","",htmlB64].join("\r\n"),token=await gmailToken(env),r=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({raw:base64UrlBytes(new TextEncoder().encode(raw))})}),d=await r.json().catch(()=>({}));if(!r.ok){const detail=d?.error?.message||d?.error?.status||"Gmail rejected the request.";console.error("GrabZone Gmail send failed",r.status,d);return json({error:"Gmail send failed: "+detail,code:"GMAIL_SEND_FAILED",status:status},r.status)}return json({ok:true,id:d.id||null,status})}catch(e){console.error("GrabZone email service failed",e);return json({error:e?.message||"Email service failed.",code:"GMAIL_SERVICE_FAILED"},500)}}
+async function email(req,env){
+ const b=await req.json().catch(()=>({}));
+ const num=String(b.orderNumber||b.order_number||"").trim();
+ const type=String(b.type||"status_updated").trim();
+ const requestedStatus=String(b.status||"").trim();
+ if(!num)return json({error:"Missing order number."},400);
 
+ let o=null,items=[];
+ let d1Order=null;
+
+ // For status updates, the admin is authenticated with the Supabase session.
+ // Supabase is the current order-management source, while D1 may contain the
+ // latest tracking fields. We merge both so email status + tracking stay current.
+ if(type==="status_updated"){
+   if(!(await supabaseUser(req,env)))return json({error:"Unauthorized."},401);
+
+   o=await supabaseOrderLookup(req,env,num);
+   if(o){
+     items=await supabaseOrderItems(req,env,o.id);
+   }
+
+   d1Order=(await q(env,"SELECT * FROM orders WHERE order_number=? LIMIT 1",[num])).results?.[0]||null;
+
+   if(!o)o=d1Order;
+   if(!o)return json({error:"Order not found in Supabase or D1."},404);
+
+   // D1 is authoritative for courier/tracking fields when available.
+   if(d1Order){
+     for(const k of ["tracking_number","tracking_provider","tracking_url","public_tracking_id"]){
+       if(d1Order[k]!==undefined&&d1Order[k]!==null&&String(d1Order[k]).trim()!=="")o[k]=d1Order[k];
+     }
+   }
+
+   // If Supabase has no item rows, use the D1 copy.
+   if(!items.length&&d1Order){
+     items=(await q(env,"SELECT * FROM order_items WHERE order_id=? ORDER BY id",[d1Order.id])).results||[];
+   }
+ }else{
+   // New-order emails can be sent immediately after checkout, before a D1 row
+   // exists. In that case use the complete order + item snapshot from checkout.
+   d1Order=(await q(env,"SELECT * FROM orders WHERE order_number=? LIMIT 1",[num])).results?.[0]||null;
+   o=d1Order||b.order||null;
+   if(!o)return json({error:"Order details are required for the confirmation email."},404);
+
+   items=Array.isArray(b.items)?b.items:[];
+   if(!items.length&&d1Order){
+     items=(await q(env,"SELECT * FROM order_items WHERE order_id=? ORDER BY id",[d1Order.id])).results||[];
+   }
+ }
+
+ // The caller's status is the latest status when an admin just changed it.
+ const status=requestedStatus||String(o.status||"New").trim()||"New";
+ o.status=status;
+
+ if(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET||!env.GOOGLE_REFRESH_TOKEN||!env.GMAIL_FROM_EMAIL){
+   return json({error:"Gmail email service is not configured.",code:"GMAIL_CONFIG_MISSING"},503);
+ }
+
+ try{
+   const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+   const statusText={
+     New:"অর্ডার গ্রহণ করা হয়েছে",
+     Contacting:"কাস্টমারের সাথে যোগাযোগ করা হচ্ছে",
+     Confirmed:"অর্ডার কনফার্ম হয়েছে",
+     Processing:"অর্ডার প্রস্তুত করা হচ্ছে",
+     Shipped:"অর্ডার শিপ করা হয়েছে",
+     Delivered:"অর্ডার ডেলিভারি সম্পন্ন হয়েছে",
+     Cancelled:"অর্ডার বাতিল করা হয়েছে"
+   }[status]||"অর্ডারের স্ট্যাটাস আপডেট হয়েছে";
+
+   const itemRows=items.map(i=>{
+     const name=String(i.product_name||i.productName||"Product").trim();
+     const qty=Math.max(1,Number(i.quantity||1));
+     const unit=Number(i.unit_price??i.sellingPrice??i.price??0);
+     const line=Number(i.line_total??(unit*qty));
+     const image=String(i.image_url||"").trim();
+     const imageCell=image
+       ? "<img src='"+esc(image)+"' alt='"+esc(name)+"' width='52' height='52' style='width:52px;height:52px;object-fit:cover;border-radius:10px;display:block'>"
+       : "<div style='width:52px;height:52px;border-radius:10px;background:#f1f3f5'></div>";
+     return "<tr>"+
+       "<td style='padding:12px;border-bottom:1px solid #e5e7eb;width:64px'>"+imageCell+"</td>"+
+       "<td style='padding:12px;border-bottom:1px solid #e5e7eb;color:#111827;font-size:14px'><b>"+esc(name)+"</b><div style='margin-top:3px;color:#6b7280;font-size:12px'>Unit price: ৳"+unit.toLocaleString("en-BD")+"</div></td>"+
+       "<td style='padding:12px;border-bottom:1px solid #e5e7eb;text-align:center;color:#374151;font-size:14px'>"+qty+"</td>"+
+       "<td style='padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;color:#111827;font-weight:800;font-size:14px'>৳"+line.toLocaleString("en-BD")+"</td>"+
+       "</tr>";
+   }).join("");
+
+   const tracking=(o.tracking_number||o.tracking_provider||o.tracking_url)
+     ? "<div style='margin-top:18px;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:15px;padding:17px'>"+
+       "<div style='font-size:11px;font-weight:800;letter-spacing:1px;color:#6b7280'>DELIVERY TRACKING</div>"+
+       "<div style='margin-top:8px;font-size:14px;color:#374151'>"+esc(o.tracking_provider||"Courier")+
+       (o.tracking_number?" · <b>"+esc(o.tracking_number)+"</b>":"")+"</div>"+
+       (o.tracking_url?"<a href='"+esc(o.tracking_url)+"' style='display:inline-block;margin-top:10px;padding:10px 14px;background:#111827;color:#fff;text-decoration:none;border-radius:10px;font-size:13px;font-weight:800'>Track package →</a>":"")+
+       "</div>"
+     :"";
+
+   const subject=type==="status_updated"
+     ? "GrabZone Order "+o.order_number+" | "+status
+     : "GrabZone Order "+o.order_number+" | New Order";
+
+   const html="<!doctype html><html><body style='margin:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#111827'>"+
+     "<div style='max-width:700px;margin:0 auto;padding:24px 12px'>"+
+     "<div style='background:#111827;border-radius:20px 20px 0 0;padding:28px;color:#fff'>"+
+       "<div style='font-size:13px;font-weight:800;letter-spacing:2px'>GRABZONE</div>"+
+       "<div style='font-size:25px;font-weight:800;margin-top:10px'>অর্ডার আপডেট</div>"+
+       "<div style='font-size:14px;color:#d1d5db;margin-top:6px'>আপনার অর্ডারের বর্তমান অবস্থা</div>"+
+     "</div>"+
+     "<div style='background:#fff;border-radius:0 0 20px 20px;padding:28px;box-shadow:0 8px 30px rgba(0,0,0,.07)'>"+
+       "<div style='font-size:13px;color:#6b7280'>হ্যালো "+esc(o.customer_name||"")+" 👋</div>"+
+       "<div style='font-size:25px;font-weight:800;margin-top:7px'>"+esc(statusText)+"</div>"+
+       "<div style='display:inline-block;margin-top:12px;padding:8px 13px;border-radius:999px;background:#f1f3f5;color:#111827;font-size:13px;font-weight:800'>● "+esc(status)+"</div>"+
+       "<div style='margin-top:22px;border:1px solid #e5e7eb;border-radius:15px;padding:17px'>"+
+         "<div style='font-size:11px;font-weight:800;letter-spacing:1px;color:#6b7280'>ORDER DETAILS</div>"+
+         "<div style='margin-top:9px;font-size:14px'>Order ID: <b>"+esc(o.order_number)+"</b></div>"+
+         "<div style='margin-top:6px;font-size:14px'>Tracking ID: <b>"+esc(o.public_tracking_id||"")+"</b></div>"+
+       "</div>"+
+       "<div style='margin-top:18px;border:1px solid #e5e7eb;border-radius:15px;overflow:hidden'>"+
+         "<table style='width:100%;border-collapse:collapse'>"+
+           "<tr style='background:#f9fafb'>"+
+             "<th style='padding:12px;text-align:left;font-size:11px;color:#6b7280'>ITEM</th>"+
+             "<th style='padding:12px;text-align:left;font-size:11px;color:#6b7280'>PRODUCT</th>"+
+             "<th style='padding:12px;text-align:center;font-size:11px;color:#6b7280'>QTY</th>"+
+             "<th style='padding:12px;text-align:right;font-size:11px;color:#6b7280'>AMOUNT</th>"+
+           "</tr>"+itemRows+
+         "</table>"+
+       "</div>"+
+       "<div style='margin-top:18px;border:1px solid #e5e7eb;border-radius:15px;padding:17px;font-size:14px;color:#4b5563'>"+
+         "<div style='padding:4px 0'>Subtotal <b style='float:right;color:#111827'>৳"+Number(o.subtotal||0).toLocaleString("en-BD")+"</b></div>"+
+         "<div style='padding:4px 0'>Delivery <b style='float:right;color:#111827'>৳130</b></div>"+
+         (Number(o.referral_discount||0)>0?"<div style='padding:4px 0'>Discount <b style='float:right;color:#111827'>-৳"+Number(o.referral_discount||0).toLocaleString("en-BD")+"</b></div>":"")+
+         "<div style='margin-top:9px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:18px;font-weight:800;color:#111827'>Total <span style='float:right'>৳"+Number(o.total||0).toLocaleString("en-BD")+"</span></div>"+
+       "</div>"+
+       "<div style='margin-top:18px;background:#f8f9fa;border-radius:15px;padding:17px'>"+
+         "<div style='font-size:11px;font-weight:800;letter-spacing:1px;color:#6b7280'>DELIVERY ADDRESS</div>"+
+         "<div style='margin-top:8px;font-size:14px;line-height:1.6;color:#374151'>"+esc(o.address||"")+", "+esc(o.upazila||"")+", "+esc(o.district||"")+", "+esc(o.division||"")+"</div>"+
+       "</div>"+tracking+
+       "<div style='margin-top:22px;text-align:center;color:#6b7280;font-size:12px'>GrabZone • আপনার অর্ডারের আপডেট অনুযায়ী আমরা আপনাকে জানাব।</div>"+
+     "</div></div></body></html>";
+
+   const plain="GrabZone Order "+o.order_number+"\nStatus: "+status+"\n"+statusText+"\nProducts: "+items.map(i=>String(i.product_name||i.productName||"Product")+" x "+Math.max(1,Number(i.quantity||1))).join(", ")+"\nSubtotal: ৳"+Number(o.subtotal||0).toLocaleString("en-BD")+"\nDelivery: ৳130\nTotal: ৳"+Number(o.total||0).toLocaleString("en-BD");
+
+   const boundary="grabzone_"+crypto.randomUUID().replace(/-/g,"");
+   const raw=["From: GrabZone <"+String(env.GMAIL_FROM_EMAIL).trim()+">","To: "+String(o.email||"").trim(),"Subject: "+subject,"MIME-Version: 1.0","Content-Type: multipart/alternative; boundary=\""+boundary+"\"","","--"+boundary,'Content-Type: text/plain; charset="UTF-8"',"Content-Transfer-Encoding: 8bit","",plain,"--"+boundary,'Content-Type: text/html; charset="UTF-8"',"Content-Transfer-Encoding: 8bit","",html,"--"+boundary+"--",""].join("\r\n");
+
+   if(!String(o.email||"").trim())return json({error:"Customer email is missing.",code:"CUSTOMER_EMAIL_MISSING"},400);
+
+   const token=await gmailToken(env);
+   const r=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{
+     method:"POST",
+     headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+     body:JSON.stringify({raw:base64UrlBytes(new TextEncoder().encode(raw))})
+   });
+   const d=await r.json().catch(()=>({}));
+   if(!r.ok){
+     const detail=d?.error?.message||d?.error?.status||"Gmail rejected the request.";
+     console.error("GrabZone Gmail send failed",r.status,d);
+     return json({error:"Gmail send failed: "+detail,code:"GMAIL_SEND_FAILED",status},r.status);
+   }
+   return json({ok:true,id:d.id||null,status,items:items.length});
+ }catch(e){
+   console.error("GrabZone email service failed",e);
+   return json({error:e?.message||"Email service failed.",code:"GMAIL_SERVICE_FAILED"},500);
+ }
+}
 async function sheet(req,env){const missing=["GOOGLE_CLIENT_ID","GOOGLE_CLIENT_SECRET","GOOGLE_REFRESH_TOKEN","GOOGLE_SHEETS_SPREADSHEET_ID"].filter(k=>!env[k]);if(missing.length)return json({ok:false,skipped:true,missing},200);try{const token=await gmailToken(env),sid=env.GOOGLE_SHEETS_SPREADSHEET_ID,base="https://sheets.googleapis.com/v4/spreadsheets/"+encodeURIComponent(sid),headers={Authorization:"Bearer "+token,"Content-Type":"application/json"},orders=(await q(env,"SELECT * FROM orders ORDER BY created_at ASC")).results||[],items=(await q(env,"SELECT * FROM order_items ORDER BY id ASC")).results||[],refs=(await q(env,"SELECT * FROM referral_codes ORDER BY created_at ASC")).results||[],by=new Map(),rm=new Map(refs.map(x=>[String(x.code||"").toUpperCase(),x]));for(const i of items){if(!by.has(i.order_id))by.set(i.order_id,[]);by.get(i.order_id).push(i)}const fmt=v=>v?new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Dhaka",year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}).format(new Date(v)):"",rows=[["Order ID","Order Date (BDT)","Customer Name","Phone","Email","Delivery Address","District","Division","Thana / Upazila","Products","Qty","Subtotal","Discount","Shipping","Total","Payment Method","Status","Admin Code","Admin Name","Admin Email","Admin Benefit Type","Admin Benefit Value","Admin Code Usage","Admin Active","Tracking Provider","Tracking Number","Tracking URL","Updated (BDT)","Admin Note"]];for(const o of orders){const xs=by.get(o.id)||[],code=String(o.referral_code||"").toUpperCase(),a=rm.get(code);rows.push([o.order_number||"",fmt(o.created_at),o.customer_name||"",o.phone||"",o.email||"",o.address||"",o.district||"",o.division||"",o.upazila||"",xs.map(x=>x.product_name).join(" | "),xs.reduce((n,x)=>n+Number(x.quantity||0),0),Number(o.subtotal||0),Number(o.referral_discount||o.discount_amount||0),Number(o.shipping_charge||0),Number(o.total||0),o.payment_method||"Cash on Delivery",o.status||"New",code,a?.admin_name||o.referral_admin_name||"",a?.admin_email||"",a?.benefit_type||"",Number(a?.benefit_value||0),Number(a?.used_count||0),a?.active===false?"Disabled":"Active",o.tracking_provider||"",o.tracking_number||"",o.tracking_url||"",fmt(o.updated_at),o.admin_note||""])}const meta=await fetch(base+"?fields=sheets.properties",{headers}),md=await meta.json(),sh=md.sheets?.find(x=>x.properties?.title==="GZ Orders");if(sh){await fetch(base+"/values/"+encodeURIComponent("GZ Orders!A:AC")+"?valueInputOption=USER_ENTERED",{method:"PUT",headers,body:JSON.stringify({range:"GZ Orders!A:AC",majorDimension:"ROWS",values:rows})})}return json({ok:true,orders:orders.length})}catch(e){return json({error:e.message||"Google Sheets sync failed."},500)}}
 async function api(req,env){const p=new URL(req.url).pathname;
 if(p==="/api/admin-auth")return auth(req,env);if(p==="/api/d1")return d1(req,env);if(p==="/api/track-order")return track(req,env);if(p==="/api/r2-upload")return upload(req,env);if(p.startsWith("/api/r2/"))return r2(req,env);if(p==="/api/r2-presign")return json({error:"Legacy upload endpoint removed. Use /api/r2-upload."},410);if(p==="/api/business-koro-order"||p==="/business-koro-order")return req.method==="POST"?business(req,env):json({error:"Method not allowed."},405);if(p==="/api/send-order-email"||p==="/send-order-email")return req.method==="POST"?email(req,env):json({error:"Method not allowed."},405);if(p==="/api/sync-order-sheet"||p==="/sync-order-sheet")return req.method==="POST"?sheet(req,env):json({error:"Method not allowed."},405);if(p==="/api/health")return json({ok:true,backend:"cloudflare-worker",supabase:!!String(env.SUPABASE_URL||"").trim()&&!!String(env.SUPABASE_ANON_KEY||"").trim(),d1:!!env.DB,r2:!!env.ASSETS_BUCKET,admin_auth_configured:!!String(env.SUPABASE_URL||"").trim()&&!!String(env.SUPABASE_ANON_KEY||"").trim()});return null}
