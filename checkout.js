@@ -403,7 +403,7 @@ async function submit(e){
     referral_code:d.referral_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
     items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price)})),
-    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_redeem:Number(grabPointsState.use||0),grabpoints_tracking_id:String($('grabpointsTracking')?.value||'').trim().toUpperCase(),total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0))
+    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_redeem:Number(grabPointsState.use||0),grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0))
   };
   try{
     if(!sb)throw new Error('Order service is not configured.');
@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('applyReferralBtn')?.addEventListener('click',applyReferral);
   async function checkGrabPoints(){
     if(!grabPointsEnabled||!$('grabpointsOptIn')?.checked){if($('grabpointsMsg'))$('grabpointsMsg').textContent='Turn on GrabPoints above to check or use points.';return}
-    const phone=String($('customerPhone')?.value||'').replace(/\D/g,'');
+    const phone=String($('grabpointsPhone')?.value||$('customerPhone')?.value||'').replace(/\D/g,'');
     const bal=$('grabpointsBalance'),msgp=$('grabpointsMsg');
     if(!/^01[3-9]\d{8}$/.test(phone)){if(bal)bal.textContent='Enter your phone';if(msgp)msgp.textContent='Enter a valid mobile number first.';return}
     try{
@@ -497,14 +497,14 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(requested>Number(grabPointsState.balance||0)){if(msgp)msgp.textContent='Not enough GrabPoints.';return}
     const discount=Math.min(subtotal(),requested*grabPointsValue);
     grabPointsState={...grabPointsState,use:requested,discount};
-    if(msgp)msgp.textContent='✓ '+requested+' GP applied · ৳'+discount.toLocaleString('en-BD')+' off. A previous Delivered Tracking ID is required at checkout.';
+    if(msgp)msgp.textContent='✓ '+requested+' GP applied · ৳'+discount.toLocaleString('en-BD')+' off. Your phone number is used to access your GrabPoints.';
     render();
   }
   $('checkGrabPoints')?.addEventListener('click',checkGrabPoints);
   $('applyGrabPoints')?.addEventListener('click',applyGrabPoints);
-  $('customerPhone')?.addEventListener('blur',checkGrabPoints);
+  $('customerPhone')?.addEventListener('blur',()=>{const gp=$('grabpointsPhone');if(gp)gp.value=$('customerPhone').value;checkGrabPoints();});
   $('customerPhone')?.addEventListener('input',()=>{grabPointsState={balance:0,use:0,discount:0};const b=$('grabpointsBalance');if(b)b.textContent='Check your points';render()});
-  $('grabpointsOptIn')?.addEventListener('change',()=>{const on=$('grabpointsOptIn').checked;grabPointsState={...grabPointsState,use:0,discount:0};const t=$('grabpointsTracking'),u=$('grabpointsUse');if(t)t.disabled=!on;if(u)u.disabled=!on;const m=$('grabpointsMsg');if(m)m.textContent=on?'GrabPoints enabled for this order. You can earn points after delivery.':'GrabPoints disabled for this order — no points will be added.';render();if(on)checkGrabPoints()});
+  $('grabpointsOptIn')?.addEventListener('change',()=>{const on=$('grabpointsOptIn').checked;grabPointsState={...grabPointsState,use:0,discount:0};const t=$('grabpointsPhone'),u=$('grabpointsUse');if(t)t.disabled=!on;if(u)u.disabled=!on;const m=$('grabpointsMsg');if(m)m.textContent=on?'GrabPoints enabled for this order. You can earn points after delivery.':'GrabPoints disabled for this order — no points will be added.';render();if(on)checkGrabPoints()});
 
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
   loadMystery();await loadGrabPointsSettings();await loadLocations();await loadSite();await hydrate();
