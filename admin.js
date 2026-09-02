@@ -95,7 +95,7 @@ async function loadDashboardAnalytics(){
 
     const products=d.topProducts||[];
     const maxP=Math.max(1,...products.map(x=>Number(x.revenue||0)));
-    $("gzTopProducts").innerHTML=products.map((x,i)=>"<div class='gz-rank'><span class='gz-rank-no'>"+(i+1)+"</span><div><b>"+esc(x.name||"Unknown product")+"</b><small>"+Number(x.units||0)+" units · "+Number(x.orders||0)+" order lines</small></div><strong>"+money(x.revenue)+"</strong><div class='gz-mini-bar'><i style='width:"+Math.round(Number(x.revenue||0)/maxP*100)+"%'></i></div></div>").join("")||"<div class='meta'>No product sales yet.</div>";
+    $("gzTopProducts").innerHTML=products.map((x,i)=>"<div class='gz-rank'><span class='gz-rank-no'>"+(i+1)+"</span><div><b>"+esc(x.name||"Unknown product")+"</b><small>"+Number(x.units||0)+" units sold · "+Number(x.orders||0)+" order lines</small></div><strong>"+Number(x.units||0).toLocaleString()+" sold</strong><div class='gz-mini-bar'><i style='width:"+Math.round(Number(x.units||0)/maxP*100)+"%'></i></div></div>").join("")||"<div class='meta'>No product sales yet.</div>";
 
     const customers=d.topCustomers||[];
     const maxC=Math.max(1,...customers.map(x=>Number(x.spent||0)));
