@@ -495,6 +495,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('checkGrabPoints')?.addEventListener('click',checkGrabPoints);
   $('applyGrabPoints')?.addEventListener('click',applyGrabPoints);
   $('customerPhone')?.addEventListener('blur',checkGrabPoints);
+  $('customerPhone')?.addEventListener('input',()=>{grabPointsState={balance:0,use:0,discount:0};const b=$('grabpointsBalance');if(b)b.textContent='Check your points';});
 
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
   await loadLocations();await loadSite();await hydrate();
