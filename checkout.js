@@ -18,6 +18,18 @@ const getSource=()=>{const buy=read(BUY_NOW_KEY,null);return Array.isArray(buy)&
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
 const shippingForLocation=()=>flatShippingCharge;
+function deliveryEtaForLocation(division,district){
+  const d=String(district||'').toLowerCase(),v=String(division||'').toLowerCase();
+  if(d.includes('dhaka')||v==='dhaka')return '1–2 days';
+  if(d.includes('chattogram')||d.includes('chittagong')||v.includes('chattogram')||v.includes('chittagong'))return '2–4 days';
+  if(v)return '2–5 days';
+  return '';
+}
+function renderDeliveryEta(){
+  const box=$('deliveryEta'),text=$('deliveryEtaText');if(!box||!text)return;
+  const eta=deliveryEtaForLocation($('division')?.value||'',$('district')?.value||'');
+  box.hidden=!eta;if(eta)text.textContent=eta;
+}
 
 function divisions(){
   if(Array.isArray(locationTree)) return locationTree;
@@ -191,7 +203,7 @@ function onDivisionChange(){
   setPickerEnabled('upazila',false);
   updatePickerText('district');updatePickerText('upazila');
   if(division.value)fillDistrictOptions();
-  render();
+  render();renderDeliveryEta();
 }
 function onDistrictChange(){
   const district=$('district'),upazila=$('upazila');
@@ -201,7 +213,7 @@ function onDistrictChange(){
   setPickerEnabled('upazila',!!district.value);
   updatePickerText('upazila');
   if(district.value)fillUpazilaOptions();
-  render();
+  render();renderDeliveryEta();
 }
 function formData(){
   return {
@@ -248,6 +260,7 @@ function render(){
   $('checkoutDiscount').textContent='-'+money(discount);
   $('checkoutDiscountRow').hidden=discount<=0;
   $('checkoutTotal').textContent=money(Math.max(0,sub+shipping-discount));
+  renderDeliveryEta();
 }
 async function applyReferral(){
   const input=$('referralCode'),button=$('applyReferralBtn'),note=$('referralMessage');
