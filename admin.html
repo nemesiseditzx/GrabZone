@@ -672,6 +672,53 @@ body.gz-gallery-dragging-active{
         </div>
 
 
+        <!-- =================================================
+             PHASE 3 — BUSINESS ANALYTICS
+        ================================================== -->
+        <div class="gz-analytics-section">
+          <div class="gz-analytics-head">
+            <div>
+              <div class="eyebrow">PHASE 3 · ANALYTICS</div>
+              <h2>Business intelligence</h2>
+              <p>Live performance from your GrabZone D1 order data.</p>
+            </div>
+            <button class="ghost" type="button" onclick="loadDashboardAnalytics()">↻ Refresh analytics</button>
+          </div>
+
+          <div class="gz-kpi-grid">
+            <div class="gz-kpi"><span>৳</span><b id="gzKpiTodaySales">—</b><small>Today's sales</small></div>
+            <div class="gz-kpi"><span>▤</span><b id="gzKpiTodayOrders">—</b><small>Today's orders</small></div>
+            <div class="gz-kpi"><span>৳</span><b id="gzKpiRevenue30">—</b><small>Last 30 days revenue</small></div>
+            <div class="gz-kpi"><span>↗</span><b id="gzKpiAov">—</b><small>Average order value</small></div>
+            <div class="gz-kpi"><span>◉</span><b id="gzKpiCustomers">—</b><small>Customers (30 days)</small></div>
+            <div class="gz-kpi"><span>↻</span><b id="gzKpiRepeat">—</b><small>Repeat customers</small></div>
+          </div>
+
+          <div class="gz-analytics-grid">
+            <div class="panel">
+              <div class="gz-panel-title"><div><h3>Order pipeline</h3><p>Current status distribution · last 30 days</p></div></div>
+              <div id="gzStatusBars" class="gz-status-bars"></div>
+            </div>
+
+            <div class="panel">
+              <div class="gz-panel-title"><div><h3>7-day performance</h3><p>Orders and revenue by day</p></div></div>
+              <div id="gzTrend" class="gz-trend"></div>
+            </div>
+
+            <div class="panel">
+              <div class="gz-panel-title"><div><h3>Top products</h3><p>Ranked by product revenue · last 30 days</p></div></div>
+              <div id="gzTopProducts" class="gz-ranking"></div>
+            </div>
+
+            <div class="panel">
+              <div class="gz-panel-title"><div><h3>Top customers</h3><p>Ranked by spend · last 30 days</p></div></div>
+              <div id="gzTopCustomers" class="gz-ranking"></div>
+            </div>
+          </div>
+
+          <div id="gzAnalyticsMsg" class="save-message"></div>
+        </div>
+
         <!-- QUICK ACTIONS -->
 
         <div class="quick-grid">
