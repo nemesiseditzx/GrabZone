@@ -955,17 +955,15 @@ function renderProducts() {
   });
 
   grid.innerHTML = filtered.map(product => {
-    const price =
-      Number(product.price || 0)
-        .toLocaleString();
-
-    const oldPrice = product.old_price
-      ? `
-        <span class="old">
-          ৳${Number(product.old_price).toLocaleString()}
-        </span>
-      `
-      : "";
+    const now=Date.now();
+    const starts=product.flash_starts_at ? Date.parse(product.flash_starts_at) : NaN;
+    const ends=product.flash_ends_at ? Date.parse(product.flash_ends_at) : NaN;
+    const flashActive=!!product.flash_enabled && Number(product.flash_price)>0 && Number(product.flash_price)<Number(product.price||0) && (!Number.isFinite(starts)||now>=starts) && Number.isFinite(ends) && now<ends;
+    const displayPrice=flashActive ? Number(product.flash_price) : Number(product.price||0);
+    const price=displayPrice.toLocaleString();
+    const oldPrice=flashActive
+      ? '<span class="old">৳'+Number(product.price||0).toLocaleString()+'</span>'
+      : (product.old_price ? '<span class="old">৳'+Number(product.old_price).toLocaleString()+'</span>' : "");
 
     const tag = product.tag
       ? `
@@ -999,6 +997,8 @@ function renderProducts() {
 
           ${tag}
 
+          ${flashActive ? '<div class="gz-flash-sale" data-flash-end="'+escAttr(product.flash_ends_at)+'">🔥 FLASH SALE <span class="gz-flash-countdown">--:--:--</span></div>' : ""}
+
           <div class="price">
             ৳${price}
             ${oldPrice}
@@ -1019,6 +1019,23 @@ function renderProducts() {
   }
 
   renderCategories();
+  initFlashCountdowns();
+}
+
+function initFlashCountdowns(){
+  document.querySelectorAll('.gz-flash-sale[data-flash-end]').forEach(el=>{
+    if(el.dataset.gzTimer==='1')return;
+    el.dataset.gzTimer='1';
+    const end=Date.parse(el.dataset.flashEnd);
+    const tick=()=>{
+      const left=Math.max(0,end-Date.now());
+      if(left<=0){el.textContent='🔥 FLASH SALE ENDED';return;}
+      const h=Math.floor(left/3600000),m=Math.floor(left%3600000/60000),sec=Math.floor(left%60000/1000);
+      const pad=n=>String(n).padStart(2,'0');
+      const cd=el.querySelector('.gz-flash-countdown');if(cd)cd.textContent=pad(h)+':'+pad(m)+':'+pad(sec);
+      setTimeout(tick,1000);
+    };tick();
+  });
 }
 
 function renderCategories() {
