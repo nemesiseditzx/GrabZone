@@ -13,8 +13,11 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
       - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: "4"
+          command: deploy ./worker.mjs
