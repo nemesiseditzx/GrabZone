@@ -408,6 +408,11 @@ async function addProduct(){
          ?Number($("oldPrice").value)
          :null,
 
+       flash_price:$("flashPrice").value ? Number($("flashPrice").value) : null,
+       flash_starts_at:$("flashStartsAt").value ? new Date($("flashStartsAt").value).toISOString() : null,
+       flash_ends_at:$("flashEndsAt").value ? new Date($("flashEndsAt").value).toISOString() : null,
+       flash_enabled:!!($("flashPrice").value && $("flashEndsAt").value),
+
        image_url:mainUrl,
 
        tag:$("tag").value.trim(),
@@ -437,7 +442,7 @@ async function addProduct(){
    $("productMsg").textContent=
      `✓ Product saved with ${urls.length} image${urls.length>1?"s":""}. Main image: ${newProductMainIndex+1}`;
 
-   ["name","category","price","oldPrice","tag","description"]
+   ["name","category","price","oldPrice","tag","description","flashPrice","flashStartsAt","flashEndsAt"]
      .forEach(id=>$(id).value="");
 
    $("images").value="";
