@@ -64,10 +64,11 @@ async function productReviews(req,env){
  const u=new URL(req.url);
  if(req.method==="GET"){
   const id=String(u.searchParams.get("product_id")||"").trim();
-  if(!id)return json({error:"Product ID is required."},400);
   const admin=u.searchParams.get("admin")==="1";
   if(admin&&!await session(req,env))return json({error:"Unauthorized."},401);
-  const rows=(await q(env,"SELECT id,product_id,customer_name,rating,review_text,approved,created_at,updated_at FROM product_reviews WHERE product_id=?"+(admin?"":" AND approved=1")+" ORDER BY created_at DESC LIMIT 100",[id])).results||[];
+  const where=id?" WHERE product_id=?"+(admin?"":" AND approved=1"):(admin?"":" WHERE approved=1");
+  const params=id?[id]:[];
+  const rows=(await q(env,"SELECT id,product_id,customer_name,rating,review_text,approved,created_at,updated_at FROM product_reviews"+where+" ORDER BY created_at DESC LIMIT 500",params)).results||[];
   return json({reviews:rows});
  }
  if(req.method==="POST"){
