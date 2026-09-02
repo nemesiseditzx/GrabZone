@@ -310,7 +310,7 @@ async function syncOrderToSheet(orderId){
   }catch(e){console.warn('GrabZone Google Sheets sync:',e)}
 }
 
-async function sendOrderEmail(orderNumber,type='order_created'){
+async function sendOrderEmail(orderNumber,type='order_created',orderData=null,itemsData=null){
   try{
     const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{
       method:'POST',
@@ -318,28 +318,8 @@ async function sendOrderEmail(orderNumber,type='order_created'){
       body:JSON.stringify({
         orderNumber,
         type,
-        order:{
-          ...order,
-          customer_name:d.customer_name,
-          email:d.email,
-          phone:d.phone,
-          division:d.division,
-          district:d.district,
-          upazila:d.upazila,
-          address:d.address,
-          payment_method:'Cash on Delivery',
-          shipping_charge:130,
-          subtotal:subtotal(),
-          referral_discount:Number(referralState.discount||0),
-          total:Math.max(0,subtotal()+130-Number(referralState.discount||0))
-        },
-        items:checkoutItems.map(i=>({
-          product_name:i.name,
-          quantity:Number(i.quantity||1),
-          unit_price:Number(i.price||0),
-          line_total:Number(i.price||0)*Number(i.quantity||1),
-          image_url:i.image_url||''
-        }))
+        order:orderData,
+        items:Array.isArray(itemsData)?itemsData:[]
       })
     });
     const data=await response.json().catch(()=>({}));
@@ -350,7 +330,6 @@ async function sendOrderEmail(orderNumber,type='order_created'){
     return false;
   }
 }
-
 function openOrderConfirm(d){
   return new Promise(resolve=>{
     const modal=$('orderConfirmModal');
@@ -432,7 +411,33 @@ async function submit(e){
     $('successTrackingId').textContent=privateTrackingId;
     const trackLink=$('successTrackLink');
     if(trackLink) trackLink.href='track-order.html?tracking='+encodeURIComponent(privateTrackingId);
-    const emailSent=await sendOrderEmail(order.order_number,'order_created');
+    const emailSent=await sendOrderEmail(
+      order.order_number,
+      'order_created',
+      {
+        ...order,
+        customer_name:d.customer_name,
+        email:d.email,
+        phone:d.phone,
+        division:d.division,
+        district:d.district,
+        upazila:d.upazila,
+        address:d.address,
+        payment_method:'Cash on Delivery',
+        shipping_charge:130,
+        subtotal:subtotal(),
+        referral_discount:Number(referralState.discount||0),
+        total:Math.max(0,subtotal()+130-Number(referralState.discount||0)),
+        public_tracking_id:privateTrackingId
+      },
+      checkoutItems.map(i=>({
+        product_name:i.name,
+        quantity:Number(i.quantity||1),
+        unit_price:Number(i.price||0),
+        line_total:Number(i.price||0)*Number(i.quantity||1),
+        image_url:i.image_url||''
+      }))
+    );
     $('successEmailNote').textContent=emailSent
       ?'A confirmation email has been sent to your email address. Our team will call you to verify the order.'
       :'Your order has been saved successfully. Our team will call you to verify the order.';
