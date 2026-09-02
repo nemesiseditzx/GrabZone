@@ -7,7 +7,7 @@
 <title>Checkout — GRABZONE</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="checkout.css"><style>.delivery-eta{margin-top:14px;padding:12px 14px;border:1px solid #e7e7e2;border-radius:14px;background:#fafaf8;display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:12px}.delivery-eta b{font-size:12px;text-align:right}.delivery-eta[hidden]{display:none}</style>
-<style>.grabpoints-box{margin-top:14px;padding:14px;border:1px solid #e5e5e0;border-radius:16px;background:#fafaf8}.grabpoints-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.grabpoints-head b{font-size:14px}.grabpoints-balance{font-weight:900}.grabpoints-help{margin:5px 0 10px;color:#777;font-size:11px}.grabpoints-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grabpoints-grid input{width:100%;box-sizing:border-box}.grabpoints-actions{display:flex;gap:8px;margin-top:8px}.grabpoints-actions button{flex:1}.grabpoints-msg{margin-top:8px;font-size:11px;font-weight:800}.points-discount{color:#16803a}</style></head>
+<style>.grabpoints-box{margin-top:14px;padding:14px;border:1px solid #e5e5e0;border-radius:16px;background:#fafaf8}.grabpoints-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.grabpoints-head b{font-size:14px}.grabpoints-balance{font-weight:900}.grabpoints-help{margin:5px 0 10px;color:#777;font-size:11px}.grabpoints-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grabpoints-grid input{width:100%;box-sizing:border-box}.grabpoints-actions{display:flex;gap:8px;margin-top:8px}.grabpoints-actions button{flex:1}.grabpoints-msg{margin-top:8px;font-size:11px;font-weight:800}.points-discount{color:#16803a}</style><style>.grabpoints-optin{margin-top:14px;padding:13px 14px;border:1px solid #dcefe6;border-radius:15px;background:#f5fbf8}.grabpoints-check{display:flex;gap:10px;align-items:flex-start;cursor:pointer}.grabpoints-check input{margin-top:3px;accent-color:#08a878}.grabpoints-check span{display:flex;flex-direction:column;gap:3px}.grabpoints-check b{font-size:13px}.grabpoints-check small{color:#777;font-size:10px;line-height:1.45}</style></head>
 <body>
 <header class="checkout-header">
   <a href="index.html" class="checkout-brand">
@@ -118,7 +118,13 @@
           <small id="referralMessage">Have a referral code? Enter it to check your benefit.</small>
         </div>
 
-        <div class="grabpoints-box">
+        <div class="grabpoints-optin">
+  <label class="grabpoints-check">
+    <input id="grabpointsOptIn" type="checkbox">
+    <span><b>Join GrabPoints</b><small>Enable GrabPoints for this order. If you turn this off, no points will be added to this phone number.</small></span>
+  </label>
+</div>
+<div class="grabpoints-box">
           <div class="grabpoints-head"><b>🎮 GrabPoints</b><span id="grabpointsBalance" class="grabpoints-balance">Check your points</span></div>
           <div class="grabpoints-help">Earn <b>10 points per ৳1,000</b> spent after an order is delivered. <b>100 points = ৳10 off.</b></div>
           <div class="grabpoints-grid">
