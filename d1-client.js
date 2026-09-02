@@ -24,7 +24,9 @@ let authRefreshPromise=null;
 async function refreshSession(){
  if(authRefreshPromise)return authRefreshPromise;
  authRefreshPromise=(async()=>{
-  const current=read(TOKEN_KEY);
+  // D1 HttpOnly cookie is the primary admin session. Always try it first;
+  // a stale localStorage token must never prevent a valid cookie session
+  // from being recovered.
   const requestSession=async(token='')=>{
    try{
     const headers={Accept:'application/json'};
@@ -32,7 +34,7 @@ async function refreshSession(){
     const response=await fetch(BASE+'/api/admin-auth',{
      method:'GET',
      headers,
-     credentials:'same-origin',
+     credentials:'include',
      cache:'no-store'
     });
     const session=await response.json().catch(()=>null);
@@ -40,20 +42,18 @@ async function refreshSession(){
    }catch{}
    return null;
   };
-  // First validate the cached D1 token. If it is stale, fall back to the
-  // HttpOnly D1 session cookie instead of immediately declaring the admin
-  // logged out. This is important after the auth migration from Supabase.
-  let session=await requestSession(current);
-  if(!session&&current){
-    write(TOKEN_KEY,'');
-    userWrite(null);
-    session=await requestSession('');
+  let session=await requestSession('');
+  if(!session){
+   const current=read(TOKEN_KEY);
+   if(current)session=await requestSession(current);
   }
   if(session?.authenticated&&session?.session_token){
-    write(TOKEN_KEY,session.session_token);
-    userWrite(session.user||null);
-    return session;
+   write(TOKEN_KEY,session.session_token);
+   userWrite(session.user||null);
+   return session;
   }
+  write(TOKEN_KEY,'');
+  userWrite(null);
   return null;
  })().finally(()=>{authRefreshPromise=null});
  return authRefreshPromise;
@@ -65,7 +65,7 @@ async function api(path,options={},includeToken=true,retryAuth=true){
   if(!h.Authorization)h.Authorization='Bearer '+token;
   h['X-GrabZone-Token']=token;
  }
- const response=await fetch(BASE+path,{...options,headers:h,credentials:'same-origin',cache:'no-store'});
+ const response=await fetch(BASE+path,{...options,headers:h,credentials:'include',cache:'no-store'});
  if(response.status===401&&includeToken&&retryAuth&&path!=='/api/admin-auth'){
   const session=await refreshSession();
   if(session?.authenticated&&session?.session_token){
@@ -80,7 +80,7 @@ async function authFetch(url,options={}){
   const token=read(TOKEN_KEY);
   if(token)h.set('Authorization','Bearer '+token);
   if(token)h.set('X-GrabZone-Token',token);
-  return fetch(url,{...options,headers:h,credentials:'same-origin',cache:'no-store'});
+  return fetch(url,{...options,headers:h,credentials:'include',cache:'no-store'});
  };
  let response=await make();
  if(response.status===401){
