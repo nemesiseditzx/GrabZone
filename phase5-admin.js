@@ -10,7 +10,7 @@ let state={...DEFAULTS};
 function parse(css){const m=String(css||'').match(/\/\*\s*GZ_PHASE5_CONFIG\s*([\s\S]*?)\*\//);if(!m)return {...DEFAULTS};try{return {...DEFAULTS,...JSON.parse(m[1].trim())}}catch{return {...DEFAULTS}}}
 function merge(css,obj){const clean=String(css||'').replace(/\/\*\s*GZ_PHASE5_CONFIG\s*[\s\S]*?\*\//g,'').trim();return clean+'\\n\\n/* GZ_PHASE5_CONFIG '+JSON.stringify(obj)+' */\\n'}
 async function load(){
- try{const r=await D1.from('site_settings').select('custom_css').eq('id',1).maybeSingle();if(r.error)throw r.erroror;state=parse(r.data?.custom_css);for(const k of Object.keys(DEFAULTS)){$('p5_'+k).checked=!!state[k]}$('p5_msg').textContent='Loaded.'}catch(e){$('p5_msg').textContent='Could not load settings: '+e.message}
+ try{const r=await D1.from('site_settings').select('custom_css').eq('id',1).maybeSingle();if(r.error)throw r.error;state=parse(r.data?.custom_css);for(const k of Object.keys(DEFAULTS)){$('p5_'+k).checked=!!state[k]}$('p5_msg').textContent='Loaded.'}catch(e){$('p5_msg').textContent='Could not load settings: '+e.message}
 }
 async function save(){
  const next={};for(const k of Object.keys(DEFAULTS))next[k]=!!$('p5_'+k)?.checked;
