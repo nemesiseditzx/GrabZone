@@ -174,12 +174,12 @@ async function syncOrderToSheet(orderId){
  }catch(e){console.warn('Google Sheets sync:',e);return false}
 }
 
-async function sendOrderEmail(orderNumber,type='status_updated'){
+async function sendOrderEmail(orderNumber,type='status_updated',statusOverride=''){
  try{
   const session=await sb.auth.getSession(), token=session?.data?.session?.access_token;
   const headers={'Content-Type':'application/json'};
   if(token)headers.Authorization='Bearer '+token;
-  const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{method:'POST',headers,body:JSON.stringify({orderNumber,type,status:orders.find(x=>x.order_number===orderNumber)?.status||''})});
+  const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{method:'POST',headers,body:JSON.stringify({orderNumber,type,status:statusOverride||orders.find(x=>x.order_number===orderNumber)?.status||''})});
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.error||'Receipt email could not be sent.');
   return true;
@@ -192,7 +192,7 @@ async function confirmOrder(order){
  const {error}=await sb.from('orders').update(updates).eq('id',order.id);
  if(error)throw error;
  Object.assign(order,updates);
- const emailed=await sendOrderEmail(order.order_number,'status_updated');
+ const emailed=await sendOrderEmail(order.order_number,'status_updated','Confirmed');
  await syncOrderToSheet(order.id);
  renderOrders();
  return emailed;
@@ -210,7 +210,7 @@ async function changeStatus(id,status){
  const {error}=await sb.from('orders').update({status,updated_at:new Date().toISOString()}).eq('id',id);
  if(error){gzUiToast('Could not update status: '+error.message,'error');renderOrders();return}
  order.status=status;
- const emailed=await sendOrderEmail(order.order_number,'status_updated');
+ const emailed=await sendOrderEmail(order.order_number,'status_updated',status);
  await syncOrderToSheet(order.id);
  renderOrders();
  gzUiToast(emailed
@@ -332,7 +332,7 @@ async function saveEditor(){
   const {error:e3}=await sb.from('order_items').insert(items.map(it=>({...it,order_id:current.id,line_total:it.quantity*it.unit_price})));if(e3)throw e3;
   let statusEmailSent=true;
   if(payload.status!==current.status){
-    statusEmailSent=await sendOrderEmail(current.order_number,'status_updated');
+    statusEmailSent=await sendOrderEmail(current.order_number,'status_updated',payload.status);
   }
   await syncOrderToSheet(current.id);
   $('gzOrderEditorMsg').textContent=statusEmailSent
