@@ -43,7 +43,7 @@ async function init(){
  if(cfg.reviews&&BACKEND){
   try{let r=await fetch(BACKEND+'/api/product-reviews'),d=await r.json().catch(()=>({}));if(r.ok){for(const x of (d.reviews||[])){const k=String(x.product_id),a=cache.get(k)||[];a.push(x);cache.set(k,a)}}}catch{}
  }
- if(document.getElementById('products')){let g=document.getElementById('products');new MutationObserver(()=>decorate()).observe(g,{childList:true,subtree:true});decorate();recentSection()}
+ if(document.getElementById('products')){let g=document.getElementById('products');new MutationObserver(()=>{decorate();recentSection()}).observe(g,{childList:true,subtree:true});decorate();recentSection()}
  let id=new URLSearchParams(location.search).get('id');if(id){remember(id);let wait=()=>document.querySelector('#productDetail h1')?detailReviews(id):setTimeout(wait,120);wait()}
 }
 window.GrabZonePhase5={openQuickView:openQuick,openReview:openReview,config:cfg};
