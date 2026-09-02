@@ -318,7 +318,21 @@ async function sendOrderEmail(orderNumber,type='order_created'){
       body:JSON.stringify({
         orderNumber,
         type,
-        order,
+        order:{
+          ...order,
+          customer_name:d.customer_name,
+          email:d.email,
+          phone:d.phone,
+          division:d.division,
+          district:d.district,
+          upazila:d.upazila,
+          address:d.address,
+          payment_method:'Cash on Delivery',
+          shipping_charge:130,
+          subtotal:subtotal(),
+          referral_discount:Number(referralState.discount||0),
+          total:Math.max(0,subtotal()+130-Number(referralState.discount||0))
+        },
         items:checkoutItems.map(i=>({
           product_name:i.name,
           quantity:Number(i.quantity||1),
