@@ -960,6 +960,7 @@ function renderProducts() {
     const ends=product.flash_ends_at ? Date.parse(product.flash_ends_at) : NaN;
     const flashActive=!!product.flash_enabled && Number(product.flash_price)>0 && Number(product.flash_price)<Number(product.price||0) && (!Number.isFinite(starts)||now>=starts) && Number.isFinite(ends) && now<ends;
     const displayPrice=flashActive ? Number(product.flash_price) : Number(product.price||0);
+    const dropStart=product.drop_starts_at ? Date.parse(product.drop_starts_at) : NaN,dropEnd=product.drop_ends_at ? Date.parse(product.drop_ends_at) : NaN;const dropActive=!!product.drop_enabled&&Number.isFinite(dropEnd)&&Date.now()<dropEnd&&(!Number.isFinite(dropStart)||Date.now()>=dropStart);
     const price=displayPrice.toLocaleString();
     const oldPrice=flashActive
       ? '<span class="old">৳'+Number(product.price||0).toLocaleString()+'</span>'
@@ -997,7 +998,8 @@ function renderProducts() {
 
           ${tag}
 
-          ${flashActive ? '<div class="gz-flash-sale" data-flash-end="'+escAttr(product.flash_ends_at)+'">🔥 FLASH SALE <span class="gz-flash-countdown">--:--:--</span></div>' : ""}
+          ${dropActive ? '<div class="gz-drop-badge" data-drop-end="'+escAttr(product.drop_ends_at)+'">⚡ NEW DROP <span class="gz-drop-countdown">--:--:--</span></div>' : ""}
+${flashActive ? '<div class="gz-flash-sale" data-flash-end="'+escAttr(product.flash_ends_at)+'">🔥 FLASH SALE <span class="gz-flash-countdown">--:--:--</span></div>' : ""}
 
           <div class="price">
             ৳${price}
@@ -1020,6 +1022,7 @@ function renderProducts() {
 
   renderCategories();
   initFlashCountdowns();
+  initDropCountdowns();
 }
 
 function initFlashCountdowns(){
@@ -1038,6 +1041,7 @@ function initFlashCountdowns(){
   });
 }
 
+function initDropCountdowns(){document.querySelectorAll('.gz-drop-badge[data-drop-end]').forEach(function(el){if(el.dataset.gzTimer==='1')return;el.dataset.gzTimer='1';const end=Date.parse(el.dataset.dropEnd);const tick=()=>{const left=Math.max(0,end-Date.now());if(left<=0){el.textContent='⚡ DROP ENDED';return}const h=Math.floor(left/3600000),m=Math.floor(left%3600000/60000),sec=Math.floor(left%60000/1000),pad=n=>String(n).padStart(2,'0'),cd=el.querySelector('.gz-drop-countdown');if(cd)cd.textContent=pad(h)+':'+pad(m)+':'+pad(sec);setTimeout(tick,1000)};tick()}
 function renderCategories() {
   const container =
     document.getElementById("categories");
