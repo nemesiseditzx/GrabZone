@@ -44,3 +44,32 @@
 @media(max-width:560px){.location-menu{position:absolute}.location-options{max-height:230px}.location-trigger{font-size:16px}}
 
 .delivery-notice{margin-top:10px;padding:10px 12px;border:1px solid #dfe9e4;background:#f3faf6;border-radius:10px;color:#53615b;font-size:12px;line-height:1.5}.delivery-notice strong{color:#176b4d}
+/* GrabZone branded order confirmation modal */
+.order-confirm-modal[hidden]{display:none!important}
+.order-confirm-modal{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:20px}
+.order-confirm-backdrop{position:absolute;inset:0;background:rgba(7,14,12,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:confirmFade .18s ease-out}
+.order-confirm-dialog{position:relative;width:min(470px,100%);overflow:hidden;padding:30px;border:1px solid rgba(255,255,255,.78);border-radius:28px;background:rgba(255,255,255,.98);box-shadow:0 30px 90px rgba(0,0,0,.28);animation:confirmPop .22s cubic-bezier(.2,.8,.2,1)}
+.order-confirm-dialog:before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,#079b6c,#18c991,#079b6c)}
+.order-confirm-close{position:absolute;right:17px;top:14px;width:34px;height:34px;border:0;border-radius:50%;background:#f1f4f3;color:#4d5552;font-size:23px;line-height:1;cursor:pointer}
+.order-confirm-close:hover{background:#e6ebe9;color:#111}
+.order-confirm-icon{width:54px;height:54px;display:grid;place-items:center;margin:0 0 15px;border-radius:17px;background:#e9faf3;color:#07875f;font-size:25px;font-weight:950;border:1px solid #ccefe1}
+.order-confirm-eyebrow{font-size:10px;font-weight:950;letter-spacing:.16em;color:#07875f}
+.order-confirm-dialog h2{margin:8px 35px 6px 0;font-size:27px;line-height:1.1;letter-spacing:-.035em}
+.order-confirm-subtitle{margin:0 0 19px;color:#69736f;font-size:13px;line-height:1.55}
+.order-confirm-summary{display:grid;gap:1px;padding:4px 0;border:1px solid #e3e8e6;border-radius:16px;background:#f8faf9;overflow:hidden}
+.order-confirm-summary>div{display:flex;justify-content:space-between;gap:16px;padding:11px 13px;border-bottom:1px solid #e5e9e7;font-size:12px}
+.order-confirm-summary>div:last-child{border-bottom:0}
+.order-confirm-summary span{color:#7a8380}.order-confirm-summary strong{max-width:65%;text-align:right;word-break:break-word}
+.order-confirm-total{display:flex;align-items:center;justify-content:space-between;margin-top:13px;padding:13px 14px;border-radius:14px;background:#0d1714;color:#fff}
+.order-confirm-total span{font-size:12px;color:#b9c5c1}.order-confirm-total strong{font-size:20px;color:#5ee2b5}
+.order-confirm-note{margin:12px 2px 19px;color:#737c79;font-size:11px;line-height:1.5}
+.order-confirm-actions{display:grid;grid-template-columns:1fr 1.25fr;gap:9px}
+.order-confirm-actions button{min-height:48px;border-radius:13px;font:inherit;font-size:13px;font-weight:900;cursor:pointer}
+.confirm-secondary{border:1px solid #d9dfdc;background:#fff;color:#202624}
+.confirm-secondary:hover{background:#f5f7f6}
+.confirm-primary{border:0;background:#079b6c;color:#fff;box-shadow:0 8px 22px rgba(7,155,108,.2)}
+.confirm-primary:hover{background:#067c58}
+.confirm-primary:disabled{opacity:.65;cursor:wait}
+@keyframes confirmFade{from{opacity:0}to{opacity:1}}
+@keyframes confirmPop{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+@media(max-width:560px){.order-confirm-modal{padding:14px}.order-confirm-dialog{padding:25px 19px 19px;border-radius:23px}.order-confirm-dialog h2{font-size:24px}.order-confirm-summary>div{padding:10px 11px}.order-confirm-actions{grid-template-columns:1fr}.confirm-primary{order:-1}}
