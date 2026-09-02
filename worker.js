@@ -72,11 +72,14 @@ async function business(req,env){
  }
  if(!order&&orderNumber)order=(await q(env,"SELECT * FROM orders WHERE order_number=? LIMIT 1",[orderNumber])).results?.[0]||null;
  if(requestedId||orderNumber){
-  if(!order)return json({error:"Order not found in GrabZone D1."},404);
-  if(order.business_koro_sent_at&&!b.force)return json({error:"This order has already been sent to Business Koro."},409);
-  items=(await q(env,"SELECT * FROM order_items WHERE order_id=? ORDER BY id",[order.id])).results||[];
-  customer={name:order.customer_name,phone:order.phone,address:order.address,division:order.division,district:order.district,area:order.upazila,note:order.admin_note||""};
-  orderNumber=order.order_number;
+  if(order){
+   if(order.business_koro_sent_at&&!b.force)return json({error:"This order has already been sent to Business Koro."},409);
+   items=(await q(env,"SELECT * FROM order_items WHERE order_id=? ORDER BY id",[order.id])).results||[];
+   customer={name:order.customer_name,phone:order.phone,address:order.address,division:order.division,district:order.district,area:order.upazila,note:order.admin_note||""};
+   orderNumber=order.order_number;
+  }else if(!Array.isArray(b.items)||!b.items.length){
+   return json({error:"Order not found in GrabZone D1 and no order data was provided."},404);
+  }
  }
  if(!items.length)items=Array.isArray(b.items)?b.items:[];
  if(!items.length)return json({error:"This order has no products."},400);
