@@ -84,7 +84,7 @@ async function business(req,env){
  const pd=await pr.json().catch(()=>({}));
  if(!pr.ok)return json({error:pd?.message||pd?.error||"Could not load Business Koro products."},502);
  const list=Array.isArray(pd?.data)?pd.data:[];
- const norm=v=>String(v||"").toLowerCase().normalize("NFKC").replace(/[^a-z0-9\\u0980-\\u09ff]+/g," ").trim().replace(/\\s+/g," ");
+ const norm=v=>String(v||"").toLowerCase().normalize("NFKC").replace(/[^a-z0-9\u0980-\u09ff]+/g," ").trim().replace(/\s+/g," ");
  const out=[];
  for(const i of items){
   let pid=String(i.business_koro_product_id||i.productId||"").trim();
