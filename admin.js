@@ -820,6 +820,24 @@ async function deleteNotice(id){
  }
 }
 
+
+const GZCFG_MARK='GZ_GROWTH_CONFIG',GZDROPS_MARK='GZ_DROPS_CONFIG';
+async function gzSiteConfig(){const r=await sb.from('site_settings').select('custom_css').eq('id',1).maybeSingle();if(r.error)throw r.error;return String(r.data?.custom_css||'')}
+function gzCfgRead(css,mark,defaults){const m=String(css||'').match(new RegExp('/\\*\\s*'+mark+'\\s*([\\s\\S]*?)\\*/'));if(!m)return {...defaults};try{return {...defaults,...JSON.parse(m[1].trim())}}catch{return {...defaults}}}
+function gzCfgWrite(css,mark,obj){const re=new RegExp('\\/\\*\\s*'+mark+'\\s*[\\s\\S]*?\\*\\/','g');return String(css||'').replace(re,'').trim()+'\\n\\n/* '+mark+' '+JSON.stringify(obj)+' */\\n'}
+async function gzSaveSiteConfig(mark,obj){const r=await sb.from('site_settings').update({custom_css:gzCfgWrite(await gzSiteConfig(),mark,obj),updated_at:new Date().toISOString()}).eq('id',1);if(r.error)throw r.error}
+async function gzLoadGrowth(){try{const x=gzCfgRead(await gzSiteConfig(),GZCFG_MARK,{gpEnabled:1,gpEarnRate:10,gpValue:.1,mysteryEnabled:0,mysteryMin:5,mysteryMax:15});$('growthGpEnabled').value=x.gpEnabled;$('growthGpEarnRate').value=x.gpEarnRate;$('growthGpValue').value=x.gpValue;$('growthMysteryEnabled').value=x.mysteryEnabled;$('growthMysteryMin').value=x.mysteryMin;$('growthMysteryMax').value=x.mysteryMax;$('growthGpStatus').textContent=x.gpEnabled?'● ON':'○ OFF';$('growthMysteryStatus').textContent=x.mysteryEnabled?'● ON':'○ OFF'}catch(e){$('growthGpMsg').textContent='✕ '+e.message}}
+async function gzSaveGrowth(){try{const x={gpEnabled:+$('growthGpEnabled').value,gpEarnRate:+$('growthGpEarnRate').value,gpValue:+$('growthGpValue').value,mysteryEnabled:+$('growthMysteryEnabled').value,mysteryMin:+$('growthMysteryMin').value,mysteryMax:+$('growthMysteryMax').value};if(x.mysteryMin>x.mysteryMax)throw Error('Minimum discount cannot exceed maximum.');await gzSaveSiteConfig(GZCFG_MARK,x);$('growthGpMsg').textContent='✓ Growth settings saved.';gzLoadGrowth()}catch(e){$('growthGpMsg').textContent='✕ '+e.message}}
+async function gzSaveMystery(){try{const css=await gzSiteConfig(),o=gzCfgRead(css,GZCFG_MARK,{gpEnabled:1,gpEarnRate:10,gpValue:.1,mysteryEnabled:0,mysteryMin:5,mysteryMax:15}),x={...o,mysteryEnabled:+$('mysteryEnabled').value,mysteryMin:+$('mysteryMin').value,mysteryMax:+$('mysteryMax').value};if(x.mysteryMin>x.mysteryMax)throw Error('Minimum discount cannot exceed maximum.');await gzSaveSiteConfig(GZCFG_MARK,x);$('mysteryMsg').textContent='✓ Mystery Deal saved.'}catch(e){$('mysteryMsg').textContent='✕ '+e.message}}
+async function gzFillCampaignProducts(id){const r=await sb.from('products').select('id,name,price').order('name');if(r.error)throw r.error;$(id).innerHTML='<option value="">Select a product…</option>'+(r.data||[]).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' — ৳'+Number(p.price).toLocaleString()+'</option>').join('')}
+async function gzLoadFlashSales(){try{await gzFillCampaignProducts('fsProduct');const r=await sb.from('products').select('id,name,price,flash_price,flash_starts_at,flash_ends_at,flash_enabled').order('name');if(r.error)throw r.error;$('flashSaleList').innerHTML=(r.data||[]).filter(p=>p.flash_enabled||p.flash_price).map(p=>'<div class="item" style="margin-top:8px"><b>'+esc(p.name)+'</b><div class="meta">Regular ৳'+Number(p.price).toLocaleString()+' · Flash ৳'+Number(p.flash_price||0).toLocaleString()+' · '+(p.flash_enabled?'Enabled':'Disabled')+' · ends '+(p.flash_ends_at?new Date(p.flash_ends_at).toLocaleString():'—')+'</div><button class="ghost" type="button" onclick="gzDisableFlashSale(\''+p.id+'\')">Disable</button></div>').join('')||'<p class="muted">No flash-sale campaigns yet.</p>'}catch(e){$('flashSaleList').textContent='✕ '+e.message}}
+async function gzSaveFlashSale(){try{const id=$('fsProduct').value,price=+$('fsPrice').value,start=$('fsStart').value,end=$('fsEnd').value;if(!id||!price||!end)throw Error('Select a product, flash price and end time.');if(start&&Date.parse(start)>=Date.parse(end))throw Error('End time must be after start time.');const p=await sb.from('products').select('price').eq('id',id).single();if(p.error)throw p.error;if(price>=+p.data.price)throw Error('Flash price must be lower than regular price.');const r=await sb.from('products').update({flash_price:price,flash_starts_at:start?new Date(start).toISOString():new Date().toISOString(),flash_ends_at:new Date(end).toISOString(),flash_enabled:true,updated_at:new Date().toISOString()}).eq('id',id);if(r.error)throw r.error;$('flashSaleMsg').textContent='✓ Flash Sale activated.';gzLoadFlashSales()}catch(e){$('flashSaleMsg').textContent='✕ '+e.message}}
+async function gzDisableFlashSale(id){const r=await sb.from('products').update({flash_enabled:false,updated_at:new Date().toISOString()}).eq('id',id);if(r.error)gzUiToast(r.error.message,'error');else gzLoadFlashSales()}
+async function gzLoadDrops(){try{await gzFillCampaignProducts('dropProduct');const x=gzCfgRead(await gzSiteConfig(),GZDROPS_MARK,{items:[]});$('dropList').innerHTML=(x.items||[]).map((d,i)=>'<div class="item" style="margin-top:8px"><b>'+esc(d.name)+'</b><div class="meta">Starts '+new Date(d.start).toLocaleString()+' · Ends '+new Date(d.end).toLocaleString()+'</div><button class="ghost" onclick="gzDeleteDrop('+i+')">Delete</button></div>').join('')||'<p class="muted">No drops scheduled.</p>'}catch(e){$('dropList').textContent='✕ '+e.message}}
+async function gzSaveDrop(){try{const id=$('dropProduct').value,start=$('dropStart').value,end=$('dropEnd').value;if(!id||!start||!end)throw Error('Select a product and start/end times.');if(Date.parse(start)>=Date.parse(end))throw Error('End time must be after start time.');const p=await sb.from('products').select('name').eq('id',id).single();if(p.error)throw p.error;const css=await gzSiteConfig(),x=gzCfgRead(css,GZDROPS_MARK,{items:[]});x.items.push({id:id,name:p.data.name,start:new Date(start).toISOString(),end:new Date(end).toISOString()});await gzSaveSiteConfig(GZDROPS_MARK,x);$('dropMsg').textContent='✓ Drop scheduled.';gzLoadDrops()}catch(e){$('dropMsg').textContent='✕ '+e.message}}
+async function gzDeleteDrop(i){try{const css=await gzSiteConfig(),x=gzCfgRead(css,GZDROPS_MARK,{items:[]});x.items.splice(i,1);await gzSaveSiteConfig(GZDROPS_MARK,x);gzLoadDrops()}catch(e){gzUiToast(e.message,'error')}}
+async function gzLoadLoyalty(){try{const r=await sb.from('customer_points').select('phone,points,updated_at').order('points',{ascending:false});if(r.error)throw r.error;$('loyaltyList').innerHTML=(r.data||[]).map(x=>'<div class="item" style="margin-top:8px;display:flex;justify-content:space-between"><b>'+esc(x.phone)+'</b><strong>'+Number(x.points||0).toLocaleString()+' GP</strong></div>').join('')||'<p class="muted">No GrabPoints customers yet.</p>'}catch(e){$('loyaltyList').textContent='✕ '+e.message}}
+
 /* =========================
    TABS
 ========================= */
@@ -842,9 +860,11 @@ function switchTab(tab){
 
  scrollTo(0,0);
 
- if(tab === "billboards" && typeof loadBillboardManager === "function"){
-   loadBillboardManager();
- }
+ if(tab === "billboards" && typeof loadBillboardManager === "function"){ loadBillboardManager(); }
+ if(tab === "growth") gzLoadGrowth();
+ if(tab === "flash-sales") gzLoadFlashSales();
+ if(tab === "drops") gzLoadDrops();
+ if(tab === "loyalty") gzLoadLoyalty();
 }
 
 document.addEventListener("click",e=>{
