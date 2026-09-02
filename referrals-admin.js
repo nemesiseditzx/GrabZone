@@ -10,7 +10,8 @@ async function syncAdminRecordsToSheet(){
   try{
     const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+(window.getToken?window.getToken():'')},
+      credentials:'include',
       body:JSON.stringify({syncAdmins:true})
     });
     if(!response.ok){
