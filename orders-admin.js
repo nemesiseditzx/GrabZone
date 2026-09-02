@@ -168,7 +168,7 @@ function renderOrders(){
 
 async function syncOrderToSheet(orderId){
  try{
-  const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId})});
+  const response=await fetch((C.backendUrl||'')+'/api/sync-order-sheet',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(window.getToken?window.getToken():'')},credentials:'include',body:JSON.stringify({orderId})});
   if(!response.ok)throw new Error((await response.json().catch(()=>({}))).error||'Google Sheets sync failed.');
   return true;
  }catch(e){console.warn('Google Sheets sync:',e);return false}
