@@ -248,7 +248,7 @@ async function sendOrderEmail(orderNumber,type='status_updated'){
   const session=await sb.auth.getSession(), token=session?.data?.session?.access_token;
   const headers={'Content-Type':'application/json'};
   if(token)headers.Authorization='Bearer '+token;
-  const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{method:'POST',headers,body:JSON.stringify({orderNumber,type})});
+  const response=await fetch((C.backendUrl||'')+'/api/send-order-email',{method:'POST',headers,body:JSON.stringify({orderNumber,type,status:orders.find(x=>x.order_number===orderNumber)?.status||''})});
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.error||'Receipt email could not be sent.');
   return true;
