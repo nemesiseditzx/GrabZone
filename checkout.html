@@ -125,14 +125,13 @@
   </label>
 </div>
 <div class="grabpoints-box">
-          <div class="grabpoints-head"><b>🎮 GrabPoints</b><span id="grabpointsBalance" class="grabpoints-balance">Check your points</span></div>
-          <div class="grabpoints-help">Your GrabPoints are linked to your mobile number. Earn points after delivered orders. Use your phone number to check and redeem your balance.</div>
-          <div class="grabpoints-grid">
-            <input id="grabpointsPhone" type="tel" placeholder="Your phone number" inputmode="numeric" autocomplete="tel">
-            <input id="grabpointsUse" type="number" min="0" step="10" placeholder="Points to use">
+          <div class="grabpoints-head"><b>🎁 GrabPoints Reward</b><span id="grabpointsBalance" class="grabpoints-balance">One-time reward vouchers</span></div>
+          <div class="grabpoints-help">Redeem GP on the GrabZone Rewards page first. Your reward voucher is sent to your registered email immediately. Enter that one-time code here and use the same Rewards phone number at checkout.</div>
+          <div class="grabpoints-grid" style="grid-template-columns:1fr">
+            <input id="rewardsVoucherCode" type="text" placeholder="Enter your reward voucher code" autocomplete="off" maxlength="17" style="text-transform:uppercase">
           </div>
-          <div class="grabpoints-actions"><button id="checkGrabPoints" type="button" class="dark-btn">Check Points</button><button id="applyGrabPoints" type="button" class="dark-btn">Apply</button></div><div id="grabpointsPinWrap" style="display:none;margin-top:8px"><input id="grabpointsPin" type="password" inputmode="numeric" maxlength="6" placeholder="Rewards PIN"><small style="display:block;color:#777;margin-top:4px">A Rewards PIN is required only when you spend points.</small></div>
-          <div id="grabpointsMsg" class="grabpoints-msg"></div><button id="grabpointsRewardsLogin" type="button" class="dark-btn" style="margin-top:8px;width:100%">🎁 Login to GrabZone Rewards</button>
+          <div class="grabpoints-actions"><button id="applyRewardsVoucher" type="button" class="dark-btn">Apply Reward Voucher</button></div>
+          <div id="grabpointsMsg" class="grabpoints-msg"></div><button id="grabpointsRewardsLogin" type="button" class="dark-btn" style="margin-top:8px;width:100%">🎁 Open GrabZone Rewards</button>
         </div>
 
         <div class="payment-box">
@@ -203,9 +202,9 @@
 
 <script src="config.js"></script>
 <script src="d1-client.js?v=20260902cloudflarefix1"></script>
-<script src="rewards.js?v=20260902rewards1"></script>
+<script src="rewards.js?v=20260902voucher1"></script>
 <script src="data/bangladesh-locations.js?v=fbb3187e"></script>
-<script src="checkout.js?v=20260902emailfix2"></script>
+<script src="checkout.js?v=20260902voucher1"></script>
 
 </body>
 </html>
