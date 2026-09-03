@@ -29,7 +29,7 @@ function showVerify(email){const b=$('gzRewardsBody');b.innerHTML='<div class="e
 async function verifyCode(email){const m=$('grMsg');try{const d=await rpc('rewards_verify_reset',{p_email:email,p_code:$('grOtp').value.trim()});showReset(d.reset_token)}catch(e){m.textContent='✕ '+e.message;m.style.color='#b42318'}}
 function showReset(t){const b=$('gzRewardsBody');b.innerHTML='<div class="eyebrow">RESET PIN</div><h2>Create a new PIN</h2><div class="gz-rewards-grid"><input id="grNewPin" type="password" inputmode="numeric" maxlength="6" placeholder="New 4–6 digit PIN"><input id="grNewPin2" type="password" inputmode="numeric" maxlength="6" placeholder="Confirm new PIN"><button class="gz-rewards-btn" id="grReset">Reset PIN</button></div><div id="grMsg" class="gz-rewards-msg"></div>';$('grReset').onclick=async()=>{const m=$('grMsg');try{await rpc('rewards_reset_pin',{p_reset_token:t,p_pin:$('grNewPin').value,p_pin_confirm:$('grNewPin2').value});showAuth('login')}catch(e){m.textContent='✕ '+e.message;m.style.color='#b42318'}}}
 function parseBenefits(value){
- const clean=x=>String(x??'').replace(/\\r/g,'').replace(/[•▪◦]/g,'').replace(/^[\\s>*-]+/,'').replace(/\\s+/g,' ').trim();
+ const clean=x=>String(x??'').replace(/\r/g,'').replace(/[•▪◦]/g,'').replace(/^[\s>*-]+/,'').replace(/\s+/g,' ').trim();
  if(Array.isArray(value))return value.map(clean).filter(Boolean);
  if(value&&typeof value==='object'){
    const arr=value.items||value.benefits||value.list;
@@ -44,15 +44,15 @@ function parseBenefits(value){
      if(Array.isArray(arr))return arr.map(clean).filter(Boolean);
    }catch{}
  }
- raw=raw.replace(/<br\\s*\\/?>(?=.)/gi,'\\n').replace(/\\u2028|\\u2029/g,'\\n');
- let parts=raw.split(/(?:\\n+|;|(?<!\\d)\\|)/).map(clean).filter(Boolean);
+ raw=raw.replace(/<br\s*\/?>(?=.)/gi,'\n').replace(/\u2028|\u2029/g,'\n');
+ let parts=raw.split(/(?:\n+|;|(?<!\d)\|)/).map(clean).filter(Boolean);
  if(parts.length<=1)return parts;
  // Some older reward records were accidentally stored with word fragments separated by delimiters.
  // Repair only obvious continuation fragments; normal admin-entered offers remain untouched.
  const repaired=[];
  for(const part of parts){
    const prev=repaired[repaired.length-1];
-   const continuation=/^[a-z]{1,3}(?:\\s|$)/.test(part)||part.length<=2;
+   const continuation=/^[a-z]{1,3}(?:\s|$)/.test(part)||part.length<=2;
    if(prev&&continuation){repaired[repaired.length-1]=clean(prev+' '+part)}
    else repaired.push(part);
  }
