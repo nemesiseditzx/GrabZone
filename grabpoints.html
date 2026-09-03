@@ -89,13 +89,7 @@
       <h2><span class="en">Membership tiers</span><span class="bn">Membership tiers</span></h2>
       <p><span class="en">Your tier is based on eligible GP earned during the rolling 12-month period.</span><span class="bn">Rolling ১২ মাসে eligible earned GP-এর ভিত্তিতে আপনার tier নির্ধারিত হবে।</span></p>
     </div>
-    <div class="tier-grid">
-      <div class="tier"><b>Member</b><strong>0 GP</strong><small><span class="en">Starting tier</span><span class="bn">শুরুর tier</span></small><ul class="benefits"><li><span class="en">Earn and collect GP</span><span class="bn">GP আয় ও জমা করুন</span></li><li><span class="en">View balance & history</span><span class="bn">Balance ও history দেখুন</span></li><li><span class="en">Secure PIN redemption</span><span class="bn">Secure PIN দিয়ে redeem</span></li></ul><div class="reach"><span class="en">Reach: 0 GP</span><span class="bn">পেতে: 0 GP</span></div></div>
-      <div class="tier"><b>Silver</b><strong>1,000 GP</strong><small><span class="en">12-month earned</span><span class="bn">১২ মাসের earned</span></small><ul class="benefits"><li><span class="en">All Member benefits</span><span class="bn">Member-এর সব সুবিধা</span></li><li><span class="en">Silver member recognition</span><span class="bn">Silver member সুবিধা</span></li><li><span class="en">Eligible Silver offers</span><span class="bn">যোগ্য Silver offers</span></li></ul><div class="reach"><span class="en">Reach: 1,000 GP</span><span class="bn">পেতে: 1,000 GP</span></div></div>
-      <div class="tier"><b>Gold</b><strong>3,000 GP</strong><small><span class="en">12-month earned</span><span class="bn">১২ মাসের earned</span></small><ul class="benefits"><li><span class="en">All Silver benefits</span><span class="bn">Silver-এর সব সুবিধা</span></li><li><span class="en">Gold member recognition</span><span class="bn">Gold member সুবিধা</span></li><li><span class="en">Eligible Gold offers</span><span class="bn">যোগ্য Gold offers</span></li></ul><div class="reach"><span class="en">Reach: 3,000 GP</span><span class="bn">পেতে: 3,000 GP</span></div></div>
-      <div class="tier"><b>Platinum</b><strong>7,500 GP</strong><small><span class="en">12-month earned</span><span class="bn">১২ মাসের earned</span></small><ul class="benefits"><li><span class="en">All Gold benefits</span><span class="bn">Gold-এর সব সুবিধা</span></li><li><span class="en">Platinum member recognition</span><span class="bn">Platinum member সুবিধা</span></li><li><span class="en">Eligible Platinum offers</span><span class="bn">যোগ্য Platinum offers</span></li></ul><div class="reach"><span class="en">Reach: 7,500 GP</span><span class="bn">পেতে: 7,500 GP</span></div></div>
-    </div>
-    <div class="note"><b><span class="en">Note:</span><span class="bn">নোট:</span></b> <span class="en">Tier benefits, earning rules and thresholds can be changed by GrabZone. Your account will always show the current values.</span><span class="bn">Tier benefits, earning rules এবং thresholds GrabZone প্রয়োজন অনুযায়ী পরিবর্তন করতে পারে। আপনার account-এ current values দেখা যাবে।</span></div>
+    <div class="tier-grid" id="gpLiveTiers"><div class="tier"><b>Loading…</b><small>Loading current membership tiers</small></div></div>\n    <div class="note"><b><span class="en">Note:</span><span class="bn">নোট:</span></b> <span class="en">Tier benefits, earning rules and thresholds can be changed by GrabZone. Your account will always show the current values.</span><span class="bn">Tier benefits, earning rules এবং thresholds GrabZone প্রয়োজন অনুযায়ী পরিবর্তন করতে পারে। আপনার account-এ current values দেখা যাবে।</span></div>
   </section>
 
   <section class="section">
@@ -138,7 +132,22 @@
   }catch(e){}
 })();
 </script>
-<script src="rewards.js?v=20260903rewardsfix1"></script>
+<script src="rewards.js?v=20260903rewardsfix1"></script><script>
+(async function(){
+  try{
+    const r=await window.grabzoneD1?.rpc('rewards_public_settings',{});
+    const d=r?.data;
+    const box=document.getElementById('gpLiveTiers');
+    if(!box||!d?.tiers?.length)return;
+    box.innerHTML=d.tiers.map((t,i)=>{
+      const next=d.tiers[i+1];
+      const benefits=String(t.benefits||'').split(/[;\n]+/).map(x=>x.trim()).filter(Boolean);
+      return '<div class="tier"><b>'+String(t.tier||'')+'</b><strong>'+Number(t.min_points||0).toLocaleString('en-BD')+' GP</strong><small>12-month earned / ১২ মাসের earned</small><ul class="benefits">'+(benefits.length?benefits.map(x=>'<li>'+x+'</li>').join(''):'<li>Current GrabPoints membership benefits</li>')+'</ul><div class="reach">Reach: '+Number(t.min_points||0).toLocaleString('en-BD')+' GP'+(next?' · Next: '+String(next.tier):' · Top tier')+'</div></div>';
+    }).join('');
+  }catch(e){}
+})();
+</script>
+
 <script>
 (function(){
   const root=document.documentElement;
