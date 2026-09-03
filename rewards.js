@@ -75,5 +75,9 @@ async function redeem(){const m=$('grRedeemMsg'),pts=Math.floor(Number($('grRede
 async function history(){const box=$('grHistoryBox');box.innerHTML='<div class="gz-rewards-msg">Loading…</div>';try{const d=await rpc('rewards_history',{p_token:token()});const rows=Array.isArray(d)?d:[];box.innerHTML='<div class="gz-rewards-history">'+rows.map(x=>'<div class="gz-rewards-row"><div><b>'+esc(x.type)+'</b><small>'+esc(x.reference||'')+' · '+new Date(x.created_at).toLocaleString()+(Number(x.qualifying_points||0)>0?' · Tier +'+Number(x.qualifying_points)+' GP':'')+'</small></div><strong>'+((Number(x.points)>0?'+':'')+Number(x.points))+' GP</strong></div>').join('')+'</div>'}catch(e){box.textContent=e.message}}
 function render(){if(token())loadDashboard();else showAuth('login')}
 window.GrabZoneRewards={open,close,render,token};
-document.addEventListener('DOMContentLoaded',ensure);
+// Start immediately because this script is loaded at the end of the rewards page.
+// Also retry after DOM readiness so slow script/client loading cannot leave the panel stuck.
+try{ensure();}catch(e){console.error('GrabZone Rewards init:',e)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{try{ensure();}catch(e){console.error('GrabZone Rewards DOM init:',e)}});
+else setTimeout(()=>{try{ensure();}catch(e){console.error('GrabZone Rewards late init:',e)}},0);
 })();
