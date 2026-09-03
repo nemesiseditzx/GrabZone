@@ -2041,20 +2041,18 @@ body.gz-gallery-dragging-active{
 
   <div class="panel">
     <div class="panel-head">
-      <div><h2>🎮 GrabPoints</h2><p>Customers explicitly choose whether this order participates in GrabPoints.</p></div>
+      <div><h2>🎮 GrabPoints</h2><p>Active Rewards customers automatically earn their current tier cashback after delivery.</p></div>
       <span id="growthGpStatus" class="status-badge">Loading…</span>
     </div>
     <div class="form-grid">
       <label>GrabPoints system
         <select id="growthGpEnabled"><option value="1">ON — customers can join</option><option value="0">OFF — completely disabled</option></select>
       </label>
-      <label>Points earned per ৳1,000
-        <input id="growthGpEarnRate" type="number" min="0" step="1" value="10">
-      </label>
+      <label><div class="field-help"><b>Tier cashback is controlled in GrabPoints → Points & Membership.</b> Member 1% · Silver 2% · Gold 3% · Platinum 5%. Delivery charge is never included.</div>
       <label>Value of 1 GP (৳)
         <input id="growthGpValue" type="number" min="0" step="0.01" value="0.10">
       </label>
-      <div class="field-help"><b>Example:</b> 10 GP / ৳1,000 + 1 GP = ৳0.10 means ৳1,000 delivered order earns 10 GP, worth ৳1.</div>
+      <div class="field-help"><b>Conversion:</b> 1 GP = ৳0.10, so ৳1 cashback = 10 GP. Tier cashback is calculated from eligible product subtotal only.</div>
     </div>
     <div style="display:flex;gap:9px;align-items:center;margin-top:14px"><button class="primary" type="button" onclick="gzSaveGrowth()">Save GrabPoints Settings</button><span id="growthGpMsg" class="save-message"></span></div>
   </div>
@@ -2133,7 +2131,7 @@ body.gz-gallery-dragging-active{
   </div>
   <div class="panel">
     <h2>GrabPoints settings are now in Phase B · Growth</h2>
-    <p class="muted">Customers must explicitly enable GrabPoints at checkout. When enabled, that order can earn points after delivery. Earning rate and GP cash value are controlled from <b>Phase B · Growth</b>.</p>
+    <p class="muted">Customers with an active Rewards account automatically earn their current tier's cashback as GP after delivery. Delivery charges are never included. Tier thresholds, cashback rates and tier offers are managed below in Points & Membership.</p>
   </div>
   <div class="panel">
     <h2>Customer balances</h2>
