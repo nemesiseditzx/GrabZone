@@ -1166,25 +1166,7 @@
 <script src="rewards.js?v=20260902rewards1"></script>
 <script>
 (function(){
-  function gzPublicPoints(){
-    const phone=(document.getElementById('gzPublicPointsPhone')?.value||'').replace(/\D/g,'');
-    const bal=document.getElementById('gzPublicPointsBalance');
-    const val=document.getElementById('gzPublicPointsValue');
-    const msg=document.getElementById('gzPublicPointsMessage');
-    if(!/^01[3-9]\d{8}$/.test(phone)){msg.textContent='Enter a valid 11-digit Bangladesh mobile number.';msg.style.color='#b42318';return}
-    const btn=document.getElementById('gzPublicPointsCheck');btn.disabled=true;btn.textContent='Checking…';msg.textContent='';
-    Promise.resolve(window.grabzoneD1?.rpc('grabpoints_balance',{p_phone:phone})).then(r=>{
-      if(r?.error)throw r.error;
-      const d=r?.data||{};
-      bal.textContent=Number(d.points||0).toLocaleString('en-BD')+' GP';
-      val.textContent=Number(d.points||0)>0
-        ? 'Available value: ৳'+Number(d.value||0).toLocaleString('en-BD')
-        : 'No GrabPoints yet. Points are added after your opted-in order is delivered.';
-      msg.textContent=Number(d.enabled??1)===1?'✓ Balance checked for this mobile number.':'GrabPoints is currently disabled.';
-      msg.style.color='#08704f';
-    }).catch(e=>{console.error(e);msg.textContent='Could not check your points right now. Please try again.';msg.style.color='#b42318'})
-      .finally(()=>{btn.disabled=false;btn.textContent='Check Points'});
-  }
+  function gzPublicPoints(){if(window.GrabZoneRewards?.open)window.GrabZoneRewards.open();else alert('Open GrabZone Rewards to view your points.');}
   document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('gzPublicPointsCheck')?.addEventListener('click',gzPublicPoints);
     document.getElementById('gzPublicPointsPhone')?.addEventListener('keydown',e=>{if(e.key==='Enter')gzPublicPoints()});
