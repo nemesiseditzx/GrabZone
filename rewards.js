@@ -75,9 +75,20 @@ async function redeem(){const m=$('grRedeemMsg'),pts=Math.floor(Number($('grRede
 async function history(){const box=$('grHistoryBox');box.innerHTML='<div class="gz-rewards-msg">Loading…</div>';try{const d=await rpc('rewards_history',{p_token:token()});const rows=Array.isArray(d)?d:[];box.innerHTML='<div class="gz-rewards-history">'+rows.map(x=>'<div class="gz-rewards-row"><div><b>'+esc(x.type)+'</b><small>'+esc(x.reference||'')+' · '+new Date(x.created_at).toLocaleString()+(Number(x.qualifying_points||0)>0?' · Tier +'+Number(x.qualifying_points)+' GP':'')+'</small></div><strong>'+((Number(x.points)>0?'+':'')+Number(x.points))+' GP</strong></div>').join('')+'</div>'}catch(e){box.textContent=e.message}}
 function render(){if(token())loadDashboard();else showAuth('login')}
 window.GrabZoneRewards={open,close,render,token};
-// Start immediately because this script is loaded at the end of the rewards page.
-// Also retry after DOM readiness so slow script/client loading cannot leave the panel stuck.
-try{ensure();}catch(e){console.error('GrabZone Rewards init:',e)}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{try{ensure();}catch(e){console.error('GrabZone Rewards DOM init:',e)}});
-else setTimeout(()=>{try{ensure();}catch(e){console.error('GrabZone Rewards late init:',e)}},0);
+// Boot the Rewards UI.
+// On grabpoints.html the page contains #gzRewardsApp as a placeholder; ensure()
+// intentionally returns there because the page has its own app container. We must
+// still call render() so the placeholder is replaced by the login/dashboard UI.
+function bootRewards(){
+  try{
+    ensure();
+    if($('gzRewardsApp')) render();
+  }catch(e){
+    console.error('GrabZone Rewards init:',e);
+    const b=$('gzRewardsApp');
+    if(b)b.innerHTML='<div style="padding:28px;text-align:center;color:#8b1e1e"><b>GrabPoints could not start.</b><div style="margin-top:6px">'+esc(e.message||'Please refresh and try again.')+'</div></div>';
+  }
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootRewards);
+else setTimeout(bootRewards,0);
 })();
