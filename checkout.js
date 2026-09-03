@@ -2,7 +2,7 @@
 'use strict';
 
 const C=window.GRABZONE_CONFIG||{};
-const sb=window.grabzoneD1||null;
+const d1=window.grabzoneD1||null;
 
 const CART_KEY='grabzone_cart_v2';
 const BUY_NOW_KEY='grabzone_buy_now_v2';
@@ -15,7 +15,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const read=(key,fallback)=>{try{const v=JSON.parse(localStorage.getItem(key)||'null');return v??fallback}catch{return fallback}};
 const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const getSource=()=>{const buy=read(BUY_NOW_KEY,null);return Array.isArray(buy)&&buy.length?buy:read(CART_KEY,[])};
-async function loadGrabPointsSettings(){try{const{data,error}=await sb.from('site_settings').select('grabpoints_enabled,grabpoints_earn_rate,grabpoints_value').eq('id',1).maybeSingle();if(error)throw error;grabPointsEnabled=Number(data?.grabpoints_enabled??1)===1;grabPointsEarnRate=Number(data?.grabpoints_earn_rate??10);grabPointsValue=Number(data?.grabpoints_value??0.1);const box=document.querySelector('.grabpoints-box'),opt=document.querySelector('.grabpoints-optin');if(box)box.hidden=!grabPointsEnabled;if(opt)opt.hidden=!grabPointsEnabled;}catch{grabPointsEnabled=true;}}
+async function loadGrabPointsSettings(){try{const{data,error}=await d1.from('site_settings').select('grabpoints_enabled,grabpoints_earn_rate,grabpoints_value').eq('id',1).maybeSingle();if(error)throw error;grabPointsEnabled=Number(data?.grabpoints_enabled??1)===1;grabPointsEarnRate=Number(data?.grabpoints_earn_rate??10);grabPointsValue=Number(data?.grabpoints_value??0.1);const box=document.querySelector('.grabpoints-box'),opt=document.querySelector('.grabpoints-optin');if(box)box.hidden=!grabPointsEnabled;if(opt)opt.hidden=!grabPointsEnabled;}catch{grabPointsEnabled=true;}}
 function loadMystery(){const x=read('grabzone_mystery_v1',null);if(x?.token&&x?.expires_at&&Date.parse(x.expires_at)>Date.now())mysteryState={token:String(x.token),discount:Number(x.discount||0)};else{mysteryState={token:'',discount:0};try{localStorage.removeItem('grabzone_mystery_v1')}catch{}}}
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
@@ -276,10 +276,10 @@ async function applyReferral(){
     note.style.color='#858a88';
     render();return;
   }
-  if(!sb){note.textContent='Referral service is not configured.';return}
+  if(!d1){note.textContent='Referral service is not configured.';return}
   button.disabled=true;button.textContent='Checking…';
   try{
-    const{data,error}=await sb.rpc('validate_referral_code',{p_code:code,p_subtotal:subtotal()});
+    const{data,error}=await d1.rpc('validate_referral_code',{p_code:code,p_subtotal:subtotal()});
     if(error)throw error;
     if(!data?.valid){
       referralState={code:'',discount:0};
@@ -302,17 +302,17 @@ async function applyReferral(){
   }
 }
 async function loadSite(){
-  if(!sb)return;
-  const{data}=await sb.from('site_settings').select('store_name,logo_url').eq('id',1).maybeSingle();
+  if(!d1)return;
+  const{data}=await d1.from('site_settings').select('store_name,logo_url').eq('id',1).maybeSingle();
   site=data||{};document.title='Checkout — '+(site.store_name||'GRABZONE');
   if(site.logo_url&&$('checkoutLogo'))$('checkoutLogo').src=site.logo_url;
 }
 async function hydrate(){
   const raw=getSource();
   if(!raw.length){render();return}
-  if(!sb){checkoutItems=raw;render();return}
+  if(!d1){checkoutItems=raw;render();return}
   const ids=[...new Set(raw.map(x=>x.product_id).filter(Boolean))];
-  const{data,error}=await sb.from('products').select('id,name,price,image_url,published').in('id',ids);
+  const{data,error}=await d1.from('products').select('id,name,price,image_url,published').in('id',ids);
   if(error){console.error(error);checkoutItems=raw;render();return}
   const map=new Map((data||[]).map(p=>[p.id,p]));
   checkoutItems=raw.map(x=>{
@@ -405,8 +405,8 @@ async function submit(e){
     subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
   };
   try{
-    if(!sb)throw new Error('Order service is not configured.');
-    const{data:order,error}=await sb.rpc('create_public_order',{payload});
+    if(!d1)throw new Error('Order service is not configured.');
+    const{data:order,error}=await d1.rpc('create_public_order',{payload});
     if(error)throw error;
     if(!order?.id||!order?.order_number)throw new Error('Order could not be created.');
 
@@ -418,7 +418,7 @@ async function submit(e){
     // SECURITY DEFINER RPC instead of exposing the orders table to customers.
     let privateTrackingId=String(order.public_tracking_id||'').trim();
     if(!privateTrackingId){
-      const lookup=await sb.rpc('get_public_tracking_id',{p_order_id:order.id});
+      const lookup=await d1.rpc('get_public_tracking_id',{p_order_id:order.id});
       if(!lookup.error) privateTrackingId=String(lookup.data||'').trim();
     }
     if(!privateTrackingId)throw new Error('Order was created, but the private Tracking ID could not be generated. Please contact GrabZone support.');
@@ -479,9 +479,9 @@ document.addEventListener('DOMContentLoaded',async()=>{
     const code=String(input?.value||'').trim().toUpperCase(),phone=String($('customerPhone')?.value||'').replace(/\D/g,'');
     if(!code){rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0};if(msgp)msgp.textContent='Enter your reward voucher code.';render();return}
     if(!/^01[3-9]\d{8}$/.test(phone)){if(msgp)msgp.textContent='Enter your checkout phone number first.';return}
-    if(!sb){if(msgp)msgp.textContent='Rewards service is not configured.';return}
+    if(!d1){if(msgp)msgp.textContent='Rewards service is not configured.';return}
     try{
-      const{data,error}=await sb.rpc('validate_rewards_voucher',{p_code:code,p_phone:phone,p_subtotal:subtotal()});
+      const{data,error}=await d1.rpc('validate_rewards_voucher',{p_code:code,p_phone:phone,p_subtotal:subtotal()});
       if(error)throw error;
       if(!data?.valid){rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0};if(msgp)msgp.textContent='✕ '+(data?.message||'Invalid reward voucher.');render();return}
       rewardsVoucherState={code,discount:Number(data.discount||0),value:Number(data.value||0),expires_at:String(data.expires_at||''),points_redeemed:Number(data.points_redeemed||0)};
