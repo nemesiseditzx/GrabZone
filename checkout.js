@@ -9,7 +9,7 @@ const BUY_NOW_KEY='grabzone_buy_now_v2';
 const currency=C.currency||'৳';
 const flatShippingCharge=130;
 
-let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},grabPointsState={balance:0,use:0,discount:0},mysteryState={token:'',discount:0},grabPointsEnabled=true,grabPointsEarnRate=10,grabPointsValue=0.1;
+let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0},grabPointsState={balance:0,use:0,discount:0},mysteryState={token:'',discount:0},grabPointsEnabled=true,grabPointsEarnRate=10,grabPointsValue=0.1;
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const read=(key,fallback)=>{try{const v=JSON.parse(localStorage.getItem(key)||'null');return v??fallback}catch{return fallback}};
@@ -225,16 +225,14 @@ function formData(){
     upazila:$('upazila').value.trim(),
     address:$('address').value.trim(),
     referral_code:$('referralCode').value.trim().toUpperCase(),
-    grabpoints_tracking_id:$('grabpointsTracking')?.value.trim().toUpperCase()||'',
+    rewards_voucher_code:$('rewardsVoucherCode')?.value.trim().toUpperCase()||'',
     grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,
-    grabpoints_redeem:$('grabpointsOptIn')?.checked?Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0))):0,grabpoints_pin:$('grabpointsPin')?.value||'',
     mystery_token:mysteryState.token
   };
 }
 function validate(d){
   if(!d.customer_name||!d.phone||!d.email||!d.division||!d.district||!d.upazila||!d.address)
     return'Please complete all required fields.';
-  if(d.grabpoints_redeem>0&&!/^\d{4,6}$/.test(d.grabpoints_pin)) return 'Enter your 4–6 digit Rewards PIN to use GrabPoints.';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email))
     return'Please enter a valid email address.';
   const phone=d.phone.replace(/\D/g,'');
@@ -259,7 +257,7 @@ function render(){
     <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
-  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||''),discount=Number(referralState.discount||0),pointsDiscount=Number(grabPointsState.discount||0),mysteryDiscount=Math.min(sub,sub*Number(mysteryState.discount||0)/100);
+  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||''),discount=Number(referralState.discount||0),pointsDiscount=Number(rewardsVoucherState.discount||0),mysteryDiscount=Math.min(sub,sub*Number(mysteryState.discount||0)/100);
   $('checkoutSubtotal').textContent=money(sub);
   $('checkoutShipping').textContent=money(shipping);
   $('checkoutDiscount').textContent='-'+money(discount);
@@ -355,7 +353,7 @@ function openOrderConfirm(d){
     const modal=$('orderConfirmModal');
     if(!modal){resolve(window.confirm('Please review your order details carefully before placing the order.'));return}
     const shipping=shippingForLocation(d.division);
-    const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100));
+    const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100));
     const address=[d.address,d.upazila,d.district,d.division].filter(Boolean).join(', ');
     $('confirmCustomer').textContent=d.customer_name||'—';
     $('confirmPhone').textContent=d.phone||'—';
@@ -401,10 +399,10 @@ async function submit(e){
   const payload={
     customer_name:d.customer_name,email:d.email,phone:d.phone,division:d.division,
     district:d.district,upazila:d.upazila,address:d.address,
-    referral_code:d.referral_code||null,payment_method:'Cash on Delivery',
+    referral_code:d.referral_code||null,rewards_voucher_code:d.rewards_voucher_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
     items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price)})),
-    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_redeem:Number(grabPointsState.use||0),grabpoints_pin:d.grabpoints_pin,grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0))
+    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
   };
   try{
     if(!sb)throw new Error('Order service is not configured.');
@@ -447,10 +445,10 @@ async function submit(e){
         shipping_charge:130,
         subtotal:subtotal(),
         referral_discount:Number(referralState.discount||0),
-        points_redeemed:Number(order.points_redeemed||grabPointsState.use||0),
-        points_discount:Number(order.points_discount||grabPointsState.discount||0),
+        rewards_voucher_code:String(order.rewards_voucher_code||rewardsVoucherState.code||''),
+        rewards_voucher_discount:Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0),
         mystery_discount:Number(order.mystery_discount||0),
-        total:Math.max(0,subtotal()+130-Number(referralState.discount||0)-Number(order.points_discount||grabPointsState.discount||0)),
+        total:Math.max(0,subtotal()+130-Number(referralState.discount||0)-Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0)-Number(order.mystery_discount||0)),
         public_tracking_id:privateTrackingId
       },
       checkoutItems.map(i=>({
@@ -476,40 +474,26 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('district')?.addEventListener('change',onDistrictChange);
   bindLocationPickers();
   $('applyReferralBtn')?.addEventListener('click',applyReferral);
-  async function checkGrabPoints(){
-    if(!grabPointsEnabled||!$('grabpointsOptIn')?.checked){if($('grabpointsMsg'))$('grabpointsMsg').textContent='Turn on GrabPoints above to check or use points.';return}
-    const phone=String($('grabpointsPhone')?.value||$('customerPhone')?.value||'').replace(/\D/g,'');
-    const bal=$('grabpointsBalance'),msgp=$('grabpointsMsg');
-    if(!/^01[3-9]\d{8}$/.test(phone)){if(bal)bal.textContent='Enter your phone';if(msgp)msgp.textContent='Enter a valid mobile number first.';return}
+  async function applyRewardsVoucher(){
+    const input=$('rewardsVoucherCode'),msgp=$('grabpointsMsg');
+    const code=String(input?.value||'').trim().toUpperCase(),phone=String($('customerPhone')?.value||'').replace(/\D/g,'');
+    if(!code){rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0};if(msgp)msgp.textContent='Enter your reward voucher code.';render();return}
+    if(!/^01[3-9]\d{8}$/.test(phone)){if(msgp)msgp.textContent='Enter your checkout phone number first.';return}
+    if(!sb){if(msgp)msgp.textContent='Rewards service is not configured.';return}
     try{
-      const rt=localStorage.getItem('gz_rewards_token')||'';
-      if(!rt){if(msgp)msgp.textContent='Login to your GrabZone Rewards account first to use GrabPoints.';if(bal)bal.textContent='Rewards login required';return}
-      const{data,error}=await sb.rpc('grabpoints_balance',{p_token:rt});
+      const{data,error}=await sb.rpc('validate_rewards_voucher',{p_code:code,p_phone:phone,p_subtotal:subtotal()});
       if(error)throw error;
-      grabPointsState.balance=Number(data?.points||0);
-      if(bal)bal.textContent=grabPointsState.balance+' GP · ৳'+Number(data?.value||0).toLocaleString('en-BD')+' value';
-      if(msgp)msgp.textContent=grabPointsState.balance?'Your points are ready to use.':'No GrabPoints yet. Points are added after delivered orders.';
-    }catch(e){if(msgp)msgp.textContent=e.message||'Could not check points right now.'}
+      if(!data?.valid){rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0};if(msgp)msgp.textContent='✕ '+(data?.message||'Invalid reward voucher.');render();return}
+      rewardsVoucherState={code,discount:Number(data.discount||0),value:Number(data.value||0),expires_at:String(data.expires_at||''),points_redeemed:Number(data.points_redeemed||0)};
+      if(msgp)msgp.textContent='✓ Reward applied — ৳'+Number(data.discount||0).toLocaleString('en-BD')+' off. One-time voucher.';
+      render();
+    }catch(e){rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0};if(msgp)msgp.textContent='✕ '+(e.message||'Could not verify the reward voucher.');render()}
   }
-  function applyGrabPoints(){
-    if(!grabPointsEnabled||!$('grabpointsOptIn')?.checked){if($('grabpointsMsg'))$('grabpointsMsg').textContent='Turn on GrabPoints first.';return}
-    const requested=Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0)));
-    const msgp=$('grabpointsMsg');
-    if(!requested){grabPointsState={...grabPointsState,use:0,discount:0};if($('grabpointsPinWrap'))$('grabpointsPinWrap').style.display='none';if($('grabpointsPin'))$('grabpointsPin').value='';if(msgp)msgp.textContent='Points discount cleared.';render();return}
-    if(requested%10!==0){if(msgp)msgp.textContent='Use points in multiples of 10.';return}
-    if(requested>Number(grabPointsState.balance||0)){if(msgp)msgp.textContent='Not enough GrabPoints.';return}
-    const pinWrap=$('grabpointsPinWrap');if(pinWrap)pinWrap.style.display=requested>0?'block':'none';
-    const discount=Math.min(subtotal(),requested*grabPointsValue);
-    grabPointsState={...grabPointsState,use:requested,discount};
-    if(msgp)msgp.textContent='✓ '+requested+' GP applied · ৳'+discount.toLocaleString('en-BD')+' off. Your phone number is used to access your GrabPoints.';
-    render();
-  }
-  $('checkGrabPoints')?.addEventListener('click',checkGrabPoints);
-  const rewardsLogin=$('grabpointsRewardsLogin');if(rewardsLogin){const has=!!localStorage.getItem('gz_rewards_token');rewardsLogin.hidden=has;rewardsLogin.onclick=()=>window.GrabZoneRewards?.open?.();}
-  $('applyGrabPoints')?.addEventListener('click',applyGrabPoints);
-  $('customerPhone')?.addEventListener('blur',()=>{const gp=$('grabpointsPhone');if(gp)gp.value=$('customerPhone').value;checkGrabPoints();});
-  $('customerPhone')?.addEventListener('input',()=>{grabPointsState={balance:0,use:0,discount:0};const b=$('grabpointsBalance');if(b)b.textContent='Check your points';render()});
-  $('grabpointsOptIn')?.addEventListener('change',()=>{const on=$('grabpointsOptIn').checked;grabPointsState={...grabPointsState,use:0,discount:0};const t=$('grabpointsPhone'),u=$('grabpointsUse');if(t)t.disabled=!on;if(u)u.disabled=!on;const m=$('grabpointsMsg');if(m)m.textContent=on?'GrabPoints enabled for this order. You can earn points after delivery.':'GrabPoints disabled for this order — no points will be added.';render();if(on)checkGrabPoints()});
+  const rewardsLogin=$('grabpointsRewardsLogin');if(rewardsLogin){rewardsLogin.onclick=()=>window.GrabZoneRewards?.open?.();}
+  $('applyRewardsVoucher')?.addEventListener('click',applyRewardsVoucher);
+  $('rewardsVoucherCode')?.addEventListener('input',()=>{rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0};const m=$('grabpointsMsg');if(m)m.textContent='Enter the code and press Apply Reward Voucher.';render()});
+  $('customerPhone')?.addEventListener('input',()=>{rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0};const b=$('grabpointsBalance');if(b)b.textContent='One-time reward vouchers';render()});
+  $('grabpointsOptIn')?.addEventListener('change',()=>{const on=$('grabpointsOptIn').checked;const m=$('grabpointsMsg');if(m&&!on&&rewardsVoucherState.code)m.textContent='Your reward voucher can still be used; this checkbox only controls earning GP on this order.';render()});
 
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
   loadMystery();await loadGrabPointsSettings();await loadLocations();await loadSite();await hydrate();
