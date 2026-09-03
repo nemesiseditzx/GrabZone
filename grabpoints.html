@@ -132,7 +132,7 @@
   }catch(e){}
 })();
 </script>
-<script src="rewards.js?v=20260903rewardsfix4"></script><script>
+<script src="rewards.js?v=20260903rewardsfix5"></script><script>
 (async function(){
   try{
     const r=await window.grabzoneD1?.rpc('rewards_public_settings',{});
@@ -147,7 +147,25 @@
   }catch(e){}
 })();
 </script>
-<script>setTimeout(function(){try{window.GrabZoneRewards?.render?.()}catch(e){console.error(e)}},0);</script>
+<script>
+(function(){
+  function bootRewards(){
+    var app=document.getElementById('gzRewardsApp');
+    if(!app)return;
+    if(window.GrabZoneRewards&&typeof window.GrabZoneRewards.render==='function'){
+      window.GrabZoneRewards.render();
+      return;
+    }
+    if(!app.innerHTML.trim()){
+      app.innerHTML='<div style="padding:32px;text-align:center;font-family:system-ui;color:#555"><b>GrabPoints is loading…</b><div style="margin-top:8px;font-size:13px">Please wait a moment and refresh if needed.</div></div>';
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootRewards);
+  else setTimeout(bootRewards,0);
+  setTimeout(bootRewards,500);
+  setTimeout(bootRewards,1500);
+})();
+</script>
 
 <script>
 (function(){
