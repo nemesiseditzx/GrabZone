@@ -482,12 +482,14 @@ document.addEventListener('DOMContentLoaded',async()=>{
     const bal=$('grabpointsBalance'),msgp=$('grabpointsMsg');
     if(!/^01[3-9]\d{8}$/.test(phone)){if(bal)bal.textContent='Enter your phone';if(msgp)msgp.textContent='Enter a valid mobile number first.';return}
     try{
-      const{data,error}=await sb.rpc('grabpoints_balance',{p_phone:phone});
+      const rt=localStorage.getItem('gz_rewards_token')||'';
+      if(!rt){if(msgp)msgp.textContent='Login to your GrabZone Rewards account first to use GrabPoints.';if(bal)bal.textContent='Rewards login required';return}
+      const{data,error}=await sb.rpc('grabpoints_balance',{p_token:rt});
       if(error)throw error;
       grabPointsState.balance=Number(data?.points||0);
       if(bal)bal.textContent=grabPointsState.balance+' GP · ৳'+Number(data?.value||0).toLocaleString('en-BD')+' value';
       if(msgp)msgp.textContent=grabPointsState.balance?'Your points are ready to use.':'No GrabPoints yet. Points are added after delivered orders.';
-    }catch(e){if(msgp)msgp.textContent='Could not check points right now.'}
+    }catch(e){if(msgp)msgp.textContent=e.message||'Could not check points right now.'}
   }
   function applyGrabPoints(){
     if(!grabPointsEnabled||!$('grabpointsOptIn')?.checked){if($('grabpointsMsg'))$('grabpointsMsg').textContent='Turn on GrabPoints first.';return}
