@@ -227,13 +227,14 @@ function formData(){
     referral_code:$('referralCode').value.trim().toUpperCase(),
     grabpoints_tracking_id:$('grabpointsTracking')?.value.trim().toUpperCase()||'',
     grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,
-    grabpoints_redeem:$('grabpointsOptIn')?.checked?Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0))):0,
+    grabpoints_redeem:$('grabpointsOptIn')?.checked?Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0))):0,grabpoints_pin:$('grabpointsPin')?.value||'',
     mystery_token:mysteryState.token
   };
 }
 function validate(d){
   if(!d.customer_name||!d.phone||!d.email||!d.division||!d.district||!d.upazila||!d.address)
     return'Please complete all required fields.';
+  if(d.grabpoints_redeem>0&&!/^\d{4,6}$/.test(d.grabpoints_pin)) return 'Enter your 4–6 digit Rewards PIN to use GrabPoints.';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email))
     return'Please enter a valid email address.';
   const phone=d.phone.replace(/\D/g,'');
@@ -403,7 +404,7 @@ async function submit(e){
     referral_code:d.referral_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
     items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price)})),
-    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_redeem:Number(grabPointsState.use||0),grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0))
+    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_redeem:Number(grabPointsState.use||0),grabpoints_pin:d.grabpoints_pin,grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(grabPointsState.discount||0))
   };
   try{
     if(!sb)throw new Error('Order service is not configured.');
@@ -492,9 +493,10 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(!grabPointsEnabled||!$('grabpointsOptIn')?.checked){if($('grabpointsMsg'))$('grabpointsMsg').textContent='Turn on GrabPoints first.';return}
     const requested=Math.max(0,Math.floor(Number($('grabpointsUse')?.value||0)));
     const msgp=$('grabpointsMsg');
-    if(!requested){grabPointsState={...grabPointsState,use:0,discount:0};if(msgp)msgp.textContent='Points discount cleared.';render();return}
+    if(!requested){grabPointsState={...grabPointsState,use:0,discount:0};if($('grabpointsPinWrap'))$('grabpointsPinWrap').style.display='none';if($('grabpointsPin'))$('grabpointsPin').value='';if(msgp)msgp.textContent='Points discount cleared.';render();return}
     if(requested%10!==0){if(msgp)msgp.textContent='Use points in multiples of 10.';return}
     if(requested>Number(grabPointsState.balance||0)){if(msgp)msgp.textContent='Not enough GrabPoints.';return}
+    const pinWrap=$('grabpointsPinWrap');if(pinWrap)pinWrap.style.display=requested>0?'block':'none';
     const discount=Math.min(subtotal(),requested*grabPointsValue);
     grabPointsState={...grabPointsState,use:requested,discount};
     if(msgp)msgp.textContent='✓ '+requested+' GP applied · ৳'+discount.toLocaleString('en-BD')+' off. Your phone number is used to access your GrabPoints.';
