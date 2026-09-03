@@ -129,6 +129,17 @@ async function loadOrders(){
      return;
    }
    orders=Array.isArray(data)?data:[];
+   // Normalize legacy order totals from the two primary customer discount fields.
+   for(const order of orders){
+     const sub=Number(order.subtotal||0), ship=Number(order.shipping_charge||130);
+     const referral=Number(order.referral_discount||0), gp=Number(order.rewards_voucher_discount||0), mystery=Number(order.mystery_discount||0);
+     const correctDiscount=Math.max(0,referral+gp+mystery);
+     const correctTotal=Math.max(0,sub+ship-correctDiscount);
+     if(Math.abs(Number(order.discount_amount||0)-correctDiscount)>0.009||Math.abs(Number(order.total||0)-correctTotal)>0.009){
+       order.discount_amount=correctDiscount; order.total=correctTotal;
+       try{await sb.from('orders').update({discount_amount:correctDiscount,total:correctTotal,updated_at:new Date().toISOString()}).eq('id',order.id);}catch(e){console.warn('Order total normalization:',e)}
+     }
+   }
    // Backfill private customer-facing tracking IDs for older orders.
    for(const order of orders){
      if(!String(order.public_tracking_id||'').trim()){
@@ -147,14 +158,14 @@ function renderOrders(){
  const q=($('gzOrderSearch')?.value||'').trim().toLowerCase(), st=$('gzOrderStatusFilter')?.value||'';
  const list=orders.filter(o=>(!q||`${o.order_number} ${o.public_tracking_id||''} ${o.customer_name} ${o.phone} ${o.email} ${o.referral_code||''}`.toLowerCase().includes(q))&&(!st||o.status===st));
  if(!list.length){panel.innerHTML='<div class="gz-empty-orders">No orders found.</div>';return}
- panel.innerHTML=`<div class="gz-orders-wrap"><table class="gz-orders-table"><thead><tr><th>Order / Tracking ID</th><th>Customer</th><th>Phone</th><th>Email</th><th>Referral</th><th>Discount</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>${list.map(o=>`<tr>
+ panel.innerHTML=`<div class="gz-orders-wrap"><table class="gz-orders-table"><thead><tr><th>Order / Tracking ID</th><th>Customer</th><th>Phone</th><th>Email</th><th>Referral Discount</th><th>GrabPoints Discount</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>${list.map(o=>`<tr>
  <td><button class="gz-order-link" data-order="${esc(o.id)}">${esc(o.order_number)}</button><div class="gz-public-track-id">${o.public_tracking_id?`Private Tracking ID: <b>${esc(o.public_tracking_id)}</b>`:'Private Tracking ID: generating…'}</div></td>
  <td>${esc(o.customer_name)}</td>
  <td>${esc(o.phone)}</td>
  <td class="gz-order-email" title="${esc(o.email)}">${esc(o.email)}</td>
- <td class="gz-order-ref" title="${esc(o.referral_code||'—')}">${esc(o.referral_code||'—')}</td>
- <td>${Number(o.discount_amount||0)>0?'-'+money(o.discount_amount):'—'}</td>
- <td><b>${money(o.total)}</b></td>
+ <td class="gz-order-ref" title="${esc(o.referral_code||'—')}">${esc(o.referral_code||'—')}<div class="gz-order-discount-value">${Number(o.referral_discount||0)>0?'-'+money(o.referral_discount):'—'}</div></td>
+ <td>${Number(o.rewards_voucher_discount||0)>0?'-'+money(o.rewards_voucher_discount):'—'}</td>
+ <td><b>${money(Math.max(0,Number(o.subtotal||0)+Number(o.shipping_charge||130)-Number(o.referral_discount||0)-Number(o.rewards_voucher_discount||0)-Number(o.mystery_discount||0)))}</b></td>
  <td><select class="gz-status-select" data-status-order="${esc(o.id)}" aria-label="Change order status">${statuses.map(s=>`<option value="${esc(s)}" ${s===o.status?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
  <td>${o.created_at?formatBdDateTime(o.created_at):'—'}</td>
  <td><div class="gz-order-actions-cell"><button class="gz-order-action edit" data-edit-order="${esc(o.id)}">Edit</button><button class="gz-order-action" data-send-bk="${esc(o.id)}" ${o.status!=='Confirmed'||o.business_koro_sent_at?'disabled':''}>${o.business_koro_sent_at?'Sent ✓':o.status==='Confirmed'?'Send to Business Koro':'Confirm order first'}</button><button class="gz-order-action delete" data-delete-order="${esc(o.id)}">Delete</button></div></td>
@@ -299,7 +310,8 @@ async function openEditor(id){
  <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label>
  <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" min="130" max="130" value="130" readonly></label>
  <label>Referral Discount<input id="oeDiscount" type="number" step="0.01" min="0" value="${Number(current.referral_discount||0)}"></label>
- <div class="gz-order-full" style="font-size:12px;color:#666;padding:10px 12px;background:#f7f7f5;border-radius:10px">Applied customer discounts: <b>${money(Number(current.discount_amount||0))}</b>${Number(current.rewards_voucher_discount||0)>0?` · GrabPoints voucher ${money(current.rewards_voucher_discount)}`:''}${Number(current.mystery_discount||0)>0?` · Mystery Deal ${money(current.mystery_discount)}`:''} </div>
+ <label>GrabPoints Discount<input id="oeGpDiscount" type="number" step="0.01" min="0" value="${Number(current.rewards_voucher_discount||0)}" readonly></label>
+ <div class="gz-order-full" style="font-size:12px;color:#666;padding:10px 12px;background:#f7f7f5;border-radius:10px">Final discount = Referral Discount + GrabPoints Discount${Number(current.mystery_discount||0)>0?' + Mystery Deal':''}. Total is recalculated automatically.</div>
  <label class="gz-order-full">Admin Note<textarea id="oeNote">${esc(String(current.admin_note||'').split(TRACK_MARKER)[0].trim())}</textarea></label><label>Courier / Tracking Provider<input id="oeTrackingCourier" value="${esc(trackingFor(current).courier)}" placeholder="e.g. Steadfast"></label><label>Tracking Number<input id="oeTrackingNumber" value="${esc(trackingFor(current).number)}" placeholder="Courier tracking number"></label><label class="gz-order-full">Tracking URL<input id="oeTrackingUrl" type="url" value="${esc(trackingFor(current).url)}" placeholder="https://courier-tracking-link..."></label></div>
  <div class="gz-items-editor"><h3>Products in this order</h3><div id="oeItems">${current.items.map((it,i)=>itemRow(it,i)).join('')}</div><button type="button" class="ghost" id="oeAddItem">＋ Add item</button><div id="oePreview" class="gz-order-total-preview"></div></div>`;
  $('oeAddItem').onclick=()=>{current.items.push({id:null,product_id:null,product_name:'',image_url:'',quantity:1,unit_price:0});renderItemEditor();updatePreview()};
@@ -310,7 +322,7 @@ async function openEditor(id){
 function itemRow(it,i){return`<div class="gz-item-edit" data-item-index="${i}"><input class="it-name" placeholder="Product name" value="${esc(it.product_name)}"><input class="it-qty" type="number" min="1" value="${Math.max(1,Number(it.quantity||1))}"><input class="it-price" type="number" step="1" min="0" value="${Number(it.unit_price||0)}"><input class="it-image" placeholder="Image URL" value="${esc(it.image_url||'')}"><button type="button" class="it-remove">×</button></div>`}
 function bindItemRow(i){const row=document.querySelector(`.gz-item-edit[data-item-index="${i}"]`);if(!row)return;const sync=()=>{current.items[i].product_name=row.querySelector('.it-name').value.trim();current.items[i].quantity=Math.max(1,Number(row.querySelector('.it-qty').value||1));current.items[i].unit_price=Math.max(0,Number(row.querySelector('.it-price').value||0));current.items[i].image_url=row.querySelector('.it-image').value.trim();updatePreview()};row.querySelectorAll('input').forEach(x=>x.oninput=sync);row.querySelector('.it-remove').onclick=()=>{current.items.splice(i,1);renderItemEditor();updatePreview()}}
 function renderItemEditor(){const box=$('oeItems');box.innerHTML=current.items.map((it,i)=>itemRow(it,i)).join('');current.items.forEach((_,i)=>bindItemRow(i))}
-function updatePreview(){const sub=current.items.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0),ship=130;$('oePreview').textContent=`Subtotal: ${money(sub)} · Total: ${money(sub+ship)}`}
+function updatePreview(){const sub=current.items.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0),ship=130,ref=Number($('oeDiscount')?.value||current.referral_discount||0),gp=Number(current.rewards_voucher_discount||0),myst=Number(current.mystery_discount||0),disc=Math.max(0,ref+gp+myst);$('oePreview').textContent=`Subtotal: ${money(sub)} · Referral: -${money(ref)} · GrabPoints: -${money(gp)} · Total: ${money(Math.max(0,sub+ship-disc))}`}
 function closeEditor(){$('gzOrderModal')?.classList.remove('open');document.body.style.overflow='';current=null}
 
 async function saveEditor(){
