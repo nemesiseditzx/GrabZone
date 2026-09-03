@@ -226,7 +226,7 @@ function formData(){
     address:$('address').value.trim(),
     referral_code:$('referralCode').value.trim().toUpperCase(),
     rewards_voucher_code:$('rewardsVoucherCode')?.value.trim().toUpperCase()||'',
-    grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,
+    grabpoints_opt_in:1,
     mystery_token:mysteryState.token
   };
 }
@@ -402,7 +402,7 @@ async function submit(e){
     referral_code:d.referral_code||null,rewards_voucher_code:d.rewards_voucher_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
     items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price)})),
-    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:$('grabpointsOptIn')?.checked?1:0,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
+    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:1,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
   };
   try{
     if(!d1)throw new Error('Order service is not configured.');
