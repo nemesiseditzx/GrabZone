@@ -26,3 +26,7 @@ CREATE TABLE IF NOT EXISTS rewards_vouchers (code TEXT PRIMARY KEY,member_id TEX
 CREATE INDEX IF NOT EXISTS rewards_vouchers_member_idx ON rewards_vouchers(member_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS rewards_vouchers_phone_idx ON rewards_vouchers(phone,status,expires_at);
 CREATE INDEX IF NOT EXISTS rewards_vouchers_status_idx ON rewards_vouchers(status,expires_at);
+
+ALTER TABLE grabpoints_ledger ADD COLUMN qualifying_points INTEGER NOT NULL DEFAULT 0;
+UPDATE grabpoints_ledger SET qualifying_points=points WHERE type='earn' AND qualifying_points=0;
+CREATE TABLE IF NOT EXISTS rewards_tx_guard(ok INTEGER PRIMARY KEY CHECK(ok=1));
