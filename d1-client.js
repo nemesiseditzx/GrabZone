@@ -89,8 +89,9 @@ async function authFetch(url,options={}){
  }
  return response;
 }
-async function d1(payload){
- return api('/api/d1',{method:'POST',body:JSON.stringify(payload)});
+async function d1(payload,tokenOverride=''){
+ const headers=tokenOverride?{Authorization:'Bearer '+tokenOverride}:{};
+ return api('/api/d1',{method:'POST',body:JSON.stringify(payload),headers});
 }
 
 function builder(table){
@@ -152,8 +153,10 @@ const auth={
 
 window.gzAuthFetch=authFetch;
 window.grabzoneD1={from:builder,rpc:async(fn,args={})=>{
- try{return {data:(await d1({type:'rpc',fn,args}))?.data??null,error:null}}
- catch(e){return {data:null,error:{message:e.message,status:e.status}}}
+ try{
+  const rewardToken=/^rewards_/.test(String(fn||''))?(()=>{try{return localStorage.getItem('gz_rewards_token')||''}catch{return''}})():'';
+  return {data:(await d1({type:'rpc',fn,args},rewardToken))?.data??null,error:null}
+ }catch(e){return {data:null,error:{message:e.message,status:e.status}}}
 },auth};
 window.getToken=()=>read(TOKEN_KEY);
 })();
