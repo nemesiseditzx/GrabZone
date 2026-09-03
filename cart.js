@@ -21,19 +21,6 @@ function ensureUI(){
  const header=document.querySelector('.header');
  if(header){
    const existing=$('headerDm');
-   /* Keep GrabPoints permanently available beside the cart. */
-   let gpLink=document.getElementById('gzHeaderGrabPoints');
-   if(!gpLink){
-     gpLink=document.createElement('a');
-     gpLink.id='gzHeaderGrabPoints';
-     gpLink.href='grabpoints.html';
-     gpLink.className='btn gz-grabpoints-nav';
-     gpLink.textContent='GrabPoints';
-     gpLink.style.cssText='border:1px solid #ddd;cursor:pointer;white-space:nowrap;text-decoration:none;';
-     const actions=header.querySelector('.header-actions');
-     if(actions) actions.insertBefore(gpLink, actions.lastElementChild);
-     else header.appendChild(gpLink);
-   }
    let b=existing;
    if(!b){
      const actions=header.querySelector('.header-actions');
