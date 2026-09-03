@@ -27,6 +27,7 @@ CREATE INDEX IF NOT EXISTS rewards_vouchers_member_idx ON rewards_vouchers(membe
 CREATE INDEX IF NOT EXISTS rewards_vouchers_phone_idx ON rewards_vouchers(phone,status,expires_at);
 CREATE INDEX IF NOT EXISTS rewards_vouchers_status_idx ON rewards_vouchers(status,expires_at);
 
-ALTER TABLE grabpoints_ledger ADD COLUMN qualifying_points INTEGER NOT NULL DEFAULT 0;
-UPDATE grabpoints_ledger SET qualifying_points=points WHERE type='earn' AND qualifying_points=0;
+CREATE TABLE IF NOT EXISTS customer_points (phone TEXT PRIMARY KEY, points INTEGER NOT NULL DEFAULT 0, total_earned INTEGER NOT NULL DEFAULT 0, total_redeemed INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS grabpoints_ledger (id TEXT PRIMARY KEY, phone TEXT NOT NULL, order_id TEXT, points INTEGER NOT NULL, type TEXT NOT NULL, reference TEXT, reason TEXT, admin_id TEXT, balance_after INTEGER, qualifying_points INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, UNIQUE(order_id,type));
+CREATE INDEX IF NOT EXISTS grabpoints_ledger_phone_idx ON grabpoints_ledger(phone,created_at DESC);
 CREATE TABLE IF NOT EXISTS rewards_tx_guard(ok INTEGER PRIMARY KEY CHECK(ok=1));
