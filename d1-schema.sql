@@ -20,3 +20,9 @@ CREATE INDEX IF NOT EXISTS billboards_active_idx ON billboards(active,sort_order
 CREATE TABLE IF NOT EXISTS billboard_settings (id INTEGER PRIMARY KEY,autoplay INTEGER NOT NULL DEFAULT 1,interval_ms INTEGER NOT NULL DEFAULT 5000,transition TEXT NOT NULL DEFAULT 'slide',show_arrows INTEGER NOT NULL DEFAULT 1,show_dots INTEGER NOT NULL DEFAULT 1,updated_at TEXT);
 CREATE TABLE IF NOT EXISTS store_policies (id INTEGER PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 1,accent_color TEXT,accent_color_2 TEXT,background_color TEXT,card_color TEXT,animation_enabled INTEGER NOT NULL DEFAULT 1,content TEXT NOT NULL DEFAULT '{}',updated_at TEXT);
 INSERT OR IGNORE INTO billboard_settings (id) VALUES (1);
+
+-- GrabPoints one-time reward vouchers
+CREATE TABLE IF NOT EXISTS rewards_vouchers (code TEXT PRIMARY KEY,member_id TEXT NOT NULL,phone TEXT NOT NULL,email TEXT NOT NULL,points_redeemed INTEGER NOT NULL,value REAL NOT NULL,status TEXT NOT NULL DEFAULT 'UNUSED',expires_at TEXT NOT NULL,used_at TEXT,used_order_id TEXT,created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS rewards_vouchers_member_idx ON rewards_vouchers(member_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS rewards_vouchers_phone_idx ON rewards_vouchers(phone,status,expires_at);
+CREATE INDEX IF NOT EXISTS rewards_vouchers_status_idx ON rewards_vouchers(status,expires_at);
