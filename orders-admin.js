@@ -121,7 +121,7 @@ async function loadOrders(){
    }
    const {data,error}=await sb
      .from('orders')
-     .select('id,order_no,order_number,public_tracking_id,customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,subtotal,total,status,admin_note,created_at,updated_at,referral_discount,business_koro_sent_at,tracking_number,tracking_url,tracking_provider')
+     .select('id,order_no,order_number,public_tracking_id,customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,subtotal,total,status,admin_note,created_at,updated_at,referral_discount,discount_amount,rewards_voucher_code,rewards_voucher_discount,mystery_discount,business_koro_sent_at,tracking_number,tracking_url,tracking_provider')
      .order('created_at',{ascending:false});
    if(error){
      console.error('GrabZone orders load failed:',error);
@@ -153,7 +153,7 @@ function renderOrders(){
  <td>${esc(o.phone)}</td>
  <td class="gz-order-email" title="${esc(o.email)}">${esc(o.email)}</td>
  <td class="gz-order-ref" title="${esc(o.referral_code||'—')}">${esc(o.referral_code||'—')}</td>
- <td>${o.referral_discount?'-'+money(o.referral_discount):'—'}</td>
+ <td>${Number(o.discount_amount||0)>0?'-'+money(o.discount_amount):'—'}</td>
  <td><b>${money(o.total)}</b></td>
  <td><select class="gz-status-select" data-status-order="${esc(o.id)}" aria-label="Change order status">${statuses.map(s=>`<option value="${esc(s)}" ${s===o.status?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
  <td>${o.created_at?formatBdDateTime(o.created_at):'—'}</td>
@@ -190,8 +190,12 @@ async function sendOrderEmail(orderNumber,type='status_updated',statusOverride='
  }catch(e){console.error('Order email:',e);return false}
 }
 async function confirmOrder(order){
- const subtotal=Number(order.subtotal||0), discount=Number(order.referral_discount||0);
- const updates={status:'Confirmed',shipping_charge:130,total:Math.max(0,subtotal+130-discount),updated_at:new Date().toISOString()};
+ const subtotal=Number(order.subtotal||0);
+ const referralDiscount=Number(order.referral_discount||0);
+ const voucherDiscount=Number(order.rewards_voucher_discount||0);
+ const mysteryDiscount=Number(order.mystery_discount||0);
+ const discount=Number(order.discount_amount||referralDiscount+voucherDiscount+mysteryDiscount);
+ const updates={status:'Confirmed',shipping_charge:130,discount_amount:discount,total:Math.max(0,subtotal+130-discount),updated_at:new Date().toISOString()};
 
  const {error}=await sb.from('orders').update(updates).eq('id',order.id);
  if(error)throw error;
@@ -295,6 +299,7 @@ async function openEditor(id){
  <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label>
  <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" min="130" max="130" value="130" readonly></label>
  <label>Referral Discount<input id="oeDiscount" type="number" step="0.01" min="0" value="${Number(current.referral_discount||0)}"></label>
+ <div class="gz-order-full" style="font-size:12px;color:#666;padding:10px 12px;background:#f7f7f5;border-radius:10px">Applied customer discounts: <b>${money(Number(current.discount_amount||0))}</b>${Number(current.rewards_voucher_discount||0)>0?` · GrabPoints voucher ${money(current.rewards_voucher_discount)}`:''}${Number(current.mystery_discount||0)>0?` · Mystery Deal ${money(current.mystery_discount)}`:''} </div>
  <label class="gz-order-full">Admin Note<textarea id="oeNote">${esc(String(current.admin_note||'').split(TRACK_MARKER)[0].trim())}</textarea></label><label>Courier / Tracking Provider<input id="oeTrackingCourier" value="${esc(trackingFor(current).courier)}" placeholder="e.g. Steadfast"></label><label>Tracking Number<input id="oeTrackingNumber" value="${esc(trackingFor(current).number)}" placeholder="Courier tracking number"></label><label class="gz-order-full">Tracking URL<input id="oeTrackingUrl" type="url" value="${esc(trackingFor(current).url)}" placeholder="https://courier-tracking-link..."></label></div>
  <div class="gz-items-editor"><h3>Products in this order</h3><div id="oeItems">${current.items.map((it,i)=>itemRow(it,i)).join('')}</div><button type="button" class="ghost" id="oeAddItem">＋ Add item</button><div id="oePreview" class="gz-order-total-preview"></div></div>`;
  $('oeAddItem').onclick=()=>{current.items.push({id:null,product_id:null,product_name:'',image_url:'',quantity:1,unit_price:0});renderItemEditor();updatePreview()};
@@ -331,7 +336,10 @@ async function saveEditor(){
  if(!/^01[3-9]\d{8}$/.test(payload.phone.replace(/\D/g,''))){$('gzOrderEditorMsg').textContent='⚠ Mobile number must be a valid 11-digit Bangladesh number (01XXXXXXXXX).';return}
  if(!items.length){$('gzOrderEditorMsg').textContent='⚠ Add at least one product.';return}
  payload.phone=payload.phone.replace(/\D/g,'');
- payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.shipping_charge=130;payload.total=Math.max(0,payload.subtotal+130-payload.referral_discount);payload.updated_at=new Date().toISOString();
+ payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.shipping_charge=130;
+  const preservedVoucherDiscount=Number(current.rewards_voucher_discount||0),preservedMysteryDiscount=Number(current.mystery_discount||0);
+  payload.discount_amount=Math.max(0,payload.referral_discount+preservedVoucherDiscount+preservedMysteryDiscount);
+  payload.total=Math.max(0,payload.subtotal+130-payload.discount_amount);payload.updated_at=new Date().toISOString();
  $('gzOrderSave').disabled=true;
  try{
   const {error:e1}=await sb.from('orders').update(payload).eq('id',current.id);if(e1)throw e1;
