@@ -505,6 +505,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     render();
   }
   $('checkGrabPoints')?.addEventListener('click',checkGrabPoints);
+  const rewardsLogin=$('grabpointsRewardsLogin');if(rewardsLogin){const has=!!localStorage.getItem('gz_rewards_token');rewardsLogin.hidden=has;rewardsLogin.onclick=()=>window.GrabZoneRewards?.open?.();}
   $('applyGrabPoints')?.addEventListener('click',applyGrabPoints);
   $('customerPhone')?.addEventListener('blur',()=>{const gp=$('grabpointsPhone');if(gp)gp.value=$('customerPhone').value;checkGrabPoints();});
   $('customerPhone')?.addEventListener('input',()=>{grabPointsState={balance:0,use:0,discount:0};const b=$('grabpointsBalance');if(b)b.textContent='Check your points';render()});
