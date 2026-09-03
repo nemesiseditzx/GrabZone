@@ -31,3 +31,5 @@ CREATE TABLE IF NOT EXISTS customer_points (phone TEXT PRIMARY KEY, points INTEG
 CREATE TABLE IF NOT EXISTS grabpoints_ledger (id TEXT PRIMARY KEY, phone TEXT NOT NULL, order_id TEXT, points INTEGER NOT NULL, type TEXT NOT NULL, reference TEXT, reason TEXT, admin_id TEXT, balance_after INTEGER, qualifying_points INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, UNIQUE(order_id,type));
 CREATE INDEX IF NOT EXISTS grabpoints_ledger_phone_idx ON grabpoints_ledger(phone,created_at DESC);
 CREATE TABLE IF NOT EXISTS rewards_tx_guard(ok INTEGER PRIMARY KEY CHECK(ok=1));
+
+CREATE TABLE IF NOT EXISTS membership_tiers (tier TEXT PRIMARY KEY,min_points INTEGER NOT NULL,cashback_percent REAL NOT NULL DEFAULT 0,discount_percent REAL NOT NULL DEFAULT 0,benefits TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL);
