@@ -397,12 +397,154 @@
 .gz-points-icon{width:44px;height:44px;border-radius:14px;background:#111;color:#fff;display:grid;place-items:center;font-size:20px}
 .gz-points-form{display:grid;grid-template-columns:1fr auto;gap:8px}
 .gz-points-form input{width:100%;box-sizing:border-box;border:1px solid #dcdcd7;border-radius:12px;padding:13px 14px;font:inherit;outline:none}
-.gz-points-form input:focus{border-color:#111}
-.gz-points-form .btn{border:0;white-space:nowrap}
+.gz-points-form input:focus{border-color:#111}.gz-points-form .btn{border:0;white-space:nowrap}
 .gz-points-value{margin-top:11px;font-size:12px;color:#555}
 .gz-points-message{min-height:18px;margin-top:7px;font-size:11px;font-weight:800}
 @media(max-width:760px){.gz-points-section{grid-template-columns:1fr;padding:22px;gap:20px}.gz-points-form{grid-template-columns:1fr}.gz-points-form .btn{width:100%}}
-</style></head>
+</style><style>
+/* =========================================================
+   GRABZONE — HOW TO ORDER
+   Clean bilingual section: language switches the whole copy,
+   while the visual layout stays consistent.
+========================================================= */
+.how-section{
+  padding:88px 5vw 96px;
+  background:linear-gradient(180deg,#f7f7f4 0%,#f1f4f8 100%);
+  border-top:1px solid #e8e8e4;
+  border-bottom:1px solid #e8e8e4;
+}
+.how-intro{
+  max-width:1180px;
+  margin:0 auto;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:30px;
+}
+.how-intro h2{
+  margin:0;
+  font-size:clamp(38px,5vw,62px);
+  line-height:.98;
+  letter-spacing:-.06em;
+}
+.how-subtitle{
+  max-width:680px;
+  margin:16px 0 0;
+  color:#666;
+  font-size:15px;
+  line-height:1.65;
+}
+.how-badge{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:11px 15px;
+  border:1px solid #deded8;
+  border-radius:999px;
+  background:#fff;
+  white-space:nowrap;
+  box-shadow:0 8px 24px rgba(0,0,0,.04);
+}
+.how-badge span{
+  width:23px;height:23px;display:grid;place-items:center;
+  border-radius:50%;background:#111;color:#fff;font-size:12px;font-weight:900;
+}
+.how-badge strong{font-size:12px}
+.how-section .steps{
+  max-width:1180px;
+  margin:42px auto 0;
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:12px;
+  background:transparent;
+}
+.how-section .step{
+  min-height:285px;
+  padding:22px 20px 24px;
+  background:#fff;
+  border:1px solid #e2e2dd;
+  border-radius:20px;
+  box-shadow:0 10px 28px rgba(0,0,0,.045);
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+}
+.how-section .step:hover{
+  transform:translateY(-4px);
+  border-color:#cfcfca;
+  box-shadow:0 16px 34px rgba(0,0,0,.08);
+}
+.step-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:34px;
+}
+.step-number{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:43px;
+  height:28px;
+  padding:0 9px;
+  border-radius:999px;
+  background:#111;
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.step-icon{
+  width:44px;height:44px;
+  display:grid;place-items:center;
+  border:1px solid #e6e6e1;
+  border-radius:14px;
+  background:#f8f8f5;
+  font-size:20px;
+}
+.how-section .step h3{
+  margin:0 0 12px;
+  font-size:18px;
+  line-height:1.2;
+  letter-spacing:-.02em;
+}
+.how-section .step p{
+  margin:0;
+  color:#666;
+  font-size:13px;
+  line-height:1.65;
+}
+.how-order-note{
+  max-width:1180px;
+  margin:18px auto 0;
+  padding:19px 21px;
+  display:flex;
+  align-items:flex-start;
+  gap:13px;
+  border:1px solid #deded8;
+  border-radius:18px;
+  background:rgba(255,255,255,.82);
+}
+.note-icon{
+  width:34px;height:34px;flex:0 0 34px;
+  display:grid;place-items:center;
+  border-radius:11px;background:#111;color:#fff;font-size:16px;
+}
+.how-order-note strong{display:block;font-size:13px;margin:1px 0 5px}
+.how-order-note p{margin:0;color:#666;font-size:12px;line-height:1.6}
+@media(max-width:1050px){
+  .how-section .steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .how-section .step{min-height:250px}
+}
+@media(max-width:760px){
+  .how-section{padding:65px 5vw 70px}
+  .how-intro{align-items:flex-start;flex-direction:column}
+  .how-intro h2{font-size:42px}
+  .how-badge{align-self:flex-start}
+  .how-section .steps{grid-template-columns:1fr;gap:10px;margin-top:28px}
+  .how-section .step{min-height:0;padding:20px}
+  .step-top{margin-bottom:24px}
+}
+</style>
+</head>
 
 <body>
 
@@ -797,8 +939,7 @@
 
           <input
             id="search"
-            type="search"
-            placeholder="পণ্য খুঁজুন..."
+            type="search"            placeholder="পণ্য খুঁজুন..."
             data-placeholder="searchPlaceholder"
             oninput="renderProducts()"
             autocomplete="off"
@@ -835,58 +976,58 @@
          HOW TO ORDER
     ========================== -->
 
-    <section
-      id="how"
-      class="how-section"
-    >
-
-      <div id="howEyebrow" class="eyebrow">
-        সহজ অর্ডার · EASY ORDERING
+    <section id="how" class="how-section">
+      <div class="how-intro">
+        <div>
+          <div class="eyebrow" data-i18n="howEyebrow">সহজ অর্ডার</div>
+          <h2 data-i18n="howTitle">৫ ধাপে অর্ডার করুন</h2>
+          <p class="how-subtitle" data-i18n="howSubtitle">পণ্য পছন্দ করা থেকে ডেলিভারি ও GrabPoints পাওয়া পর্যন্ত পুরো প্রক্রিয়াটি সহজ ও পরিষ্কার।</p>
+        </div>
+        <div class="how-badge">
+          <span>✓</span>
+          <strong data-i18n="howBadge">সহজ ও নিরাপদ</strong>
+        </div>
       </div>
-
-      <h2 id="howTitle">
-        ৫ ধাপে অর্ডার করুন · Order in 5 simple steps.
-      </h2>
 
       <div class="steps">
+        <article class="step">
+          <div class="step-top"><span class="step-number">01</span><span class="step-icon">🛍️</span></div>
+          <h3 data-i18n="howStep1Title">পণ্য পছন্দ করুন</h3>
+          <p data-i18n="howStep1Body">Shop থেকে পণ্য দেখুন, দাম ও বিস্তারিত যাচাই করুন এবং পছন্দের পণ্য Cart-এ যোগ করুন।</p>
+        </article>
 
-        <div class="step">
-          <b>01</b>
-          <h3>পণ্য পছন্দ করুন · Choose your products</h3>
-          <p>Shop থেকে পণ্য দেখুন, দাম ও বিস্তারিত যাচাই করে পছন্দের পণ্য Cart-এ যোগ করুন.<br>Browse the products, check the price and details, then add what you want to your Cart.</p>
-        </div>
+        <article class="step">
+          <div class="step-top"><span class="step-number">02</span><span class="step-icon">🧾</span></div>
+          <h3 data-i18n="howStep2Title">Checkout সম্পন্ন করুন</h3>
+          <p data-i18n="howStep2Body">নাম, ফোন নম্বর, ঠিকানা ও প্রয়োজনীয় তথ্য দিন। Rewards account থাকলে একই ফোন নম্বর ব্যবহার করুন। Referral code থাকলে দিন।</p>
+        </article>
 
-        <div class="step">
-          <b>02</b>
-          <h3>Checkout সম্পন্ন করুন · Complete checkout</h3>
-          <p>আপনার নাম, ফোন নম্বর, ঠিকানা এবং প্রয়োজনীয় তথ্য দিন। Rewards account থাকলে একই ফোন নম্বর ব্যবহার করুন। Referral code থাকলে checkout-এ দিন.<br>Enter your name, phone number, address and required details. If you have a Rewards account, use the same phone number. Add a referral code if you have one.</p>
-        </div>
+        <article class="step">
+          <div class="step-top"><span class="step-number">03</span><span class="step-icon">📞</span></div>
+          <h3 data-i18n="howStep3Title">অর্ডার যাচাই ও নিশ্চিতকরণ</h3>
+          <p data-i18n="howStep3Body">অর্ডার পাওয়ার পর আমাদের টিম প্রয়োজন হলে ফোনে তথ্য যাচাই করে অর্ডার confirm করবে।</p>
+        </article>
 
-        <div class="step">
-          <b>03</b>
-          <h3>অর্ডার যাচাই · Order confirmation</h3>
-          <p>অর্ডার পাওয়ার পর আমাদের team আপনার তথ্য ফোনে verify করবে এবং order confirm করবে.<br>After receiving your order, our team may call to verify your details and confirm the order.</p>
-        </div>
+        <article class="step">
+          <div class="step-top"><span class="step-number">04</span><span class="step-icon">🚚</span></div>
+          <h3 data-i18n="howStep4Title">ডেলিভারি</h3>
+          <p data-i18n="howStep4Body">বর্তমান delivery charge ৳130। এই ৳130 product price থেকে আলাদা এবং cashback, tier usage বা GP earning-এর হিসাবে ধরা হয় না।</p>
+        </article>
 
-        <div class="step">
-          <b>04</b>
-          <h3>ডেলিভারি · Delivery</h3>
-          <p>বর্তমান delivery charge ৳130। এটি product price থেকে আলাদা এবং GP, tier বা cashback হিসাবের অংশ নয়. <br>The current delivery charge is ৳130. It is separate from the product price and is never included in GP, tier or cashback calculations.</p>
-        </div>
-
-        <div class="step">
-          <b>05</b>
-          <h3>Delivered হলে GP · GP after delivery</h3>
-          <p>Eligible order delivered হওয়ার পর eligible product amount থেকে আপনার tier অনুযায়ী cashback/GP automatically যোগ হবে। একই order থেকে GP একবারই earn হবে.<br>After an eligible order is delivered, cashback/GP is automatically calculated from the eligible product amount using your tier. Each order can earn GP only once.</p>
-        </div>
-
+        <article class="step">
+          <div class="step-top"><span class="step-number">05</span><span class="step-icon">🎁</span></div>
+          <h3 data-i18n="howStep5Title">Delivered হলে GrabPoints</h3>
+          <p data-i18n="howStep5Body">Eligible order delivered হলে eligible product amount-এর উপর আপনার tier অনুযায়ী cashback value GrabPoints হিসেবে automatically যোগ হবে। একই order থেকে একবারই GP earn হবে।</p>
+        </article>
       </div>
 
-      <div class="how-order-note" style="margin-top:24px;padding:18px 20px;border:1px solid #e7e7e2;border-radius:16px;background:#fafaf8;">
-        <strong>Important · গুরুত্বপূর্ণ</strong>
-        <p style="margin:8px 0 0;">Delivery charge কখনো cashback বা tier usage-এর মধ্যে count হবে না। GP account phone number-এর সাথে match করলে কোনো extra “Join GrabPoints” checkbox প্রয়োজন নেই—eligible delivered order-এর GP automatically account-এ যাবে.<br>Delivery charges never count toward cashback or tier usage. When the checkout phone number matches a Rewards account, no extra “Join GrabPoints” checkbox is required—GP is added automatically after an eligible delivery.</p>
+      <div class="how-order-note">
+        <div class="note-icon">💡</div>
+        <div>
+          <strong data-i18n="howNoteTitle">মনে রাখুন</strong>
+          <p data-i18n="howNoteBody">Delivery charge কখনো tier বা cashback-এর অংশ নয়। Checkout-এর ফোন নম্বর কোনো Rewards account-এর সাথে match করলে আলাদা “Join GrabPoints” checkbox লাগবে না—eligible delivered order-এর GP automatically account-এ যোগ হবে।</p>
+        </div>
       </div>
-
     </section>
 
 
@@ -1193,11 +1334,27 @@
         noProducts: "কোনো পণ্য পাওয়া যায়নি।",
 
         simpleOrdering: "সহজ অর্ডার",
+        howEyebrow: "সহজ অর্ডার",
+        howTitle: "৫ ধাপে অর্ডার করুন",
+        howSubtitle: "পণ্য পছন্দ করা থেকে ডেলিভারি ও GrabPoints পাওয়া পর্যন্ত পুরো প্রক্রিয়াটি সহজ ও পরিষ্কার।",
+        howBadge: "সহজ ও নিরাপদ",
+        howStep1Title: "পণ্য পছন্দ করুন",
+        howStep1Body: "Shop থেকে পণ্য দেখুন, দাম ও বিস্তারিত যাচাই করুন এবং পছন্দের পণ্য Cart-এ যোগ করুন।",
+        howStep2Title: "Checkout সম্পন্ন করুন",
+        howStep2Body: "নাম, ফোন নম্বর, ঠিকানা ও প্রয়োজনীয় তথ্য দিন। Rewards account থাকলে একই ফোন নম্বর ব্যবহার করুন। Referral code থাকলে দিন।",
+        howStep3Title: "অর্ডার যাচাই ও নিশ্চিতকরণ",
+        howStep3Body: "অর্ডার পাওয়ার পর আমাদের টিম প্রয়োজন হলে ফোনে তথ্য যাচাই করে অর্ডার confirm করবে।",
+        howStep4Title: "ডেলিভারি",
+        howStep4Body: "বর্তমান delivery charge ৳130। এই ৳130 product price থেকে আলাদা এবং cashback, tier usage বা GP earning-এর হিসাবে ধরা হয় না।",
+        howStep5Title: "Delivered হলে GrabPoints",
+        howStep5Body: "Eligible order delivered হলে eligible product amount-এর উপর আপনার tier অনুযায়ী cashback value GrabPoints হিসেবে automatically যোগ হবে। একই order থেকে একবারই GP earn হবে।",
+        howNoteTitle: "মনে রাখুন",
+        howNoteBody: "Delivery charge কখনো tier বা cashback-এর অংশ নয়। Checkout-এর ফোন নম্বর কোনো Rewards account-এর সাথে match করলে আলাদা “Join GrabPoints” checkbox লাগবে না—eligible delivered order-এর GP automatically account-এ যোগ হবে.",
+
 
         order3Steps: "৩ ধাপে অর্ডার করুন।",
 
         step1Title: "পণ্য পছন্দ করুন",
-
         step1Body:
           "একটি পণ্য খুলে দাম ও বিস্তারিত দেখুন।",
 
@@ -1276,6 +1433,23 @@
         noProducts: "No products found.",
 
         simpleOrdering: "SIMPLE ORDERING",
+        howEyebrow: "EASY ORDERING",
+        howTitle: "Order in 5 simple steps",
+        howSubtitle: "From choosing a product to delivery and GrabPoints, here is the full process in one clear flow.",
+        howBadge: "Simple & secure",
+        howStep1Title: "Choose your product",
+        howStep1Body: "Browse the Shop, check the price and details, then add the product you want to your Cart.",
+        howStep2Title: "Complete checkout",
+        howStep2Body: "Enter your name, phone number, address and required details. If you have a Rewards account, use the same phone number. Add a referral code if you have one.",
+        howStep3Title: "We verify & confirm",
+        howStep3Body: "After receiving your order, our team may call to verify your details and confirm the order.",
+        howStep4Title: "Delivery",
+        howStep4Body: "The current delivery charge is ৳130. It is separate from the product price and is never included in cashback, tier usage or GP earning.",
+        howStep5Title: "GrabPoints after delivery",
+        howStep5Body: "After an eligible order is delivered, the cashback value based on your tier is automatically added as GrabPoints from the eligible product amount. Each order earns GP only once.",
+        howNoteTitle: "Important",
+        howNoteBody: "Delivery charges never count toward tier or cashback. When the checkout phone number matches a Rewards account, no separate “Join GrabPoints” checkbox is required—eligible delivered-order GP is added automatically.",
+
 
         order3Steps: "Order in 3 steps.",
 
@@ -1498,7 +1672,6 @@
         ms.style.display = messenger ? "flex" : "none";
         ms.setAttribute("aria-hidden", messenger ? "false" : "true");
       }
-
       modal.classList.add("open");
       modal.setAttribute("aria-hidden", "false");
       document.body.style.overflow = "hidden";
