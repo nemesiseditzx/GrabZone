@@ -119,13 +119,25 @@
         </div>
 
         <div class="grabpoints-box">
-          <div class="grabpoints-head"><b>🎁 GrabPoints Reward</b><span id="grabpointsBalance" class="grabpoints-balance">One-time reward vouchers</span></div>
-          <div class="grabpoints-help">Redeem GP on the GrabZone Rewards page first. Your reward voucher is sent to your registered email immediately. Enter that one-time code here and use the same Rewards phone number at checkout.</div>
-          <div class="grabpoints-grid" style="grid-template-columns:1fr">
-            <input id="rewardsVoucherCode" type="text" placeholder="Enter your reward voucher code" autocomplete="off" maxlength="17" style="text-transform:uppercase">
+          <div class="grabpoints-top">
+            <div class="grabpoints-icon" aria-hidden="true">🎁</div>
+            <div class="grabpoints-title">
+              <div class="grabpoints-head">
+                <b>GrabPoints Reward</b>
+                <span id="grabpointsBalance" class="grabpoints-balance">One-time voucher</span>
+              </div>
+              <p>Have a reward voucher? Apply it here to use your GrabPoints discount.</p>
+            </div>
           </div>
-          <div class="grabpoints-actions"><button id="applyRewardsVoucher" type="button" class="dark-btn">Apply Reward Voucher</button></div>
-          <div id="grabpointsMsg" class="grabpoints-msg"></div><button id="grabpointsRewardsLogin" type="button" class="dark-btn" style="margin-top:8px;width:100%">🎁 Open GrabZone Rewards</button>
+          <div class="grabpoints-input-row">
+            <label for="rewardsVoucherCode">Reward voucher code</label>
+            <input id="rewardsVoucherCode" type="text" placeholder="ENTER YOUR REWARD VOUCHER CODE" autocomplete="off" maxlength="17" style="text-transform:uppercase">
+          </div>
+          <div class="grabpoints-actions">
+            <button id="applyRewardsVoucher" type="button" class="dark-btn">Apply Reward Voucher</button>
+          </div>
+          <div id="grabpointsMsg" class="grabpoints-msg"></div>
+          <button id="grabpointsRewardsLogin" type="button" class="grabpoints-open-btn">🎁 Open GrabZone Rewards</button>
         </div>
 
         <div class="payment-box">
