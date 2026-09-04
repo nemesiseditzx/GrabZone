@@ -36,3 +36,5 @@ npx wrangler deploy
 The Wrangler configuration binds the existing D1 database `grabzone-db-test` and R2 bucket `grabzone-assets`.
 
 The existing storefront/admin UI is preserved; the backend is moved to the Cloudflare Worker so the browser no longer depends on the old Vercel/Supabase bridge.
+
+<!-- Selected Rewards and ecommerce UX repair trigger. -->
