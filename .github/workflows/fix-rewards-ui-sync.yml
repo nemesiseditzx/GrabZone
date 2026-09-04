@@ -1,0 +1,83 @@
+name: Fix Rewards UI Sync
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[rewards-ui-sync-fixed]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Repair Rewards admin and customer UI
+        shell: python
+        run: |
+          from pathlib import Path
+
+          h=Path('admin.html')
+          s=h.read_text(encoding='utf-8')
+          s=s.replace('''      <label><div class="field-help"><b>Tier cashback is controlled in GrabPoints → Points & Membership.</b> Member 1% · Silver 2% · Gold 3% · Platinum 5%. Delivery charge is never included.</div>\n      <label>Value of 1 GP (৳)''','''      <div class="field-help"><b>Tier cashback is controlled in GrabPoints → Points & Membership.</b> Member 1% · Silver 2% · Gold 3% · Platinum 5%. Delivery charge is never included.</div>\n      <label>Value of 1 GP (৳)''',1)
+          s=s.replace('''columns:\"grabpoints_enabled,grabpoints_earn_rate,grabpoints_value,mystery_enabled,mystery_min_percent,mystery_max_percent\"''','''columns:\"grabpoints_enabled,grabpoints_value,mystery_enabled,mystery_min_percent,mystery_max_percent\"''',1)
+          s=s.replace('''    $('growthGpEarnRate').value=Number(data.grabpoints_earn_rate??10);\n''','',1)
+          s=s.replace('''  const gpEnabled=Number($('growthGpEnabled').value),earn=Math.max(0,Number($('growthGpEarnRate').value||0)),value=Math.max(0,Number($('growthGpValue').value||0)),mEnabled=Number($('growthMysteryEnabled').value),mMin=Math.max(1,Number($('growthMysteryMin').value||5)),mMax=Math.max(mMin,Number($('growthMysteryMax').value||15));''','''  const gpEnabled=Number($('growthGpEnabled').value),value=Math.max(0,Number($('growthGpValue').value||0)),mEnabled=Number($('growthMysteryEnabled').value),mMin=Math.max(1,Number($('growthMysteryMin').value||5)),mMax=Math.max(mMin,Number($('growthMysteryMax').value||15));''',1)
+          s=s.replace('''values:{grabpoints_enabled:gpEnabled,grabpoints_earn_rate:earn,grabpoints_value:value,mystery_enabled:mEnabled,mystery_min_percent:mMin,mystery_max_percent:mMax}''','''values:{grabpoints_enabled:gpEnabled,grabpoints_value:value,mystery_enabled:mEnabled,mystery_min_percent:mMin,mystery_max_percent:mMax}''',1)
+          s=s.replace('''<script src=\"rewards-admin.js?v=20260903sync2\"></script>''','''<script src=\"rewards-admin.js?v=20260903sync3\"></script>''',1)
+          h.write_text(s,encoding='utf-8')
+
+          g=Path('grabpoints.html')
+          gs=g.read_text(encoding='utf-8')
+          gs=gs.replace('12-month earned GP, membership tier','lifetime earned GP, membership tier',1)
+          gs=gs.replace('<script src=\"rewards.js?v=20260903gpfix2\"></script>','<script src=\"rewards.js?v=20260903gpfix3\"></script>',1)
+          g.write_text(gs,encoding='utf-8')
+
+          r=Path('rewards.js')
+          rs=r.read_text(encoding='utf-8')
+          old="""const d=await rpc('rewards_me',{p_token:token()}),hist=await rpc('rewards_history',{p_token:token()}).catch(()=>[]),orders=await rpc('rewards_order_history',{p_token:token()}).catch(()=>[]);const ti=tierInfo(d.tier,d.tiers),earned=Math.max(0,Number(d.lifetime_earned??d.total_earned??0)),lifetime=earned,current=ti.current.threshold,next=ti.next?.threshold||current,progress=ti.next?Math.max(0,Math.min(100,((earned-current)/(next-current))*100)):100,benefitList=ti.current?.benefits||[],rows=Array.isArray(hist)?hist.slice(0,5):[],orderRows=Array.isArray(orders)?orders:[];"""
+          new="""const d=await rpc('rewards_me',{p_token:token()}),hist=await rpc('rewards_history',{p_token:token()}).catch(()=>[]),orders=await rpc('rewards_order_history',{p_token:token()}).catch(()=>[]);const ti=tierInfo(d.tier,d.tiers),earned=Math.max(0,Number(d.lifetime_earned??d.total_earned??0)),lifetime=earned,current=ti.current.threshold,next=ti.next?.threshold||current,progress=ti.next?Math.max(0,Math.min(100,((earned-current)/(next-current))*100)):100,benefitList=ti.current?.benefits||[],rows=Array.isArray(hist)?hist.slice(0,5):[],orderRows=Array.isArray(orders)?orders:[],overrideNote=d.tier_override?`<div style=\"margin-top:8px;font-size:10px;color:#ffe9a8\">Admin tier override: ${esc(d.tier_override)}</div>`:'';"""
+          if old not in rs: raise SystemExit('rewards dashboard anchor not found')
+          rs=rs.replace(old,new,1)
+          old="""<div class=\"gz-tier-pill\"><span class=\"gz-tier-dot\"></span>${esc(d.tier)} MEMBER</div><p style=\"margin-top:12px\">"""
+          new="""<div class=\"gz-tier-pill\"><span class=\"gz-tier-dot\"></span>${esc(d.tier)} MEMBER</div>${overrideNote}<p style=\"margin-top:12px\">"""
+          if old not in rs: raise SystemExit('rewards tier pill anchor not found')
+          rs=rs.replace(old,new,1)
+          r.write_text(rs,encoding='utf-8')
+
+          ra=Path('rewards-admin.js')
+          ras=ra.read_text(encoding='utf-8')
+          start=ras.index('async function openMember(id){')
+          end=ras.index('async function saveMember()',start)
+          newfn='''async function openMember(id){const box=$('gzRDetail');box.style.display='block';box.innerHTML='Loading…';try{const x=await rpc('rewards_admin_get',{p_member_id:id}),m=x.member||{};current=m;const orders=(x.orders||[]).map(o=>'<div><span><b>'+esc(o.order_number)+'</b><small>'+esc(o.status)+' · '+new Date(o.created_at).toLocaleString()+' · '+(Array.isArray(o.items)?o.items.map(i=>esc(i.product_name)+' × '+Number(i.quantity||1)).join(', '):'')+'</small></span><strong>'+esc('৳'+Number(o.total||0).toLocaleString('en-BD'))+'</strong></div>').join('')||'<div>No orders linked to this member.</div>';const ledger=(x.ledger||[]).map(l=>'<div><span><b>'+esc(l.type)+'</b><small>'+esc(l.reference||'')+' · '+new Date(l.created_at).toLocaleString()+'</small></span><strong class="'+(Number(l.points)>=0?'gz-r-plus':'gz-r-minus')+'">'+(Number(l.points)>0?'+':'')+Number(l.points)+' GP</strong></div>').join('')||'<div>No activity yet.</div>';const audit=(x.audit||[]).map(a=>'<div><span><b>'+esc(a.action)+'</b><small>'+esc(a.reason||'')+' · '+new Date(a.created_at).toLocaleString()+'</small></span></div>').join('')||'<div>No audit events.</div>';box.innerHTML='<div class="eyebrow">MEMBER SUPPORT</div><h2>'+esc(m.name)+' · '+esc(m.member_id)+'</h2><div class="gz-r-form"><label>Name<input id="gzMName" value="'+esc(m.name)+'"></label><label>Phone<input id="gzMPhone" value="'+esc(m.phone)+'"></label><label>Email<input id="gzMEmail" value="'+esc(m.email)+'"></label><label>Status<select id="gzMStatus"><option>Active</option><option>Restricted</option><option>Suspended</option></select></label><label>Tier override<select id="gzMTier"><option value="">Automatic</option><option>Member</option><option>Silver</option><option>Gold</option><option>Platinum</option></select></label><label>New PIN (optional)<input id="gzMPin" type="password" inputmode="numeric" maxlength="6" placeholder="Leave blank to keep current"></label><label class="full">Support reason<input id="gzMReason" placeholder="Reason for this support change"></label></div><div class="gz-r-actions"><button class="primary" id="gzMSave">Save Customer</button><button class="ghost" id="gzMShowPin">👁 Show PIN</button><button class="ghost" id="gzMAdd">＋ Add GP</button><button class="ghost" id="gzMRemove">− Deduct GP</button></div><div id="gzMMsg" class="save-message"></div><div style="margin-top:20px"><h3>Customer Order History</h3><div class="gz-r-ledger">'+orders+'</div></div><div style="margin-top:20px"><h3>GrabPoints Ledger</h3><div class="gz-r-ledger">'+ledger+'</div></div><div style="margin-top:20px"><h3>Security & Audit</h3><div class="gz-r-ledger">'+audit+'</div></div>';$('gzMStatus').value=m.status||'Active';$('gzMTier').value=m.tier_override||'';$('gzMSave').onclick=saveMember;$('gzMShowPin').onclick=showPin;$('gzMAdd').onclick=()=>adjust(1);$('gzMRemove').onclick=()=>adjust(-1);box.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){box.innerHTML='✕ '+e.message}}\n'''
+          ras=ras[:start]+newfn+ras[end:]
+          ra.write_text(ras,encoding='utf-8')
+
+          # Make the admin list explicitly distinguish automatic tiers from support overrides.
+          ras=ra.read_text(encoding='utf-8')
+          old="""'<span class=\"gz-rewards-tier\">'+esc(x.tier)+'</span><small>'+Number(x.twelve_month_earned||0).toLocaleString()+' GP / 12mo</small>"""
+          new="""'<span class=\"gz-rewards-tier\">'+esc(x.tier)+(x.tier_override?' · Override':'')+'</span><small>'+Number(x.twelve_month_earned||0).toLocaleString()+' GP / lifetime</small>"""
+          if old in ras: ras=ras.replace(old,new,1)
+          ra.write_text(ras,encoding='utf-8')
+
+          # Ensure the public Rewards page does not advertise the old rolling-12-month rule.
+          g=Path('grabpoints.html')
+          gs=g.read_text(encoding='utf-8').replace('12-month earned / ১২ মাসের earned','Lifetime earned / Lifetime earned',1)
+          g.write_text(gs,encoding='utf-8')
+
+      - name: Validate JavaScript
+        run: |
+          node --check worker.mjs
+          node --check rewards.js
+          node --check rewards-admin.js
+
+      - name: Commit repairs and remove workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin.html grabpoints.html rewards.js rewards-admin.js worker.mjs
+          git rm .github/workflows/fix-rewards-ui-sync.yml
+          git commit -m "Fix Rewards UI and admin sync [rewards-ui-sync-fixed]"
+          git push
