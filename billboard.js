@@ -31,9 +31,14 @@ function gzBillboardNormalizeUrl(url){
 
 async function loadBillboards(){
   if(!sb) return;
-  const [{data:slides,error:slideError},{data:settings,error:settingsError}] = await Promise.all([
+  const [
+    {data:slides,error:slideError},
+    {data:settings,error:settingsError},
+    {data:siteSettings,error:siteSettingsError}
+  ] = await Promise.all([
     sb.from("billboards").select("*").eq("active",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true}),
-    sb.from("billboard_settings").select("*").eq("id",1).maybeSingle()
+    sb.from("billboard_settings").select("*").eq("id",1).maybeSingle(),
+    sb.from("site_settings").select("hero_image_url").eq("id",1).maybeSingle()
   ]);
 
   if(slideError){
@@ -51,7 +56,28 @@ async function loadBillboards(){
     };
   }
 
-  GZ_BILLBOARDS = Array.isArray(slides) ? slides : [];
+  if(siteSettingsError){
+    console.warn("Site hero image error:", siteSettingsError.message);
+  }
+
+  const activeSlides = Array.isArray(slides) ? slides : [];
+  const heroImage = String(siteSettings?.hero_image_url || "").trim();
+
+  /* Website Design → Hero / banner image is the primary storefront banner.
+     Billboard Manager slides remain available after the design hero. */
+  GZ_BILLBOARDS = heroImage
+    ? [{
+        id: "__site_hero__",
+        image_url: heroImage,
+        title: "",
+        eyebrow: "",
+        message: "",
+        button_text: "",
+        link_url: "",
+        active: true,
+        sort_order: -1
+      }, ...activeSlides]
+    : activeSlides;
   GZ_BILLBOARD_INDEX = Math.min(GZ_BILLBOARD_INDEX, Math.max(0,GZ_BILLBOARDS.length-1));
   renderBillboard();
 }
