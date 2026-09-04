@@ -1,0 +1,19 @@
+name: Final GP Cleanup
+on:
+  push:
+    paths:
+      - '.github/workflows/final-cleanup-gp.yml'
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Remove temporary workflows
+        run: |
+          git rm -f .github/workflows/repair-gz0003-gp.yml .github/workflows/cleanup-repair-gp.yml .github/workflows/final-cleanup-gp.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: remove temporary GP repair workflows'
+          git push
