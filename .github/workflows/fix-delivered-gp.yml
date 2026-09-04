@@ -1,0 +1,37 @@
+name: Fix Delivered GrabPoints
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: contains(github.event.head_commit.message, 'fix: reconcile GrabPoints')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch delivered reward reconciliation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('worker.mjs')
+          s=p.read_text()
+          old='if(table==="orders"&&previousOrder&&inputValues.status==="Delivered"&&previousOrder.status!=="Delivered"){const phone=normalizeRewardPhone(previousOrder.phone);if(phone){const gpSettings='
+          new='if(table==="orders"&&previousOrder&&inputValues.status==="Delivered"){const phone=normalizeRewardPhone(previousOrder.phone);if(phone){const activeEarn=(await q(env,"SELECT e.id,e.points FROM grabpoints_ledger e WHERE e.order_id=? AND e.phone=? AND e.points>0 AND (e.type=\'earn\' OR e.type LIKE \'earn:%\') AND NOT EXISTS (SELECT 1 FROM grabpoints_ledger r WHERE r.order_id=e.order_id AND r.type=\'reversal:\' || e.id) LIMIT 1",[previousOrder.id,phone])).results?.[0]||null;if(!activeEarn){const gpSettings='
+          if old not in s: raise SystemExit('target condition not found')
+          s=s.replace(old,new,1)
+          old_end='sendRewardsEmail(env,rm.email,"GrabZone Rewards — GP Earned","You earned GrabPoints",body,"",false,tInfo.tier,rm.name,rm.member_id);}}}'
+          new_end='sendRewardsEmail(env,rm.email,"GrabZone Rewards — GP Earned","You earned GrabPoints",body,"",false,tInfo.tier,rm.name,rm.member_id);}}}}'
+          if old_end not in s: raise SystemExit('target end not found')
+          s=s.replace(old_end,new_end,1)
+          p.write_text(s)
+          PY
+          node --check worker.mjs
+      - name: Commit patch and remove temporary workflow
+        run: |
+          rm -f .github/workflows/fix-delivered-gp.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker.mjs .github/workflows/fix-delivered-gp.yml
+          git commit -m "fix: reconcile GrabPoints for delivered orders"
+          git push
