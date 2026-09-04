@@ -1,8 +1,5 @@
 name: Fix product editor gallery save
-on:
-  push:
-    paths:
-      - '.github/workflows/fix-product-editor-gallery.yml'
+on: push
 permissions:
   contents: write
 jobs:
@@ -10,45 +7,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
       - name: Patch gallery timestamps
-        shell: bash
+        run: >-
+          python -c "from pathlib import Path; p=Path('admin.html'); s=p.read_text(); old='''      const rows=gzEditGallery.map((img,index)=>({\n        product_id:gzEditProduct.id,\n        image_url:img.image_url,\n        sort_order:index,\n        is_main:index===mainIndex\n      }));'''; new='''      const galleryTimestamp=new Date().toISOString();\n      const rows=gzEditGallery.map((img,index)=>({\n        product_id:gzEditProduct.id,\n        image_url:img.image_url,\n        sort_order:index,\n        is_main:index===mainIndex,\n        created_at:galleryTimestamp\n      }));'''; assert s.count(old)==1, s.count(old); p.write_text(s.replace(old,new))"
+      - name: Validate
         run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('admin.html')
-          s=p.read_text()
-          old='''      const rows=gzEditGallery.map((img,index)=>({
-        product_id:gzEditProduct.id,
-        image_url:img.image_url,
-        sort_order:index,
-        is_main:index===mainIndex
-      }));'''
-          new='''      const galleryTimestamp=new Date().toISOString();
-      const rows=gzEditGallery.map((img,index)=>({
-        product_id:gzEditProduct.id,
-        image_url:img.image_url,
-        sort_order:index,
-        is_main:index===mainIndex,
-        created_at:galleryTimestamp
-      }));'''
-          if s.count(old)!=1:
-              raise SystemExit(f'Expected exactly one product-editor gallery row builder, found {s.count(old)}')
-          s=s.replace(old,new)
-          p.write_text(s)
-          PY
+          grep -q 'created_at:galleryTimestamp' admin.html
           node --check admin.js
-          python - <<'PY'
-          from pathlib import Path
-          s=Path('admin.html').read_text()
-          assert 'const galleryTimestamp=new Date().toISOString();' in s
-          assert 'created_at:galleryTimestamp' in s
-          print('Product editor gallery timestamp fix verified.')
-          PY
+      - name: Commit
+        run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add admin.html
-          git commit -m 'Fix product editor gallery created_at' || exit 0
+          git diff --cached --quiet || git commit -m 'Fix product editor gallery created_at'
           git push
