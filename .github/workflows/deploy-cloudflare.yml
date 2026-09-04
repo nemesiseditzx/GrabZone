@@ -14,10 +14,44 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Repair compact Rewards order history
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('rewards.js')
+          s=p.read_text()
+          old_marker='const orderHtml=orderRows.length?orderRows.map(o=>{'
+          if old_marker in s and 'gz-order-history-compact-fixed' not in s:
+              start=s.index(old_marker)
+              end=s.index(';const benefits=', start)
+              new="""const orderHtml=orderRows.length?orderRows.map(o=>{const items=Array.isArray(o.items)&&o.items.length?o.items.map(i=>'<div class=\\\"gz-order-item-compact\\\"><span>'+esc(i.product_name||'Product')+' × '+Number(i.quantity||1)+'</span></div>').join(''):'<div style=\\\"padding:8px;color:#777;font-size:10px\\\">No product details available.</div>';const tn=o.tracking_number||o.public_tracking_id||'—';return '<div class=\\\"gz-order-history-card gz-order-history-compact-fixed\\\"><div class=\\\"gz-order-history-head\\\"><div><b>'+esc(o.order_number||'Order')+'</b><small>Tracking Number: '+esc(tn)+'</small></div><div><span class=\\\"gz-order-history-status\\\">'+esc(o.status||'New')+'</span><strong class=\\\"gz-order-price\\\">৳'+Number(o.total||0).toLocaleString('en-BD')+'</strong></div></div><div class=\\\"gz-order-history-items\\\">'+items+'</div></div>'}).join(''): '<div style=\\\"padding:12px;color:#777;font-size:11px\\\">No previous orders are linked to this Rewards phone number yet.</div>';"""
+              s=s[:start]+new+s[end:]
+              s=s.replace('.gz-orders-history{display:grid;gap:9px;margin-top:12px}', '.gz-orders-history{display:grid;gap:9px;margin-top:12px}.gz-order-history-compact-fixed .gz-order-history-head{align-items:center}.gz-order-history-compact-fixed .gz-order-price{display:block;margin-top:5px;font-size:13px}.gz-order-history-compact-fixed .gz-order-history-items{display:grid;gap:3px}.gz-order-history-compact-fixed .gz-order-item-compact{font-size:11px;color:#444}', 1)
+              p.write_text(s)
+
+          w=Path('worker.mjs')
+          ws=w.read_text()
+          oldq='SELECT id,order_number,public_tracking_id,subtotal,shipping_charge,total,status,created_at,updated_at,referral_discount,rewards_voucher_discount,mystery_discount FROM orders WHERE phone=? ORDER BY created_at DESC LIMIT 100'
+          newq='SELECT id,order_number,public_tracking_id,tracking_number,subtotal,shipping_charge,total,status,created_at,updated_at,referral_discount,rewards_voucher_discount,mystery_discount FROM orders WHERE phone=? ORDER BY created_at DESC LIMIT 100'
+          if oldq in ws:
+              w.write_text(ws.replace(oldq,newq,1))
+          PY
+          node --check rewards.js
+          node --check worker.mjs
+          if ! git diff --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add rewards.js worker.mjs
+            git commit -m 'Compact Rewards customer order history [rewards-order-trim-fixed]'
+            git push
+          fi
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v4
@@ -27,5 +61,4 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4"
-          # Deploy the exact current main branch, including the Rewards fixes.
           command: deploy ./worker.mjs
