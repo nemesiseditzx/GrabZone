@@ -14,10 +14,24 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Apply selected Rewards and ecommerce fixes
+        run: |
+          node scripts/fix-selected.js
+          node --check worker.mjs
+          node --check rewards.js
+          node --check rewards-admin.js
+          node --check checkout.js
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker.mjs rewards.js rewards-admin.js checkout.html checkout.js track-order.html product.html
+          git commit -m "Fix selected Rewards and ecommerce UX issues" || true
+          git push || true
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v4
@@ -28,3 +42,12 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4"
           command: deploy ./worker.mjs
+
+      - name: Remove temporary repair files
+        run: |
+          rm -f scripts/fix-selected.js .github/workflows/fix-selected-ux.yml .github/workflows/fix-selected-ux2.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Remove temporary GrabZone repair files" || true
+          git push || true
