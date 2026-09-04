@@ -1,0 +1,41 @@
+name: Fix checkout email
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fix-checkout-email.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch public order-created email
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('worker.mjs')
+          s = p.read_text()
+          old = '''async function email(req,env){\n const s=await session(req,env);\n if(!s)return json({error:"Unauthorized."},401);\n const b=await req.json().catch(()=>({})),num=String(b.orderNumber||"").trim();'''
+          new = '''async function email(req,env){\n const b=await req.json().catch(()=>({}));\n const isOrderCreatedEmail=String(b.type||"").trim()==="order_created";\n const s=isOrderCreatedEmail?null:await session(req,env);\n if(!isOrderCreatedEmail&&!s)return json({error:"Unauthorized."},401);\n const num=String(b.orderNumber||"").trim();'''
+          if old not in s:
+              raise SystemExit('Expected email() block was not found; aborting without changes.')
+          p.write_text(s.replace(old,new,1))
+          print('Patched worker.mjs')
+          PY
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add worker.mjs
+          git diff --cached --quiet && exit 0
+          git commit -m 'Fix checkout order confirmation email authorization'
+          git push origin HEAD:main
