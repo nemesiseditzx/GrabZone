@@ -1,0 +1,29 @@
+name: Inspect GrabZone restore targets
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-grabzone-fix.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect worker targets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('worker.mjs').read_text()
+          for needle in ['rewards_admin_view_pin','rewards_admin_send_pin_reset','create_public_order','decryptRewardPin','qualifying_points','type===\"earn\"','type=\"earn\"']:
+              print(f'--- {needle} ---')
+              start=0
+              hits=0
+              while True:
+                  i=s.find(needle,start)
+                  if i<0: break
+                  hits+=1
+                  print(s[max(0,i-500):i+1000].replace('\n','\\n'))
+                  start=i+len(needle)
+                  if hits>=5: break
+          PY
