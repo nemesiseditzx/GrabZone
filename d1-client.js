@@ -97,7 +97,8 @@ async function d1(payload,tokenOverride=''){
 function builder(table){
  const s={table,action:'select',columns:'*',filters:[],orders:[],limit:null,single:null,values:null,returning:false,conflict:null};
  const a={
-  select(c='*',o={}){s.columns=c||'*';s.returning=!!o?.returning;return a},
+  /* Supabase compatibility: mutations followed by .select() must return the affected row(s). */
+  select(c='*',o={}){s.columns=c||'*';s.returning=s.action!=='select'||!!o?.returning;return a},
   eq(c,v){s.filters.push({column:c,op:'eq',value:v});return a},
   neq(c,v){s.filters.push({column:c,op:'neq',value:v});return a},
   gt(c,v){s.filters.push({column:c,op:'gt',value:v});return a},
