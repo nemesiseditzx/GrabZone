@@ -1,0 +1,52 @@
+name: Trim Rewards Order History UI
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[rewards-order-trim-fixed]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Trim customer order history
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('rewards.js')
+          s=p.read_text()
+          start=s.find('async function loadDashboard(){')
+          if start < 0:
+              raise SystemExit('loadDashboard not found')
+          nxt=re.search(r'async function [A-Za-z0-9_]+\(\)\{', s[start+10:])
+          if not nxt:
+              raise SystemExit('next async function not found')
+          end=start+10+nxt.start()
+          new='''async function loadDashboard(){const b=$(\'gzRewardsBody\');try{const[d,h,o]=await Promise.all([rpc(\'rewards_me\',{p_token:token()}),rpc(\'rewards_history\',{p_token:token()}),rpc(\'rewards_order_history\',{p_token:token()})]);const ti=tierInfo(d.tier,d.tiers),earned=Math.max(0,Number(d.lifetime_earned??d.total_earned??0)),bal=Number(d.points||0),value=Number(d.value||0.1);let orderHtml=\'<div class="gz-orders-history">\';for(const x of (o?.data||[])){const items=(x.items||[]).map(i=>\'<div class="gz-order-item-compact"><span>\'+esc(i.product_name)+\' × \'+Number(i.quantity||1)+\'</span><strong>৳\'+Number(i.line_total||0).toLocaleString(\'en-BD\')+\'</strong></div>\').join(\'\');const tn=x.tracking_number||x.public_tracking_id||\'—\';orderHtml+=\'<div class="gz-order-history-card"><div class="gz-order-history-head"><div><b>\'+esc(x.order_number||x.id)+\'</b><small>\'+new Date(x.created_at).toLocaleString()+\'</small><small>Tracking: \'+esc(tn)+\'</small></div><div><span class="gz-order-history-status">\'+esc(x.status||\'Order\')+\'</span><strong class="gz-order-price">৳\'+Number(x.total||0).toLocaleString(\'en-BD\')+\'</strong></div></div><div class="gz-order-history-items">\'+items+\'</div></div>\'}orderHtml+=\'</div>\';const pct=ti.next?Math.min(100,Math.round((earned/Math.max(1,Number(ti.next.min_points)))*100)):100;b.innerHTML=\'<div class="gz-rewards-dashboard"><div class="gz-dash-hero"><div class="gz-dash-eyebrow">GRABZONE REWARDS</div><h2>Welcome, \'+esc(d.name||\'Member\')+\' 👋</h2><div class="gz-tier-pill"><span class="gz-tier-dot"></span>\'+esc(ti.current.tier||d.tier||\'Member\')+\' MEMBER</div><p>Your Rewards account is active. Your GP balance, membership progress and reward activity are all in one place.</p></div><div class="gz-dash-layout"><div class="gz-dash-main"><div class="gz-stat-grid"><div class="gz-stat gp"><small>Available GP</small><b>\'+bal.toLocaleString()+\'</b><span>≈ ৳\'+(bal*value).toFixed(2)+\' reward value</span></div><div class="gz-stat earned"><small>Lifetime GP</small><b>\'+earned.toLocaleString()+\'</b><span>Total lifetime GP earned</span></div><div class="gz-stat tier"><small>CURRENT TIER</small><b>\'+esc(ti.current.tier||d.tier||\'Member\')+\'</b><span>\'+(ti.next?\'Keep shopping to reach the next tier\':\'Top tier reached\')+\'</span></div></div><div class="gz-dash-card"><div class="gz-next-head"><strong>\'+(ti.next?\'Next tier: \'+esc(ti.next.tier)+\' 👑\':\'Top tier reached 👑\')+\'</strong><small>\'+(ti.next?Math.max(0,Number(ti.next.min_points)-earned).toLocaleString()+\' GP\':\'Completed\')+\'</small></div><div class="gz-progress"><i style="width:\'+pct+\'%"></i></div><div class="gz-progress-meta"><span>\'+earned.toLocaleString()+\' GP earned toward your tier</span><span>\'+(ti.next?Number(ti.next.min_points).toLocaleString()+\' GP needed\':\'Top tier\')+\'</span></div></div><div class="gz-dash-card"><button class="gz-orders-toggle" id="gzOrdersToggle" type="button">View Previous Orders / আগের Order দেখুন</button><div id="gzOrdersWrap" style="display:none">\'+orderHtml+\'<div class="gz-orders-footer"><button class="gz-orders-toggle" id="gzOrdersHide" type="button">Hide Orders / Order লুকান</button></div></div></div></div><aside class="gz-history-side"><h3>Recent Transactions <a class="viewall" href="#" id="gzViewHistory">View all →</a></h3><div class="gz-recent">\'+(h?.data||[]).slice(0,8).map(x=>\'<div class="gz-recent-row \'+(Number(x.points)<0?\'minus\':\'\')+\'><div class="gz-recent-icon">\'+(Number(x.points)>=0?\'+\':\'↗\')+\'</div><div><b>\'+(Number(x.points)>0?\'+\':\'\')+Number(x.points)+\' GP</b><small>\'+esc(x.type||\'activity\')+\' · \'+esc(x.reference||\'\')+\' · \'+new Date(x.created_at).toLocaleDateString()+\'</small></div></div>\').join(\'\')+\'</div></aside></div></div>\';$(\'gzOrdersToggle\').onclick=()=>{$(\'gzOrdersWrap\').style.display=\'block\';$(\'gzOrdersToggle\').style.display=\'none\'};$(\'gzOrdersHide\').onclick=()=>{$(\'gzOrdersWrap\').style.display=\'none\';$(\'gzOrdersToggle\').style.display=\'block\'};$(\'gzViewHistory\').onclick=e=>{e.preventDefault();showHistory()}}catch(e){if(String(e.message||\'\').toLowerCase().includes(\'expired\')){setToken(\'\');showAuth(\'login\');return}b.innerHTML=\'<div class="gz-auth-shell"><div class="eyebrow">GRABZONE REWARDS</div><h2>Rewards unavailable</h2><p>\'+esc(e.message)+\'</p></div>\'}}
+'''
+          s=s[:start]+new+s[end:]
+          p.write_text(s)
+
+          w=Path('worker.mjs')
+          ws=w.read_text()
+          old='SELECT id,order_number,public_tracking_id,subtotal,shipping_charge,total,status,created_at,updated_at,referral_discount,rewards_voucher_discount,mystery_discount FROM orders WHERE phone=? ORDER BY created_at DESC LIMIT 100'
+          newq='SELECT id,order_number,public_tracking_id,tracking_number,subtotal,shipping_charge,total,status,created_at,updated_at,referral_discount,rewards_voucher_discount,mystery_discount FROM orders WHERE phone=? ORDER BY created_at DESC LIMIT 100'
+          if old not in ws:
+              raise SystemExit('order history query anchor not found')
+          w.write_text(ws.replace(old,newq,1))
+          PY
+          node --check rewards.js
+          node --check worker.mjs
+      - name: Commit repair and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rewards.js worker.mjs .github/workflows/trim-rewards-order-history.yml
+          git commit -m 'Trim Rewards customer order history [rewards-order-trim-fixed]'
+          git rm .github/workflows/trim-rewards-order-history.yml
+          git commit -m 'Remove temporary order history patch workflow'
+          git push
