@@ -72,9 +72,9 @@
         </div>
 
         <div class="field">
-          <label for="customerEmail">Email Address <span>(Optional)</span></label>
-          <input id="customerEmail" name="email" type="email" placeholder="you@example.com" autocomplete="email">
-          <small>Optional. If provided, we’ll send your order confirmation and updates by email.</small>
+          <label for="customerEmail">Email Address <i>*</i></label>
+          <input id="customerEmail" name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+          <small>Your email is required for order records and future receipt/order communication.</small>
         </div>
 
         <div class="two-col">
@@ -184,7 +184,7 @@
         <p>Your order has been successfully placed. Our team will call you to verify the details before processing it.</p>
         <div class="order-number-label">YOUR ORDER NUMBER</div>
         <div id="successOrderNumber" class="order-number">GZ-0001</div>
-        <div class="order-number-label" style="margin-top:14px">YOUR ORDER TRACKING ID</div>
+        <div class="order-number-label" style="margin-top:14px">YOUR PRIVATE TRACKING ID</div>
         <div id="successTrackingId" class="order-number">GZ-XXXXXXXXXXXXXXX</div>
         <p id="successEmailNote" class="success-email"></p>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><a id="successTrackLink" href="track-order.html" class="dark-btn">Track Your Order</a><a href="index.html" class="dark-btn">Continue Shopping</a></div>
