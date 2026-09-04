@@ -2965,11 +2965,13 @@ async function gzSaveProduct(){
       let mainIndex=gzEditGallery.findIndex(x=>x.is_main===true);
       if(mainIndex<0) mainIndex=0;
 
+      const galleryTimestamp=new Date().toISOString();
       const rows=gzEditGallery.map((img,index)=>({
         product_id:gzEditProduct.id,
         image_url:img.image_url,
         sort_order:index,
-        is_main:index===mainIndex
+        is_main:index===mainIndex,
+        created_at:galleryTimestamp
       }));
 
       const {error:insertError}=await client
