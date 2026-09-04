@@ -1,0 +1,36 @@
+name: Fix hero banner storefront sync
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-hero-banner.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch billboard hero source
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('billboard.js')
+          s=p.read_text()
+          old='''  const [{data:slides,error:slideError},{data:settings,error:settingsError}] = await Promise.all([\n    sb.from("billboards").select("*").eq("active",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true}),\n    sb.from("billboard_settings").select("*").eq("id",1).maybeSingle()\n  ]);'''
+          new='''  const [\n    {data:slides,error:slideError},\n    {data:settings,error:settingsError},\n    {data:siteSettings,error:siteSettingsError}\n  ] = await Promise.all([\n    sb.from("billboards").select("*").eq("active",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true}),\n    sb.from("billboard_settings").select("*").eq("id",1).maybeSingle(),\n    sb.from("site_settings").select("hero_image_url").eq("id",1).maybeSingle()\n  ]);'''
+          assert s.count(old)==1, f'load query anchor count={s.count(old)}'
+          s=s.replace(old,new)
+          old2='''  if(settingsError){\n    console.warn("Billboard settings error:", settingsError.message);\n  } else if(settings){\n    GZ_BILLBOARD_SETTINGS = {\n      ...GZ_BILLBOARD_SETTINGS,\n      ...settings\n    };\n  }\n\n  GZ_BILLBOARDS = Array.isArray(slides) ? slides : [];'''
+          new2='''  if(settingsError){\n    console.warn("Billboard settings error:", settingsError.message);\n  } else if(settings){\n    GZ_BILLBOARD_SETTINGS = {\n      ...GZ_BILLBOARD_SETTINGS,\n      ...settings\n    };\n  }\n\n  if(siteSettingsError){\n    console.warn("Site hero image error:", siteSettingsError.message);\n  }\n\n  const activeSlides = Array.isArray(slides) ? slides : [];\n  const heroImage = String(siteSettings?.hero_image_url || "").trim();\n\n  /* Website Design → Hero / banner image is the primary storefront banner.\n     Billboard Manager slides remain available after the design hero. */\n  GZ_BILLBOARDS = heroImage\n    ? [{\n        id: "__site_hero__",\n        image_url: heroImage,\n        title: "",\n        eyebrow: "",\n        message: "",\n        button_text: "",\n        link_url: "",\n        active: true,\n        sort_order: -1\n      }, ...activeSlides]\n    : activeSlides;'''
+          assert s.count(old2)==1, f'billboard assignment anchor count={s.count(old2)}'
+          s=s.replace(old2,new2)
+          p.write_text(s)
+      - name: Validate
+        run: node --check billboard.js
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add billboard.js
+          git commit -m 'Connect website hero image to storefront banner'
+          git push
