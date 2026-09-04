@@ -27,4 +27,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4"
+          # Deploy the exact current main branch, including the Rewards fixes.
           command: deploy ./worker.mjs
