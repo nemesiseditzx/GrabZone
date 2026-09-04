@@ -21,6 +21,7 @@ jobs:
 
       - name: Apply selected Rewards and ecommerce fixes
         run: |
+          sed -i 's/\${/\\${/g' scripts/fix-selected.js
           node scripts/fix-selected.js
           node --check worker.mjs
           node --check rewards.js
