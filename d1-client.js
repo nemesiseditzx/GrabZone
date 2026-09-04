@@ -24,9 +24,6 @@ let authRefreshPromise=null;
 async function refreshSession(){
  if(authRefreshPromise)return authRefreshPromise;
  authRefreshPromise=(async()=>{
-  // D1 HttpOnly cookie is the primary admin session. Always try it first;
-  // a stale localStorage token must never prevent a valid cookie session
-  // from being recovered.
   const requestSession=async(token='')=>{
    try{
     const headers={Accept:'application/json'};
@@ -111,7 +108,17 @@ function builder(table){
   limit(n){s.limit=Number(n);return a},
   maybeSingle(){s.single='maybe';return execute()},
   single(){s.single='single';return execute()},
-  insert(v,o={}){s.action='insert';s.values=v;s.returning=!!o?.returning;return a},
+  insert(v,o={}){
+   s.action='insert';
+   /* The live D1 product_images table requires created_at. Keep the existing UI/API
+      contract intact by supplying it automatically for every uploaded image row. */
+   if(table==='product_images'){
+    const now=new Date().toISOString();
+    s.values=(Array.isArray(v)?v:[v]).map(row=>row?.created_at?row:{...row,created_at:now});
+   }else s.values=v;
+   s.returning=!!o?.returning;
+   return a;
+  },
   upsert(v,o={}){s.action='upsert';s.values=v;s.returning=true;s.conflict=o?.onConflict||null;return a},
   update(v){s.action='update';s.values=v;return a},
   delete(){s.action='delete';return a},
