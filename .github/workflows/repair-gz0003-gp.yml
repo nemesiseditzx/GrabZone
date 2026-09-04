@@ -1,0 +1,24 @@
+name: Repair GZ-0003 GrabPoints
+on:
+  push:
+    paths:
+      - '.github/workflows/repair-gz0003-gp.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Repair delivered order GP
+        shell: bash
+        run: |
+          npm i wrangler@4 --no-save
+          npx wrangler d1 execute grabzone-db-test --remote --command "WITH target AS (SELECT o.id,o.order_number,o.phone,o.subtotal,o.referral_discount,o.rewards_voucher_discount,o.mystery_discount,rm.id AS member_id,rm.tier_override FROM orders o JOIN rewards_members rm ON rm.phone=o.phone AND rm.status='Active' WHERE o.order_number='GZ-0003' AND o.status='Delivered' LIMIT 1), tiered AS (SELECT target.*, CASE WHEN target.tier_override IN ('Member','Silver','Gold','Platinum') THEN target.tier_override ELSE CASE WHEN (SELECT COALESCE(SUM(qualifying_points),0) FROM grabpoints_ledger l WHERE l.phone=target.phone AND l.created_at>=datetime('now','-365 days'))>=5000 THEN 'Platinum' WHEN (SELECT COALESCE(SUM(qualifying_points),0) FROM grabpoints_ledger l WHERE l.phone=target.phone AND l.created_at>=datetime('now','-365 days'))>=2000 THEN 'Gold' WHEN (SELECT COALESCE(SUM(qualifying_points),0) FROM grabpoints_ledger l WHERE l.phone=target.phone AND l.created_at>=datetime('now','-365 days'))>=500 THEN 'Silver' ELSE 'Member' END END AS tier FROM target), calc AS (SELECT tiered.*, CASE tier WHEN 'Platinum' THEN 5 WHEN 'Gold' THEN 3 WHEN 'Silver' THEN 2 ELSE 1 END AS rate FROM tiered) INSERT INTO grabpoints_ledger(id,phone,order_id,points,type,reference,reason,balance_after,qualifying_points,created_at) SELECT lower(hex(randomblob(16))),c.phone,c.id,CAST(MAX(0,COALESCE(c.subtotal,0)-COALESCE(c.referral_discount,0)-COALESCE(c.rewards_voucher_discount,0)-COALESCE(c.mystery_discount,0))*c.rate/10 AS INTEGER),'earn:repair:GZ-0003','ORD-GZ-0003','Delivered order GP repair · '||c.rate||'% cashback',(SELECT points FROM customer_points WHERE phone=c.phone)+CAST(MAX(0,COALESCE(c.subtotal,0)-COALESCE(c.referral_discount,0)-COALESCE(c.rewards_voucher_discount,0)-COALESCE(c.mystery_discount,0))*c.rate/10 AS INTEGER),CAST(MAX(0,COALESCE(c.subtotal,0)-COALESCE(c.referral_discount,0)-COALESCE(c.rewards_voucher_discount,0)-COALESCE(c.mystery_discount,0))*c.rate/10 AS INTEGER),datetime('now') FROM calc c WHERE NOT EXISTS (SELECT 1 FROM grabpoints_ledger l WHERE l.order_id=c.id AND (l.type='earn' OR l.type LIKE 'earn:%')) AND CAST(MAX(0,COALESCE(c.subtotal,0)-COALESCE(c.referral_discount,0)-COALESCE(c.rewards_voucher_discount,0)-COALESCE(c.mystery_discount,0))*c.rate/10 AS INTEGER)>0; UPDATE customer_points SET points=points+(SELECT CAST(MAX(0,COALESCE(c.subtotal,0)-COALESCE(c.referral_discount,0)-COALESCE(c.rewards_voucher_discount,0)-COALESCE(c.mystery_discount,0))*c.rate/10 AS INTEGER) FROM calc c WHERE c.phone=customer_points.phone), total_earned=total_earned+(SELECT CAST(MAX(0,COALESCE(c.subtotal,0)-COALESCE(c.referral_discount,0)-COALESCE(c.rewards_voucher_discount,0)-COALESCE(c.mystery_discount,0))*c.rate/10 AS INTEGER) FROM calc c WHERE c.phone=customer_points.phone), updated_at=datetime('now') WHERE changes()=1 AND phone IN (SELECT phone FROM calc);"
+      - name: Remove temporary workflow
+        run: |
+          git rm .github/workflows/repair-gz0003-gp.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: remove temporary GZ-0003 repair workflow'
+          git push
