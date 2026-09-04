@@ -231,9 +231,11 @@ async function business(req,env){
 }
 async function gmailToken(env){const body=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID||"",client_secret:env.GOOGLE_CLIENT_SECRET||"",refresh_token:env.GOOGLE_REFRESH_TOKEN||"",grant_type:"refresh_token"}),r=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body}),d=await r.json().catch(()=>({}));if(!r.ok||!d.access_token)throw new Error(d.error_description||d.error||"Google OAuth failed.");return d.access_token}
 async function email(req,env){
- const s=await session(req,env);
- if(!s)return json({error:"Unauthorized."},401);
- const b=await req.json().catch(()=>({})),num=String(b.orderNumber||"").trim();
+ const b=await req.json().catch(()=>({}));
+ const isOrderCreatedEmail=String(b.type||"").trim()==="order_created";
+ const s=isOrderCreatedEmail?null:await session(req,env);
+ if(!isOrderCreatedEmail&&!s)return json({error:"Unauthorized."},401);
+ const num=String(b.orderNumber||"").trim();
  if(!num)return json({error:"Missing order number."},400);
  const o=(await q(env,"SELECT * FROM orders WHERE order_number=? LIMIT 1",[num])).results?.[0];
  if(!o)return json({error:"Order not found."},404);
