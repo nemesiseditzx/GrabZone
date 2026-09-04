@@ -231,9 +231,9 @@ function formData(){
   };
 }
 function validate(d){
-  if(!d.customer_name||!d.phone||!d.email||!d.division||!d.district||!d.upazila||!d.address)
+  if(!d.customer_name||!d.phone||!d.division||!d.district||!d.upazila||!d.address)
     return'Please complete all required fields.';
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email))
+  if(d.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email))
     return'Please enter a valid email address.';
   const phone=d.phone.replace(/\D/g,'');
   if(!/^01[3-9]\d{8}$/.test(phone))
@@ -429,7 +429,7 @@ async function submit(e){
     $('successTrackingId').textContent=privateTrackingId;
     const trackLink=$('successTrackLink');
     if(trackLink) trackLink.href='track-order.html?tracking='+encodeURIComponent(privateTrackingId);
-    const emailSent=await sendOrderEmail(
+    const emailSent=d.email?await sendOrderEmail(
       order.order_number,
       'order_created',
       {
@@ -458,7 +458,7 @@ async function submit(e){
         line_total:Number(i.price||0)*Number(i.quantity||1),
         image_url:i.image_url||''
       }))
-    );
+    ):false;
     $('successEmailNote').textContent=emailSent
       ?'A confirmation email has been sent to your email address. Our team will call you to verify the order.'
       :'Your order has been saved successfully. Our team will call you to verify the order.';

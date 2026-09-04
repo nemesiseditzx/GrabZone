@@ -11,7 +11,7 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
 <body>
 <div class="track-wrap"><div class="track-card">
 <div class="eyebrow">GRABZONE ORDER TRACKING</div><h1>Track Your Order</h1>
-<p>Enter your private Tracking ID to see the latest status of your order.</p>
+<p>Enter your Order Tracking ID to see the latest status of your order.</p>
 <form class="track-form" id="trackForm"><input id="orderId" placeholder="GZ-XXXXXXXXXXXXXXX" autocomplete="off" required><button>Track Order</button></form>
 <div id="msg" class="track-msg"></div><div id="result" class="result" hidden></div>
 <div class="help"><b>Need help with your order?</b><div class="help-grid">
@@ -88,7 +88,7 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
 
  async function getOrder(id){
    const clean=String(id||'').trim().toUpperCase();
-   if(!clean) throw new Error('Please enter your private Tracking ID.');
+   if(!clean) throw new Error('Please enter your Order Tracking ID.');
    if(!window.grabzoneD1) throw new Error('Tracking service is not configured.');
    const sb=window.grabzoneD1;
    const {data,error}=await sb.rpc('track_public_order',{p_tracking_id:clean});

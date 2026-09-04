@@ -126,6 +126,8 @@
 <script src="store.js"></script>
 <script src="cart.js"></script>
 <script src="phase5.js?v=20260902p5"></script>
-
+<script>
+(()=>{const d1=window.grabzoneD1||null;const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));const init=async()=>{const box=document.getElementById('gzRelatedProducts'),grid=document.getElementById('gzRelatedGrid');if(!d1||!box||!grid)return;const u=new URLSearchParams(location.search),id=u.get('id')||u.get('product_id')||u.get('product')||'';if(!id)return;try{const cur=await d1.from('products').select('id,category').eq('id',id).maybeSingle();if(cur.error||!cur.data)return;const q=await d1.from('products').select('id,name,price,image_url').eq('published',true).eq('category',cur.data.category).neq('id',id).limit(4);if(q.error||!q.data?.length)return;grid.innerHTML=q.data.map(x=>'<a href="product.html?id='+encodeURIComponent(x.id)+'" style="display:block;text-decoration:none;color:inherit;border:1px solid #e5e5e1;border-radius:16px;background:#fff;overflow:hidden"><div style="aspect-ratio:1;background:#f4f4f1"><img src="'+esc(x.image_url)+'" alt="'+esc(x.name)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover"></div><div style="padding:12px"><div style="font-size:12px;font-weight:800">'+esc(x.name)+'</div><div style="margin-top:7px;font-size:13px;font-weight:900">৳'+Number(x.price||0).toLocaleString('en-BD')+'</div></div></a>').join('');box.style.display='block';const st=document.createElement('style');st.textContent='@media(max-width:800px){#gzRelatedGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}';document.head.appendChild(st)}catch(e){console.warn('Related products:',e)}};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init()})();
+</script>
 </body>
 </html>
