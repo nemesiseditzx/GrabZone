@@ -1,0 +1,54 @@
+name: Fix product editor gallery save
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-product-editor-gallery.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Patch gallery timestamps
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('admin.html')
+          s=p.read_text()
+          old='''      const rows=gzEditGallery.map((img,index)=>({
+        product_id:gzEditProduct.id,
+        image_url:img.image_url,
+        sort_order:index,
+        is_main:index===mainIndex
+      }));'''
+          new='''      const galleryTimestamp=new Date().toISOString();
+      const rows=gzEditGallery.map((img,index)=>({
+        product_id:gzEditProduct.id,
+        image_url:img.image_url,
+        sort_order:index,
+        is_main:index===mainIndex,
+        created_at:galleryTimestamp
+      }));'''
+          if s.count(old)!=1:
+              raise SystemExit(f'Expected exactly one product-editor gallery row builder, found {s.count(old)}')
+          s=s.replace(old,new)
+          p.write_text(s)
+          PY
+          node --check admin.js
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('admin.html').read_text()
+          assert 'const galleryTimestamp=new Date().toISOString();' in s
+          assert 'created_at:galleryTimestamp' in s
+          print('Product editor gallery timestamp fix verified.')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin.html
+          git commit -m 'Fix product editor gallery created_at' || exit 0
+          git push
