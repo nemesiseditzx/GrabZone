@@ -63,7 +63,7 @@
     </div>
     <div class="cards">
       <div class="card"><div class="num">01</div><h3><span class="en">Earn GP</span><span class="bn">GP আয় করুন</span></h3><p><span class="en">Eligible completed orders can add GP to your account. The exact earning rule is controlled by GrabZone.</span><span class="bn">যোগ্য completed order থেকে আপনার account-এ GP যোগ হতে পারে। কত GP পাবেন তা GrabZone-এর earning rule অনুযায়ী নির্ধারিত হবে।</span></p></div>
-      <div class="card"><div class="num">02</div><h3><span class="en">Save & track</span><span class="bn">জমা রাখুন ও দেখুন</span></h3><p><span class="en">Your available balance, 12-month earned GP, membership tier and transaction history stay connected to your Rewards account.</span><span class="bn">আপনার available balance, ১২ মাসের earned GP, membership tier এবং transaction history একই Rewards account-এ থাকবে।</span></p></div>
+      <div class="card"><div class="num">02</div><h3><span class="en">Save & track</span><span class="bn">জমা রাখুন ও দেখুন</span></h3><p><span class="en">Your available balance, lifetime earned GP, membership tier and transaction history stay connected to your Rewards account.</span><span class="bn">আপনার available balance, ১২ মাসের earned GP, membership tier এবং transaction history একই Rewards account-এ থাকবে।</span></p></div>
       <div class="card"><div class="num">03</div><h3><span class="en">Redeem securely</span><span class="bn">নিরাপদে Redeem করুন</span></h3><p><span class="en">Enter the amount you want to redeem and confirm with your private Rewards PIN.</span><span class="bn">যত GP redeem করতে চান তা দিন এবং আপনার private Rewards PIN দিয়ে confirm করুন।</span></p></div>
     </div>
   </section>
@@ -132,7 +132,7 @@
   }catch(e){}
 })();
 </script>
-<script src="rewards.js?v=20260903gpfix2"></script><script>
+<script src="rewards.js?v=20260903gpfix3"></script><script>
 (async function(){
   try{
     const r=await window.grabzoneD1?.rpc('rewards_public_settings',{});
@@ -142,7 +142,7 @@
     box.innerHTML=d.tiers.map((t,i)=>{
       const next=d.tiers[i+1];
       const benefits=String(t.benefits||'').split(/[;\n]+/).map(x=>x.trim()).filter(Boolean);
-      const key=String(t.tier||'member').toLowerCase().replace(/[^a-z]/g,'');return '<div class="tier tier-'+key+'"><b>'+String(t.tier||'')+'</b><strong>'+Number(t.min_points||0).toLocaleString('en-BD')+' GP</strong><small>12-month earned / ১২ মাসের earned</small><ul class="benefits">'+(benefits.length?benefits.map(x=>'<li>'+x+'</li>').join(''):'<li>Current GrabPoints membership benefits</li>')+'</ul><div class="reach">Reach: '+Number(t.min_points||0).toLocaleString('en-BD')+' GP'+(next?' · Next: '+String(next.tier):' · Top tier')+'</div></div>';
+      const key=String(t.tier||'member').toLowerCase().replace(/[^a-z]/g,'');return '<div class="tier tier-'+key+'"><b>'+String(t.tier||'')+'</b><strong>'+Number(t.min_points||0).toLocaleString('en-BD')+' GP</strong><small>Lifetime earned / Lifetime earned</small><ul class="benefits">'+(benefits.length?benefits.map(x=>'<li>'+x+'</li>').join(''):'<li>Current GrabPoints membership benefits</li>')+'</ul><div class="reach">Reach: '+Number(t.min_points||0).toLocaleString('en-BD')+' GP'+(next?' · Next: '+String(next.tier):' · Top tier')+'</div></div>';
     }).join('');
   }catch(e){}
 })();

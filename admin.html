@@ -2048,7 +2048,7 @@ body.gz-gallery-dragging-active{
       <label>GrabPoints system
         <select id="growthGpEnabled"><option value="1">ON — customers can join</option><option value="0">OFF — completely disabled</option></select>
       </label>
-      <label><div class="field-help"><b>Tier cashback is controlled in GrabPoints → Points & Membership.</b> Member 1% · Silver 2% · Gold 3% · Platinum 5%. Delivery charge is never included.</div>
+      <div class="field-help"><b>Tier cashback is controlled in GrabPoints → Points & Membership.</b> Member 1% · Silver 2% · Gold 3% · Platinum 5%. Delivery charge is never included.</div>
       <label>Value of 1 GP (৳)
         <input id="growthGpValue" type="number" min="0" step="0.01" value="0.10">
       </label>
@@ -2444,10 +2444,9 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadMystery,1000))
 <script>
 async function gzLoadGrowth(){
   try{
-    const r=await gzD1({type:"table",table:"site_settings",action:"select",columns:"grabpoints_enabled,grabpoints_earn_rate,grabpoints_value,mystery_enabled,mystery_min_percent,mystery_max_percent",filters:[{column:"id",op:"eq",value:1}],single:"maybe"});
+    const r=await gzD1({type:"table",table:"site_settings",action:"select",columns:"grabpoints_enabled,grabpoints_value,mystery_enabled,mystery_min_percent,mystery_max_percent",filters:[{column:"id",op:"eq",value:1}],single:"maybe"});
     const data=r.data||{};
     $('growthGpEnabled').value=Number(data.grabpoints_enabled??1)?'1':'0';
-    $('growthGpEarnRate').value=Number(data.grabpoints_earn_rate??10);
     $('growthGpValue').value=Number(data.grabpoints_value??0.1);
     $('growthMysteryEnabled').value=Number(data.mystery_enabled??0)?'1':'0';
     $('growthMysteryMin').value=Number(data.mystery_min_percent??5);
@@ -2458,10 +2457,10 @@ async function gzLoadGrowth(){
   }catch(e){$('growthGpMsg').textContent='✕ '+e.message}
 }
 async function gzSaveGrowth(){
-  const gpEnabled=Number($('growthGpEnabled').value),earn=Math.max(0,Number($('growthGpEarnRate').value||0)),value=Math.max(0,Number($('growthGpValue').value||0)),mEnabled=Number($('growthMysteryEnabled').value),mMin=Math.max(1,Number($('growthMysteryMin').value||5)),mMax=Math.max(mMin,Number($('growthMysteryMax').value||15));
+  const gpEnabled=Number($('growthGpEnabled').value),value=Math.max(0,Number($('growthGpValue').value||0)),mEnabled=Number($('growthMysteryEnabled').value),mMin=Math.max(1,Number($('growthMysteryMin').value||5)),mMax=Math.max(mMin,Number($('growthMysteryMax').value||15));
   const msg=$('growthGpMsg');
   try{
-    await gzD1({type:"table",table:"site_settings",action:"update",filters:[{column:"id",op:"eq",value:1}],values:{grabpoints_enabled:gpEnabled,grabpoints_earn_rate:earn,grabpoints_value:value,mystery_enabled:mEnabled,mystery_min_percent:mMin,mystery_max_percent:mMax}});
+    await gzD1({type:"table",table:"site_settings",action:"update",filters:[{column:"id",op:"eq",value:1}],values:{grabpoints_enabled:gpEnabled,grabpoints_value:value,mystery_enabled:mEnabled,mystery_min_percent:mMin,mystery_max_percent:mMax}});
     msg.textContent='✓ Phase B settings saved.';
     $('growthGpStatus').textContent=gpEnabled?'ACTIVE':'OFF';$('growthMysteryStatus').textContent=mEnabled?'ACTIVE':'OFF';
   }catch(e){msg.textContent='✕ '+e.message}
@@ -2485,7 +2484,7 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadGrowth,1100));
 document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadMystery,1000));
 </script>
 <script src="billboard-admin.js?v=20260902authfix4"></script>
-  <script src="rewards-admin.js?v=20260903sync2"></script>
+  <script src="rewards-admin.js?v=20260903sync3"></script>
 <script src="phase5-admin.js?v=20260902authfix5"></script>
 
 
