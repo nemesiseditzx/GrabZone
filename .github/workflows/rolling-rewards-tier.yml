@@ -1,0 +1,99 @@
+name: Apply rolling 12-month Rewards tier rules
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: grabzone-rewards-rolling-patch
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[skip-rewards-rolling]') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Patch rolling 12-month tier logic
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          worker = Path('worker.mjs')
+          text = worker.read_text()
+          old = '''async function rewardTier(env,memberId){const m=(await q(env,"SELECT * FROM rewards_members WHERE id=? LIMIT 1",[memberId])).results?.[0];if(!m)return{tier:"Member",earned:0,remaining:0,next:"Member",tiers:[]};const tiers=(await q(env,"SELECT * FROM membership_tiers ORDER BY min_points ASC")).results||[];if(m.tier_override){const cur=tiers.find(t=>t.tier===m.tier_override)||tiers[tiers.length-1]||{tier:m.tier_override,min_points:0};return{tier:cur.tier,earned:0,remaining:0,next:cur.tier,tiers}}const e=(await q(env,"SELECT COALESCE(SUM(qualifying_points),0) AS earned FROM grabpoints_ledger WHERE phone=?",[m.phone])).results?.[0]?.earned||0;const earned=Math.max(0,Number(e));let cur=tiers[0]||{tier:"Member",min_points:0};for(const t of tiers)if(earned>=Number(t.min_points))cur=t;const next=tiers.find(t=>Number(t.min_points)>Number(cur.min_points));return{tier:cur.tier,earned,remaining:next?Math.max(0,Number(next.min_points)-earned):0,next:next?.tier||cur.tier,tiers}}'''
+          new = '''async function rewardTier(env,memberId){const m=(await q(env,"SELECT * FROM rewards_members WHERE id=? LIMIT 1",[memberId])).results?.[0];if(!m)return{tier:"Member",earned:0,remaining:0,next:"Member",tiers:[]};const tiers=(await q(env,"SELECT * FROM membership_tiers ORDER BY min_points ASC")).results||[];if(m.tier_override){const cur=tiers.find(t=>t.tier===m.tier_override)||tiers[tiers.length-1]||{tier:m.tier_override,min_points:0};return{tier:cur.tier,earned:0,remaining:0,next:cur.tier,tiers}}const cutoff=new Date(Date.now()-365*24*60*60*1000).toISOString();const e=(await q(env,"SELECT COALESCE(SUM(qualifying_points),0) AS earned FROM grabpoints_ledger WHERE phone=? AND created_at>=?",[m.phone,cutoff])).results?.[0]?.earned||0;const earned=Math.max(0,Number(e));let cur=tiers[0]||{tier:"Member",min_points:0};for(const t of tiers)if(earned>=Number(t.min_points))cur=t;const next=tiers.find(t=>Number(t.min_points)>Number(cur.min_points));return{tier:cur.tier,earned,remaining:next?Math.max(0,Number(next.min_points)-earned):0,next:next?.tier||cur.tier,tiers}}'''
+          if old not in text:
+              raise SystemExit('Expected rewardTier block not found; aborting.')
+          text = text.replace(old, new, 1)
+
+          old = '''stmts.push(env.DB.prepare("INSERT INTO grabpoints_ledger(id,phone,order_id,points,type,reference,reason,balance_after,qualifying_points,created_at) SELECT ?,?,?,?,?,?,?,MAX(0,points-?),0,? FROM customer_points WHERE phone=?").bind(crypto.randomUUID(),phone,previousOrder.id,-n,revType,"REV-"+String(previousOrder.order_number||previousOrder.id),"Order cancelled",-n,-n,now(),phone));'''
+          new = '''stmts.push(env.DB.prepare("INSERT INTO grabpoints_ledger(id,phone,order_id,points,type,reference,reason,balance_after,qualifying_points,created_at) SELECT ?,?,?,?,?,?,?,MAX(0,points-?),?,? FROM customer_points WHERE phone=?").bind(crypto.randomUUID(),phone,previousOrder.id,-n,revType,"REV-"+String(previousOrder.order_number||previousOrder.id),"Order cancelled",-n,-n,now(),phone));'''
+          if old not in text:
+              raise SystemExit('Expected cancellation reversal block not found; aborting.')
+          text = text.replace(old, new, 1)
+          worker.write_text(text)
+
+          rewards = Path('rewards.js')
+          text = rewards.read_text()
+          old = "const ti=tierInfo(d.tier,d.tiers),earned=Math.max(0,Number(d.lifetime_earned??d.total_earned??0)),lifetime=earned,current=ti.current.threshold,next=ti.next?.threshold||current,progress=ti.next?Math.max(0,Math.min(100,((earned-current)/(next-current))*100)):100"
+          new = "const ti=tierInfo(d.tier,d.tiers),tierEarned=Math.max(0,Number(d.twelve_month_earned??0)),lifetime=Math.max(0,Number(d.lifetime_earned??d.total_earned??0)),current=ti.current.threshold,next=ti.next?.threshold||current,progress=ti.next?Math.max(0,Math.min(100,((tierEarned-current)/(next-current))*100)):100"
+          if old not in text:
+              raise SystemExit('Expected dashboard calculation block not found; aborting.')
+          text = text.replace(old, new, 1)
+
+          old = '<div class="gz-stat earned"><small>Lifetime GP</small><b>${lifetime.toLocaleString(\'en-BD\')}</b><span>Total lifetime GP earned</span></div><div class="gz-stat tier">'
+          new = '<div class="gz-stat earned"><small>Lifetime GP</small><b>${lifetime.toLocaleString(\'en-BD\')}</b><span>Total lifetime GP earned</span></div><div class="gz-stat earned gz-stat-12"><small>12-Month Tier GP</small><b>${tierEarned.toLocaleString(\'en-BD\')}</b><span>Qualifying GP from the last 12 months</span></div><div class="gz-stat tier">'
+          if old not in text:
+              raise SystemExit('Expected Lifetime GP card not found; aborting.')
+          text = text.replace(old, new, 1)
+
+          old = '<div class="gz-progress-meta"><span>${earned.toLocaleString(\'en-BD\')} GP earned toward your tier</span><span>${ti.next?next.toLocaleString(\'en-BD\')+\' GP needed\':\'Top tier reached\'}</span></div>'
+          new = '<div class="gz-progress-meta"><span>${tierEarned.toLocaleString(\'en-BD\')} GP earned in the last 12 months</span><span>${ti.next?next.toLocaleString(\'en-BD\')+\' GP needed\':\'Top tier reached\'}</span></div>'
+          if old not in text:
+              raise SystemExit('Expected tier progress text not found; aborting.')
+          text = text.replace(old, new, 1)
+
+          text = text.replace('.gz-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}', '.gz-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}', 1)
+          text = text.replace('.gz-stat.tier{background:linear-gradient(135deg,#087f88,#08a36e)}', '.gz-stat.tier{background:linear-gradient(135deg,#087f88,#08a36e)}.gz-stat-12{background:linear-gradient(135deg,#1265d7,#1688d7)}', 1)
+          rewards.write_text(text)
+
+          admin = Path('rewards-admin.js')
+          text = admin.read_text()
+          text = text.replace('minimum lifetime GP<input id="gzTierMin', 'minimum qualifying GP (last 12 months)<input id="gzTierMin', 1)
+          text = text.replace("'+Number(x.twelve_month_earned||0).toLocaleString()+' GP / lifetime</small>", "'+Number(x.twelve_month_earned||0).toLocaleString()+' GP / last 12 months</small>", 1)
+          admin.write_text(text)
+          PY
+
+      - name: Validate
+        run: |
+          node --check worker.mjs
+          node --check rewards.js
+          node --check rewards-admin.js
+
+      - name: Commit patched code and remove temporary workflow
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -f .github/workflows/rolling-rewards-tier.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker.mjs rewards.js rewards-admin.js .github/workflows/rolling-rewards-tier.yml
+          git commit -m "Use rolling 12-month GP for membership tiers [skip-rewards-rolling]"
+          git push
+
+      - name: Deploy patched Worker
+        uses: cloudflare/wrangler-action@v4
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: deploy ./worker.mjs
