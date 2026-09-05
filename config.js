@@ -11,13 +11,13 @@ window.GRABZONE_CONFIG = {
   instagram: "https://instagram.com/yourstore"
 };
 
-/* Visual loader only. One clean visual system is loaded last.
+/* Visual loader only. One final coordinated visual system is loaded last.
    Existing application/business logic is untouched. */
 (function(){
-  if(document.querySelector('link[data-gz-pro-ui]')) return;
+  if(document.querySelector('link[data-gz-pro-ui-final]')) return;
   var link=document.createElement('link');
   link.rel='stylesheet';
-  link.href='grabzone-pro-ui.css';
-  link.setAttribute('data-gz-pro-ui','1');
+  link.href='grabzone-pro-ui-final.css';
+  link.setAttribute('data-gz-pro-ui-final','1');
   document.head.appendChild(link);
 })();
