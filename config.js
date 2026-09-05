@@ -23,4 +23,5 @@ window.GRABZONE_CONFIG = {
   }
   add('bd-pro-theme.css','data-gz-pro-theme');
   add('grabzone-premium-v2.css','data-gz-premium-v2');
+  add('grabzone-mega-ui.css','data-gz-mega-ui');
 })();
