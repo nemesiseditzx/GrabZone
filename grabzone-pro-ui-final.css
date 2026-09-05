@@ -1,0 +1,78 @@
+/* GRABZONE — FINAL COORDINATION PATCH
+   Loads the existing clean PRO UI first, then fixes the page rhythm.
+   Visual/layout only. No business logic, data, checkout or backend changes.
+*/
+@import url("./grabzone-pro-ui.css");
+
+:root{--gzf-max:1500px;--gzf-gap:34px}
+
+/* ONE MASTER WIDTH: hero, offer and lower sections share the same edges. */
+.hero-inner,.section-head,.shop-tools,.product-grid,.how-intro,.how-section .steps,.footer-inner,.ref-section,.gz-points-section,.detail{
+  width:min(var(--gzf-max),calc(100% - 64px))!important;
+  max-width:var(--gzf-max)!important;
+  margin-left:auto!important;margin-right:auto!important;
+}
+
+/* HERO: bring copy and billboard together instead of leaving a dead middle. */
+.hero{padding:42px 24px 30px!important}
+.hero-inner{
+  grid-template-columns:minmax(0,620px) minmax(0,1fr)!important;
+  gap:var(--gzf-gap)!important;
+  align-items:center!important;
+}
+.hero-copy{width:100%!important;max-width:620px!important}
+.hero h1{max-width:620px!important;font-size:clamp(54px,5.8vw,86px)!important}
+.hero p{max-width:570px!important}
+.hero-card{width:100%!important;height:390px!important;max-width:none!important}
+.hero-card .gz-billboard{width:100%!important;height:100%!important}
+
+/* The offer belongs to the same horizontal system as the hero. */
+.offer-strip{
+  width:min(var(--gZF-max,var(--gzf-max)),calc(100% - 64px))!important;
+  max-width:var(--gzf-max)!important;
+  margin:-1px auto 0!important;
+}
+
+/* Remove accidental giant vertical gaps created by inherited page sections. */
+.shop-section{padding-top:58px!important}
+.how-section{padding-top:62px!important}
+.ref-section{margin-top:42px!important;margin-bottom:42px!important}
+
+/* Desktop: keep the hero visually balanced on wide monitors. */
+@media(min-width:1181px){
+  .hero-inner{grid-template-columns:600px minmax(0,1fr)!important;gap:38px!important}
+  .hero-card{height:390px!important}
+}
+
+/* Mid-size screens: still side-by-side until the layout genuinely needs stacking. */
+@media(min-width:901px) and (max-width:1180px){
+  .hero-inner{grid-template-columns:minmax(0,.9fr) minmax(430px,1.1fr)!important;gap:26px!important}
+  .hero h1{font-size:clamp(48px,6.2vw,72px)!important}
+  .hero-card{height:350px!important}
+}
+
+/* Tablet/mobile: intentional stacking, with no oversized blank zone. */
+@media(max-width:900px){
+  .hero{padding:34px 16px 26px!important}
+  .hero-inner{width:calc(100% - 24px)!important;grid-template-columns:1fr!important;gap:24px!important}
+  .hero-copy{max-width:none!important}
+  .hero h1{max-width:none!important}
+  .hero-card{height:auto!important}
+  .hero-card .gz-billboard{height:min(72vw,340px)!important;min-height:245px!important}
+  .offer-strip{width:calc(100% - 24px)!important}
+}
+
+@media(max-width:600px){
+  .hero{padding:28px 12px 22px!important}
+  .hero-inner{width:calc(100% - 24px)!important;gap:20px!important}
+  .hero h1{font-size:clamp(42px,13.5vw,60px)!important}
+  .hero-card .gz-billboard{height:min(72vw,330px)!important;min-height:235px!important}
+  .offer-strip{width:calc(100% - 20px)!important}
+  .shop-section{padding-top:46px!important}
+  .how-section{padding-top:50px!important}
+}
+
+@media(max-width:390px){
+  .hero h1{font-size:42px!important}
+  .hero-card .gz-billboard{min-height:225px!important}
+}
