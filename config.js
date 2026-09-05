@@ -10,3 +10,13 @@ window.GRABZONE_CONFIG = {
   messenger: "https://m.me/yourpage",
   instagram: "https://instagram.com/yourstore"
 };
+
+/* Visual theme loader only. No application/business logic is changed. */
+(function(){
+  if(document.querySelector('link[data-gz-pro-theme]')) return;
+  var link=document.createElement('link');
+  link.rel='stylesheet';
+  link.href='bd-pro-theme.css';
+  link.setAttribute('data-gz-pro-theme','1');
+  document.head.appendChild(link);
+})();
