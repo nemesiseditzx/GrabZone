@@ -28,7 +28,7 @@
 
 /* The offer belongs to the same horizontal system as the hero. */
 .offer-strip{
-  width:min(var(--gZF-max,var(--gzf-max)),calc(100% - 64px))!important;
+  width:min(var(--gzf-max),calc(100% - 64px))!important;
   max-width:var(--gzf-max)!important;
   margin:-1px auto 0!important;
 }
