@@ -11,17 +11,13 @@ window.GRABZONE_CONFIG = {
   instagram: "https://instagram.com/yourstore"
 };
 
-/* Visual loaders only. No application/business logic is changed. */
+/* Visual loader only. The coordinated V3 layer is intentionally loaded last
+   so older visual experiments cannot fight with it. */
 (function(){
-  function add(href, attr){
-    if(document.querySelector('link['+attr+']')) return;
-    var link=document.createElement('link');
-    link.rel='stylesheet';
-    link.href=href;
-    link.setAttribute(attr,'1');
-    document.head.appendChild(link);
-  }
-  add('bd-pro-theme.css','data-gz-pro-theme');
-  add('grabzone-premium-v2.css','data-gz-premium-v2');
-  add('grabzone-mega-ui.css','data-gz-mega-ui');
+  if(document.querySelector('link[data-gz-coordinated-v3]')) return;
+  var link=document.createElement('link');
+  link.rel='stylesheet';
+  link.href='grabzone-coordination-v3.css';
+  link.setAttribute('data-gz-coordinated-v3','1');
+  document.head.appendChild(link);
 })();
