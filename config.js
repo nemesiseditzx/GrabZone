@@ -16,7 +16,7 @@ window.GRABZONE_CONFIG = {
  addCss('grabzone-pro-commerce-ui.css','data-gz-pro-commerce-ui');addJs('grabzone-pro-commerce-ui.js','data-gz-pro-commerce-ui-js');
  addCss('marketplace-storefront.css','data-gz-marketplace-storefront-css');addJs('marketplace-storefront.js','data-gz-marketplace-storefront-js');
  if(/admin\.html$/i.test(location.pathname)||/\/admin\/?$/i.test(location.pathname)){addCss('marketplace-admin.css','data-gz-marketplace-admin-css');addJs('marketplace-admin.js','data-gz-marketplace-admin-js')}
- if(/vendor\.html$/i.test(location.pathname)){addCss('marketplace-vendor.css','data-gz-marketplace-vendor-css');addJs('marketplace-vendor-enhance.js','data-gz-marketplace-vendor-enhance-js')}
+ if(/vendor\.html$/i.test(location.pathname)){addCss('marketplace-vendor.css','data-gz-marketplace-vendor-css');addJs('marketplace-vendor-enhance.js','data-gz-marketplace-vendor-enhance-js');addJs('marketplace-vendor-email.js','data-gz-marketplace-vendor-email-js')}
  if(/checkout\.html$/i.test(location.pathname)){addCss('marketplace-checkout.css','data-gz-marketplace-checkout-css');addJs('marketplace-checkout.js','data-gz-marketplace-checkout-js')}
  if(/track-order\.html$/i.test(location.pathname)){addCss('marketplace-tracking.css','data-gz-marketplace-tracking-css');addJs('marketplace-tracking.js','data-gz-marketplace-tracking-js')}
 })();
