@@ -1,5 +1,5 @@
 window.GRABZONE_CONFIG = {
-  backendUrl: "https://grabzone.nemesiseditzx984.workers.dev",
+  backendUrl: "https://grabzone-marketplace-dev.nemesiseditzx984.workers.dev",
   storeName: "GRABZONE",
   tagline: "Grab What's Trending.",
   currency: "৳",
@@ -11,7 +11,7 @@ window.GRABZONE_CONFIG = {
   instagram: "https://instagram.com/yourstore"
 };
 (function(){
- var v='20260907-dev2';
+ var v='20260907-dev3';
  function addCss(href,attr){if(document.querySelector('link['+attr+']'))return;var l=document.createElement('link');l.rel='stylesheet';l.href=href+'?v='+v;l.setAttribute(attr,'1');document.head.appendChild(l)}
  function addJs(src,attr){if(document.querySelector('script['+attr+']'))return;var s=document.createElement('script');s.src=src+'?v='+v;s.defer=true;s.setAttribute(attr,'1');document.head.appendChild(s)}
  addCss('grabzone-pro-commerce-ui.css','data-gz-pro-commerce-ui');addJs('grabzone-pro-commerce-ui.js','data-gz-pro-commerce-ui-js');
