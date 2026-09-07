@@ -14,7 +14,7 @@ window.GRABZONE_CONFIG = {
  function addCss(href,attr){if(document.querySelector('link['+attr+']'))return;var l=document.createElement('link');l.rel='stylesheet';l.href=href;l.setAttribute(attr,'1');document.head.appendChild(l)}
  function addJs(src,attr){if(document.querySelector('script['+attr+']'))return;var s=document.createElement('script');s.src=src;s.defer=true;s.setAttribute(attr,'1');document.head.appendChild(s)}
  addCss('grabzone-pro-commerce-ui.css','data-gz-pro-commerce-ui');addJs('grabzone-pro-commerce-ui.js','data-gz-pro-commerce-ui-js');
- addCss('marketplace-storefront.css','data-gz-marketplace-storefront-css');addJs('marketplace-storefront.js','data-gz-marketplace-storefront-js');
+ addCss('marketplace-storefront.css','data-gz-marketplace-storefront-css');addJs('marketplace-storefront.js','data-gz-marketplace-storefront-js');addJs('marketplace-storefront-filter.js','data-gz-marketplace-storefront-filter-js');
  if(/admin\.html$/i.test(location.pathname)||/\/admin\/?$/i.test(location.pathname)){addCss('marketplace-admin.css','data-gz-marketplace-admin-css');addJs('marketplace-admin.js','data-gz-marketplace-admin-js')}
  if(/vendor\.html$/i.test(location.pathname)){addCss('marketplace-vendor.css','data-gz-marketplace-vendor-css');addJs('marketplace-vendor-enhance.js','data-gz-marketplace-vendor-enhance-js');addJs('marketplace-vendor-email.js','data-gz-marketplace-vendor-email-js');addJs('marketplace-vendor-shipment.js','data-gz-marketplace-vendor-shipment-js')}
  if(/checkout\.html$/i.test(location.pathname)){addCss('marketplace-checkout.css','data-gz-marketplace-checkout-css');addJs('marketplace-checkout.js','data-gz-marketplace-checkout-js')}
