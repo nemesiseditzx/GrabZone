@@ -10,34 +10,13 @@ window.GRABZONE_CONFIG = {
   messenger: "https://m.me/yourpage",
   instagram: "https://instagram.com/yourstore"
 };
-
-/* Visual-only UI loader. Existing settings and application/business logic are untouched. */
 (function(){
-  function addCss(href, attr){
-    if(document.querySelector('link['+attr+']')) return;
-    var link=document.createElement('link');
-    link.rel='stylesheet'; link.href=href; link.setAttribute(attr,'1');
-    document.head.appendChild(link);
-  }
-  function addJs(src, attr){
-    if(document.querySelector('script['+attr+']')) return;
-    var s=document.createElement('script'); s.src=src; s.defer=true; s.setAttribute(attr,'1');
-    document.head.appendChild(s);
-  }
-  addCss('grabzone-pro-commerce-ui.css','data-gz-pro-commerce-ui');
-  addJs('grabzone-pro-commerce-ui.js','data-gz-pro-commerce-ui-js');
-  addCss('marketplace-storefront.css','data-gz-marketplace-storefront-css');
-  addJs('marketplace-storefront.js','data-gz-marketplace-storefront-js');
-  if(/admin\.html$/i.test(location.pathname)||/\/admin\/?$/i.test(location.pathname)){
-    addCss('marketplace-admin.css','data-gz-marketplace-admin-css');
-    addJs('marketplace-admin.js','data-gz-marketplace-admin-js');
-  }
-  if(/checkout\.html$/i.test(location.pathname)){
-    addCss('marketplace-checkout.css','data-gz-marketplace-checkout-css');
-    addJs('marketplace-checkout.js','data-gz-marketplace-checkout-js');
-  }
-  if(/track-order\.html$/i.test(location.pathname)){
-    addCss('marketplace-tracking.css','data-gz-marketplace-tracking-css');
-    addJs('marketplace-tracking.js','data-gz-marketplace-tracking-js');
-  }
+ function addCss(href,attr){if(document.querySelector('link['+attr+']'))return;var l=document.createElement('link');l.rel='stylesheet';l.href=href;l.setAttribute(attr,'1');document.head.appendChild(l)}
+ function addJs(src,attr){if(document.querySelector('script['+attr+']'))return;var s=document.createElement('script');s.src=src;s.defer=true;s.setAttribute(attr,'1');document.head.appendChild(s)}
+ addCss('grabzone-pro-commerce-ui.css','data-gz-pro-commerce-ui');addJs('grabzone-pro-commerce-ui.js','data-gz-pro-commerce-ui-js');
+ addCss('marketplace-storefront.css','data-gz-marketplace-storefront-css');addJs('marketplace-storefront.js','data-gz-marketplace-storefront-js');
+ if(/admin\.html$/i.test(location.pathname)||/\/admin\/?$/i.test(location.pathname)){addCss('marketplace-admin.css','data-gz-marketplace-admin-css');addJs('marketplace-admin.js','data-gz-marketplace-admin-js')}
+ if(/vendor\.html$/i.test(location.pathname)){addCss('marketplace-vendor.css','data-gz-marketplace-vendor-css');addJs('marketplace-vendor-enhance.js','data-gz-marketplace-vendor-enhance-js')}
+ if(/checkout\.html$/i.test(location.pathname)){addCss('marketplace-checkout.css','data-gz-marketplace-checkout-css');addJs('marketplace-checkout.js','data-gz-marketplace-checkout-js')}
+ if(/track-order\.html$/i.test(location.pathname)){addCss('marketplace-tracking.css','data-gz-marketplace-tracking-css');addJs('marketplace-tracking.js','data-gz-marketplace-tracking-js')}
 })();
