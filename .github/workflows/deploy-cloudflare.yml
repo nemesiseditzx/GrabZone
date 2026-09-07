@@ -1,13 +1,13 @@
-name: Deploy GrabZone Worker
+name: Deploy GrabZone Marketplace Dev Worker
 
 on:
   push:
     branches:
-      - main
+      - marketplace-multivendor-dev
   workflow_dispatch:
 
 concurrency:
-  group: grabzone-cloudflare-deploy
+  group: grabzone-marketplace-dev-worker
   cancel-in-progress: true
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Deploy to Cloudflare Workers
+      - name: Deploy isolated development Worker
         uses: cloudflare/wrangler-action@v4
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
