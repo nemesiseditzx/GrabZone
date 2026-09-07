@@ -1,9 +1,10 @@
 {
   "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
-  "name": "grabzone",
+  "name": "grabzone-marketplace-dev",
   "main": "./marketplace-runtime.mjs",
   "compatibility_date": "2026-08-28",
   "keep_vars": true,
+  "preview_urls": true,
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
