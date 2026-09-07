@@ -1,0 +1,177 @@
+/* GrabZone marketplace runtime gateway.
+   It wraps the existing Worker instead of replacing it, so legacy routes remain intact. */
+import baseWorker from './worker.mjs';
+
+const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+const now=()=>new Date().toISOString();
+const clean=v=>String(v??'').trim();
+const safeSlug=v=>clean(v).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80);
+const b64=s=>btoa(unescape(encodeURIComponent(String(s)))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+const ub64=s=>{s=String(s).replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return decodeURIComponent(escape(atob(s)))};
+async function sha(v){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function hmac(secret,data){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(secret)),{name:'HMAC',hash:'SHA-256'},false,['sign']);return new Uint8Array(await crypto.subtle.sign('HMAC',k,new TextEncoder().encode(String(data))))}
+const sign=async(p,secret)=>p+'.'+b64(String.fromCharCode(...await hmac(secret,p)));
+async function token(payload,env){const p=b64(JSON.stringify({...payload,exp:Math.floor(Date.now()/1000)+604800}));return sign(p,String(env.MARKETPLACE_AUTH_SECRET||env.D1_AUTH_SECRET||env.GRABZONE_ADMIN_PASSWORD||''))}
+async function verify(t,env){try{const a=clean(t).split('.');if(a.length!==2)return null;const secret=String(env.MARKETPLACE_AUTH_SECRET||env.D1_AUTH_SECRET||env.GRABZONE_ADMIN_PASSWORD||'');if(!secret)return null;const expected=await hmac(secret,a[0]);const got=Uint8Array.from(atob(a[1].replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-a[1].length%4)%4)),c=>c.charCodeAt(0));if(expected.length!==got.length)return null;let d=0;for(let i=0;i<expected.length;i++)d|=expected[i]^got[i];if(d)return null;const p=JSON.parse(ub64(a[0]));return Number(p.exp)>Date.now()/1000?p:null}catch{return null}}
+async function q(env,sql,params=[]){return env.DB.prepare(sql).bind(...params).all()}
+
+let schemaPromise=null;
+async function ensureMarketplace(env){
+ if(!env.DB)throw new Error('Cloudflare D1 binding DB is missing.');
+ if(schemaPromise)return schemaPromise;
+ schemaPromise=(async()=>{
+  const sql=[
+   `CREATE TABLE IF NOT EXISTS vendors (id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT NOT NULL UNIQUE,logo_url TEXT,banner_url TEXT,description TEXT,tagline TEXT,accent_color TEXT,category TEXT,business_email TEXT,support_email TEXT,phone TEXT,status TEXT NOT NULL DEFAULT 'active',show_on_homepage INTEGER NOT NULL DEFAULT 1,featured_on_homepage INTEGER NOT NULL DEFAULT 0,commission_type TEXT NOT NULL DEFAULT 'percentage',commission_value REAL NOT NULL DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS vendor_users (id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,email TEXT NOT NULL UNIQUE,password_hash TEXT,role TEXT NOT NULL DEFAULT 'vendor_admin',active INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS vendor_store_settings (vendor_id TEXT PRIMARY KEY,announcement TEXT,about TEXT,hero_title TEXT,hero_description TEXT,featured_product_ids TEXT NOT NULL DEFAULT '[]',sections TEXT NOT NULL DEFAULT '[]',social_links TEXT NOT NULL DEFAULT '{}',custom_css TEXT,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS vendor_shipping_settings (vendor_id TEXT PRIMARY KEY,shipping_fee REAL NOT NULL DEFAULT 0,enabled INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS vendor_email_settings (vendor_id TEXT PRIMARY KEY,order_notification_email TEXT,support_email TEXT,customer_email_notifications INTEGER NOT NULL DEFAULT 1,vendor_email_notifications INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS vendor_orders (id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,shipping_charge REAL NOT NULL DEFAULT 0,total REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'New',admin_note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id))`,
+   `CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,shipment_tracking_id TEXT NOT NULL,courier_name TEXT,courier_tracking_number TEXT,courier_tracking_url TEXT,status TEXT NOT NULL DEFAULT 'Processing',note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS shipment_items (id TEXT PRIMARY KEY,shipment_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,product_name TEXT NOT NULL,quantity INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,UNIQUE(shipment_id,order_item_id))`,
+   `CREATE TABLE IF NOT EXISTS vendor_payouts (id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,vendor_order_id TEXT NOT NULL,gross_amount REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,net_amount REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'pending',paid_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   `CREATE INDEX IF NOT EXISTS vendors_home_idx ON vendors(show_on_homepage,featured_on_homepage)`,
+   `CREATE INDEX IF NOT EXISTS vendor_orders_vendor_idx ON vendor_orders(vendor_id,created_at DESC)`,
+   `CREATE INDEX IF NOT EXISTS shipments_tracking_idx ON shipments(shipment_tracking_id)`,
+   `CREATE INDEX IF NOT EXISTS shipments_order_idx ON shipments(order_id,created_at)`,
+   `CREATE INDEX IF NOT EXISTS vendor_payouts_vendor_idx ON vendor_payouts(vendor_id,created_at DESC)`,
+   `ALTER TABLE products ADD COLUMN vendor_id TEXT`,
+   `ALTER TABLE products ADD COLUMN vendor_featured INTEGER NOT NULL DEFAULT 0`,
+   `UPDATE products SET vendor_id='vendor_grabzone' WHERE vendor_id IS NULL OR vendor_id=''`,
+   `INSERT OR IGNORE INTO vendors(id,name,slug,description,category,status,show_on_homepage,featured_on_homepage,commission_type,commission_value,created_at,updated_at) VALUES('vendor_grabzone','GRABZONE','grabzone','Official GrabZone products','Marketplace','active',1,1,'percentage',0,?,?)`,
+   `INSERT OR IGNORE INTO vendor_shipping_settings(vendor_id,shipping_fee,enabled,updated_at) VALUES('vendor_grabzone',0,1,?)`,
+   `INSERT OR IGNORE INTO vendor_store_settings(vendor_id,featured_product_ids,sections,social_links,updated_at) VALUES('vendor_grabzone','[]','[]','{}',?)`,
+   `INSERT OR IGNORE INTO vendor_email_settings(vendor_id,customer_email_notifications,vendor_email_notifications,updated_at) VALUES('vendor_grabzone',1,1,?)`
+  ];
+  for(let i=0;i<sql.length;i++){
+   try{
+    const s=sql[i];
+    if(s.includes('?'))await env.DB.prepare(s).bind(...Array((s.match(/\?/g)||[]).length).fill(now())).run();
+    else await env.DB.prepare(s).run();
+   }catch(e){
+    if(!/duplicate column|already exists/i.test(e.message||''))throw e;
+   }
+  }
+ })().catch(e=>{schemaPromise=null;throw e});
+ return schemaPromise;
+}
+
+async function adminAuthorized(req,env){
+ try{
+  const h=new Headers(req.headers);h.delete('content-length');
+  const r=new Request(new URL('/api/d1',req.url),{method:'POST',headers:h,body:JSON.stringify({type:'table',table:'vendors',action:'select',columns:'id',limit:1})});
+  const x=await baseWorker.fetch(r,env);return x.ok;
+ }catch{return false}
+}
+function vendorTokenFrom(req){const h=req.headers.get('Authorization')||'';return h.startsWith('Bearer ')?h.slice(7).trim():req.headers.get('X-GrabZone-Vendor-Token')||''}
+async function vendorAuth(req,env){return verify(vendorTokenFrom(req),env)}
+
+async function publicMarketplace(req,env){
+ await ensureMarketplace(env);
+ const u=new URL(req.url),slug=clean(u.searchParams.get('vendor'));
+ if(req.method!=='GET')return json({error:'Method not allowed.'},405);
+ const vendors=(await q(env,`SELECT id,name,slug,logo_url,banner_url,description,tagline,accent_color,category,show_on_homepage,featured_on_homepage,status FROM vendors WHERE status='active' AND show_on_homepage=1 ORDER BY featured_on_homepage DESC,name ASC`)).results||[];
+ let products=[];
+ if(slug){
+  const v=vendors.find(x=>x.slug===slug)||(await q(env,`SELECT id,name,slug,logo_url,banner_url,description,tagline,accent_color,category,show_on_homepage,featured_on_homepage,status FROM vendors WHERE slug=? AND status='active' LIMIT 1`,[slug])).results?.[0];
+  if(!v)return json({vendors,products:[]});
+  products=(await q(env,`SELECT p.*,v.name AS vendor_name,v.slug AS vendor_slug,v.logo_url AS vendor_logo,v.accent_color AS vendor_accent FROM products p JOIN vendors v ON v.id=p.vendor_id WHERE p.published=1 AND p.vendor_id=? ORDER BY p.created_at DESC`,[v.id])).results||[];
+ }else{
+  products=(await q(env,`SELECT p.*,v.name AS vendor_name,v.slug AS vendor_slug,v.logo_url AS vendor_logo,v.accent_color AS vendor_accent FROM products p JOIN vendors v ON v.id=p.vendor_id WHERE p.published=1 AND v.status='active' ORDER BY p.vendor_featured DESC,p.created_at DESC`)).results||[];
+ }
+ return json({vendors,products});
+}
+
+async function vendorLogin(req,env){
+ await ensureMarketplace(env);if(req.method!=='POST')return json({error:'Method not allowed.'},405);
+ let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON.'},400)}
+ const email=clean(b.email).toLowerCase(),pass=String(b.password||'');if(!email||!pass)return json({error:'Email and password are required.'},400);
+ const u=(await q(env,`SELECT u.id,u.vendor_id,u.email,u.password_hash,u.role,u.active,v.name AS vendor_name,v.slug AS vendor_slug,v.status AS vendor_status FROM vendor_users u JOIN vendors v ON v.id=u.vendor_id WHERE lower(u.email)=lower(?) LIMIT 1`,[email])).results?.[0];
+ if(!u||Number(u.active)!==1||u.vendor_status!=='active')return json({error:'Invalid vendor login.'},401);
+ if(String(u.password_hash||'')!==await sha(pass))return json({error:'Invalid vendor login.'},401);
+ const t=await token({sub:u.id,vendor_id:u.vendor_id,email:u.email,role:u.role},env);return json({ok:true,token:t,vendor:{id:u.vendor_id,name:u.vendor_name,slug:u.vendor_slug},user:{id:u.id,email:u.email,role:u.role}});
+}
+
+async function adminMarketplace(req,env){
+ await ensureMarketplace(env);if(!(await adminAuthorized(req,env)))return json({error:'Unauthorized.'},401);
+ const u=new URL(req.url),action=clean(u.searchParams.get('action'))||'overview';
+ if(req.method==='GET'){
+  if(action==='vendors')return json({vendors:(await q(env,'SELECT * FROM vendors ORDER BY featured_on_homepage DESC,name ASC')).results||[]});
+  if(action==='orders'){
+   const rows=(await q(env,`SELECT vo.*,v.name AS vendor_name,v.slug AS vendor_slug,o.order_number,o.public_tracking_id,o.customer_name,o.phone,o.email FROM vendor_orders vo JOIN vendors v ON v.id=vo.vendor_id JOIN orders o ON o.id=vo.order_id ORDER BY vo.created_at DESC LIMIT 300`)).results||[];return json({orders:rows});
+  }
+  if(action==='shipments')return json({shipments:(await q(env,`SELECT s.*,v.name AS vendor_name,o.order_number,o.public_tracking_id FROM shipments s JOIN vendors v ON v.id=s.vendor_id JOIN orders o ON o.id=s.order_id ORDER BY s.created_at DESC LIMIT 300`)).results||[]});
+  if(action==='payouts')return json({payouts:(await q(env,`SELECT p.*,v.name AS vendor_name,vo.order_id FROM vendor_payouts p JOIN vendors v ON v.id=p.vendor_id JOIN vendor_orders vo ON vo.id=p.vendor_order_id ORDER BY p.created_at DESC LIMIT 300`)).results||[]});
+  return json({vendors:(await q(env,'SELECT COUNT(*) AS n FROM vendors')).results?.[0]?.n||0,active_vendors:(await q(env,"SELECT COUNT(*) AS n FROM vendors WHERE status='active'")).results?.[0]?.n||0,orders:(await q(env,'SELECT COUNT(*) AS n FROM vendor_orders')).results?.[0]?.n||0,shipments:(await q(env,'SELECT COUNT(*) AS n FROM shipments')).results?.[0]?.n||0});
+ }
+ if(req.method!=='POST')return json({error:'Method not allowed.'},405);
+ let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON.'},400)}
+ if(action==='create_vendor'){
+  const name=clean(b.name);let slug=safeSlug(b.slug||name);if(!name||!slug)return json({error:'Vendor name is required.'},400);
+  const exists=(await q(env,'SELECT id FROM vendors WHERE slug=? LIMIT 1',[slug])).results?.[0];if(exists)return json({error:'Vendor slug already exists.'},409);
+  const id='vendor_'+crypto.randomUUID(),t=now();await env.DB.prepare(`INSERT INTO vendors(id,name,slug,logo_url,banner_url,description,tagline,accent_color,category,business_email,support_email,phone,status,show_on_homepage,featured_on_homepage,commission_type,commission_value,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id,name,slug,clean(b.logo_url)||null,clean(b.banner_url)||null,clean(b.description)||null,clean(b.tagline)||null,clean(b.accent_color)||'#ff6a00',clean(b.category)||'Marketplace',clean(b.business_email)||null,clean(b.support_email)||null,clean(b.phone)||null,clean(b.status)||'active',b.show_on_homepage===false?0:1,b.featured_on_homepage?1:0,clean(b.commission_type)||'percentage',Math.max(0,Number(b.commission_value||0)),t,t).run();
+  await env.DB.prepare('INSERT OR IGNORE INTO vendor_shipping_settings(vendor_id,shipping_fee,enabled,updated_at) VALUES(?,?,?,?)').bind(id,Math.max(0,Number(b.shipping_fee||0)),b.shipping_enabled===false?0:1,t).run();
+  await env.DB.prepare("INSERT OR IGNORE INTO vendor_store_settings(vendor_id,featured_product_ids,sections,social_links,updated_at) VALUES(?,?,?,?,?)").bind(id,'[]','[]','{}',t).run();
+  await env.DB.prepare("INSERT OR IGNORE INTO vendor_email_settings(vendor_id,order_notification_email,support_email,updated_at) VALUES(?,?,?,?)").bind(id,clean(b.order_email)||null,clean(b.support_email)||null,t).run();
+  if(clean(b.user_email)&&String(b.password||'')){await env.DB.prepare('INSERT INTO vendor_users(id,vendor_id,email,password_hash,role,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,clean(b.user_email).toLowerCase(),await sha(String(b.password)),clean(b.role)||'vendor_admin',1,t,t).run()}
+  return json({ok:true,vendor:{id,name,slug}});
+ }
+ if(action==='update_vendor'){
+  const id=clean(b.id);if(!id)return json({error:'Vendor ID is required.'},400);const old=(await q(env,'SELECT * FROM vendors WHERE id=? LIMIT 1',[id])).results?.[0];if(!old)return json({error:'Vendor not found.'},404);const t=now();await env.DB.prepare(`UPDATE vendors SET name=?,slug=?,logo_url=?,banner_url=?,description=?,tagline=?,accent_color=?,category=?,business_email=?,support_email=?,phone=?,status=?,show_on_homepage=?,featured_on_homepage=?,commission_type=?,commission_value=?,updated_at=? WHERE id=?`).bind(clean(b.name)||old.name,safeSlug(b.slug||old.slug),clean(b.logo_url)??old.logo_url,clean(b.banner_url)??old.banner_url,clean(b.description)??old.description,clean(b.tagline)??old.tagline,clean(b.accent_color)||old.accent_color,clean(b.category)||old.category,clean(b.business_email)||old.business_email,clean(b.support_email)||old.support_email,clean(b.phone)||old.phone,clean(b.status)||old.status,b.show_on_homepage===false?0:1,b.featured_on_homepage?1:0,clean(b.commission_type)||old.commission_type,Math.max(0,Number(b.commission_value??old.commission_value)),t,id).run();return json({ok:true});
+ }
+ if(action==='create_vendor_user'){
+  const vid=clean(b.vendor_id),email=clean(b.email).toLowerCase(),pass=String(b.password||'');if(!vid||!email||!pass)return json({error:'Vendor, email and password are required.'},400);const t=now();await env.DB.prepare('INSERT INTO vendor_users(id,vendor_id,email,password_hash,role,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),vid,email,await sha(pass),clean(b.role)||'vendor_admin',1,t,t).run();return json({ok:true});
+ }
+ if(action==='assign_product'){
+  const productId=clean(b.product_id),vendorId=clean(b.vendor_id);if(!productId||!vendorId)return json({error:'Product and vendor are required.'},400);await env.DB.prepare('UPDATE products SET vendor_id=?,vendor_featured=? WHERE id=?').bind(vendorId,b.featured?1:0,productId).run();return json({ok:true});
+ }
+ if(action==='update_shipping'){const vid=clean(b.vendor_id),fee=Math.max(0,Number(b.shipping_fee||0)),enabled=b.enabled===false?0:1;if(!vid)return json({error:'Vendor is required.'},400);await env.DB.prepare('INSERT INTO vendor_shipping_settings(vendor_id,shipping_fee,enabled,updated_at) VALUES(?,?,?,?) ON CONFLICT(vendor_id) DO UPDATE SET shipping_fee=excluded.shipping_fee,enabled=excluded.enabled,updated_at=excluded.updated_at').bind(vid,fee,enabled,now()).run();return json({ok:true});}
+ if(action==='update_vendor_store'){const vid=clean(b.vendor_id);if(!vid)return json({error:'Vendor is required.'},400);await env.DB.prepare('INSERT INTO vendor_store_settings(vendor_id,announcement,about,hero_title,hero_description,featured_product_ids,sections,social_links,custom_css,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(vendor_id) DO UPDATE SET announcement=excluded.announcement,about=excluded.about,hero_title=excluded.hero_title,hero_description=excluded.hero_description,featured_product_ids=excluded.featured_product_ids,sections=excluded.sections,social_links=excluded.social_links,custom_css=excluded.custom_css,updated_at=excluded.updated_at').bind(vid,b.announcement||null,b.about||null,b.hero_title||null,b.hero_description||null,JSON.stringify(b.featured_product_ids||[]),JSON.stringify(b.sections||[]),JSON.stringify(b.social_links||{}),b.custom_css||null,now()).run();return json({ok:true});}
+ if(action==='update_vendor_order'){const id=clean(b.id);if(!id)return json({error:'Vendor order ID is required.'},400);await env.DB.prepare('UPDATE vendor_orders SET status=?,admin_note=?,updated_at=? WHERE id=?').bind(clean(b.status)||'New',b.admin_note||null,now(),id).run();return json({ok:true});}
+ if(action==='create_shipment'){const voId=clean(b.vendor_order_id);const vo=(await q(env,'SELECT * FROM vendor_orders WHERE id=? LIMIT 1',[voId])).results?.[0];if(!vo)return json({error:'Vendor order not found.'},404);const id=crypto.randomUUID(),tid='GZS-'+crypto.randomUUID().replace(/-/g,'').slice(0,14).toUpperCase(),t=now();await env.DB.prepare('INSERT INTO shipments(id,order_id,vendor_order_id,vendor_id,shipment_tracking_id,courier_name,courier_tracking_number,courier_tracking_url,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,vo.order_id,vo.id,vo.vendor_id,tid,clean(b.courier_name)||null,clean(b.courier_tracking_number)||null,clean(b.courier_tracking_url)||null,clean(b.status)||'Processing',clean(b.note)||null,t,t).run();const items=(await q(env,'SELECT oi.* FROM order_items oi WHERE oi.order_id=? AND EXISTS (SELECT 1 FROM products p WHERE p.id=oi.product_id AND p.vendor_id=?)',[vo.order_id,vo.vendor_id])).results||[];for(const i of items)await env.DB.prepare('INSERT OR IGNORE INTO shipment_items(id,shipment_id,order_item_id,product_id,product_name,quantity,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,i.id,i.product_id,i.product_name,i.quantity,t).run();return json({ok:true,shipment_id:id,shipment_tracking_id:tid});}
+ return json({error:'Unknown marketplace action.'},400);
+}
+
+async function vendorApi(req,env){
+ await ensureMarketplace(env);const p=await vendorAuth(req,env);if(!p)return json({error:'Unauthorized.'},401);const vid=clean(p.vendor_id),u=new URL(req.url),action=clean(u.searchParams.get('action'))||'overview';
+ if(req.method==='GET'){
+  if(action==='products')return json({products:(await q(env,'SELECT * FROM products WHERE vendor_id=? ORDER BY created_at DESC',[vid])).results||[]});
+  if(action==='orders'){const orders=(await q(env,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.phone,o.email,o.address FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC LIMIT 300`,[vid])).results||[];return json({orders});}
+  if(action==='shipments')return json({shipments:(await q(env,`SELECT s.*,o.order_number,o.public_tracking_id FROM shipments s JOIN orders o ON o.id=s.order_id WHERE s.vendor_id=? ORDER BY s.created_at DESC LIMIT 300`,[vid])).results||[]});
+  if(action==='store')return json({vendor:(await q(env,'SELECT * FROM vendors WHERE id=? LIMIT 1',[vid])).results?.[0]||null,settings:(await q(env,'SELECT * FROM vendor_store_settings WHERE vendor_id=? LIMIT 1',[vid])).results?.[0]||null,shipping:(await q(env,'SELECT * FROM vendor_shipping_settings WHERE vendor_id=? LIMIT 1',[vid])).results?.[0]||null,email:(await q(env,'SELECT * FROM vendor_email_settings WHERE vendor_id=? LIMIT 1',[vid])).results?.[0]||null});
+  return json({vendor_id:vid,products:(await q(env,'SELECT COUNT(*) AS n FROM products WHERE vendor_id=?',[vid])).results?.[0]?.n||0,orders:(await q(env,'SELECT COUNT(*) AS n FROM vendor_orders WHERE vendor_id=?',[vid])).results?.[0]?.n||0,shipments:(await q(env,'SELECT COUNT(*) AS n FROM shipments WHERE vendor_id=?',[vid])).results?.[0]?.n||0});
+ }
+ if(req.method!=='POST')return json({error:'Method not allowed.'},405);let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON.'},400)}
+ if(action==='update_product'){const id=clean(b.id);const own=(await q(env,'SELECT id FROM products WHERE id=? AND vendor_id=? LIMIT 1',[id,vid])).results?.[0];if(!own)return json({error:'Product not found for this vendor.'},404);const allowed=['name','category','price','old_price','tag','description','published','vendor_featured'];const sets=[],ps=[];for(const k of allowed)if(b[k]!==undefined){sets.push(k+'=?');ps.push(b[k]===true?1:b[k]===false?0:b[k])}if(!sets.length)return json({ok:true});ps.push(id,vid);await env.DB.prepare('UPDATE products SET '+sets.join(',')+',updated_at=? WHERE id=? AND vendor_id=?').bind(...ps.slice(0,-2),now(),...ps.slice(-2)).run();return json({ok:true});}
+ if(action==='update_order'){const id=clean(b.id);const own=(await q(env,'SELECT id FROM vendor_orders WHERE id=? AND vendor_id=? LIMIT 1',[id,vid])).results?.[0];if(!own)return json({error:'Order not found.'},404);await env.DB.prepare('UPDATE vendor_orders SET status=?,admin_note=?,updated_at=? WHERE id=? AND vendor_id=?').bind(clean(b.status)||'New',b.admin_note||null,now(),id,vid).run();return json({ok:true});}
+ if(action==='update_store'){await env.DB.prepare('UPDATE vendors SET description=?,tagline=?,logo_url=?,banner_url=?,accent_color=?,updated_at=? WHERE id=?').bind(b.description||null,b.tagline||null,b.logo_url||null,b.banner_url||null,b.accent_color||'#ff6a00',now(),vid).run();await env.DB.prepare('INSERT INTO vendor_store_settings(vendor_id,announcement,about,hero_title,hero_description,featured_product_ids,sections,social_links,custom_css,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(vendor_id) DO UPDATE SET announcement=excluded.announcement,about=excluded.about,hero_title=excluded.hero_title,hero_description=excluded.hero_description,featured_product_ids=excluded.featured_product_ids,sections=excluded.sections,social_links=excluded.social_links,custom_css=excluded.custom_css,updated_at=excluded.updated_at').bind(vid,b.announcement||null,b.about||null,b.hero_title||null,b.hero_description||null,JSON.stringify(b.featured_product_ids||[]),JSON.stringify(b.sections||[]),JSON.stringify(b.social_links||{}),b.custom_css||null,now()).run();return json({ok:true});}
+ if(action==='update_shipping'){await env.DB.prepare('INSERT INTO vendor_shipping_settings(vendor_id,shipping_fee,enabled,updated_at) VALUES(?,?,?,?) ON CONFLICT(vendor_id) DO UPDATE SET shipping_fee=excluded.shipping_fee,enabled=excluded.enabled,updated_at=excluded.updated_at').bind(vid,Math.max(0,Number(b.shipping_fee||0)),b.enabled===false?0:1,now()).run();return json({ok:true});}
+ if(action==='create_shipment'){const vo=(await q(env,'SELECT * FROM vendor_orders WHERE id=? AND vendor_id=? LIMIT 1',[clean(b.vendor_order_id),vid])).results?.[0];if(!vo)return json({error:'Vendor order not found.'},404);const id=crypto.randomUUID(),tid='GZS-'+crypto.randomUUID().replace(/-/g,'').slice(0,14).toUpperCase(),t=now();await env.DB.prepare('INSERT INTO shipments(id,order_id,vendor_order_id,vendor_id,shipment_tracking_id,courier_name,courier_tracking_number,courier_tracking_url,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,vo.order_id,vo.id,vid,tid,b.courier_name||null,b.courier_tracking_number||null,b.courier_tracking_url||null,b.status||'Processing',b.note||null,t,t).run();return json({ok:true,shipment_tracking_id:tid,shipment_id:id});}
+ return json({error:'Unknown vendor action.'},400);
+}
+
+async function marketplaceOrder(req,env){
+ await ensureMarketplace(env);if(req.method!=='POST')return null;let b={};try{b=await req.clone().json()}catch{return null};const p=b.payload||b;if(!Array.isArray(p.items)||!p.items.length)return null;
+ // Let the legacy checkout validate products, referrals, rewards and create the parent order first.
+ const legacy=await baseWorker.fetch(req,env);if(!legacy.ok)return legacy;let result=await legacy.json().catch(()=>null);if(!result?.data?.id)return new Response(JSON.stringify(result),{status:legacy.status,headers:legacy.headers});
+ const orderId=result.data.id,rows={};for(const item of p.items){const pr=(await q(env,'SELECT id,vendor_id FROM products WHERE id=? LIMIT 1',[clean(item.product_id)])).results?.[0];if(!pr)continue;const vid=pr.vendor_id||'vendor_grabzone';if(!rows[vid])rows[vid]={subtotal:0,items:[]};const price=Number(item.unit_price??item.sellingPrice??0);rows[vid].subtotal+=Math.max(0,price)*Math.max(1,Number(item.quantity||1));rows[vid].items.push(item)}
+ const vids=Object.keys(rows);let shipping=0;const t=now();for(const vid of vids){const v=(await q(env,'SELECT * FROM vendors WHERE id=? LIMIT 1',[vid])).results?.[0];if(!v||v.status!=='active')continue;const s=(await q(env,'SELECT * FROM vendor_shipping_settings WHERE vendor_id=? LIMIT 1',[vid])).results?.[0];const fee=Number(s?.enabled??1)===1?Math.max(0,Number(s?.shipping_fee||0)):0;shipping+=fee;const void=crypto.randomUUID();const gross=rows[vid].subtotal+fee;await env.DB.prepare('INSERT INTO vendor_orders(id,order_id,vendor_id,subtotal,shipping_charge,total,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(void,orderId,vid,rows[vid].subtotal,fee,gross,'New',t,t).run();const commission=Math.round(gross*Math.max(0,Number(v.commission_value||0))/100*100)/100;await env.DB.prepare('INSERT INTO vendor_payouts(id,vendor_id,vendor_order_id,gross_amount,commission_amount,net_amount,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),vid,void,gross,commission,gross-commission,'pending',t,t).run()}
+ if(vids.length){const o=(await q(env,'SELECT subtotal,referral_discount,rewards_voucher_discount,mystery_discount FROM orders WHERE id=? LIMIT 1',[orderId])).results?.[0];if(o){const disc=Number(o.referral_discount||0)+Number(o.rewards_voucher_discount||0)+Number(o.mystery_discount||0);const total=Math.max(0,Number(o.subtotal||0)+shipping-disc);await env.DB.prepare('UPDATE orders SET shipping_charge=?,total=?,updated_at=? WHERE id=?').bind(shipping,total,t,orderId).run();result.data.shipping_charge=shipping;result.data.total=total}}
+ return new Response(JSON.stringify(result),{status:legacy.status,headers:legacy.headers});
+}
+
+async function track(req,env){await ensureMarketplace(env);const u=new URL(req.url),id=clean(u.searchParams.get('trackingId')||u.searchParams.get('tracking'));if(!id)return json({error:'Tracking ID is required.'},400);const order=(await q(env,'SELECT id,order_number,public_tracking_id,status,created_at,updated_at FROM orders WHERE upper(public_tracking_id)=upper(?) LIMIT 1',[id])).results?.[0];if(!order)return json({error:'Order not found.'},404);const shipments=(await q(env,`SELECT s.shipment_tracking_id,s.courier_name,s.courier_tracking_number,s.courier_tracking_url,s.status,s.note,v.id AS vendor_id,v.name AS vendor_name,v.slug AS vendor_slug FROM shipments s JOIN vendors v ON v.id=s.vendor_id WHERE s.order_id=? ORDER BY s.created_at ASC`,[order.id])).results||[];return json({success:true,order,shipments});}
+
+async function handle(req,env){
+ const path=new URL(req.url).pathname;
+ if(path==='/api/marketplace/public')return publicMarketplace(req,env);
+ if(path==='/api/marketplace/vendor-login')return vendorLogin(req,env);
+ if(path==='/api/marketplace/admin')return adminMarketplace(req,env);
+ if(path==='/api/marketplace/vendor')return vendorApi(req,env);
+ if(path==='/api/marketplace/track')return track(req,env);
+ if(path==='/api/d1'&&req.method==='POST'){
+  try{const b=await req.clone().json();if(b?.type==='rpc'&&b.fn==='create_public_order')return marketplaceOrder(req,env)}catch{}
+ }
+ return baseWorker.fetch(req,env);
+}
+export default {fetch:handle};
