@@ -26,4 +26,8 @@ window.GRABZONE_CONFIG = {
   }
   addCss('grabzone-pro-commerce-ui.css','data-gz-pro-commerce-ui');
   addJs('grabzone-pro-commerce-ui.js','data-gz-pro-commerce-ui-js');
+  if(/admin\.html$/i.test(location.pathname)||/\/admin\/?$/i.test(location.pathname)){
+    addCss('marketplace-admin.css','data-gz-marketplace-admin-css');
+    addJs('marketplace-admin.js','data-gz-marketplace-admin-js');
+  }
 })();
