@@ -32,4 +32,12 @@ window.GRABZONE_CONFIG = {
     addCss('marketplace-admin.css','data-gz-marketplace-admin-css');
     addJs('marketplace-admin.js','data-gz-marketplace-admin-js');
   }
+  if(/checkout\.html$/i.test(location.pathname)){
+    addCss('marketplace-checkout.css','data-gz-marketplace-checkout-css');
+    addJs('marketplace-checkout.js','data-gz-marketplace-checkout-js');
+  }
+  if(/track-order\.html$/i.test(location.pathname)){
+    addCss('marketplace-tracking.css','data-gz-marketplace-tracking-css');
+    addJs('marketplace-tracking.js','data-gz-marketplace-tracking-js');
+  }
 })();
