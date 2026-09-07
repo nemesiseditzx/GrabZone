@@ -1,0 +1,95 @@
+import baseWorker from './marketplace-vendor-product-worker.mjs';
+
+const clean=v=>String(v??'').trim();
+const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+const money=n=>'৳'+Number(n||0).toLocaleString('en-BD');
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+function missingEmailConfig(env){
+  return ['GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','GOOGLE_REFRESH_TOKEN','GMAIL_FROM_EMAIL'].filter(k=>!clean(env[k]));
+}
+
+async function gmailAccessToken(env){
+  const body=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,client_secret:env.GOOGLE_CLIENT_SECRET,refresh_token:env.GOOGLE_REFRESH_TOKEN,grant_type:'refresh_token'});
+  const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok||!data.access_token)throw new Error(data.error_description||data.error||'Could not authenticate with Google Gmail.');
+  return data.access_token;
+}
+
+function b64url(bytes){let s='';for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode(...bytes.subarray(i,i+0x8000));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function utf8b64url(text){return b64url(new TextEncoder().encode(String(text)))}
+function header(v){return /[^\x00-\x7F]/.test(String(v||''))?'=?UTF-8?B?'+b64url(new TextEncoder().encode(String(v)))+'?=':String(v||'')}
+function rawEmail(from,to,subject,html){return utf8b64url(['From: GrabZone <'+from+'>','To: '+to,'Subject: '+header(subject),'MIME-Version: 1.0','Content-Type: text/html; charset=UTF-8','',html].join('\r\n'))}
+
+async function sendMail(env,to,subject,html){
+  if(!clean(to))return {ok:false,skipped:true,reason:'missing_recipient'};
+  const missing=missingEmailConfig(env);if(missing.length)throw new Error('Gmail email service is not configured: '+missing.join(', '));
+  const accessToken=await gmailAccessToken(env);
+  const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify({raw:rawEmail(clean(env.GMAIL_FROM_EMAIL),clean(to),subject,html)})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data?.error?.message||data?.message||'Gmail rejected the request.');
+  return {ok:true,id:data?.id||null};
+}
+
+function orderEmailHtml(order,items,title,intro,extra=''){
+  const rows=(items||[]).map(i=>'<tr><td style="padding:10px 0;border-bottom:1px solid #eee">'+esc(i.product_name||'Product')+'</td><td style="padding:10px 0;border-bottom:1px solid #eee;text-align:center">'+Number(i.quantity||1)+'</td><td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right">'+money(Number(i.line_total||Number(i.unit_price||0)*Number(i.quantity||1)))+'</td></tr>').join('');
+  return '<!doctype html><html><body style="margin:0;background:#f5f7f6;font-family:Arial,sans-serif;color:#111"><div style="max-width:650px;margin:30px auto;background:#fff;border:1px solid #e4e8e6;border-radius:18px;padding:28px"><div style="font-weight:900;letter-spacing:.08em;font-size:18px">GRABZONE</div><h1 style="font-size:28px;margin:24px 0 8px">'+esc(title)+'</h1><p style="color:#626a67;line-height:1.6">'+esc(intro)+'</p><div style="background:#effaf5;border-radius:14px;padding:16px;margin:20px 0"><div style="font-size:11px;color:#6d7471;letter-spacing:.12em;font-weight:800">ORDER NUMBER</div><div style="font-size:24px;font-weight:900;color:#079b6c;margin-top:4px">'+esc(order.order_number||'')+'</div><div style="font-size:11px;color:#6d7471;letter-spacing:.12em;font-weight:800;margin-top:14px">PRIVATE TRACKING ID</div><div style="font-size:20px;font-weight:900;color:#111;margin-top:4px">'+esc(order.public_tracking_id||'')+'</div>'+extra+'</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:10px 0">Product</th><th style="text-align:center;padding:10px 0">Qty</th><th style="text-align:right;padding:10px 0">Amount</th></tr></thead><tbody>'+rows+'</tbody></table><div style="margin-top:18px;border-top:1px solid #eee;padding-top:12px"><div style="display:flex;justify-content:space-between;padding:5px 0"><span>Subtotal</span><b>'+money(order.subtotal)+'</b></div><div style="display:flex;justify-content:space-between;padding:5px 0"><span>Shipping</span><b>'+money(order.shipping_charge)+'</b></div><div style="display:flex;justify-content:space-between;padding:10px 0;font-size:18px"><span>Total</span><b>'+money(order.total)+'</b></div></div><div style="margin-top:20px;background:#f7f8f7;border-radius:12px;padding:14px;font-size:13px;line-height:1.6"><b>Customer:</b> '+esc(order.customer_name||'')+'<br><b>Phone:</b> '+esc(order.phone||'')+'<br><b>Delivery:</b> '+esc(order.address||'')+'<br>'+esc(order.upazila||'')+', '+esc(order.district||'')+', '+esc(order.division||'')+'</div><p style="margin-top:24px;color:#777;font-size:12px">This email was sent automatically by GrabZone.</p></div></body></html>';
+}
+
+async function sendCustomerOrderEmail(env,orderNumber,type='order_created'){
+  const order=(await env.DB.prepare('SELECT * FROM orders WHERE order_number=? LIMIT 1').bind(orderNumber).all()).results?.[0];
+  if(!order)throw new Error('Order not found.');
+  const items=(await env.DB.prepare('SELECT * FROM order_items WHERE order_id=? ORDER BY id').bind(order.id).all()).results||[];
+  const customerEmail=clean(order.email);if(!customerEmail)throw new Error('Order has no customer email.');
+  const status=order.status||'New';
+  const title=type==='status_updated'?'Your order status: '+status:'Your order has been received';
+  const intro=type==='status_updated'?( {Contacting:'Our team is contacting you to verify your order details.',Confirmed:'Your order has been confirmed by the GrabZone team.',Processing:'Your order is now being prepared for delivery.',Shipped:'Your order has been shipped and is on the way.',Delivered:'Your order has been marked as delivered. Thank you for shopping with GrabZone!',Cancelled:'Your order has been cancelled. Please contact GrabZone if you need assistance.'}[status]||'Your GrabZone order status has been updated.'):'Thank you for shopping with GrabZone. Your order has been received successfully. Our team will call you to verify the details before processing it.';
+  const html=orderEmailHtml(order,items,title,intro,'<div style="font-size:12px;color:#626a67;margin-top:8px">Use this Private Tracking ID on the GrabZone Track Your Order page.</div>');
+  return sendMail(env,customerEmail,type==='status_updated'?'GrabZone order '+order.order_number+' — '+status:'GrabZone order received — '+order.order_number,html);
+}
+
+async function sendVendorOrderEmails(env,orderId){
+  const vendors=(await env.DB.prepare(`SELECT vo.*,v.name vendor_name,v.business_email,v.support_email,ves.order_notification_email,ves.vendor_email_notifications FROM vendor_orders vo JOIN vendors v ON v.id=vo.vendor_id LEFT JOIN vendor_email_settings ves ON ves.vendor_id=vo.vendor_id WHERE vo.order_id=?`).bind(orderId).all()).results||[];
+  const order=(await env.DB.prepare('SELECT * FROM orders WHERE id=? LIMIT 1').bind(orderId).all()).results?.[0];if(!order)return;
+  for(const v of vendors){
+    if(Number(v.vendor_email_notifications??1)!==1)continue;
+    const to=clean(v.order_notification_email||v.business_email||v.support_email);if(!to)continue;
+    const items=(await env.DB.prepare(`SELECT oi.* FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=? AND p.vendor_id=? ORDER BY oi.id`).bind(orderId,v.vendor_id).all()).results||[];
+    const html=orderEmailHtml({...order,subtotal:v.subtotal,shipping_charge:v.shipping_charge,total:v.total},items,'New vendor order — '+v.vendor_name,'A new marketplace order contains products from your store. Please review and process the seller order.');
+    try{await sendMail(env,to,'GrabZone vendor order '+order.order_number+' — '+v.vendor_name,html)}catch(e){console.error('GrabZone vendor order email:',e)}
+  }
+}
+
+async function sendShipmentEmail(env,shipmentId){
+  const s=(await env.DB.prepare(`SELECT s.*,v.name vendor_name,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.address,o.upazila,o.district,o.division FROM shipments s JOIN vendors v ON v.id=s.vendor_id JOIN orders o ON o.id=s.order_id WHERE s.id=? LIMIT 1`).bind(shipmentId).all()).results?.[0];if(!s||!clean(s.email))return;
+  const items=(await env.DB.prepare('SELECT product_name,quantity FROM shipment_items WHERE shipment_id=? ORDER BY id').bind(shipmentId).all()).results||[];
+  const extra='<div style="margin-top:14px;font-size:13px;line-height:1.7"><b>Seller:</b> '+esc(s.vendor_name)+'<br><b>Shipment:</b> '+esc(s.shipment_tracking_id)+'<br><b>Courier:</b> '+esc(s.courier_name||'—')+'<br><b>Courier Tracking:</b> '+esc(s.courier_tracking_number||'—')+(clean(s.courier_tracking_url)?'<br><a href="'+esc(s.courier_tracking_url)+'">Track with courier</a>':'')+'</div>';
+  const html=orderEmailHtml(s,items,'Your GrabZone shipment is updated','A seller shipment for your order has been created or updated. Use the seller shipment ID below for tracking.',extra);
+  try{await sendMail(env,s.email,'GrabZone shipment update — '+s.order_number+' — '+s.vendor_name,html)}catch(e){console.error('GrabZone shipment email:',e)}
+}
+
+async function handleEmailApi(req,env){
+  if(req.method!=='POST')return json({error:'Method not allowed'},405);
+  const missing=missingEmailConfig(env);if(missing.length)return json({error:'Gmail email service is not configured.',missing},503);
+  let body={};try{body=await req.json()}catch{return json({error:'Invalid JSON.'},400)}
+  const orderNumber=clean(body.orderNumber);if(!orderNumber)return json({error:'Missing order number.'},400);
+  try{return json(await sendCustomerOrderEmail(env,orderNumber,body.type||'order_created'))}catch(e){console.error('GrabZone customer email:',e);return json({error:e.message||'Email send failed.'},500)}
+}
+
+async function afterOrder(req,env,response,ctx){
+  try{if(!response.ok)return;const data=await response.clone().json().catch(()=>null);const orderNumber=clean(data?.order?.order_number||data?.order_number||data?.data?.order_number);const orderId=clean(data?.order?.id||data?.order_id||data?.data?.order_id);if(orderId||orderNumber){let id=orderId;if(!id&&orderNumber)id=(await env.DB.prepare('SELECT id FROM orders WHERE order_number=? LIMIT 1').bind(orderNumber).all()).results?.[0]?.id;if(id)ctx.waitUntil(sendVendorOrderEmails(env,id).catch(e=>console.error('GrabZone vendor order emails:',e)))}}catch(e){console.error('GrabZone marketplace order email hook:',e)}}
+
+async function afterShipment(req,env,response,ctx){
+  try{if(!response.ok)return;const action=new URL(req.url).searchParams.get('action');if(action!=='create_shipment')return;const body=await req.clone().json().catch(()=>({}));const vid=clean(body.vendor_order_id);if(!vid)return;const s=(await env.DB.prepare('SELECT id FROM shipments WHERE vendor_order_id=? ORDER BY created_at DESC LIMIT 1').bind(vid).all()).results?.[0];if(s?.id)ctx.waitUntil(sendShipmentEmail(env,s.id))}catch(e){console.error('GrabZone shipment email hook:',e)}}
+
+export default {async fetch(req,env,ctx){
+  const u=new URL(req.url);
+  if(u.pathname==='/api/send-order-email')return handleEmailApi(req,env);
+  const isOrder=u.pathname==='/api/d1'&&req.method==='POST';
+  const isShipment=(u.pathname==='/api/marketplace/vendor'||u.pathname==='/api/marketplace/admin')&&u.searchParams.get('action')==='create_shipment';
+  const response=await baseWorker.fetch(req,env,ctx);
+  if(isOrder){const cloned=req.clone();const body=await cloned.json().catch(()=>({}));if(body?.action==='create_public_order'||body?.data?.action==='create_public_order')await afterOrder(req,env,response,ctx)}
+  if(isShipment)await afterShipment(req,env,response,ctx);
+  return response;
+}};
