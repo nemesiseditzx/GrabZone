@@ -1,0 +1,26 @@
+name: Validate GrabZone Marketplace
+
+on:
+  push:
+    branches:
+      - marketplace-multivendor-dev
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          for f in *.js *.mjs; do
+            [ -f "$f" ] || continue
+            node --check "$f"
+          done
