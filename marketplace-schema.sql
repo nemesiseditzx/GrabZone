@@ -1,6 +1,6 @@
 -- GrabZone Multi-Vendor Marketplace foundation
 -- Development branch only. Existing orders/products remain the parent system.
--- Order identity stays in orders.order_number/public_tracking_id.
+-- COD settlement model: customer payment is collected by the supplier/vendor; GrabZone records only its platform charge.
 
 CREATE TABLE IF NOT EXISTS vendors (
   id TEXT PRIMARY KEY,
@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS vendor_payouts (
   gross_amount REAL NOT NULL DEFAULT 0,
   commission_amount REAL NOT NULL DEFAULT 0,
   net_amount REAL NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'pending',
+  status TEXT NOT NULL DEFAULT 'cod_commission_due',
   paid_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
