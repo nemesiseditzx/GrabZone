@@ -11,8 +11,9 @@ window.GRABZONE_CONFIG = {
   instagram: "https://instagram.com/yourstore"
 };
 (function(){
- function addCss(href,attr){if(document.querySelector('link['+attr+']'))return;var l=document.createElement('link');l.rel='stylesheet';l.href=href;l.setAttribute(attr,'1');document.head.appendChild(l)}
- function addJs(src,attr){if(document.querySelector('script['+attr+']'))return;var s=document.createElement('script');s.src=src;s.defer=true;s.setAttribute(attr,'1');document.head.appendChild(s)}
+ var v='20260907-dev2';
+ function addCss(href,attr){if(document.querySelector('link['+attr+']'))return;var l=document.createElement('link');l.rel='stylesheet';l.href=href+'?v='+v;l.setAttribute(attr,'1');document.head.appendChild(l)}
+ function addJs(src,attr){if(document.querySelector('script['+attr+']'))return;var s=document.createElement('script');s.src=src+'?v='+v;s.defer=true;s.setAttribute(attr,'1');document.head.appendChild(s)}
  addCss('grabzone-pro-commerce-ui.css','data-gz-pro-commerce-ui');addJs('grabzone-pro-commerce-ui.js','data-gz-pro-commerce-ui-js');
  addCss('marketplace-storefront.css','data-gz-marketplace-storefront-css');addJs('marketplace-storefront.js','data-gz-marketplace-storefront-js');addJs('marketplace-storefront-filter.js','data-gz-marketplace-storefront-filter-js');
  if(/admin\.html$/i.test(location.pathname)||/\/admin\/?$/i.test(location.pathname)){addCss('marketplace-admin.css','data-gz-marketplace-admin-css');addJs('marketplace-admin.js','data-gz-marketplace-admin-js');addJs('marketplace-admin-controls.js','data-gz-marketplace-admin-controls-js')}
