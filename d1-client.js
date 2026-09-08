@@ -167,4 +167,14 @@ window.grabzoneD1={from:builder,rpc:async(fn,args={})=>{
  }catch(e){return {data:null,error:{message:e.message,status:e.status}}}
 },auth};
 window.getToken=()=>read(TOKEN_KEY);
+
+/* GrabPoints auth animation is isolated to the customer Rewards page. */
+try{
+  if(/(?:^|\/)grabpoints\.html(?:$|[?#])/i.test(location.pathname+location.search+location.hash)){
+    const s=document.createElement('script');
+    s.src='grabpoints-auth-animation.js?v=20260907auth1';
+    s.async=true;
+    document.head.appendChild(s);
+  }
+}catch{}
 })();
