@@ -21,111 +21,94 @@ jobs:
           ref: feature/animated-grabpoints-auth
           fetch-depth: 0
 
-      - name: Install premium email renderer
+      - name: Install premium Rewards email system
         shell: python
         run: |
           from pathlib import Path
+          import re
+
           p = Path('worker.mjs')
           text = p.read_text(encoding='utf-8')
+
           start = text.index('function rewardEmailTheme(')
           end = text.index('async function rewardAudit(', start)
           replacement = r'''function rewardEmailTheme(tier){
- const k=String(tier||"Member").toLowerCase();
- if(k==="silver")return{key:"silver",a:"#94a3b8",b:"#e2e8f0",deep:"#475569",label:"SILVER",icon:"✦"};
- if(k==="gold")return{key:"gold",a:"#f59e0b",b:"#fde68a",deep:"#92400e",label:"GOLD",icon:"◆"};
- if(k==="platinum")return{key:"platinum",a:"#8b5cf6",b:"#ddd6fe",deep:"#5b21b6",label:"PLATINUM",icon:"✧"};
- return{key:"member",a:"#ff6b00",b:"#ffd0ad",deep:"#c24100",label:"MEMBER",icon:"●"};
-}
-function rewardEmailLogo(){
- return "<div style='font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:900;letter-spacing:-1px;color:#fff;line-height:1'>Grab<span style='color:#ff6b00'>Zone</span></div><div style='margin-top:4px;font-size:9px;font-weight:800;letter-spacing:3px;color:#a7a7ad'>REWARDS</div>";
-}
-function rewardEmailButton(url,label){
- const href=htmlEsc(url||"https://grab-zone-ten.vercel.app/grabpoints");
- return "<a href='"+href+"' style='display:inline-block;background:#ff6b00;color:#fff;text-decoration:none;padding:13px 20px;border-radius:12px;font-size:13px;font-weight:900'>"+htmlEsc(label)+" →</a>";
-}
-function rewardEmailTierCard(tier){
- const th=rewardEmailTheme(tier);
- return "<div style='margin-top:20px;padding:16px 18px;border-radius:14px;background:linear-gradient(135deg,"+th.a+"14,"+th.b+"33);border:1px solid "+th.a+"55'><div style='font-size:10px;font-weight:900;letter-spacing:2px;color:"+th.deep+"'>MEMBERSHIP TIER</div><div style='margin-top:5px;font-size:20px;font-weight:900;color:#171717'>"+th.icon+" "+htmlEsc(th.label)+"</div></div>";
-}
-async function sendRewardsEmail(env,to,subject,title,body,preheader="",strict=false,tier="Member",memberName="",memberId=""){
- try{
-  if(!to||!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET||!env.GOOGLE_REFRESH_TOKEN||!env.GMAIL_FROM_EMAIL){if(strict)throw new Error("Rewards email service is not configured.");return false;}
-  const th=rewardEmailTheme(tier),name=htmlEsc(memberName||""),mid=htmlEsc(memberId||""),safeTitle=htmlEsc(title),safeSubject=String(subject||"GrabZone Rewards");
-  const greeting=name?"Hi <b>"+name+"</b>,":"Hi there,";
-  const memberBlock=(name||mid)?"<div style='margin:0 0 22px;padding:15px 16px;border:1px solid "+th.a+"55;border-radius:14px;background:#fff'><div style='font-size:10px;font-weight:900;letter-spacing:2px;color:"+th.deep+"'>"+th.icon+" "+th.label+" MEMBER</div>"+(name?"<div style='font-size:16px;font-weight:900;margin-top:5px;color:#16161a'>"+name+"</div>":"")+(mid?"<div style='font-size:11px;color:#777;margin-top:3px'>Member ID · <b>"+mid+"</b></div>":"")+"</div>":"";
-  const hero="<div style='background:#111114;padding:30px 30px 28px;position:relative'><div style='height:3px;width:54px;background:"+th.a+";margin-bottom:22px'></div>"+rewardEmailLogo()+"<div style='margin-top:30px;font-size:11px;font-weight:900;letter-spacing:3px;color:"+th.a+"'>GRABZONE REWARDS</div><div style='font-size:31px;line-height:1.08;font-weight:900;letter-spacing:-.8px;color:#fff;margin-top:9px'>"+safeTitle+"</div><div style='display:inline-block;margin-top:15px;padding:6px 11px;border-radius:999px;border:1px solid "+th.a+"88;color:#fff;font-size:10px;font-weight:900;letter-spacing:1.4px'>"+th.icon+" "+th.label+" MEMBER</div><div style='position:absolute;right:24px;top:36px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 35% 35%,"+th.b+"55,transparent 62%);border:1px solid "+th.a+"33'></div></div>";
-  const security="<div style='margin-top:26px;padding:17px 18px;border-radius:14px;background:#f7f7f5;border:1px solid #e9e9e4'><div style='font-size:12px;font-weight:900;color:#171717'>Security & account activity</div><div style='font-size:12px;line-height:1.6;color:#707070;margin-top:5px'>If you did not request this activity, contact GrabZone Support immediately.</div></div>";
-  const footer="<div style='margin-top:28px;padding-top:20px;border-top:1px solid #e9e9e9'><div style='text-align:center'>"+rewardEmailButton("https://grab-zone-ten.vercel.app/grabpoints","Open GrabZone Rewards")+"</div><div style='margin-top:20px;font-size:12px;color:#777;line-height:1.6'>Thanks for being part of <b style='color:#ff6b00'>GrabZone Rewards</b>.</div><div style='margin-top:14px;font-size:10px;font-weight:900;letter-spacing:2.5px;color:#999'>GRABZONE — MORE THAN A STORE</div><div style='margin-top:8px;font-size:11px;color:#999'>Need help? Contact GrabZone Support.</div></div>";
-  const html="<!doctype html><html><body style='margin:0;background:#111114;font-family:Arial,Helvetica,sans-serif;color:#171717'><div style='width:100%;background:#111114;padding:24px 10px'><div style='max-width:620px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;border:1px solid #2b2b2f;box-shadow:0 18px 60px rgba(0,0,0,.3)'>"+hero+"<div style='padding:28px 30px 30px;background:#fff'>"+memberBlock+"<div style='font-size:14px;color:#444;line-height:1.7'>"+greeting+"<div style='margin-top:12px'>"+body+"</div></div>"+security+footer+"</div></div><div style='max-width:620px;margin:13px auto 0;text-align:center;font-size:9px;letter-spacing:1.8px;color:#666'>YOU ARE RECEIVING THIS EMAIL FROM GRABZONE REWARDS</div></div></body></html>";
-  const plain=String(safeTitle)+"\n\n"+(name?"Hi, "+String(memberName)+"\n":"")+(mid?"Member ID: "+String(memberId)+"\n":"")+"Tier: "+String(th.label)+"\n\n"+String(preheader||body).replace(/<[^>]+>/g,"");
-  const boundary="gzr_"+crypto.randomUUID().replace(/-/g,"");
-  const raw=["From: GrabZone <"+env.GMAIL_FROM_EMAIL+">","To: "+to,"Subject: "+mimeSubject(safeSubject),"MIME-Version: 1.0","Content-Type: multipart/alternative; boundary=\""+boundary+"\"","","--"+boundary,'Content-Type: text/plain; charset="UTF-8"',"Content-Transfer-Encoding: 8bit","",plain,"--"+boundary,'Content-Type: text/html; charset="UTF-8"',"Content-Transfer-Encoding: 8bit","",html,"--"+boundary+"--",""] .join("\r\n");
-  const rr=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+await gmailToken(env),"Content-Type":"application/json"},body:JSON.stringify({raw:btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"")})});
-  if(!rr.ok){const ed=await rr.json().catch(()=>({})),msg=ed?.error?.message||("Gmail request failed ("+rr.status+").");if(strict)throw new Error(msg);console.warn("Rewards email:",msg);return false}
-  return true;
- }catch(e){console.warn("Rewards email:",e);if(strict)throw e;return false}
-}
-'''
-          p.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
+          const k=String(tier||"Member").toLowerCase();
+          if(k==="silver")return{key:"silver",a:"#94a3b8",b:"#e2e8f0",deep:"#475569",label:"SILVER",icon:"✦"};
+          if(k==="gold")return{key:"gold",a:"#f59e0b",b:"#fde68a",deep:"#92400e",label:"GOLD",icon:"◆"};
+          if(k==="platinum")return{key:"platinum",a:"#8b5cf6",b:"#ddd6fe",deep:"#5b21b6",label:"PLATINUM",icon:"✧"};
+          return{key:"member",a:"#ff6b00",b:"#ffd0ad",deep:"#c24100",label:"MEMBER",icon:"●"};
+          }
+          function rewardEmailLogo(){
+          return "<div style='font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:900;letter-spacing:-1px;color:#fff;line-height:1'>Grab<span style='color:#ff6b00'>Zone</span></div><div style='margin-top:4px;font-size:9px;font-weight:800;letter-spacing:3px;color:#a7a7ad'>REWARDS</div>";
+          }
+          function rewardEmailButton(url,label){
+          const href=htmlEsc(url||"https://grab-zone-ten.vercel.app/grabpoints");
+          return "<a href='"+href+"' style='display:inline-block;background:#ff6b00;color:#fff;text-decoration:none;padding:13px 20px;border-radius:12px;font-size:13px;font-weight:900'>"+htmlEsc(label)+" →</a>";
+          }
+          function rewardEmailTierCard(tier){
+          const th=rewardEmailTheme(tier);
+          return "<div style='margin-top:20px;padding:16px 18px;border-radius:14px;background:linear-gradient(135deg,"+th.a+"14,"+th.b+"33);border:1px solid "+th.a+"55'><div style='font-size:10px;font-weight:900;letter-spacing:2px;color:"+th.deep+"'>MEMBERSHIP TIER</div><div style='margin-top:5px;font-size:20px;font-weight:900;color:#171717'>"+th.icon+" "+htmlEsc(th.label)+"</div></div>";
+          }
+          async function sendRewardsEmail(env,to,subject,title,body,preheader="",strict=false,tier="Member",memberName="",memberId=""){
+          try{
+          if(!to||!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET||!env.GOOGLE_REFRESH_TOKEN||!env.GMAIL_FROM_EMAIL){if(strict)throw new Error("Rewards email service is not configured.");return false;}
+          const th=rewardEmailTheme(tier),name=htmlEsc(memberName||""),mid=htmlEsc(memberId||""),safeTitle=htmlEsc(title),safeSubject=String(subject||"GrabZone Rewards");
+          const greeting=name?"Hi <b>"+name+"</b>,":"Hi there,";
+          const memberBlock=(name||mid)?"<div style='margin:0 0 22px;padding:15px 16px;border:1px solid "+th.a+"55;border-radius:14px;background:#fff'><div style='font-size:10px;font-weight:900;letter-spacing:2px;color:"+th.deep+"'>"+th.icon+" "+th.label+" MEMBER</div>"+(name?"<div style='font-size:16px;font-weight:900;margin-top:5px;color:#16161a'>"+name+"</div>":"")+(mid?"<div style='font-size:11px;color:#777;margin-top:3px'>Member ID · <b>"+mid+"</b></div>":"")+"</div>":"";
+          const hero="<div style='background:#111114;padding:30px 30px 28px;position:relative'><div style='height:3px;width:54px;background:"+th.a+";margin-bottom:22px'></div>"+rewardEmailLogo()+"<div style='margin-top:30px;font-size:11px;font-weight:900;letter-spacing:3px;color:"+th.a+"'>GRABZONE REWARDS</div><div style='font-size:31px;line-height:1.08;font-weight:900;letter-spacing:-.8px;color:#fff;margin-top:9px'>"+safeTitle+"</div><div style='display:inline-block;margin-top:15px;padding:6px 11px;border-radius:999px;border:1px solid "+th.a+"88;color:#fff;font-size:10px;font-weight:900;letter-spacing:1.4px'>"+th.icon+" "+th.label+" MEMBER</div><div style='position:absolute;right:24px;top:36px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 35% 35%,"+th.b+"55,transparent 62%);border:1px solid "+th.a+"33'></div></div>";
+          const security="<div style='margin-top:26px;padding:17px 18px;border-radius:14px;background:#f7f7f5;border:1px solid #e9e9e4'><div style='font-size:12px;font-weight:900;color:#171717'>Security & account activity</div><div style='font-size:12px;line-height:1.6;color:#707070;margin-top:5px'>If you did not request this activity, contact GrabZone Support immediately.</div></div>";
+          const footer="<div style='margin-top:28px;padding-top:20px;border-top:1px solid #e9e9e9'><div style='text-align:center'>"+rewardEmailButton("https://grab-zone-ten.vercel.app/grabpoints","Open GrabZone Rewards")+"</div><div style='margin-top:20px;font-size:12px;color:#777;line-height:1.6'>Thanks for being part of <b style='color:#ff6b00'>GrabZone Rewards</b>.</div><div style='margin-top:14px;font-size:10px;font-weight:900;letter-spacing:2.5px;color:#999'>GRABZONE — MORE THAN A STORE</div><div style='margin-top:8px;font-size:11px;color:#999'>Need help? Contact GrabZone Support.</div></div>";
+          const html="<!doctype html><html><body style='margin:0;background:#111114;font-family:Arial,Helvetica,sans-serif;color:#171717'><div style='width:100%;background:#111114;padding:24px 10px'><div style='max-width:620px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;border:1px solid #2b2b2f;box-shadow:0 18px 60px rgba(0,0,0,.3)'>"+hero+"<div style='padding:28px 30px 30px;background:#fff'>"+memberBlock+"<div style='font-size:14px;color:#444;line-height:1.7'>"+greeting+"<div style='margin-top:12px'>"+body+"</div></div>"+security+footer+"</div></div><div style='max-width:620px;margin:13px auto 0;text-align:center;font-size:9px;letter-spacing:1.8px;color:#666'>YOU ARE RECEIVING THIS EMAIL FROM GRABZONE REWARDS</div></div></body></html>";
+          const plain=String(safeTitle)+"\n\n"+(name?"Hi, "+String(memberName)+"\n":"")+(mid?"Member ID: "+String(memberId)+"\n":"")+"Tier: "+String(th.label)+"\n\n"+String(preheader||body).replace(/<[^>]+>/g,"");
+          const boundary="gzr_"+crypto.randomUUID().replace(/-/g,"");
+          const raw=["From: GrabZone <"+env.GMAIL_FROM_EMAIL+">","To: "+to,"Subject: "+mimeSubject(safeSubject),"MIME-Version: 1.0","Content-Type: multipart/alternative; boundary=\""+boundary+"\"","","--"+boundary,'Content-Type: text/plain; charset="UTF-8"',"Content-Transfer-Encoding: 8bit","",plain,"--"+boundary,'Content-Type: text/html; charset="UTF-8"',"Content-Transfer-Encoding: 8bit","",html,"--"+boundary+"--",""] .join("\r\n");
+          const rr=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+await gmailToken(env),"Content-Type":"application/json"},body:JSON.stringify({raw:btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"")})});
+          if(!rr.ok){const ed=await rr.json().catch(()=>({})),msg=ed?.error?.message||("Gmail request failed ("+rr.status+").");if(strict)throw new Error(msg);console.warn("Rewards email:",msg);return false}
+          return true;
+          }catch(e){console.warn("Rewards email:",e);if(strict)throw e;return false}
+          }
+          '''
+          text = text[:start] + replacement + text[end:]
 
-      - name: Add tier-aware Rewards event emails
-        shell: python
-        run: |
-          from pathlib import Path
-          p=Path('worker.mjs')
-          text=p.read_text(encoding='utf-8')
+          text = text.replace('await sendRewardsEmail(env,email,"Welcome to GrabZone Rewards","Your Rewards account is ready","<p>Hi "+htmlEsc(name)+" 👋</p><p>Your GrabZone Rewards account <b>"+memberId+"</b> is now active.</p><p>Your available balance is <b>"+Number(old.points||0).toLocaleString("en-BD")+" GP</b>.</p>");','await sendRewardsEmail(env,email,"Welcome to GrabZone Rewards","Your Rewards account is ready","<p>Your GrabZone Rewards account <b>"+memberId+"</b> is now active.</p><p>Your available balance is <b>"+Number(old.points||0).toLocaleString("en-BD")+" GP</b>.</p>"+rewardEmailTierCard("Member"),"",false,"Member",name,memberId);',1)
+          text = text.replace('await sendRewardsEmail(env,email,"GrabZone Rewards PIN verification","Your verification code","<p>Use this code to verify your PIN reset:</p><div style=\'font-size:32px;font-weight:900;letter-spacing:8px;text-align:center;padding:18px;background:#f6f6f4;border-radius:14px\'>"+code+"</div><p>This code expires in 10 minutes and can be used once.</p>","",true)','await sendRewardsEmail(env,email,"GrabZone Rewards PIN verification","Your verification code","<p>Use this code to verify your PIN reset:</p><div style=\'font-size:32px;font-weight:900;letter-spacing:8px;text-align:center;padding:18px;background:#f6f6f4;border-radius:14px\'>"+code+"</div><p>This code expires in 10 minutes and can be used once.</p>","",true,m?await rewardTier(env,m.id).then(x=>x.tier):"Member",m?.name||"",m?.member_id||"")',1)
+          text = text.replace('await sendRewardsEmail(env,m.email,"GrabZone Rewards PIN changed","Your PIN was reset","<p>Your GrabZone Rewards PIN has been successfully reset.</p><p>If you did not do this, contact GrabZone Support.</p>");','await sendRewardsEmail(env,m.email,"GrabZone Rewards PIN changed","Your PIN was reset","<p>Your GrabZone Rewards PIN has been successfully reset.</p><p>If you did not do this, contact GrabZone Support.</p>","",false,(await rewardTier(env,m.id)).tier,m.name,m.member_id);',1)
 
           marker='async function rpc(env,fn,a,isAdmin){'
-          helper='''async function sendTierChangeEmail(env,member,fromTier,toTier,earned){
- const rank={Member:0,Silver:1,Gold:2,Platinum:3};
- if(!member||!toTier||fromTier===toTier)return false;
- const up=(rank[toTier]||0)>(rank[fromTier]||0);
- const subject=up?"GrabZone Rewards — Welcome to "+toTier:"GrabZone Rewards — Membership tier update";
- const title=up?"You just leveled up.":"Your membership tier changed";
- const body=up?"<p>Congratulations! Your Rewards membership moved from <b>"+htmlEsc(fromTier)+"</b> to <b>"+htmlEsc(toTier)+"</b>.</p><p>Your qualifying GrabPoints for the current 12-month window are <b>"+Number(earned||0).toLocaleString("en-BD")+" GP</b>.</p><p>Your new tier benefits and cashback rate are now active.</p>":"<p>Your Rewards membership moved from <b>"+htmlEsc(fromTier)+"</b> to <b>"+htmlEsc(toTier)+"</b>.</p><p>Your current qualifying GrabPoints for the 12-month window are <b>"+Number(earned||0).toLocaleString("en-BD")+" GP</b>.</p><p>Keep earning qualifying GrabPoints to move back up and unlock higher benefits.</p>";
- await sendRewardsEmail(env,member.email,subject,title,body+rewardEmailTierCard(toTier),"",false,toTier,member.name,member.member_id);
- return true;
-}
-
-'''
-          if marker not in text: raise SystemExit('rpc marker not found')
-          if 'async function sendTierChangeEmail(' not in text:
-              text=text.replace(marker,helper+marker,1)
-
-          # Delivered-order GP email + tier transition.
-          text=text.replace('if(Number(gpSettings?.grabpoints_enabled??1)===1&&rm){tInfo=await rewardTier(env,rm.id);', 'if(Number(gpSettings?.grabpoints_enabled??1)===1&&rm){tInfo=await rewardTier(env,rm.id);const tierBefore=tInfo.tier;',1)
-          old='await sendRewardsEmail(env,rm.email,"GrabZone Rewards — GP Earned","You earned GrabPoints",body,"",false,tInfo.tier,rm.name,rm.member_id);'
-          new='const tierAfter=await rewardTier(env,rm.id);await sendRewardsEmail(env,rm.email,"GrabZone Rewards — GP Earned","You earned GrabPoints",body+rewardEmailTierCard(tierAfter.tier),"",false,tierAfter.tier,rm.name,rm.member_id);if(tierAfter.tier!==tierBefore)await sendTierChangeEmail(env,rm,tierBefore,tierAfter.tier,tierAfter.earned);'
-          if old in text:text=text.replace(old,new,1)
-
-          # Redemption.
+          tier_helper=r'''async function sendTierChangeEmail(env,member,fromTier,toTier,earned,reason=""){
+          const order={Member:0,Silver:1,Gold:2,Platinum:3};
+          if(!member||!toTier||fromTier===toTier)return false;
+          const upgraded=(order[toTier]||0)>(order[fromTier]||0);
+          const direction=upgraded?"UPGRADE":"DOWNGRADE";
+          const subject=upgraded?"GrabZone Rewards — Welcome to "+toTier:"GrabZone Rewards — Membership tier update";
+          const title=upgraded?"You just leveled up.":"Your membership tier changed";
+          const body=upgraded?"<p>Congratulations! Your Rewards membership moved from <b>"+htmlEsc(fromTier)+"</b> to <b>"+htmlEsc(toTier)+"</b>.</p><p>Your qualifying GrabPoints for the current 12-month window are <b>"+Number(earned||0).toLocaleString("en-BD")+" GP</b>.</p><p>Your new tier benefits and cashback rate are now active.</p>":"<p>Your Rewards membership moved from <b>"+htmlEsc(fromTier)+"</b> to <b>"+htmlEsc(toTier)+"</b>.</p><p>Your current qualifying GrabPoints for the 12-month window are <b>"+Number(earned||0).toLocaleString("en-BD")+" GP</b>.</p><p>Keep earning qualifying GrabPoints to move back up and unlock higher benefits.</p>";
+          await sendRewardsEmail(env,member.email,subject,title,body+rewardEmailTierCard(toTier),direction,false,toTier,member.name,member.member_id);
+          return true;
+          }
+          '''
+          text=text.replace(marker,tier_helper+marker,1)
+          text=text.replace('if(Number(gpSettings?.grabpoints_enabled??1)===1&&rm){tInfo=await rewardTier(env,rm.id);','if(Number(gpSettings?.grabpoints_enabled??1)===1&&rm){tInfo=await rewardTier(env,rm.id);const tierBefore=tInfo.tier;',1)
+          text=text.replace('await sendRewardsEmail(env,rm.email,"GrabZone Rewards — GP Earned","You earned GrabPoints",body,"",false,tInfo.tier,rm.name,rm.member_id);','const tierAfter=await rewardTier(env,rm.id);await sendRewardsEmail(env,rm.email,"GrabZone Rewards — GP Earned","You earned GrabPoints",body+rewardEmailTierCard(tierAfter.tier),"",false,tierAfter.tier,rm.name,rm.member_id);if(tierAfter.tier!==tierBefore)await sendTierChangeEmail(env,rm,tierBefore,tierAfter.tier,tierAfter.earned,"Order delivered");',1)
           text=text.replace('const emailSent=await sendRewardsEmail(env,m.email,"GrabZone Rewards — Your reward voucher is ready","Your GrabPoints reward is ready",emailBody);','const emailSent=await sendRewardsEmail(env,m.email,"GrabZone Rewards — Your reward voucher is ready","Your GrabPoints reward is ready",emailBody+rewardEmailTierCard(tInfo.tier),"",false,tInfo.tier,m.name,m.member_id);',1)
-
-          # Admin point adjustment: send point email and a separate tier-change email if the tier moved.
           text=text.replace('const before=Number((await q(env,"SELECT points FROM customer_points WHERE phone=? LIMIT 1",[m.phone])).results?.[0]?.points||0);if(delta<0&&Math.abs(delta)>before)throw new Error("Insufficient GrabPoints for this deduction.");await u.run();','const before=Number((await q(env,"SELECT points FROM customer_points WHERE phone=? LIMIT 1",[m.phone])).results?.[0]?.points||0);const tierBefore=(await rewardTier(env,m.id)).tier;if(delta<0&&Math.abs(delta)>before)throw new Error("Insufficient GrabPoints for this deduction.");await u.run();',1)
           old='await rewardAudit(env,m.id,a.p_admin_id||null,delta>0?"POINTS_ADDED":"POINTS_DEDUCTED",reason,{points:delta,qualifying_points:qualifying,reference:ref,balance_after:after});await sendRewardsEmail(env,m.email,"GrabZone Rewards — Points updated","Your GrabPoints were updated","<p>Your Rewards balance was updated by GrabZone Support.</p><p>Change: <b>"+(delta>0?"+":"")+delta+" GP</b><br>New balance: <b>"+after+" GP</b><br>Reference: <b>"+ref+"</b></p>");'
-          new='const tierAfter=await rewardTier(env,m.id);await rewardAudit(env,m.id,a.p_admin_id||null,delta>0?"POINTS_ADDED":"POINTS_DEDUCTED",reason,{points:delta,qualifying_points:qualifying,reference:ref,balance_after:after,tier_before:tierBefore,tier_after:tierAfter.tier});await sendRewardsEmail(env,m.email,"GrabZone Rewards — Points updated","Your GrabPoints were updated","<p>Your Rewards balance was updated by GrabZone Support.</p><p>Change: <b>"+(delta>0?"+":"")+delta+" GP</b><br>New balance: <b>"+after+" GP</b><br>Reference: <b>"+ref+"</b></p>"+rewardEmailTierCard(tierAfter.tier),"",false,tierAfter.tier,m.name,m.member_id);if(tierAfter.tier!==tierBefore)await sendTierChangeEmail(env,m,tierBefore,tierAfter.tier,tierAfter.earned);'
-          if old in text:text=text.replace(old,new,1)
-
-          # Account creation and security emails carry member/tier context.
-          text=text.replace('await sendRewardsEmail(env,email,"Welcome to GrabZone Rewards","Your Rewards account is ready","<p>Hi "+htmlEsc(name)+" 👋</p><p>Your GrabZone Rewards account <b>"+memberId+"</b> is now active.</p><p>Your available balance is <b>"+Number(old.points||0).toLocaleString("en-BD")+" GP</b>.</p>");','await sendRewardsEmail(env,email,"Welcome to GrabZone Rewards","Your Rewards account is ready","<p>Your GrabZone Rewards account <b>"+memberId+"</b> is now active.</p><p>Your available balance is <b>"+Number(old.points||0).toLocaleString("en-BD")+" GP</b>.</p>"+rewardEmailTierCard("Member"),"",false,"Member",name,memberId);',1)
-          text=text.replace('await sendRewardsEmail(env,m.email,"GrabZone Rewards PIN changed","Your PIN was reset","<p>Your GrabZone Rewards PIN has been successfully reset.</p><p>If you did not do this, contact GrabZone Support.</p>");','await sendRewardsEmail(env,m.email,"GrabZone Rewards PIN changed","Your PIN was reset","<p>Your GrabZone Rewards PIN has been successfully reset.</p><p>If you did not do this, contact GrabZone Support.</p>","",false,(await rewardTier(env,m.id)).tier,m.name,m.member_id);',1)
+          new='const tierAfter=await rewardTier(env,m.id);await rewardAudit(env,m.id,a.p_admin_id||null,delta>0?"POINTS_ADDED":"POINTS_DEDUCTED",reason,{points:delta,qualifying_points:qualifying,reference:ref,balance_after:after,tier_before:tierBefore,tier_after:tierAfter.tier});await sendRewardsEmail(env,m.email,"GrabZone Rewards — Points updated","Your GrabPoints were updated","<p>Your Rewards balance was updated by GrabZone Support.</p><p>Change: <b>"+(delta>0?"+":"")+delta+" GP</b><br>New balance: <b>"+after+" GP</b><br>Reference: <b>"+ref+"</b></p>"+rewardEmailTierCard(tierAfter.tier),"",false,tierAfter.tier,m.name,m.member_id);if(tierAfter.tier!==tierBefore)await sendTierChangeEmail(env,m,tierBefore,tierAfter.tier,tierAfter.earned,"Admin points adjustment");'
+          text=text.replace(old,new,1)
           text=text.replace('await sendRewardsEmail(env,m.email,"GrabZone Rewards security notice","Rewards PIN accessed by Support","<p>Your Rewards PIN was accessed by an authorized GrabZone Support admin for customer support.</p><p>If you did not request support, please contact us.</p>");','await sendRewardsEmail(env,m.email,"GrabZone Rewards security notice","Rewards PIN accessed by Support","<p>Your Rewards PIN was accessed by an authorized GrabZone Support admin for customer support.</p><p>If you did not request support, please contact us.</p>","",false,(await rewardTier(env,m.id)).tier,m.name,m.member_id);',1)
-
+          if text == p.read_text(encoding='utf-8'):
+              raise SystemExit('No worker changes were made; refusing to commit')
           p.write_text(text,encoding='utf-8')
-          import subprocess
-          check=subprocess.run(['node','--check','worker.mjs'],capture_output=True,text=True)
-          if check.returncode: raise SystemExit(check.stderr)
+          check = __import__('subprocess').run(['node','--check','worker.mjs'],capture_output=True,text=True)
+          if check.returncode:
+              raise SystemExit(check.stderr)
 
-      - name: Commit template
+      - name: Commit premium Rewards email system
         shell: bash
         run: |
-          if git diff --quiet -- worker.mjs; then
-            echo "Premium email template already installed"
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add worker.mjs
-          git commit -m "Upgrade GrabPoints emails to premium tier automation [skip ci]"
+          git commit -m "Complete premium GrabPoints email automation [skip ci]"
           git push origin feature/animated-grabpoints-auth
