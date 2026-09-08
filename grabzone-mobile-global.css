@@ -24,44 +24,31 @@ button,input,select,textarea{font:inherit;max-width:100%}
 button,a{touch-action:manipulation}
 button{cursor:pointer}
 :where(.container,.wrap,.wrapper,.main-container,.page-container,.content-container){width:min(1180px,calc(100% - 32px));margin-inline:auto}
-
-/* Consistent storefront primitives */
 :where(.product-card,.payment-card,.track-card,.checkout-card,.grabpoints-box,.panel){min-width:0}
 :where(.product-card,.payment-card,.track-card,.checkout-card){border-color:var(--gz-border)}
 :where(.product-card,.payment-card,.track-card,.checkout-card):focus-within{border-color:#d8d8d2}
 :where(.product-card,.payment-card){box-shadow:var(--gz-shadow)}
 :where(.product-card,.payment-card):hover{box-shadow:var(--gz-shadow-hover)}
 :where(.btn,.dark-btn,button[type=submit]){min-height:44px}
-
-/* Product detail */
 .gallery{min-width:0}
 .gallery-main{border-radius:var(--gz-radius-lg)!important;background:#f4f4f1!important}
 .gallery-thumb{border-radius:12px!important;overflow:hidden}
-
-/* Checkout */
 .checkout-header{min-height:64px}
 .checkout-brand{min-width:0}
 .checkout-shell{width:min(1120px,calc(100% - 32px));margin-inline:auto}
 .delivery-eta{border-color:var(--gz-border)!important;background:#fafaf8!important}
 .grabpoints-box{border-color:#e4e4df!important;border-radius:var(--gz-radius-lg)!important}
 .grabpoints-icon{background:var(--gz-black)!important}
-
-/* Payment */
 .payment-page{width:min(1080px,calc(100% - 32px));margin-inline:auto}
 .payment-card{border-radius:var(--gz-radius-lg)!important;background:var(--gz-card)!important}
 .payment-icon-wrap{border-radius:14px!important}
-
-/* Tracking */
 .track-wrap{width:min(760px,calc(100% - 32px));margin-inline:auto}
 .track-card{border-radius:var(--gz-radius-lg)!important;box-shadow:var(--gz-shadow)!important}
 .track-form input:focus{border-color:var(--gz-orange)!important;box-shadow:0 0 0 3px rgba(255,107,0,.10)!important;outline:none}
 .track-form button,.back-store,.tracking-link{background:var(--gz-black)!important}
 .track-form button:hover,.back-store:hover,.tracking-link:hover{background:#2a2a2a!important}
 .track-status-step.current{background:var(--gz-black)!important;border-color:var(--gz-black)!important}
-
-/* Footer and links */
 :where(.footer a,.site-footer a){overflow-wrap:anywhere}
-
 @media(max-width:900px){
   :where(.container,.wrap,.wrapper,.main-container,.page-container,.content-container){width:calc(100% - 28px)}
   :where(.hero,.hero-section,.banner,.billboard){min-height:auto!important;padding-left:20px!important;padding-right:20px!important}
@@ -74,7 +61,6 @@ button{cursor:pointer}
   :where(.modal,.dialog,.drawer){max-width:calc(100vw - 24px)!important}
   .payment-top{flex-wrap:wrap}
 }
-
 @media(max-width:640px){
   body{font-size:14px}
   :where(.container,.wrap,.wrapper,.main-container,.page-container,.content-container){width:calc(100% - 24px)}
@@ -123,7 +109,6 @@ button{cursor:pointer}
   .track-status-step{min-height:105px!important}
   .help-grid{grid-template-columns:1fr!important}
 }
-
 @media(max-width:430px){
   :where(.header,.site-header){gap:6px!important}
   :where(.header .logo,.site-header .logo){min-width:0}
@@ -140,7 +125,33 @@ button{cursor:pointer}
   .payment-page{width:calc(100% - 20px)!important}
   .track-wrap{width:calc(100% - 20px)!important}
 }
-
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+
+/* =========================================================
+   MOBILE SCROLL SAFETY PATCH
+   Never allow the page-load veil or scroll-reveal system to
+   blank the storefront during fast touch scrolling.
+   Other product/button motion remains enabled.
+========================================================= */
+@media (max-width:760px), (hover:none) and (pointer:coarse){
+  .gz-page-veil{
+    display:none!important;
+    animation:none!important;
+    opacity:0!important;
+    visibility:hidden!important;
+  }
+  .gz-reveal-target{
+    opacity:1!important;
+    transform:none!important;
+    filter:none!important;
+    clip-path:none!important;
+  }
+  .gz-reveal-target.gz-visible,
+  .product-card.gz-reveal-target.gz-visible{
+    opacity:1!important;
+    transform:none!important;
+    filter:none!important;
+  }
 }
