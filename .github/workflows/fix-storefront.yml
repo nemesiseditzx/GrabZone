@@ -1,0 +1,44 @@
+name: Final storefront cleanup
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/animated-grabpoints-auth]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/animated-grabpoints-auth
+          fetch-depth: 0
+      - name: Clean HTML and responsive layer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('payment-method.html')
+          if p.exists():
+              s=p.read_text()
+              s=s.replace('<head>\n  <head>\n','<head>\n',1)
+              p.write_text(s)
+          # Ensure the global layer is present exactly once on public storefront pages.
+          tag='<link rel="stylesheet" href="grabzone-mobile-global.css?v=20260908mobileglobal1">'
+          for name in ['index.html','product.html','checkout.html','payment-method.html','track-order.html','policies.html']:
+              p=Path(name)
+              if not p.exists(): continue
+              s=p.read_text()
+              s=s.replace(tag+'\n'+tag,tag)
+              if 'grabzone-mobile-global.css' not in s:
+                  s=s.replace('</head>',tag+'\n</head>',1)
+              p.write_text(s)
+          PY
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/fix-storefront.yml
+          git add index.html product.html checkout.html payment-method.html track-order.html policies.html grabzone-mobile-global.css
+          git commit -m 'Polish storefront responsiveness and cleanup HTML [skip ci]' || exit 0
+          git push origin HEAD:feature/animated-grabpoints-auth
