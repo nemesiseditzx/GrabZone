@@ -174,7 +174,7 @@ try{
   const isGrabPointsPage=pagePath==='\/grabpoints'||pagePath==='\/grabpoints.html'||pagePath.endsWith('\/grabpoints')||pagePath.endsWith('\/grabpoints.html');
   if(isGrabPointsPage){
     const s=document.createElement('script');
-    s.src='grabpoints-auth-animation.js?v=20260908ui3';
+    s.src='grabpoints-auth-animation.js?v=20260908ui4';
     s.async=true;
     document.head.appendChild(s);
   }
