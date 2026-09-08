@@ -177,6 +177,10 @@ try{
     s.src='grabpoints-auth-animation.js?v=20260908ui4';
     s.async=true;
     document.head.appendChild(s);
+    const rp=document.createElement('script');
+    rp.src='grabpoints-redeem-polish.js?v=20260908polish1';
+    rp.async=true;
+    document.head.appendChild(rp);
   }
 }catch{}
 })();
