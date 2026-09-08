@@ -1,0 +1,48 @@
+name: Fix GrabPoints auth flicker
+on:
+  push:
+    branches: [feature/animated-grabpoints-auth]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/animated-grabpoints-auth
+          fetch-depth: 0
+      - name: Remove auth rebuild loop
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('grabpoints-auth-animation.js')
+          s=p.read_text()
+          old="""      if (mode && (!stage || !stage.querySelector('.gz-auth-form'))) scheduleBuild(true);
+      else if (mode && stage) {
+        app.classList.add('gz-auth-ui');
+        app.classList.toggle('is-register', mode === 'register');
+        lastMode = mode;
+      }"""
+          new="""      /* Do not rebuild while build() is moving the original auth nodes into the stage.
+         The previous check treated the temporarily-empty stage as a broken render and
+         scheduled another forced rebuild, causing the visible 2–3 flicker on page load. */
+      if (mode && !stage) scheduleBuild(false);
+      else if (mode && stage && stage.querySelector('.gz-auth-form')) {
+        app.classList.add('gz-auth-ui');
+        app.classList.toggle('is-register', mode === 'register');
+        lastMode = mode;
+      }"""
+          if old not in s:
+            raise SystemExit('observer block not found')
+          p.write_text(s.replace(old,new,1))
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add grabpoints-auth-animation.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Stop GrabPoints auth startup flicker [skip ci]'
+          git push origin HEAD:feature/animated-grabpoints-auth
