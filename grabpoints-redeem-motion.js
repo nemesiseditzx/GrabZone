@@ -8,60 +8,26 @@
 @media(max-width:520px){.gz-motion-panel{width:100%;border-radius:29px 29px 0 0;align-self:end;margin:0;padding:24px 18px 25px}.gz-motion-processing{align-items:end}.gz-motion-panel h2{font-size:24px}}
 @media(prefers-reduced-motion:reduce){.gz-motion-processing,.gz-motion-panel,.gz-motion-orbit:before,.gz-motion-orbit:after,.gz-motion-core,.gz-motion-ok .ok{animation:none!important}}
 `;document.head.appendChild(s)})();
-
-/* GrabPoints redemption hardening: staged amount -> PIN flow, duplicate-submit guard,
-   keyboard-safe PIN entry, validation, error shake and accessible focus. */
 (()=>{
-  'use strict';
-  const STYLE='gzRedeemHardeningStyle';
-  if(!document.getElementById(STYLE)){
-    const st=document.createElement('style');st.id=STYLE;st.textContent=`
-      #gzRedeemArea.gz-rh-stage-pin{border-color:#ffb27b;box-shadow:0 12px 35px rgba(255,107,0,.10)}
-      #gzRedeemArea.gz-rh-stage-pin #grRedeemPoints{background:#fff8f2;border-color:#ffb27b}
-      #gzRedeemArea.gz-rh-stage-pin #grRedeemPin{animation:gzRhPinIn .38s cubic-bezier(.2,.9,.2,1)}
-      #gzRedeemArea.gz-rh-shake{animation:gzRhShake .42s ease}
-      #gzRedeemArea .gz-rh-step-note{display:none;margin:-2px 0 8px;padding:9px 11px;border-radius:11px;background:#fff8f2;border:1px solid #ffd2b1;color:#7a3c13;font-size:11px;font-weight:800}
-      #gzRedeemArea.gz-rh-stage-pin .gz-rh-step-note{display:block}
-      #gzRedeemArea.gz-rh-locked #grRedeem{opacity:.65;pointer-events:none}
-      @keyframes gzRhPinIn{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}
-      @keyframes gzRhShake{20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}to{transform:none}}
-      @media(max-width:520px){#gzRedeemArea .gz-rewards-grid{gap:9px}#gzRedeemArea #grRedeemPoints,#gzRedeemArea #grRedeemPin{font-size:16px;min-height:48px}#gzRedeemArea #grRedeem{min-height:50px}}
-      @media(prefers-reduced-motion:reduce){#gzRedeemArea.gz-rh-shake,#gzRedeemArea.gz-rh-stage-pin #grRedeemPin{animation:none}}
-    `;document.head.appendChild(st);
-  }
-  let lastButton=null,lastOriginal=null,stage='amount',busy=false;
-  function msg(text,error){const m=document.getElementById('grRedeemMsg');if(m){m.textContent=text||'';m.style.color=error?'#b42318':'#08704f'}}
-  function resetStage(btn){const area=document.getElementById('gzRedeemArea'),pin=document.getElementById('grRedeemPin');stage='amount';busy=false;if(area){area.classList.remove('gz-rh-stage-pin','gz-rh-locked','gz-rh-shake');area.querySelector('.gz-rh-step-note')?.remove()}if(pin){pin.style.display='';pin.value='';pin.setAttribute('aria-hidden','true');}if(btn){btn.textContent='Continue to PIN →';btn.dataset.gzRhStage='amount';}}
-  function setup(){
-    const btn=document.getElementById('grRedeem');if(!btn||btn===lastButton&&btn.onclick===lastOriginal)return;
-    lastButton=btn;lastOriginal=btn.onclick;
-    if(typeof lastOriginal!=='function')return;
-    const area=document.getElementById('gzRedeemArea'),points=document.getElementById('grRedeemPoints'),pin=document.getElementById('grRedeemPin');if(!area||!points||!pin)return;
-    let note=area.querySelector('.gz-rh-step-note');if(!note){note=document.createElement('div');note.className='gz-rh-step-note';note.textContent='Step 2 of 2 — Enter your private Rewards PIN to confirm this redemption.';points.insertAdjacentElement('afterend',note)}
-    resetStage(btn);pin.style.display='none';pin.setAttribute('aria-hidden','true');
-    btn.onclick=async function(e){
-      e.preventDefault();
-      if(busy)return;
-      const pts=Math.floor(Number(points.value||0));
-      if(stage==='amount'){
-        if(!Number.isFinite(pts)||pts<10){msg('Enter at least 10 GP to continue.',true);points.focus();return}
-        if(pts%10!==0){msg('Redeem amount must be in 10 GP steps.',true);points.focus();return}
-        stage='pin';area.classList.add('gz-rh-stage-pin');pin.style.display='';pin.removeAttribute('aria-hidden');btn.textContent='Confirm Redemption ✓';btn.dataset.gzRhStage='pin';msg('Amount selected: '+pts.toLocaleString('en-BD')+' GP. Enter your PIN to continue.',false);setTimeout(()=>pin.focus(),80);return;
-      }
-      if(!/^\d{4,6}$/.test(String(pin.value||''))){msg('Enter your 4–6 digit Rewards PIN.',true);pin.focus();area.classList.add('gz-rh-shake');setTimeout(()=>area.classList.remove('gz-rh-shake'),500);return}
-      busy=true;area.classList.add('gz-rh-locked');btn.textContent='Verifying PIN…';
-      try{await lastOriginal.call(btn,e);}
-      catch(_){/* original handler reports its own error */}
-      setTimeout(()=>{
-        const m=document.getElementById('grRedeemMsg');
-        if(m&&/^\s*[✕x]/i.test(m.textContent||'')){area.classList.add('gz-rh-shake');setTimeout(()=>area.classList.remove('gz-rh-shake'),500);busy=false;area.classList.remove('gz-rh-locked');btn.textContent='Confirm Redemption ✓';}
-      },450);
-    };
-    pin.addEventListener('input',()=>{pin.value=pin.value.replace(/\D/g,'').slice(0,6)});
-    pin.addEventListener('keydown',e=>{if(e.key==='Enter')btn.click()});
-    points.addEventListener('input',()=>{points.value=points.value.replace(/\D/g,'')});
-  }
-  const mo=new MutationObserver(()=>setup());
-  const boot=()=>{setup();const root=document.getElementById('gzRewardsApp');if(root)mo.observe(root,{subtree:true,childList:true});};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else setTimeout(boot,80);
+'use strict';
+const STYLE='gzRedeemHardeningStyle';
+if(!document.getElementById(STYLE)){const st=document.createElement('style');st.id=STYLE;st.textContent=`#gzRedeemArea.gz-rh-stage-pin{border-color:#ffb27b;box-shadow:0 12px 35px rgba(255,107,0,.10)}#gzRedeemArea.gz-rh-stage-pin #grRedeemPoints{background:#fff8f2;border-color:#ffb27b}#gzRedeemArea.gz-rh-stage-pin #grRedeemPin{animation:gzRhPinIn .38s cubic-bezier(.2,.9,.2,1)}#gzRedeemArea.gz-rh-shake{animation:gzRhShake .42s ease}#gzRedeemArea .gz-rh-step-note{display:none;margin:-2px 0 8px;padding:9px 11px;border-radius:11px;background:#fff8f2;border:1px solid #ffd2b1;color:#7a3c13;font-size:11px;font-weight:800}#gzRedeemArea.gz-rh-stage-pin .gz-rh-step-note{display:block}#gzRedeemArea.gz-rh-locked #grRedeem{opacity:.65;pointer-events:none}@keyframes gzRhPinIn{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}@keyframes gzRhShake{20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}to{transform:none}}@media(max-width:520px){#gzRedeemArea .gz-rewards-grid{gap:9px}#gzRedeemArea #grRedeemPoints,#gzRedeemArea #grRedeemPin{font-size:16px;min-height:48px}#gzRedeemArea #grRedeem{min-height:50px}}@media(prefers-reduced-motion:reduce){#gzRedeemArea.gz-rh-shake,#gzRedeemArea.gz-rh-stage-pin #grRedeemPin{animation:none}}`;document.head.appendChild(st)}
+let busy=false;
+function msg(text,error){const m=document.getElementById('grRedeemMsg');if(m){m.textContent=text||'';m.style.color=error?'#b42318':'#08704f'}}
+function setup(){
+ const btn=document.getElementById('grRedeem');if(!btn||btn.dataset.gzRhBound==='1')return;
+ const area=document.getElementById('gzRedeemArea'),points=document.getElementById('grRedeemPoints'),pin=document.getElementById('grRedeemPin');if(!area||!points||!pin||typeof btn.onclick!=='function')return;
+ const original=btn.onclick;btn.dataset.gzRhBound='1';let stage='amount';busy=false;
+ let note=area.querySelector('.gz-rh-step-note');if(!note){note=document.createElement('div');note.className='gz-rh-step-note';note.textContent='Step 2 of 2 — Enter your private Rewards PIN to confirm this redemption.';points.insertAdjacentElement('afterend',note)}
+ pin.style.display='none';pin.setAttribute('aria-hidden','true');btn.textContent='Continue to PIN →';
+ btn.onclick=async function(e){e.preventDefault();if(busy)return;const pts=Math.floor(Number(points.value||0));
+  if(stage==='amount'){if(!Number.isFinite(pts)||pts<10){msg('Enter at least 10 GP to continue.',true);points.focus();return}if(pts%10!==0){msg('Redeem amount must be in 10 GP steps.',true);points.focus();return}stage='pin';area.classList.add('gz-rh-stage-pin');pin.style.display='';pin.removeAttribute('aria-hidden');btn.textContent='Confirm Redemption ✓';msg('Amount selected: '+pts.toLocaleString('en-BD')+' GP. Enter your PIN to continue.',false);setTimeout(()=>pin.focus(),80);return}
+  if(!/^\d{4,6}$/.test(String(pin.value||''))){msg('Enter your 4–6 digit Rewards PIN.',true);pin.focus();area.classList.add('gz-rh-shake');setTimeout(()=>area.classList.remove('gz-rh-shake'),500);return}
+  busy=true;area.classList.add('gz-rh-locked');btn.textContent='Verifying PIN…';try{await original.call(btn,e)}catch(_){};
+  setTimeout(()=>{const m=document.getElementById('grRedeemMsg');if(m&&/^\s*[✕x]/i.test(m.textContent||'')){area.classList.add('gz-rh-shake');setTimeout(()=>area.classList.remove('gz-rh-shake'),500);busy=false;area.classList.remove('gz-rh-locked');btn.textContent='Confirm Redemption ✓'}},450);
+ };
+ pin.addEventListener('input',()=>{pin.value=pin.value.replace(/\D/g,'').slice(0,6)});pin.addEventListener('keydown',e=>{if(e.key==='Enter')btn.click()});points.addEventListener('input',()=>{points.value=points.value.replace(/\D/g,'')});
+}
+const boot=()=>{setup();const root=document.getElementById('gzRewardsApp');if(root)new MutationObserver(setup).observe(root,{subtree:true,childList:true})};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else setTimeout(boot,80);
 })();
