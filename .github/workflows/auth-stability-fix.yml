@@ -1,0 +1,41 @@
+name: Stable GrabPoints auth renderer
+on:
+  push:
+    branches: [feature/animated-grabpoints-auth]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/animated-grabpoints-auth
+          fetch-depth: 0
+      - name: Stabilize auth observer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('grabpoints-auth-animation.js')
+          s=p.read_text()
+          start=s.index('  function scheduleBuild(')
+          end=s.index('  function boot()', start)
+          replacement='''  let stabilityTimer = null;\n\n  function scheduleBuild(){\n    clearTimeout(stabilityTimer);\n    stabilityTimer=setTimeout(()=>{stabilityTimer=null;build()},120);\n  }\n\n  function watch(){\n    const app=document.getElementById(APP_ID);\n    if(!app)return false;\n    if(observer){observer.disconnect();observer=null}\n    /* Poll only for a genuinely missing auth stage. Do not observe every child move:\n       build() itself moves the original form nodes, and observing those transient DOM\n       states was the source of the visible multi-refresh/flicker on page load. */\n    if(stabilityTimer)clearInterval(stabilityTimer);\n    stabilityTimer=setInterval(()=>{\n      if(building) return;\n      const m=authMode();\n      if(!m){lastMode='';return}\n      const stage=app.querySelector(':scope > .gz-auth-stage');\n      if(!stage){build();return}\n      if(stage.querySelector('.gz-auth-form')){\n        app.classList.add('gz-auth-ui');\n        app.classList.toggle('is-register',m==='register');\n        lastMode=m;\n      }\n    },500);\n    return true;\n  }\n\n'''
+          # Add a build guard without changing the existing DOM structure logic.
+          s=s[:start]+replacement+s[end:]
+          s=s.replace("  let observer = null;\n  let scheduled = false;\n  let lastMode = '';", "  let observer = null;\n  let scheduled = false;\n  let building = false;\n  let lastMode = '';")
+          # Guard the existing build against accidental concurrent calls.
+          s=s.replace("  function build(force = false) {\n    const app = document.getElementById(APP_ID);", "  function build(force = false) {\n    if (building) return false;\n    const app = document.getElementById(APP_ID);")
+          s=s.replace("    app.dataset.gzAuthAnimated = '1';\n    lastMode = mode;\n    return true;", "    app.dataset.gzAuthAnimated = '1';\n    lastMode = mode;\n    return true;")
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add grabpoints-auth-animation.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Prevent GrabPoints auth startup flicker [skip ci]'
+          git push origin HEAD:feature/animated-grabpoints-auth
