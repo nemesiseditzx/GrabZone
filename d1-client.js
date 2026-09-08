@@ -29,7 +29,10 @@ async function refreshSession(){
     const headers={Accept:'application/json'};
     if(token)headers.Authorization='Bearer '+token;
     const response=await fetch(BASE+'/api/admin-auth',{
-     method:'GET',headers,credentials:'include',cache:'no-store'
+     method:'GET',
+     headers,
+     credentials:'include',
+     cache:'no-store'
     });
     const session=await response.json().catch(()=>null);
     if(response.ok&&session?.authenticated&&session?.session_token)return session;
@@ -37,50 +40,143 @@ async function refreshSession(){
    return null;
   };
   let session=await requestSession('');
-  if(!session){const current=read(TOKEN_KEY);if(current)session=await requestSession(current)}
-  if(session?.authenticated&&session?.session_token){write(TOKEN_KEY,session.session_token);userWrite(session.user||null);return session}
-  write(TOKEN_KEY,'');userWrite(null);return null;
+  if(!session){
+   const current=read(TOKEN_KEY);
+   if(current)session=await requestSession(current);
+  }
+  if(session?.authenticated&&session?.session_token){
+   write(TOKEN_KEY,session.session_token);
+   userWrite(session.user||null);
+   return session;
+  }
+  write(TOKEN_KEY,'');
+  userWrite(null);
+  return null;
  })().finally(()=>{authRefreshPromise=null});
  return authRefreshPromise;
 }
 async function api(path,options={},includeToken=true,retryAuth=true){
  const h={'Content-Type':'application/json','Accept':'application/json',...(options.headers||{})};
  const token=includeToken?read(TOKEN_KEY):'';
- if(token){if(!h.Authorization)h.Authorization='Bearer '+token;h['X-GrabZone-Token']=token}
+ if(token){
+  if(!h.Authorization)h.Authorization='Bearer '+token;
+  h['X-GrabZone-Token']=token;
+ }
  const response=await fetch(BASE+path,{...options,headers:h,credentials:'include',cache:'no-store'});
- if(response.status===401&&includeToken&&retryAuth&&path!=='/api/admin-auth'){const session=await refreshSession();if(session?.authenticated&&session?.session_token)return api(path,options,true,false)}
+ if(response.status===401&&includeToken&&retryAuth&&path!=='/api/admin-auth'){
+  const session=await refreshSession();
+  if(session?.authenticated&&session?.session_token){
+   return api(path,options,true,false);
+  }
+ }
  return parse(response);
 }
 async function authFetch(url,options={}){
- const make=()=>{const h=new Headers(options.headers||{});const token=read(TOKEN_KEY);if(token)h.set('Authorization','Bearer '+token);if(token)h.set('X-GrabZone-Token',token);return fetch(url,{...options,headers:h,credentials:'include',cache:'no-store'})};
- let response=await make();if(response.status===401){const session=await refreshSession();if(session?.authenticated&&session?.session_token)response=await make()}return response;
+ const make=()=>{
+  const h=new Headers(options.headers||{});
+  const token=read(TOKEN_KEY);
+  if(token)h.set('Authorization','Bearer '+token);
+  if(token)h.set('X-GrabZone-Token',token);
+  return fetch(url,{...options,headers:h,credentials:'include',cache:'no-store'});
+ };
+ let response=await make();
+ if(response.status===401){
+  const session=await refreshSession();
+  if(session?.authenticated&&session?.session_token)response=await make();
+ }
+ return response;
 }
-async function d1(payload,tokenOverride=''){const headers=tokenOverride?{Authorization:'Bearer '+tokenOverride}:{};return api('/api/d1',{method:'POST',body:JSON.stringify(payload),headers})}
+async function d1(payload,tokenOverride=''){
+ const headers=tokenOverride?{Authorization:'Bearer '+tokenOverride}:{};
+ return api('/api/d1',{method:'POST',body:JSON.stringify(payload),headers});
+}
+
 function builder(table){
  const s={table,action:'select',columns:'*',filters:[],orders:[],limit:null,single:null,values:null,returning:false,conflict:null};
  const a={
-  select(c='*',o={}){s.columns=c||'*';s.returning=s.action!=='select'||!!o?.returning;return a},eq(c,v){s.filters.push({column:c,op:'eq',value:v});return a},neq(c,v){s.filters.push({column:c,op:'neq',value:v});return a},gt(c,v){s.filters.push({column:c,op:'gt',value:v});return a},gte(c,v){s.filters.push({column:c,op:'gte',value:v});return a},lt(c,v){s.filters.push({column:c,op:'lt',value:v});return a},lte(c,v){s.filters.push({column:c,op:'lte',value:v});return a},is(c,v){s.filters.push({column:c,op:'is',value:v});return a},in(c,v){s.filters.push({column:c,op:'in',value:v});return a},order(c,o={}){s.orders.push({column:c,ascending:o?.ascending!==false});return a},limit(n){s.limit=Number(n);return a},maybeSingle(){s.single='maybe';return execute()},single(){s.single='single';return execute()},
-  insert(v,o={}){s.action='insert';if(table==='product_images'){const now=new Date().toISOString();s.values=(Array.isArray(v)?v:[v]).map(row=>row?.created_at?row:{...row,created_at:now})}else s.values=v;s.returning=!!o?.returning;return a},upsert(v,o={}){s.action='upsert';s.values=v;s.returning=true;s.conflict=o?.onConflict||null;return a},update(v){s.action='update';s.values=v;return a},delete(){s.action='delete';return a},then(res,rej){return execute().then(res,rej)}
+  /* Supabase compatibility: mutations followed by .select() must return the affected row(s). */
+  select(c='*',o={}){s.columns=c||'*';s.returning=s.action!=='select'||!!o?.returning;return a},
+  eq(c,v){s.filters.push({column:c,op:'eq',value:v});return a},
+  neq(c,v){s.filters.push({column:c,op:'neq',value:v});return a},
+  gt(c,v){s.filters.push({column:c,op:'gt',value:v});return a},
+  gte(c,v){s.filters.push({column:c,op:'gte',value:v});return a},
+  lt(c,v){s.filters.push({column:c,op:'lt',value:v});return a},
+  lte(c,v){s.filters.push({column:c,op:'lte',value:v});return a},
+  is(c,v){s.filters.push({column:c,op:'is',value:v});return a},
+  in(c,v){s.filters.push({column:c,op:'in',value:v});return a},
+  order(c,o={}){s.orders.push({column:c,ascending:o?.ascending!==false});return a},
+  limit(n){s.limit=Number(n);return a},
+  maybeSingle(){s.single='maybe';return execute()},
+  single(){s.single='single';return execute()},
+  insert(v,o={}){
+   s.action='insert';
+   /* The live D1 product_images table requires created_at. Keep the existing UI/API
+      contract intact by supplying it automatically for every uploaded image row. */
+   if(table==='product_images'){
+    const now=new Date().toISOString();
+    s.values=(Array.isArray(v)?v:[v]).map(row=>row?.created_at?row:{...row,created_at:now});
+   }else s.values=v;
+   s.returning=!!o?.returning;
+   return a;
+  },
+  upsert(v,o={}){s.action='upsert';s.values=v;s.returning=true;s.conflict=o?.onConflict||null;return a},
+  update(v){s.action='update';s.values=v;return a},
+  delete(){s.action='delete';return a},
+  then(res,rej){return execute().then(res,rej)}
  };
- async function execute(){try{const out=await d1(s);return {data:out?.data??null,error:null,count:out?.count??null}}catch(e){return {data:null,error:{message:e.message,status:e.status}}}}
+ async function execute(){
+  try{
+   const out=await d1(s);
+   return {data:out?.data??null,error:null,count:out?.count??null};
+  }catch(e){return {data:null,error:{message:e.message,status:e.status}}}
+ }
  return a;
 }
+
 const auth={
- async signInWithPassword({email,password}){try{const b=await api('/api/admin-auth',{method:'POST',body:JSON.stringify({email:String(email||'').trim(),password:String(password||'')})},false);if(!b?.ok||!b.session_token)throw new Error(b?.error||'Invalid email or password.');write(TOKEN_KEY,b.session_token);userWrite(b.user||null);return {data:{user:b.user||null,session:{access_token:b.session_token,user:b.user||null}},error:null}}catch(e){write(TOKEN_KEY,'');userWrite(null);return {data:{user:null,session:null},error:{message:e.message,status:e.status}}}},
- async getSession(){const b=await refreshSession();if(!b?.authenticated||!b.session_token)return {data:{session:null},error:null};return {data:{session:{access_token:b.session_token,user:b.user||null}},error:null}},
- async signOut(){try{await api('/api/admin-auth',{method:'POST',body:JSON.stringify({action:'logout'})},false)}catch{}write(TOKEN_KEY,'');userWrite(null);return {error:null}}
+ async signInWithPassword({email,password}){
+  try{
+   const b=await api('/api/admin-auth',{method:'POST',body:JSON.stringify({email:String(email||'').trim(),password:String(password||'')})},false);
+   if(!b?.ok||!b.session_token)throw new Error(b?.error||'Invalid email or password.');
+   write(TOKEN_KEY,b.session_token);userWrite(b.user||null);
+   return {data:{user:b.user||null,session:{access_token:b.session_token,user:b.user||null}},error:null};
+  }catch(e){
+   write(TOKEN_KEY,'');userWrite(null);
+   return {data:{user:null,session:null},error:{message:e.message,status:e.status}};
+  }
+ },
+ async getSession(){
+  const b=await refreshSession();
+  if(!b?.authenticated||!b.session_token){
+   return {data:{session:null},error:null};
+  }
+  return {data:{session:{access_token:b.session_token,user:b.user||null}},error:null};
+ },
+ async signOut(){
+  try{await api('/api/admin-auth',{method:'POST',body:JSON.stringify({action:'logout'})},false)}catch{}
+  write(TOKEN_KEY,'');userWrite(null);
+  return {error:null};
+ }
 };
+
 window.gzAuthFetch=authFetch;
-window.grabzoneD1={from:builder,rpc:async(fn,args={})=>{try{const rewardToken=/^rewards_/.test(String(fn||''))?(()=>{try{return localStorage.getItem('gz_rewards_token')||''}catch{return''}})():'';return {data:(await d1({type:'rpc',fn,args},rewardToken))?.data??null,error:null}}catch(e){return {data:null,error:{message:e.message,status:e.status}}}},auth};
+window.grabzoneD1={from:builder,rpc:async(fn,args={})=>{
+ try{
+  const rewardToken=/^rewards_/.test(String(fn||''))?(()=>{try{return localStorage.getItem('gz_rewards_token')||''}catch{return''}})():'';
+  return {data:(await d1({type:'rpc',fn,args},rewardToken))?.data??null,error:null}
+ }catch(e){return {data:null,error:{message:e.message,status:e.status}}}
+},auth};
 window.getToken=()=>read(TOKEN_KEY);
 
 /* GrabPoints customer auth UI is isolated to the Rewards page. */
 try{
- const pagePath=String(location.pathname||'').replace(/\/+$/,'').toLowerCase();
- const isGrabPointsPage=pagePath==='\/grabpoints'||pagePath==='\/grabpoints.html'||pagePath.endsWith('\/grabpoints')||pagePath.endsWith('\/grabpoints.html');
- if(isGrabPointsPage){
-  const load=()=>{const s=document.createElement('script');s.src='grabpoints-auth-animation.js?v=20260908ui3';s.async=true;document.head.appendChild(s)};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();
- }
+  const pagePath=String(location.pathname||'').replace(/\/+$/,'').toLowerCase();
+  const isGrabPointsPage=pagePath==='\/grabpoints'||pagePath==='\/grabpoints.html'||pagePath.endsWith('\/grabpoints')||pagePath.endsWith('\/grabpoints.html');
+  if(isGrabPointsPage){
+    const s=document.createElement('script');
+    s.src='grabpoints-auth-animation.js?v=20260908ui3';
+    s.async=true;
+    document.head.appendChild(s);
+  }
 }catch{}
 })();
