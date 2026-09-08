@@ -134,8 +134,8 @@
 </script>
 <script src="rewards.js?v=20260903gpfix3"></script>
 <script src="grabpoints-ui-final.js?v=20260908final1"></script>
-<script src="grabpoints-redeem-animation.js?v=20260908redeem1"></script>
-<script src="grabpoints-redeem-flow.js?v=20260908flow2"></script><script>
+<script src="grabpoints-redeem-animation.js?v=20260908redeem2"></script>
+<script src="grabpoints-redeem-flow.js?v=20260908flow3"></script><script>
 (async function(){
   try{
     const r=await window.grabzoneD1?.rpc('rewards_public_settings',{});
@@ -163,10 +163,8 @@
       app.innerHTML='<div style="padding:32px;text-align:center;font-family:system-ui;color:#555"><b>GrabPoints is loading…</b><div style="margin-top:8px;font-size:13px">Please wait a moment and refresh if needed.</div></div>';
     }
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootRewards);
-  else setTimeout(bootRewards,0);
-  setTimeout(bootRewards,500);
-  setTimeout(bootRewards,1500);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootRewards,{once:true});
+  else bootRewards();
 })();
 </script>
 
@@ -177,7 +175,7 @@
   const enBtn=document.getElementById('enBtn'),bnBtn=document.getElementById('bnBtn');
   function setLang(x){x=x==='bn'?'bn':'en';root.lang=x;localStorage.setItem('gz_lang',x);localStorage.setItem('grabzone_language',x);enBtn.classList.toggle('active',x==='en');bnBtn.classList.toggle('active',x==='bn')}
   enBtn.onclick=()=>setLang('en');bnBtn.onclick=()=>setLang('bn');setLang(saved);
-  document.addEventListener('DOMContentLoaded',function(){window.GrabZoneRewards?.render?.()});
+  document.addEventListener('DOMContentLoaded',function(){/* initial render is handled once by bootRewards */},{once:true});
 })();
 </script>
 </body>
