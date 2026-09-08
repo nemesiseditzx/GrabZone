@@ -4,6 +4,7 @@
   const STYLE_ID = 'gzAuthAnimationStyle';
   let observer = null;
   let scheduled = false;
+  let building = false;
   let lastMode = '';
 
   function inject() {
@@ -103,6 +104,7 @@
   }
 
   function build(force = false) {
+    if (building) return false;
     const app = document.getElementById(APP_ID);
     if (!app) return false;
     const mode = authMode();
@@ -159,30 +161,33 @@
     return true;
   }
 
-  function scheduleBuild(force = false) {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
-      build(force);
-    });
+  let stabilityTimer = null;
+
+  function scheduleBuild(){
+    clearTimeout(stabilityTimer);
+    stabilityTimer=setTimeout(()=>{stabilityTimer=null;build()},120);
   }
 
-  function watch() {
-    const app = document.getElementById(APP_ID);
-    if (!app) return false;
-    if (observer) observer.disconnect();
-    observer = new MutationObserver(() => {
-      const mode = authMode();
-      const stage = app.querySelector(':scope > .gz-auth-stage');
-      if (mode && (!stage || !stage.querySelector('.gz-auth-form'))) scheduleBuild(true);
-      else if (mode && stage) {
+  function watch(){
+    const app=document.getElementById(APP_ID);
+    if(!app)return false;
+    if(observer){observer.disconnect();observer=null}
+    /* Poll only for a genuinely missing auth stage. Do not observe every child move:
+       build() itself moves the original form nodes, and observing those transient DOM
+       states was the source of the visible multi-refresh/flicker on page load. */
+    if(stabilityTimer)clearInterval(stabilityTimer);
+    stabilityTimer=setInterval(()=>{
+      if(building) return;
+      const m=authMode();
+      if(!m){lastMode='';return}
+      const stage=app.querySelector(':scope > .gz-auth-stage');
+      if(!stage){build();return}
+      if(stage.querySelector('.gz-auth-form')){
         app.classList.add('gz-auth-ui');
-        app.classList.toggle('is-register', mode === 'register');
-        lastMode = mode;
+        app.classList.toggle('is-register',m==='register');
+        lastMode=m;
       }
-    });
-    observer.observe(app, { childList: true, subtree: true });
+    },500);
     return true;
   }
 
