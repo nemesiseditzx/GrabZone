@@ -1,0 +1,40 @@
+name: Integrate GrabPoints redemption UI
+on:
+  push:
+    branches:
+      - feature/animated-grabpoints-auth
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/animated-grabpoints-auth
+          fetch-depth: 0
+      - name: Add redemption animation script
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('grabpoints.html')
+          s=p.read_text()
+          tag='<script src="grabpoints-redeem-animation.js?v=20260908redeem1"></script>'
+          if tag not in s:
+              marker='<script src="rewards.js?v=20260903gpfix3"></script>'
+              if marker in s:
+                  s=s.replace(marker, marker+'\n'+tag, 1)
+              else:
+                  marker='</body>'
+                  s=s.replace(marker, tag+'\n'+marker, 1)
+              p.write_text(s)
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add grabpoints.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Wire premium redemption animation [skip ci]'
+          git push origin HEAD:feature/animated-grabpoints-auth
