@@ -60,20 +60,34 @@
     const login=document.getElementById('grLogin');
     const register=document.getElementById('grRegister');
     if(!login&&!register) return false;
-    if(body.dataset.gzAuthAnimated==='1') return true;
+
+    const stage=body.querySelector('.gz-auth-stage');
+    const currentAuth=login||register;
+    if(stage && stage.contains(currentAuth)){
+      body.dataset.gzAuthAnimated='1';
+      body.classList.add('gz-auth-ui');
+      return true;
+    }
+
+    // rewards.js can replace the auth markup after the first render.
+    // If that happens, discard the old wrapper and wrap the fresh markup again.
+    if(stage) stage.remove();
+    body.dataset.gzAuthAnimated='0';
+    body.classList.add('gz-auth-ui');
+
     const original=[...body.children];
     if(!original.length) return false;
     body.dataset.gzAuthAnimated='1';
-    body.classList.add('gz-auth-ui');
-    if(register&&!login)body.classList.add('is-register');
-    const stage=document.createElement('div');stage.className='gz-auth-stage';
+    body.classList.toggle('is-register',!!register&&!login);
+
+    const newStage=document.createElement('div');newStage.className='gz-auth-stage';
     const visual=document.createElement('aside');visual.className='gz-auth-visual';
     visual.innerHTML='<img class="gz-auth-logo" src="favicon.png" alt="GrabZone"><div class="gz-auth-kicker">GRABZONE REWARDS</div><h3>More rewards.<br>More reasons to come back.</h3><p>One account for your GrabPoints balance, membership tier and rewards. Keep shopping, keep earning, keep leveling up.</p><div class="gz-auth-points"><div class="gz-auth-point"><i>✓</i><span>Track your GP balance</span></div><div class="gz-auth-point"><i>★</i><span>Unlock higher tiers</span></div><div class="gz-auth-point"><i>↗</i><span>Redeem securely</span></div></div>';
     const switcher=document.createElement('button');switcher.type='button';switcher.className='gz-auth-switch';switcher.textContent=register&&!login?'Already a member? Login':'New to GrabPoints? Join now';
     switcher.onclick=function(){const target=(register&&!login)?document.getElementById('grToLogin'):document.getElementById('grToRegister');if(target)target.click()};
     visual.appendChild(switcher);
     const form=document.createElement('section');form.className='gz-auth-form';original.forEach(n=>form.appendChild(n));
-    stage.appendChild(visual);stage.appendChild(form);body.appendChild(stage);
+    newStage.appendChild(visual);newStage.appendChild(form);body.appendChild(newStage);
     try{const brand=document.getElementById('gpBrandLogo'),logo=visual.querySelector('.gz-auth-logo');if(brand&&logo&&brand.src)logo.src=brand.src}catch{}
     return true;
   }
@@ -81,7 +95,21 @@
   function boot(){
     inject();
     let count=0;
-    const run=()=>{if(build()){if(window.__gzAuthObserver)return;const body=document.getElementById(APP_ID);if(body){window.__gzAuthObserver=new MutationObserver(()=>{if(body.dataset.gzAuthAnimated!=='1')build()});window.__gzAuthObserver.observe(body,{childList:true,subtree:true})}return}if(++count<80)setTimeout(run,250)};
+    const run=()=>{
+      if(build()){
+        if(window.__gzAuthObserver)return;
+        const body=document.getElementById(APP_ID);
+        if(body){
+          window.__gzAuthObserver=new MutationObserver(()=>{
+            const currentBody=document.getElementById(APP_ID);
+            if(currentBody) build();
+          });
+          window.__gzAuthObserver.observe(body,{childList:true,subtree:true});
+        }
+        return;
+      }
+      if(++count<80)setTimeout(run,250);
+    };
     run();
     document.addEventListener('DOMContentLoaded',()=>setTimeout(run,50),{once:true});
   }
