@@ -1,0 +1,46 @@
+name: Patch Rewards Email Template
+on:
+  push:
+    branches:
+      - feature/animated-grabpoints-auth
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[email-template-patched]') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch renderer
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('worker.mjs')
+          s=p.read_text(encoding='utf-8')
+          old='const tierCard=rewardEmailTierCard(tier);'
+          if old not in s:
+              raise SystemExit('tierCard declaration not found')
+          s=s.replace(old,'',1)
+          old2='+tierCard+security+footer+'
+          if old2 not in s:
+              raise SystemExit('tierCard render insertion not found')
+          s=s.replace(old2,'+security+footer+',1)
+          old3='</div><div class=\'gz-orb\' style=\'position:absolute;right:-70px;top:-75px;width:230px;height:230px;border-radius:50%;border:1px solid '+th.a+'55;box-shadow:0 0 0 35px '+th.a+'10,0 0 0 70px '+th.a+'07\'></div><div style=\'position:absolute;right:24px;bottom:24px;font-size:42px;opacity:.13;transform:rotate(-10deg)\'>'+meta.icon+'</div></div>'
+          if old3 not in s:
+              raise SystemExit('hero orb block not found')
+          new3='</div><div style=\'position:absolute;right:24px;bottom:24px;font-size:42px;opacity:.10;transform:rotate(-10deg)\'>'+meta.icon+'</div></div>'
+          s=s.replace(old3,new3,1)
+          old4="<div class='gz-content' style='padding:27px 28px 31px;background:#fff'>"
+          new4="<div class='gz-content' style='padding:24px 28px 30px;background:#fff'>"
+          s=s.replace(old4,new4,1)
+          p.write_text(s,encoding='utf-8')
+      - name: Commit and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name 'grabzone-email-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add worker.mjs
+          git commit -m 'Clean up rewards email template [email-template-patched]'
+          git rm .github/workflows/patch-rewards-email.yml
+          git commit -m 'Remove temporary email patch workflow'
+          git push origin HEAD:feature/animated-grabpoints-auth
