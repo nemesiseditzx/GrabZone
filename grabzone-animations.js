@@ -246,18 +246,33 @@
     if(!s.scroll_reveal){if(revealObs)revealObs.disconnect();return}
     if(revealObs)revealObs.disconnect();
     /*
-      Replay the reveal every time an element enters the viewport.
-      This gives the homepage a continuous motion feel when the user
-      scrolls down and back up, without changing document layout.
+      Reveal is intentionally one-way. Once an element has entered the
+      viewport, keep it visible for the rest of the session. This avoids
+      mobile Safari blank/flicker states when the user scrolls quickly
+      away from a product section and then returns to it.
     */
     revealObs=new IntersectionObserver(es=>es.forEach(e=>{
-      if(e.isIntersecting){
-        e.target.classList.add("gz-visible");
-      }else{
-        e.target.classList.remove("gz-visible");
-      }
+      if(e.isIntersecting)e.target.classList.add("gz-visible");
     }),{threshold:.08,rootMargin:"-4% 0px -4% 0px"});
-    document.querySelectorAll(".gz-reveal-target").forEach(x=>revealObs.observe(x))
+    document.querySelectorAll(".gz-reveal-target").forEach(x=>revealObs.observe(x));
+
+    /*
+      Safety pass for browsers that delay IntersectionObserver callbacks
+      during fast touch scrolling. Anything currently on-screen is made
+      visible without changing layout or scroll position.
+    */
+    const revealVisibleNow=()=>{
+      if(raf)return;
+      raf=requestAnimationFrame(()=>{
+        raf=0;
+        document.querySelectorAll(".gz-reveal-target:not(.gz-visible)").forEach(el=>{
+          const r=el.getBoundingClientRect();
+          if(r.bottom>0&&r.top<innerHeight)el.classList.add("gz-visible");
+        });
+      });
+    };
+    revealVisibleNow();
+    addEventListener("scroll",revealVisibleNow,{passive:true});
   }
 
   function products(s){
