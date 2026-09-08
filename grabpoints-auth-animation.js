@@ -163,6 +163,8 @@
 
   let stabilityTimer = null;
 
+  let stabilityTimer = null;
+
   function scheduleBuild(){
     clearTimeout(stabilityTimer);
     stabilityTimer=setTimeout(()=>{stabilityTimer=null;build()},120);
