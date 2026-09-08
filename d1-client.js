@@ -170,9 +170,11 @@ window.getToken=()=>read(TOKEN_KEY);
 
 /* GrabPoints auth animation is isolated to the customer Rewards page. */
 try{
-  if(/(?:^|\/)grabpoints\.html(?:$|[?#])/i.test(location.pathname+location.search+location.hash)){
+  const pagePath=String(location.pathname||'').replace(/\/+$/,'').toLowerCase();
+  const isGrabPointsPage=pagePath==='\/grabpoints'||pagePath==='\/grabpoints.html'||pagePath.endsWith('\/grabpoints')||pagePath.endsWith('\/grabpoints.html');
+  if(isGrabPointsPage){
     const s=document.createElement('script');
-    s.src='grabpoints-auth-animation.js?v=20260907auth1';
+    s.src='grabpoints-auth-animation.js?v=20260908auth2';
     s.async=true;
     document.head.appendChild(s);
   }
