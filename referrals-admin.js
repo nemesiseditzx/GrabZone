@@ -1,4 +1,4 @@
-(() => {
+(()=>{
 'use strict';
 const C=window.GRABZONE_CONFIG||{};
 const sb=window.grabzoneD1||null;
@@ -8,7 +8,7 @@ let editingId=null,referrals=[];
 
 async function syncAdminRecordsToSheet(){
   try{
-    const response=await (window.gzAuthFetch||fetch)((C.backendUrl||'')+'/api/sync-order-sheet',{
+    const response=await (window.gzAuthFetch||fetch)('/api/sync-order-sheet',{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+(window.getToken?window.getToken():'')},
       credentials:'include',
@@ -72,7 +72,6 @@ function inject(){
     const tog=e.target.closest('[data-ref-toggle]');if(tog)toggleReferral(tog.dataset.refToggle,tog.dataset.active==='true');
   });
   load();
-  syncAdminRecordsToSheet();
 }
 function clearForm(){editingId=null;$('gzReferralFormTitle').textContent='Add referral code';$('gzReferralSave').textContent='Save referral code';['rfAdminName','rfAdminPhone','rfAdminEmail','rfOwnerName','rfCode','rfValue','rfCommissionValue','rfMax','rfLimit','rfStarts','rfExpires','rfNote'].forEach(id=>$(id).value='');$('rfMin').value='0';$('rfType').value='fixed';$('rfCommissionType').value='percentage';$('rfActive').value='true';$('gzReferralMsg').textContent='';}
 const BD_TIME_ZONE="Asia/Dhaka";
