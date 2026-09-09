@@ -1,0 +1,29 @@
+name: Deploy GrabZone Marketplace Dev Worker
+
+on:
+  push:
+    branches:
+      - vendor-system-dev
+  workflow_dispatch:
+
+concurrency:
+  group: grabzone-marketplace-dev
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Deploy isolated marketplace dev worker
+        uses: cloudflare/wrangler-action@v4
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: deploy --config wrangler.marketplace-dev.jsonc
