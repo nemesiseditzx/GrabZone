@@ -157,3 +157,27 @@
   `;
   document.head.appendChild(st);
 })();
+
+/* Static Vercel admin fallback: the Cloudflare Worker router is not executed by Vercel. */
+(function(){
+  function inject(){
+    if(document.getElementById('gzStaticMarketplaceNav'))return;
+    const sidebar=document.querySelector('.sidebar');
+    if(!sidebar)return;
+    const box=document.createElement('div');
+    box.id='gzStaticMarketplaceNav';
+    box.style.cssText='margin:16px 8px 10px;padding:12px 8px;border:1px solid #e7e7e3;border-radius:16px;background:#fafaf8;';
+    box.innerHTML='<div style="font-size:10px;font-weight:900;letter-spacing:.14em;color:#777;padding:0 8px 7px">MARKETPLACE</div>'+[
+      ['Vendors','marketplace-vendor-control.html'],
+      ['Vendor Products','vendor-admin.html'],
+      ['Vendor Orders','marketplace-admin-orders.html'],
+      ['Vendor Sales','vendor-admin.html'],
+      ['Vendor Stores','vendor-admin.html'],
+      ['Shipping','vendor-admin.html'],
+      ['Marketplace Settings','vendor-admin.html']
+    ].map(x=>'<a href="'+x[1]+'" style="display:block;padding:9px 8px;border-radius:9px;color:#111;text-decoration:none;font-weight:800;font-size:13px">'+x[0]+'</a>').join('');
+    sidebar.appendChild(box);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',inject);else inject();
+  setTimeout(inject,500);setTimeout(inject,1500);
+})();
