@@ -1,0 +1,83 @@
+import app from './vendor-marketplace-final.mjs';
+
+const now=()=>new Date().toISOString();
+const clean=(v,n=10000)=>String(v??'').trim().slice(0,n);
+const json=(x,s=200,h={})=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...h}});
+async function q(e,sql,p=[]){return e.DB.prepare(sql).bind(...p).all()}
+async function one(e,sql,p=[]){return (await q(e,sql,p)).results?.[0]||null}
+async function sha(v){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}
+function cookie(req,n){for(const p of (req.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}
+async function admin(req,e){const raw=cookie(req,'gz_admin_session');if(!raw)return null;return one(e,"SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>?",[await sha(raw),now()])}
+async function vendor(req,e){const raw=cookie(req,'gz_vendor_session');if(!raw)return null;return one(e,"SELECT vu.id,vu.email,vu.vendor_id,vu.role,v.brand_name,v.slug FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active'",[await sha(raw),now()])}
+async function schema(e){
+  for(const sql of [
+    'ALTER TABLE vendors ADD COLUMN order_notification_email TEXT',
+    'ALTER TABLE vendors ADD COLUMN support_email TEXT',
+    'ALTER TABLE vendors ADD COLUMN business_email TEXT',
+    'ALTER TABLE products ADD COLUMN category_id TEXT'
+  ]) await e.DB.prepare(sql).run().catch(()=>{});
+  await e.DB.prepare('CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,slug TEXT NOT NULL UNIQUE,active INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)').run().catch(()=>{});
+}
+
+async function enrichVendorOrders(req,e){
+  const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);
+  const rows=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.address,o.district,o.division,o.upazila,o.status order_status,v.brand_name FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id JOIN vendors v ON v.id=vo.vendor_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC`,[u.vendor_id])).results||[];
+  for(const o of rows){
+    o.items=(await q(e,`SELECT voi.*,oi.product_name,oi.image_url,p.sku FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id LEFT JOIN products p ON p.id=voi.product_id WHERE voi.vendor_order_id=? ORDER BY oi.id`,[o.id])).results||[];
+    o.shipments=(await q(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[o.order_id,u.vendor_id])).results||[];
+    for(const s of o.shipments)s.items=(await q(e,`SELECT si.*,oi.product_name,oi.image_url,p.sku FROM shipment_items si JOIN order_items oi ON oi.id=si.order_item_id LEFT JOIN products p ON p.id=oi.product_id WHERE si.shipment_id=?`,[s.id])).results||[];
+  }
+  return json({orders:rows});
+}
+
+async function enrichAdminVendor(req,e){
+  const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+  const id=clean(new URL(req.url).searchParams.get('vendor_id'),100);if(!id)return json({error:'Vendor required'},400);
+  const v=await one(e,'SELECT * FROM vendors WHERE id=? OR slug=?',[id,id]);if(!v)return json({error:'Vendor not found'},404);
+  const products=(await q(e,'SELECT p.*,c.name category_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id WHERE p.vendor_id=? ORDER BY p.created_at DESC',[v.id])).results||[];
+  const orders=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.address,o.district,o.division,o.upazila,o.status order_status FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC`,[v.id])).results||[];
+  for(const o of orders){
+    o.items=(await q(e,`SELECT voi.*,oi.product_name,oi.image_url,p.sku FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id LEFT JOIN products p ON p.id=voi.product_id WHERE voi.vendor_order_id=?`,[o.id])).results||[];
+    o.shipments=(await q(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[o.order_id,v.id])).results||[];
+  }
+  return json({vendor:v,products,orders});
+}
+
+async function addShipmentItems(req,e){
+  const body=await req.clone().json().catch(()=>({}));
+  const result=await app.fetch(req,e);
+  if(!result.ok)return result;
+  const data=await result.clone().json().catch(()=>({}));
+  const shipmentId=data.shipment_id;if(!shipmentId)return result;
+  const u=await vendor(req,e);if(!u)return result;
+  const vo=await one(e,'SELECT id,order_id FROM vendor_orders WHERE id=? AND vendor_id=?',[clean(body.vendor_order_id,100),u.vendor_id]);if(!vo)return result;
+  const requested=Array.isArray(body.items)?body.items:Array.isArray(body.item_ids)?body.item_ids.map(id=>({order_item_id:id})):[];
+  const vendorItems=(await q(e,'SELECT id,order_item_id,quantity FROM vendor_order_items WHERE vendor_order_id=?',[vo.id])).results||[];
+  const byId=new Map(vendorItems.map(x=>[x.order_item_id,x]));
+  const source=requested.length?requested:vendorItems.map(x=>({order_item_id:x.order_item_id,quantity:x.quantity}));
+  for(const x of source){const item=byId.get(clean(x.order_item_id||x.id,100));if(!item)continue;const qty=Math.max(1,Math.min(Number(x.quantity||item.quantity),Number(item.quantity)));await e.DB.prepare('INSERT OR REPLACE INTO shipment_items(id,shipment_id,order_item_id,quantity) VALUES(?,?,?,?)').bind(crypto.randomUUID(),shipmentId,item.order_item_id,qty).run()}
+  return result;
+}
+
+export default {fetch:async(req,e,ctx)=>{
+  try{
+    await schema(e);
+    const p=new URL(req.url).pathname;
+    if(p==='/api/vendor/orders'&&req.method==='GET')return enrichVendorOrders(req,e);
+    if(p==='/api/vendor/admin/vendor-data'&&req.method==='GET')return enrichAdminVendor(req,e);
+    if(p==='/api/vendor/shipments'&&req.method==='POST')return addShipmentItems(req,e);
+    if(p==='/api/vendor/categories'&&req.method==='GET'){
+      const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);
+      return json({categories:(await q(e,'SELECT * FROM marketplace_categories WHERE active=1 ORDER BY name')).results||[]});
+    }
+    if(p==='/api/vendor/admin/categories'){
+      const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+      if(req.method==='GET')return json({categories:(await q(e,'SELECT * FROM marketplace_categories ORDER BY name')).results||[]});
+      const b=await req.json().catch(()=>({}));const name=clean(b.name,120);if(!name)return json({error:'Category name required.'},400);const slug=(clean(b.slug,120)||name.toLowerCase().replace(/[^a-z0-9]+/g,'-')).replace(/^-|-$/g,'');const id=crypto.randomUUID();await e.DB.prepare('INSERT INTO marketplace_categories(id,name,slug,active,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(id,name,slug,b.active===false?0:1,now(),now()).run().catch(err=>{throw new Error(err.message.includes('UNIQUE')?'Category already exists.':err.message)});return json({ok:true,id});
+    }
+    if(p.startsWith('/api/vendor/admin/categories/')&&req.method==='PATCH'){
+      const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);const id=clean(p.split('/').pop(),100);const b=await req.json().catch(()=>({}));await e.DB.prepare('UPDATE marketplace_categories SET name=?,slug=?,active=?,updated_at=? WHERE id=?').bind(clean(b.name,120),clean(b.slug,120),b.active===false?0:1,now(),id).run();return json({ok:true});
+    }
+    return app.fetch(req,e,ctx);
+  }catch(err){return json({error:err?.message||'Internal server error'},500)}
+}};
