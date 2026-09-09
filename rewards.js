@@ -157,7 +157,15 @@ else setTimeout(bootRewards,0);
     const boxes=[...b.querySelectorAll('.gz-fp-v7-otp input')];
     const sync=()=>{otp.value=boxes.map(x=>x.value).join('')};
     boxes.forEach((x,i)=>{x.addEventListener('input',()=>{x.value=x.value.replace(/\\D/g,'').slice(0,1);sync();if(x.value&&boxes[i+1])boxes[i+1].focus()});x.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!x.value&&boxes[i-1])boxes[i-1].focus()});x.addEventListener('paste',e=>{e.preventDefault();const v=(e.clipboardData.getData('text')||'').replace(/\\D/g,'').slice(0,6);boxes.forEach((q,j)=>q.value=v[j]||'');sync();boxes[Math.min(v.length,6)-1]?.focus()})});
-    document.getElementById('gzFpV7Verify').onclick=()=>{sync();verifyFn&&verifyFn()};
+    document.getElementById('gzFpV7Verify').onclick=()=>{
+      sync();
+      let legacyOtp=document.getElementById('grOtp');
+      if(!legacyOtp){legacyOtp=document.createElement('input');legacyOtp.id='grOtp';legacyOtp.type='hidden';b.appendChild(legacyOtp)}
+      legacyOtp.value=otp.value;
+      const msg=document.getElementById('gzFpV7Msg');
+      msg.id='grMsg';
+      if(verifyFn)verifyFn();
+    };
     document.getElementById('gzFpV7BackVerify').onclick=()=>{const a=document.getElementById('grBackLogin');a&&a.click()};
     boxes[0]?.focus();
     return true;
