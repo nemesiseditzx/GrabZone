@@ -1,0 +1,52 @@
+name: Repair GrabPoints Core Syntax
+
+on:
+  push:
+    branches:
+      - feature/animated-grabpoints-auth
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Repair literal escape tokens
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('grabpoints-ui-core.js')
+          s = p.read_text(encoding='utf-8')
+          marker = r'})();\n\n/* GRABZONE FORGOT PIN V4 */'
+          replacement = '})();\n\n/* GRABZONE FORGOT PIN V4 */'
+          if marker not in s:
+              raise SystemExit('Expected malformed V4 boundary was not found')
+          s = s.replace(marker, replacement, 1)
+          if s.endswith(r'})();\n'):
+              s = s[:-2] + '\n'
+          p.write_text(s, encoding='utf-8')
+          PY
+          node --check rewards.js
+          node --check grabpoints-ui-core.js
+
+      - name: Remove temporary workflows
+        shell: bash
+        run: |
+          rm -f .github/workflows/repair-core-syntax.yml
+          rm -f .github/workflows/fix-forgot-pin-send-v2.yml
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add grabpoints-ui-core.js .github/workflows/repair-core-syntax.yml .github/workflows/fix-forgot-pin-send-v2.yml
+          git commit -m "Fix GrabPoints core script syntax"
+          git push origin HEAD:feature/animated-grabpoints-auth
