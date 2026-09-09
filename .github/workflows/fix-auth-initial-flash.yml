@@ -1,6 +1,9 @@
 name: Fix auth initial flash
 
 on:
+  push:
+    branches:
+      - feature/animated-grabpoints-auth
   workflow_dispatch:
 
 permissions:
