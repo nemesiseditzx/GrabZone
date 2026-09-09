@@ -1,0 +1,48 @@
+name: Fix Rewards UI duplicates
+
+on:
+  push:
+    branches:
+      - feature/animated-grabpoints-auth
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/animated-grabpoints-auth
+          fetch-depth: 0
+      - name: Remove legacy duplicate Forgot PIN renderers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('rewards.js')
+          s=p.read_text()
+          clean=r'''async function forgot(){const b=$('gzRewardsBody');forgotPinStyle();b.innerHTML='<div class="gz-fp-clean"><div class="gz-fp-icon">🔐</div><div class="gz-fp-kicker"><i></i>SECURE PIN RECOVERY</div><h2>Forgot your PIN?</h2><p class="gz-fp-copy">Recover your Rewards account securely. We will send a one-time verification code to your registered email.</p><div class="gz-fp-progress"><b class="on">1</b><i class="on"></i><b>2</b><i></i><b>3</b></div><label class="gz-fp-label" for="grResetEmail">Registered Rewards email</label><input class="gz-fp-field" id="grResetEmail" type="email" autocomplete="email" placeholder="name@example.com"><div class="gz-fp-actions"><button type="button" class="gz-fp-primary" id="grSendCode">Send Verification Code →</button><button type="button" class="gz-fp-secondary" id="grBackLogin">Back to Login</button></div><div id="grMsg" class="gz-fp-msg"></div><div class="gz-fp-note">🛡️ <span><strong>Private & secure.</strong> Your verification code is sent only to the email registered with your Rewards account.</span></div></div>';$('grSendCode').onclick=sendCode;$('grBackLogin').onclick=()=>showAuth('login');$('grResetEmail').onkeydown=e=>{if(e.key==='Enter')sendCode()};$('grResetEmail').focus()}
+'''
+          s,n=re.subn(r'^async function forgot\(\)\{.*?^\}',clean,s,count=1,flags=re.M|re.S)
+          if n!=1: raise SystemExit('forgot renderer not found')
+          s,n=re.subn(r'^function showVerify\(email\)\{const b=\$\(\x27gzRewardsBody\x27\);b\.innerHTML=\x27<div class="eyebrow">EMAIL VERIFICATION</div>.*?^\}', '', s, count=1, flags=re.M|re.S)
+          if n!=1: raise SystemExit('legacy showVerify renderer not found')
+          p.write_text(s)
+          PY
+          node --check rewards.js
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('rewards.js').read_text()
+          assert s.count('function showVerify(email)')==1
+          assert s.count('async function forgot()')==1
+          assert 'gzFpV7' not in s
+          print('Rewards duplicate renderer cleanup: PASS')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rewards.js
+          git commit -m "Clean Rewards Forgot PIN renderers"
+          git push origin HEAD:feature/animated-grabpoints-auth
