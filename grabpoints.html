@@ -26,6 +26,7 @@
 [lang=bn] .en{display:none!important}[lang=en] .bn{display:none!important}
 @media(max-width:800px){.rewards-head{align-items:flex-start;flex-direction:column}.cards,.guide,.security{grid-template-columns:1fr}.tier-grid{grid-template-columns:1fr 1fr}.nav a{display:none}.wrap{padding-top:34px}.rewards-shell{padding:20px}}@media(max-width:480px){.tier-grid{grid-template-columns:1fr}.top{padding:0 14px}}
 </style>
+<style id="gzAuthBootGuard">#gzRewardsApp.gz-auth-pending{visibility:hidden!important}</style>
 </head>
 <body>
 <header class="top">
@@ -48,7 +49,7 @@
       </div>
       <div class="account-help"><div class="gz-page-title"><span class="icon">🎁</span><div><b><span class="en">Rewards & Membership</span><span class="bn">Rewards & Membership</span></b><small style="display:block;color:#777;margin-top:3px"><span class="en">Secure PIN account</span><span class="bn">Secure PIN account</span></small></div></div><span class="en">Everything about your GP balance, rewards and membership is shown here.</span><span class="bn">আপনার GP balance, reward এবং membership-এর সব তথ্য এখানে সহজে দেখতে পারবেন।</span></div>
     </div>
-    <div class="app-card"><div id="gzRewardsApp"></div></div>
+    <div class="app-card"><div id="gzRewardsApp" class="gz-auth-pending"></div></div>
     <div class="membership-cta">
       <div><h3><span class="en">Want to understand your membership?</span><span class="bn">আপনার membership পুরোটা বুঝতে চান?</span></h3><p><span class="en">See every tier, the GP needed to reach it, and the benefits you can unlock.</span><span class="bn">প্রতিটি tier-এ যেতে কত GP লাগবে এবং কী কী সুবিধা পাবেন—সব একসাথে দেখুন।</span></p></div>
       <a class="btn" href="#membership"><span class="en">View All Tiers & Benefits →</span><span class="bn">সব Tier ও সুবিধা দেখুন →</span></a>
@@ -133,7 +134,20 @@
 })();
 </script>
 <script src="rewards.js?v=20260909hardening1"></script>
-<script src="grabpoints-auth-animation.js?v=20260909auth3"></script>
+<script src="grabpoints-auth-animation.js?v=20260909auth3"></script><script>
+(()=>{
+  const app=document.getElementById('gzRewardsApp');
+  if(!app)return;
+  const reveal=()=>{
+    if(app.querySelector('.gz-auth-stage,.gz-rewards-dashboard,.gz-fp-clean')){
+      app.classList.remove('gz-auth-pending');
+    }
+  };
+  reveal();
+  new MutationObserver(reveal).observe(app,{childList:true,subtree:true});
+  setTimeout(reveal,2500);
+})();
+</script>
 <script src="grabpoints-forgot-pin-ui.js?v=20260909standalone3"></script>
 <script src="grabpoints-ui-final.js?v=20260909hardening1"></script>
 <script src="grabpoints-mobile-responsive.js?v=20260908mobile1"></script>
