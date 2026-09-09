@@ -9,7 +9,68 @@ async function sha(v){return [...new Uint8Array(await crypto.subtle.digest('SHA-
 function cookie(req,n){for(const p of (req.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}
 async function admin(req,e){const raw=cookie(req,'gz_admin_session');if(!raw)return null;return one(e,"SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>?",[await sha(raw),now()])}
 async function vendor(req,e){const raw=cookie(req,'gz_vendor_session');if(!raw)return null;return one(e,"SELECT vu.id,vu.email,vu.vendor_id,vu.role,v.brand_name,v.slug FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active'",[await sha(raw),now()])}
-async function schema(e){for(const sql of ['ALTER TABLE vendors ADD COLUMN order_notification_email TEXT','ALTER TABLE vendors ADD COLUMN support_email TEXT','ALTER TABLE vendors ADD COLUMN business_email TEXT','ALTER TABLE products ADD COLUMN category_id TEXT'])await e.DB.prepare(sql).run().catch(()=>{});await e.DB.prepare('CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,slug TEXT NOT NULL UNIQUE,active INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)').run().catch(()=>{})}
+
+async function schema(e){
+  // The development D1 database may contain an older vendors table created before
+  // the marketplace schema was introduced. CREATE TABLE IF NOT EXISTS does not
+  // add columns to an existing table, so explicitly migrate every vendor column
+  // that the marketplace code relies on. All added columns are nullable/defaulted
+  // so existing rows remain valid and are never deleted or recreated.
+  await e.DB.prepare(`CREATE TABLE IF NOT EXISTS vendors(
+    id TEXT PRIMARY KEY,
+    slug TEXT UNIQUE,
+    business_name TEXT,
+    brand_name TEXT,
+    email TEXT,
+    phone TEXT,
+    logo_url TEXT,
+    banner_url TEXT,
+    description TEXT,
+    tagline TEXT,
+    accent_color TEXT DEFAULT '#ff6b00',
+    status TEXT DEFAULT 'Active',
+    shipping_fee REAL DEFAULT 130,
+    commission_type TEXT DEFAULT 'percentage',
+    commission_value REAL DEFAULT 10,
+    homepage_visible INTEGER DEFAULT 1,
+    featured INTEGER DEFAULT 0,
+    social_links TEXT DEFAULT '{}',
+    contact_info TEXT DEFAULT '{}',
+    announcement TEXT,
+    created_at TEXT,
+    updated_at TEXT
+  )`).run().catch(()=>{});
+
+  const vendorColumns=[
+    ['slug','TEXT'],['business_name','TEXT'],['brand_name','TEXT'],['email','TEXT'],
+    ['phone','TEXT'],['logo_url','TEXT'],['banner_url','TEXT'],['description','TEXT'],
+    ['tagline','TEXT'],['accent_color',"TEXT DEFAULT '#ff6b00'"],['status',"TEXT DEFAULT 'Active'"],
+    ['shipping_fee','REAL DEFAULT 130'],['commission_type',"TEXT DEFAULT 'percentage'"],
+    ['commission_value','REAL DEFAULT 10'],['homepage_visible','INTEGER DEFAULT 1'],
+    ['featured','INTEGER DEFAULT 0'],['social_links',"TEXT DEFAULT '{}'"],
+    ['contact_info',"TEXT DEFAULT '{}'"],['announcement','TEXT'],['created_at','TEXT'],['updated_at','TEXT']
+  ];
+  for(const [name,type] of vendorColumns){
+    await e.DB.prepare(`ALTER TABLE vendors ADD COLUMN ${name} ${type}`).run().catch(()=>{});
+  }
+
+  // Normalize legacy rows where the old schema did not have marketplace values.
+  await e.DB.prepare("UPDATE vendors SET brand_name=COALESCE(NULLIF(brand_name,''),business_name,slug,'Vendor') WHERE brand_name IS NULL OR brand_name=''").run().catch(()=>{});
+  await e.DB.prepare("UPDATE vendors SET business_name=COALESCE(NULLIF(business_name,''),brand_name,slug,'Vendor') WHERE business_name IS NULL OR business_name=''").run().catch(()=>{});
+  await e.DB.prepare("UPDATE vendors SET email=COALESCE(NULLIF(email,''),'admin@grabzone.store') WHERE email IS NULL OR email=''").run().catch(()=>{});
+  await e.DB.prepare("UPDATE vendors SET status=COALESCE(NULLIF(status,''),'Active') WHERE status IS NULL OR status=''").run().catch(()=>{});
+  await e.DB.prepare("UPDATE vendors SET shipping_fee=COALESCE(shipping_fee,130),commission_type=COALESCE(commission_type,'percentage'),commission_value=COALESCE(commission_value,10),homepage_visible=COALESCE(homepage_visible,1),featured=COALESCE(featured,0),social_links=COALESCE(social_links,'{}'),contact_info=COALESCE(contact_info,'{}'),accent_color=COALESCE(accent_color,'#ff6b00')").run().catch(()=>{});
+
+  for(const sql of [
+    'ALTER TABLE vendors ADD COLUMN order_notification_email TEXT',
+    'ALTER TABLE vendors ADD COLUMN support_email TEXT',
+    'ALTER TABLE vendors ADD COLUMN business_email TEXT',
+    'ALTER TABLE products ADD COLUMN category_id TEXT'
+  ])await e.DB.prepare(sql).run().catch(()=>{});
+
+  await e.DB.prepare('CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,slug TEXT NOT NULL UNIQUE,active INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)').run().catch(()=>{});
+}
+
 async function enrichVendorOrders(req,e){const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);const rows=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.address,o.district,o.division,o.upazila,o.status order_status,v.brand_name FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id JOIN vendors v ON v.id=vo.vendor_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC`,[u.vendor_id])).results||[];for(const o of rows){o.items=(await q(e,`SELECT voi.*,oi.product_name,oi.image_url,p.sku FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id LEFT JOIN products p ON p.id=voi.product_id WHERE voi.vendor_order_id=? ORDER BY oi.id`,[o.id])).results||[];o.shipments=(await q(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[o.order_id,u.vendor_id])).results||[];for(const s of o.shipments)s.items=(await q(e,`SELECT si.*,oi.product_name,oi.image_url,p.sku FROM shipment_items si JOIN order_items oi ON oi.id=si.order_item_id LEFT JOIN products p ON p.id=oi.product_id WHERE si.shipment_id=?`,[s.id])).results||[]}return json({orders:rows})}
 async function enrichAdminVendor(req,e){const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);const id=clean(new URL(req.url).searchParams.get('vendor_id'),100);if(!id)return json({error:'Vendor required'},400);const v=await one(e,'SELECT * FROM vendors WHERE id=? OR slug=?',[id,id]);if(!v)return json({error:'Vendor not found'},404);const products=(await q(e,'SELECT p.*,c.name category_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id WHERE p.vendor_id=? ORDER BY p.created_at DESC',[v.id])).results||[];const orders=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.address,o.district,o.division,o.upazila,o.status order_status FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC`,[v.id])).results||[];for(const o of orders){o.items=(await q(e,`SELECT voi.*,oi.product_name,oi.image_url,p.sku FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id LEFT JOIN products p ON p.id=voi.product_id WHERE voi.vendor_order_id=?`,[o.id])).results||[];o.shipments=(await q(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[o.order_id,v.id])).results||[]}return json({vendor:v,products,orders})}
 async function addShipmentItems(req,e){const body=await req.clone().json().catch(()=>({}));const result=await app.fetch(req,e);if(!result.ok)return result;const data=await result.clone().json().catch(()=>({}));const shipmentId=data.shipment_id;if(!shipmentId)return result;const u=await vendor(req,e);if(!u)return result;const vo=await one(e,'SELECT id FROM vendor_orders WHERE id=? AND vendor_id=?',[clean(body.vendor_order_id,100),u.vendor_id]);if(!vo)return result;const requested=Array.isArray(body.items)?body.items:Array.isArray(body.item_ids)?body.item_ids.map(id=>({order_item_id:id})):[];const vendorItems=(await q(e,'SELECT id,order_item_id,quantity FROM vendor_order_items WHERE vendor_order_id=?',[vo.id])).results||[];const byId=new Map(vendorItems.map(x=>[x.order_item_id,x]));const source=requested.length?requested:vendorItems.map(x=>({order_item_id:x.order_item_id,quantity:x.quantity}));for(const x of source){const item=byId.get(clean(x.order_item_id||x.id,100));if(!item)continue;const qty=Math.max(1,Math.min(Number(x.quantity||item.quantity),Number(item.quantity)));await e.DB.prepare('INSERT OR REPLACE INTO shipment_items(id,shipment_id,order_item_id,quantity) VALUES(?,?,?,?)').bind(crypto.randomUUID(),shipmentId,item.order_item_id,qty).run()}return result}
