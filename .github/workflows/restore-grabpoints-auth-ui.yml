@@ -1,0 +1,28 @@
+name: Restore GrabPoints auth animation loader
+on:
+  push:
+    branches:
+      - feature/animated-grabpoints-auth
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: feature/animated-grabpoints-auth
+      - name: Restore auth animation script tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'grabpoints-auth-animation.js' grabpoints.html || sed -i '/<script src="rewards.js?v=/a <script src="grabpoints-auth-animation.js?v=20260909auth1"></script>' grabpoints.html
+          node --check grabpoints-auth-animation.js
+          grep -q 'grabpoints-auth-animation.js?v=20260909auth1' grabpoints.html
+          rm -f .github/workflows/restore-grabpoints-auth-ui.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add grabpoints.html .github/workflows/restore-grabpoints-auth-ui.yml
+          git commit -m "Restore GrabPoints auth animation loader"
+          git push origin HEAD:feature/animated-grabpoints-auth
