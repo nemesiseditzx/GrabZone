@@ -29,10 +29,37 @@ async function adminForToken(e,token){
   if(!token)return null;
   return one(e,"SELECT u.id,u.email,s.expires_at FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>?",[await sha(token),now()]);
 }
+function b64(b){let s='';for(const x of b)s+=String.fromCharCode(x);return btoa(s).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_')}
+function ub64(s){s=String(s).replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
+async function hmac(secret,data){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(secret)),{name:'HMAC',hash:'SHA-256'},false,['sign']);return new Uint8Array(await crypto.subtle.sign('HMAC',k,new TextEncoder().encode(data)))}
+async function verifySigned(token,secret){
+  if(!token||!secret)return null;
+  const a=String(token).split('.');if(a.length!==2)return null;
+  const expected=await hmac(secret,a[0]);const got=ub64(a[1]);
+  if(expected.length!==got.length)return null;let diff=0;for(let i=0;i<expected.length;i++)diff|=expected[i]^got[i];if(diff)return null;
+  try{const p=JSON.parse(new TextDecoder().decode(ub64(a[0])));return p.exp>Date.now()/1000?p:null}catch{return null}
+}
+const authSecret=e=>String(e.MARKETPLACE_AUTH_SECRET||e.D1_AUTH_SECRET||e.GRABZONE_ADMIN_PASSWORD||'');
+async function signedAdmin(e,token){
+  const p=await verifySigned(token,authSecret(e));
+  if(!p?.sub)return null;
+  return one(e,'SELECT id,email FROM admin_users WHERE id=? OR lower(email)=lower(?)',[p.sub,p.email||'']);
+}
+async function ensureSession(e,token,user){
+  if(!token||!user)return null;
+  const expires=new Date(Date.now()+7*24*60*60*1000).toISOString();
+  await e.DB.prepare('INSERT OR REPLACE INTO admin_sessions(token_hash,admin_user_id,expires_at,created_at) VALUES(?,?,?,?)').bind(await sha(token),user.id,expires,now()).run();
+  return expires;
+}
 async function currentAdmin(req,e){
   const token=cookie(req,'gz_admin_session')||bearer(req);
   if(!token)return null;
-  return {user:await adminForToken(e,token),token};
+  const dbUser=await adminForToken(e,token);
+  if(dbUser)return {user:dbUser,token};
+  const user=await signedAdmin(e,token);
+  if(!user)return null;
+  const expires_at=await ensureSession(e,token,user);
+  return {user:{...user,expires_at},token};
 }
 function cookieHeaders(token,maxAge=604800){
   return {'Set-Cookie':`gz_admin_session=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`};
@@ -43,7 +70,7 @@ async function adminAuth(req,e){
   if(req.method==='GET'){
     const cur=await currentAdmin(req,e);
     if(!cur?.user)return json({authenticated:false},200);
-    return json({authenticated:true,session_token:cur.token,user:{id:cur.user.id,email:cur.user.email},expires_at:cur.user.expires_at});
+    return json({authenticated:true,session_token:cur.token,user:{id:cur.user.id,email:cur.user.email},expires_at:cur.user.expires_at},200,cookieHeaders(cur.token));
   }
   if(req.method!=='POST')return json({error:'Method not allowed'},405);
   const body=await req.clone().json().catch(()=>({}));
@@ -69,7 +96,11 @@ async function normalizeAdminRequest(req,e){
   if((new URL(req.url).pathname).startsWith('/api/admin-auth'))return req;
   if(req.headers.get('Cookie')?.match(/(?:^|;)\s*gz_admin_session=/))return req;
   const token=bearer(req);
-  if(!token||!(await adminForToken(e,token)))return req;
+  if(!token)return req;
+  const dbUser=await adminForToken(e,token);
+  const user=dbUser||await signedAdmin(e,token);
+  if(!user)return req;
+  if(!dbUser)await ensureSession(e,token,user);
   const h=new Headers(req.headers);
   h.set('Cookie',`gz_admin_session=${encodeURIComponent(token)}`);
   return new Request(req.url,{method:req.method,headers:h,body:['GET','HEAD'].includes(req.method)?undefined:req.body,redirect:'manual'});
