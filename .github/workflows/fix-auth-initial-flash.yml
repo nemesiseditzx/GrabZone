@@ -1,0 +1,91 @@
+name: Fix auth initial flash
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.ref == 'refs/heads/feature/animated-grabpoints-auth'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/animated-grabpoints-auth
+          fetch-depth: 1
+
+      - name: Add zero-flash auth boot guard
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('grabpoints.html')
+          s = p.read_text(encoding='utf-8')
+
+          old = '<div id="gzRewardsApp"></div>'
+          new = '<div id="gzRewardsApp" class="gz-auth-pending"></div>'
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif '<div id="gzRewardsApp" class="gz-auth-pending"></div>' not in s:
+              raise SystemExit('gzRewardsApp host not found')
+
+          marker = '</style>\n</head>'
+          guard = '</style>\n<style id="gzAuthBootGuard">#gzRewardsApp.gz-auth-pending{visibility:hidden!important}</style>\n</head>'
+          if 'id="gzAuthBootGuard"' not in s:
+              if marker not in s:
+                  raise SystemExit('head style marker not found')
+              s = s.replace(marker, guard, 1)
+
+          tag = '<script src="grabpoints-auth-animation.js?v=20260909auth3"></script>'
+          reveal = '''<script>
+          (()=>{
+            const app=document.getElementById('gzRewardsApp');
+            if(!app)return;
+            const reveal=()=>{
+              if(app.querySelector('.gz-auth-stage,.gz-rewards-dashboard,.gz-fp-clean')){
+                app.classList.remove('gz-auth-pending');
+              }
+            };
+            reveal();
+            new MutationObserver(reveal).observe(app,{childList:true,subtree:true});
+            setTimeout(reveal,2500);
+          })();
+          </script>'''
+          if 'classList.remove(\'gz-auth-pending\')' not in s:
+              if tag not in s:
+                  raise SystemExit('auth animation script tag not found')
+              s = s.replace(tag, tag + reveal, 1)
+
+          p.write_text(s, encoding='utf-8')
+
+      - name: Validate
+        run: |
+          node --check d1-client.js
+          node --check rewards.js
+          node --check grabpoints-auth-animation.js
+          node --check grabpoints-forgot-pin-ui.js
+          grep -q 'gz-auth-pending' grabpoints.html
+          grep -q 'gzAuthBootGuard' grabpoints.html
+          grep -q "classList.remove('gz-auth-pending')" grabpoints.html
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add grabpoints.html
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "Prevent GrabPoints auth UI flash"
+          git push origin HEAD:feature/animated-grabpoints-auth
+
+      - name: Remove temporary workflow
+        shell: bash
+        run: |
+          git rm .github/workflows/fix-auth-initial-flash.yml
+          git commit -m "Remove temporary auth flash workflow"
+          git push origin HEAD:feature/animated-grabpoints-auth
