@@ -1,4 +1,4 @@
-import app from './marketplace-runtime-fixes.mjs';
+import app from './marketplace-auth-wrapper.mjs';
 
 const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 
