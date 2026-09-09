@@ -1,0 +1,37 @@
+name: Fix Forgot PIN Send Button V2
+on:
+  push:
+    branches:
+      - feature/animated-grabpoints-auth
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/animated-grabpoints-auth
+          fetch-depth: 0
+      - name: Patch Forgot PIN send handler
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('rewards.js')
+          s=p.read_text()
+          pattern=r"document\.getElementById\('gzFpV7Send'\)\.onclick=.*?;"
+          replacement="document.getElementById('gzFpV7Send').onclick=()=>{const value=ni.value.trim();let legacyEmail=document.getElementById('grResetEmail');if(!legacyEmail){legacyEmail=document.createElement('input');legacyEmail.id='grResetEmail';legacyEmail.type='hidden';b.appendChild(legacyEmail)}legacyEmail.value=value;email.value=value;const msg=document.getElementById('gzFpV7Msg');msg.id='grMsg';if(!value){msg.textContent='✕ Enter your registered Rewards email.';msg.style.color='#ffb5a8';ni.focus();return}if(sendFn)sendFn()};"
+          s2,n=re.subn(pattern,replacement,s,count=1)
+          if n!=1:
+              raise SystemExit(f'Forgot PIN send handler not found; matches={n}')
+          p.write_text(s2)
+          PY
+      - name: Commit patch and remove temporary workflows
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-forgot-pin-send-v2.yml .github/workflows/fix-forgot-pin-send.yml || true
+          git add rewards.js
+          git commit -m "Fix Forgot PIN verification button wiring"
+          git push origin feature/animated-grabpoints-auth
