@@ -1,0 +1,40 @@
+import app from './vendor-marketplace-final.mjs';
+
+const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+
+const marketplaceAdminInjection=`<style>
+.gz-marketplace-nav{margin:14px 10px 8px;padding:12px 10px;border:1px solid #e7e7e2;border-radius:16px;background:#fafaf7}
+.gz-marketplace-nav .gz-mkt-title{font:900 10px/1.2 system-ui,sans-serif;letter-spacing:.14em;color:#777;margin:0 4px 8px}
+.gz-marketplace-nav a{display:flex;align-items:center;gap:8px;padding:8px 7px;border-radius:9px;color:#111;text-decoration:none;font:700 13px/1.2 system-ui,sans-serif}
+.gz-marketplace-nav a:hover{background:#eeeDE8}
+.gz-marketplace-nav .gz-mkt-main{background:#111;color:#fff;margin-bottom:3px}
+</style><script>
+(()=>{
+const links=[['🛍️','Marketplace','/vendor-admin.html'],['🏪','Vendors','/marketplace-vendor-control.html'],['📦','Vendor Products','/vendor-admin.html#products'],['🚚','Vendor Orders','/marketplace-admin-orders.html'],['📈','Vendor Sales','/vendor-admin.html#sales'],['🏬','Vendor Stores','/vendor-admin.html#stores'],['🚛','Shipping','/vendor-admin.html#shipping'],['⚙️','Marketplace Settings','/vendor-admin.html#settings']];
+function mount(){
+ if(document.querySelector('.gz-marketplace-nav'))return true;
+ const all=[...document.querySelectorAll('a,button,div,span')];
+ const policies=all.find(x=>String(x.textContent||'').trim()==='Policies');
+ const easy=all.find(x=>String(x.textContent||'').trim()==='Easy mode');
+ const box=document.createElement('div');box.className='gz-marketplace-nav';
+ box.innerHTML='<div class="gz-mkt-title">MARKETPLACE</div>'+links.map((x,i)=>'<a class="'+(i===0?'gz-mkt-main':'')+'" href="'+x[2]+'"><span>'+x[0]+'</span><span>'+x[1]+'</span></a>').join('');
+ const anchor=easy?.closest('div')||policies?.closest('div');
+ if(anchor?.parentElement){anchor.parentElement.insertBefore(box,anchor);return true}
+ const sidebar=[...document.querySelectorAll('aside,nav')].find(x=>(x.textContent||'').includes('Policies')&&(x.textContent||'').includes('GrabPoints'));
+ if(sidebar){sidebar.appendChild(box);return true}
+ return false;
+}
+let tries=0;const timer=setInterval(()=>{if(mount()||++tries>40)clearInterval(timer)},250);window.addEventListener('load',mount);
+})();</script>`;
+
+export default {fetch:async(request,env,ctx)=>{
+ try{
+  const path=new URL(request.url).pathname;
+  const response=await app.fetch(request,env,ctx);
+  if(path!=='/admin'&&path!=='/admin.html')return response;
+  if(!response.ok)return response;
+  const html=await response.text();
+  const out=html.replace(/<\/body>/i,marketplaceAdminInjection+'</body>');
+  return new Response(out,{status:response.status,headers:{...Object.fromEntries(response.headers), 'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
+ }catch(err){return json({error:err?.message||'Internal server error'},500)}
+}};
