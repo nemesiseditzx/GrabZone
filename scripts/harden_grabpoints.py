@@ -3,7 +3,7 @@ import re
 
 
 def replace_one(text, pattern, replacement, label):
-    out, n = re.subn(pattern, replacement, text, count=1, flags=re.M)
+    out, n = re.subn(pattern, lambda _m: replacement, text, count=1, flags=re.M)
     if n != 1:
         raise SystemExit(f"Expected {label} block was not found exactly once")
     return out

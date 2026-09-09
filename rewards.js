@@ -23,11 +23,55 @@ function close(){$('gzRewardsModal')?.classList.remove('open');document.body.sty
 function showAuth(mode){const b=$('gzRewardsBody');b.innerHTML=mode==='register' ? '<div class="eyebrow">GRABZONE REWARDS</div><h2>Join Rewards</h2><p>Create one optional Rewards account. You can still shop as a guest.</p><div class="gz-rewards-grid"><input id="grName" placeholder="Full name"><input id="grPhone" placeholder="01XXXXXXXXX" inputmode="numeric" maxlength="11"><input id="grEmail" type="email" placeholder="Email address"><input id="grPin" type="password" inputmode="numeric" maxlength="6" placeholder="Create 4–6 digit PIN"><input id="grPin2" type="password" inputmode="numeric" maxlength="6" placeholder="Confirm PIN"><button class="gz-rewards-btn" id="grRegister">Create Rewards Account</button></div><div id="grMsg" class="gz-rewards-msg"></div><button class="gz-rewards-btn alt" id="grToLogin">Already a member? Login</button>' : '<div class="eyebrow">GRABZONE REWARDS</div><h2>Welcome back</h2><p>Use your Rewards phone/email and PIN.</p><div class="gz-rewards-grid"><input id="grLoginId" placeholder="Phone or email"><input id="grLoginPin" type="password" inputmode="numeric" maxlength="6" placeholder="Rewards PIN"><button class="gz-rewards-btn" id="grLogin">Login</button></div><div id="grMsg" class="gz-rewards-msg"></div><div class="gz-rewards-actions"><button class="gz-rewards-btn alt" id="grToRegister">Join Rewards</button><button class="gz-rewards-btn alt" id="grForgot">Forgot PIN?</button></div>';if($('grRegister'))$('grRegister').onclick=register;if($('grToLogin'))$('grToLogin').onclick=()=>showAuth('login');if($('grLogin'))$('grLogin').onclick=login;if($('grToRegister'))$('grToRegister').onclick=()=>showAuth('register');if($('grForgot'))$('grForgot').onclick=forgot}
 async function register(){const m=$('grMsg');try{const d=await rpc('rewards_register',{p_name:$('grName').value.trim(),p_phone:$('grPhone').value.replace(/\D/g,''),p_email:$('grEmail').value.trim(),p_pin:$('grPin').value,p_pin_confirm:$('grPin2').value});setToken(d.token);loadDashboard()}catch(e){m.textContent='✕ '+e.message;m.style.color='#b42318'}}
 async function login(){const m=$('grMsg');try{const d=await rpc('rewards_login',{p_identifier:$('grLoginId').value.trim(),p_pin:$('grLoginPin').value});setToken(d.token);loadDashboard()}catch(e){m.textContent='✕ '+e.message;m.style.color='#b42318'}}
+function forgotPinStyle(){
+ if(document.getElementById('gzForgotPinCleanStyle'))return;
+ const s=document.createElement('style');s.id='gzForgotPinCleanStyle';s.textContent=`
+ #gzRewardsApp .gz-fp-clean{position:relative;overflow:hidden;background:linear-gradient(145deg,#141414 0%,#1c1916 58%,#302015 100%);color:#fff;border:1px solid rgba(255,140,55,.28);border-radius:24px;padding:30px;box-shadow:0 24px 70px rgba(25,14,6,.25);animation:gzFpCleanIn .45s cubic-bezier(.16,1,.3,1) both}
+ #gzRewardsApp .gz-fp-clean:before{content:'';position:absolute;width:250px;height:250px;right:-150px;top:-145px;border-radius:50%;border:1px solid rgba(255,122,0,.22);box-shadow:0 0 0 30px rgba(255,122,0,.05),0 0 0 60px rgba(255,122,0,.025);animation:gzFpCleanOrbit 9s linear infinite}
+ #gzRewardsApp .gz-fp-clean>*{position:relative;z-index:1}
+ #gzRewardsApp .gz-fp-icon{width:68px;height:68px;border-radius:18px;display:grid;place-items:center;background:#fff;color:#171717;font-size:29px;box-shadow:0 15px 35px rgba(0,0,0,.22);animation:gzFpCleanIcon .55s cubic-bezier(.16,1,.3,1) both}
+ #gzRewardsApp .gz-fp-kicker{display:inline-flex;align-items:center;gap:7px;margin-top:18px;color:#ff9149;font-size:9px;letter-spacing:2.4px;font-weight:950}
+ #gzRewardsApp .gz-fp-kicker i{width:6px;height:6px;border-radius:50%;background:#ff7a00;box-shadow:0 0 14px #ff7a00}
+ #gzRewardsApp .gz-fp-clean h2{margin:8px 0 8px;color:#fff;font-size:30px;letter-spacing:-.5px}
+ #gzRewardsApp .gz-fp-copy{color:#a9a39e;line-height:1.65;font-size:12px;max-width:600px}
+ #gzRewardsApp .gz-fp-progress{display:grid;grid-template-columns:32px 1fr 32px 1fr 32px;align-items:center;gap:7px;margin:21px 0 20px}
+ #gzRewardsApp .gz-fp-progress b{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#242321;border:1px solid #45413d;color:#8f8982;font-size:11px}
+ #gzRewardsApp .gz-fp-progress b.on{background:#ff7a00;border-color:#ff7a00;color:#111;box-shadow:0 0 0 6px rgba(255,122,0,.10)}
+ #gzRewardsApp .gz-fp-progress i{height:1px;background:#45413d}
+ #gzRewardsApp .gz-fp-progress i.on{background:#ff7a00}
+ #gzRewardsApp .gz-fp-label{display:block;margin-bottom:7px;color:#d8d1ca;font-size:10px;font-weight:850}
+ #gzRewardsApp .gz-fp-field{width:100%;box-sizing:border-box;height:50px;border:1px solid #3b3936;border-radius:13px;background:#0e0f11;color:#fff;padding:0 14px;outline:none;font:800 13px system-ui;transition:.2s}
+ #gzRewardsApp .gz-fp-field:focus{border-color:#ff7a00;box-shadow:0 0 0 4px rgba(255,122,0,.12)}
+ #gzRewardsApp .gz-fp-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+ #gzRewardsApp .gz-fp-primary,#gzRewardsApp .gz-fp-secondary{height:50px;border-radius:13px;font:900 12px system-ui;cursor:pointer;transition:.2s}
+ #gzRewardsApp .gz-fp-primary{border:0;background:linear-gradient(100deg,#ff9a00,#ff5b00);color:#111;box-shadow:0 12px 28px rgba(255,106,0,.22)}
+ #gzRewardsApp .gz-fp-primary:hover{transform:translateY(-2px)}
+ #gzRewardsApp .gz-fp-primary:disabled{opacity:.55;cursor:wait;transform:none}
+ #gzRewardsApp .gz-fp-secondary{border:1px solid #3b3936;background:#151619;color:#fff}
+ #gzRewardsApp .gz-fp-secondary:hover{border-color:#ff8b42}
+ #gzRewardsApp .gz-fp-msg{min-height:20px;margin-top:10px;color:#ffb5a8;font:800 11px/1.5 system-ui}
+ #gzRewardsApp .gz-fp-note{display:flex;gap:9px;margin-top:17px;padding:12px 13px;border:1px solid rgba(255,255,255,.09);border-radius:14px;background:rgba(255,255,255,.045);color:#a9a19a;font-size:10px;line-height:1.55}
+ #gzRewardsApp .gz-fp-note strong{color:#fff}
+ #gzRewardsApp .gz-fp-otp{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:12px}
+ #gzRewardsApp .gz-fp-otp input{width:100%;height:56px;box-sizing:border-box;border:1px solid #3b3936;border-radius:14px;background:#fff;color:#171717;text-align:center;font-size:23px;font-weight:950;outline:none;transition:.18s}
+ #gzRewardsApp .gz-fp-otp input:focus{border-color:#ff7a00;box-shadow:0 0 0 4px rgba(255,122,0,.13);transform:translateY(-2px)}
+ @keyframes gzFpCleanIn{from{opacity:0;transform:translateY(16px) scale(.99)}to{opacity:1;transform:none}}
+ @keyframes gzFpCleanIcon{from{opacity:0;transform:translateY(12px) rotate(-12deg) scale(.75)}70%{transform:translateY(-3px) rotate(4deg) scale(1.05)}to{opacity:1;transform:none}}
+ @keyframes gzFpCleanOrbit{to{transform:rotate(360deg)}}
+ @media(max-width:700px){#gzRewardsApp .gz-fp-clean{padding:21px;border-radius:20px}#gzRewardsApp .gz-fp-clean h2{font-size:27px}#gzRewardsApp .gz-fp-actions{grid-template-columns:1fr}#gzRewardsApp .gz-fp-otp{gap:5px}#gzRewardsApp .gz-fp-otp input{height:50px;font-size:20px}}
+ @media(max-width:390px){#gzRewardsApp .gz-fp-otp{gap:3px}#gzRewardsApp .gz-fp-otp input{height:47px;font-size:18px}}
+ @media(prefers-reduced-motion:reduce){#gzRewardsApp .gz-fp-clean,#gzRewardsApp .gz-fp-icon,#gzRewardsApp .gz-fp-clean:before{animation:none!important;transition:none!important}}
+ `;document.head.appendChild(s)
+}
+
 async function forgot(){const b=$('gzRewardsBody');b.innerHTML='<div class="eyebrow">PIN RECOVERY</div><h2>Forgot your PIN?</h2><p>Enter the email attached to your Rewards account. A verification code will be sent only to that email.</p><div class="gz-rewards-grid"><input id="grResetEmail" type="email" placeholder="Registered Rewards email"><button class="gz-rewards-btn" id="grSendCode">Send Verification Code</button></div><div id="grMsg" class="gz-rewards-msg"></div><button class="gz-rewards-btn alt" id="grBackLogin">Back to Login</button>';$('grSendCode').onclick=sendCode;$('grBackLogin').onclick=()=>showAuth('login')}
-async function sendCode(){const m=$('grMsg'),email=$('grResetEmail').value.trim();try{await rpc('rewards_forgot_pin',{p_email:email});showVerify(email)}catch(e){m.textContent='✕ '+e.message;m.style.color='#b42318'}}
+async function sendCode(){const m=$('grMsg'),email=$('grResetEmail')?.value.trim(),btn=$('grSendCode');if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){m.textContent='✕ Enter a valid registered Rewards email.';m.style.color='#ffb5a8';$('grResetEmail')?.focus();return}if(btn){btn.disabled=true;btn.textContent='Sending code…'}m.textContent='';try{await rpc('rewards_forgot_pin',{p_email:email});showVerify(email)}catch(e){m.textContent='✕ '+e.message;m.style.color='#ffb5a8';if(btn){btn.disabled=false;btn.textContent='Send Verification Code →'}}}
+function showVerify(email){const b=$('gzRewardsBody');forgotPinStyle();b.innerHTML='<div class="gz-fp-clean"><div class="gz-fp-icon">✉️</div><div class="gz-fp-kicker"><i></i>EMAIL VERIFICATION</div><h2>Check your email</h2><p class="gz-fp-copy">Enter the 6-digit code sent to <strong style="color:#fff">'+esc(email)+'</strong>.</p><div class="gz-fp-progress"><b class="on">1</b><i class="on"></i><b class="on">2</b><i class="on"></i><b>3</b></div><div class="gz-fp-otp">'+Array.from({length:6},(_,i)=>'<input inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Verification digit '+(i+1)+'">').join('')+'</div><div class="gz-fp-actions"><button type="button" class="gz-fp-primary" id="grVerify">Verify Code →</button><button type="button" class="gz-fp-secondary" id="grBackLogin">Back to Login</button></div><div id="grMsg" class="gz-fp-msg"></div><div class="gz-fp-note">📩 <span>The code expires in 10 minutes and can only be used once.</span></div></div>';const boxes=[...b.querySelectorAll('.gz-fp-otp input')],verify=$('grVerify');const syncFocus=i=>{if(boxes[i])boxes[i].focus()};boxes.forEach((x,i)=>{x.oninput=()=>{x.value=x.value.replace(/\D/g,'').slice(0,1);if(x.value&&boxes[i+1])syncFocus(i+1)};x.onkeydown=e=>{if(e.key==='Backspace'&&!x.value&&boxes[i-1]){e.preventDefault();syncFocus(i-1)};if(e.key==='Enter')verify.click()};x.onpaste=e=>{e.preventDefault();const v=(e.clipboardData?.getData('text')||'').replace(/\D/g,'').slice(0,6);boxes.forEach((q,j)=>q.value=v[j]||'');syncFocus(Math.max(0,Math.min(v.length,6)-1))}});verify.onclick=()=>verifyCode(email,boxes.map(x=>x.value).join(''));$('grBackLogin').onclick=()=>showAuth('login');boxes[0]?.focus()}
+
 function showVerify(email){const b=$('gzRewardsBody');b.innerHTML='<div class="eyebrow">EMAIL VERIFICATION</div><h2>Check your email</h2><p>Enter the 6-digit code sent to <b>'+esc(email)+'</b>.</p><div class="gz-rewards-grid"><input id="grOtp" inputmode="numeric" maxlength="6" placeholder="6-digit code"><button class="gz-rewards-btn" id="grVerify">Verify Code</button></div><div id="grMsg" class="gz-rewards-msg"></div>';$('grVerify').onclick=()=>verifyCode(email)}
-async function verifyCode(email){const m=$('grMsg');try{const d=await rpc('rewards_verify_reset',{p_email:email,p_code:$('grOtp').value.trim()});showReset(d.reset_token)}catch(e){m.textContent='✕ '+e.message;m.style.color='#b42318'}}
-function showReset(t){const b=$('gzRewardsBody');b.innerHTML='<div class="eyebrow">RESET PIN</div><h2>Create a new PIN</h2><div class="gz-rewards-grid"><input id="grNewPin" type="password" inputmode="numeric" maxlength="6" placeholder="New 4–6 digit PIN"><input id="grNewPin2" type="password" inputmode="numeric" maxlength="6" placeholder="Confirm new PIN"><button class="gz-rewards-btn" id="grReset">Reset PIN</button></div><div id="grMsg" class="gz-rewards-msg"></div>';$('grReset').onclick=async()=>{const m=$('grMsg');try{await rpc('rewards_reset_pin',{p_reset_token:t,p_pin:$('grNewPin').value,p_pin_confirm:$('grNewPin2').value});showAuth('login')}catch(e){m.textContent='✕ '+e.message;m.style.color='#b42318'}}}
+async function verifyCode(email,code){const m=$('grMsg'),btn=$('grVerify');if(!/^\d{6}$/.test(String(code||''))){m.textContent='✕ Enter all 6 digits.';m.style.color='#ffb5a8';return}if(btn){btn.disabled=true;btn.textContent='Verifying…'}try{const d=await rpc('rewards_verify_reset',{p_email:email,p_code:code});showReset(d.reset_token)}catch(e){m.textContent='✕ '+e.message;m.style.color='#ffb5a8';if(btn){btn.disabled=false;btn.textContent='Verify Code →'}}}
+function showReset(t){const b=$('gzRewardsBody');forgotPinStyle();b.innerHTML='<div class="gz-fp-clean"><div class="gz-fp-icon">🔑</div><div class="gz-fp-kicker"><i></i>CREATE NEW PIN</div><h2>Set your new PIN</h2><p class="gz-fp-copy">Choose a new 4–6 digit PIN for your Rewards account.</p><div class="gz-fp-progress"><b class="on">1</b><i class="on"></i><b class="on">2</b><i class="on"></i><b class="on">3</b></div><label class="gz-fp-label" for="grNewPin">New Rewards PIN</label><input class="gz-fp-field" id="grNewPin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="4–6 digit PIN"><label class="gz-fp-label" for="grNewPin2" style="margin-top:10px">Confirm new PIN</label><input class="gz-fp-field" id="grNewPin2" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="Confirm your PIN"><div class="gz-fp-actions"><button type="button" class="gz-fp-primary" id="grReset">Reset PIN →</button><button type="button" class="gz-fp-secondary" id="grBackLogin">Back to Login</button></div><div id="grMsg" class="gz-fp-msg"></div><div class="gz-fp-note">🛡️ <span><strong>Secure reset.</strong> Your new PIN is protected by the Rewards security system.</span></div></div>';const n1=$('grNewPin'),n2=$('grNewPin2'),btn=$('grReset');[n1,n2].forEach(x=>x.oninput=()=>{x.value=x.value.replace(/\D/g,'').slice(0,6)});btn.onclick=async()=>{const m=$('grMsg'),pin=n1.value,pin2=n2.value;if(!/^\d{4,6}$/.test(pin)||pin!==pin2){m.textContent='✕ PIN must be 4–6 digits and both fields must match.';m.style.color='#ffb5a8';return}btn.disabled=true;btn.textContent='Resetting PIN…';try{await rpc('rewards_reset_pin',{p_reset_token:t,p_pin:pin,p_pin_confirm:pin2});showAuth('login');const lm=$('grMsg');if(lm){lm.textContent='✓ PIN reset successfully. You can now log in.';lm.style.color='#08704f'}}catch(e){m.textContent='✕ '+e.message;m.style.color='#ffb5a8';btn.disabled=false;btn.textContent='Reset PIN →'}};$('grBackLogin').onclick=()=>showAuth('login');n1.focus()}
+
 function parseBenefits(value){
  const clean=x=>String(x??'').replace(/\r/g,'').replace(/[•▪◦]/g,'').replace(/^[\s>*-]+/,'').replace(/\s+/g,' ').trim();
  if(Array.isArray(value))return value.map(clean).filter(Boolean);
@@ -89,97 +133,5 @@ function bootRewards(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootRewards);
 else setTimeout(bootRewards,0);
-})();
-
-/* GRABZONE FORGOT PIN V7 */
-(()=>{
-  'use strict';
-  const STYLE='gzForgotPinV7Style';
-  const css=`
-  #gzRewardsApp .gz-fp-v7-card{position:relative!important;overflow:hidden!important;isolation:isolate!important;background:linear-gradient(145deg,#141414 0%,#1d1a17 58%,#322116 100%)!important;color:#fff!important;border:1px solid rgba(255,151,65,.28)!important;border-radius:24px!important;padding:30px!important;box-shadow:0 24px 70px rgba(25,14,6,.26)!important;animation:gzFpV7In .62s cubic-bezier(.16,1,.3,1) both!important}
-  #gzRewardsApp .gz-fp-v7-card:before{content:'';position:absolute;width:300px;height:300px;right:-150px;top:-150px;border:1px solid rgba(255,122,0,.45);border-radius:50%;box-shadow:0 0 0 34px rgba(255,107,0,.09),0 0 0 70px rgba(255,107,0,.045);animation:gzFpV7Orbit 9s linear infinite;pointer-events:none;z-index:-1}
-  #gzRewardsApp .gz-fp-v7-card:after{content:'';position:absolute;width:180px;height:180px;left:-90px;bottom:-100px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,0,.18),transparent 68%);pointer-events:none;z-index:-1}
-  #gzRewardsApp .gz-fp-v7-icon{width:66px!important;height:66px!important;border-radius:21px!important;display:grid!important;place-items:center!important;background:#fff!important;color:#171717!important;font-size:30px!important;box-shadow:0 16px 38px rgba(0,0,0,.28)!important;animation:gzFpV7Icon .72s cubic-bezier(.2,.9,.2,1) both!important}
-  #gzRewardsApp .gz-fp-v7-kicker{display:inline-flex!important;align-items:center!important;gap:7px!important;margin:18px 0 10px!important;padding:7px 11px!important;border-radius:999px!important;border:1px solid rgba(255,154,0,.35)!important;background:rgba(255,107,0,.10)!important;color:#ffb15c!important;font:900 9px/1 system-ui!important;letter-spacing:.14em!important;text-transform:uppercase!important}
-  #gzRewardsApp .gz-fp-v7-kicker i{width:6px;height:6px;border-radius:50%;background:#ff8a00;box-shadow:0 0 0 5px rgba(255,138,0,.10),0 0 15px #ff8a00}
-  #gzRewardsApp .gz-fp-v7-card h2{margin:0 0 9px!important;color:#fff!important;font-size:36px!important;line-height:1.02!important;letter-spacing:-.045em!important}
-  #gzRewardsApp .gz-fp-v7-copy{margin:0!important;color:#d7d0c9!important;font-size:14px!important;line-height:1.65!important;max-width:720px!important}
-  #gzRewardsApp .gz-fp-v7-progress{display:flex!important;align-items:center!important;gap:9px!important;margin:21px 0 19px!important}
-  #gzRewardsApp .gz-fp-v7-progress b{width:32px!important;height:32px!important;border-radius:50%!important;display:grid!important;place-items:center!important;border:1px solid rgba(255,255,255,.16)!important;background:rgba(255,255,255,.05)!important;color:#aaa!important;font:900 10px system-ui!important}
-  #gzRewardsApp .gz-fp-v7-progress b.on{background:#ff6b00!important;color:#fff!important;border-color:#ff6b00!important;box-shadow:0 0 0 6px rgba(255,107,0,.10)!important;animation:gzFpV7Pop .45s both!important}
-  #gzRewardsApp .gz-fp-v7-progress i{height:1px!important;width:54px!important;background:rgba(255,255,255,.16)!important}
-  #gzRewardsApp .gz-fp-v7-label{display:block!important;margin:0 0 7px!important;color:#bcb4ac!important;font:900 10px/1 system-ui!important;letter-spacing:.09em!important;text-transform:uppercase!important}
-  #gzRewardsApp .gz-fp-v7-field{width:100%!important;height:58px!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:15px!important;background:#fff!important;color:#171717!important;padding:0 16px!important;outline:none!important;box-shadow:0 8px 24px rgba(0,0,0,.13)!important;animation:gzFpV7Field .48s .13s both!important}
-  #gzRewardsApp .gz-fp-v7-field:focus{border-color:#ff8a00!important;box-shadow:0 0 0 4px rgba(255,107,0,.16),0 12px 30px rgba(0,0,0,.18)!important;transform:translateY(-1px)!important}
-  #gzRewardsApp .gz-fp-v7-actions{display:grid!important;grid-template-columns:minmax(0,1fr) 190px!important;gap:10px!important;margin-top:14px!important}
-  #gzRewardsApp .gz-fp-v7-actions button{height:56px!important;border-radius:15px!important;font:900 13px system-ui!important;cursor:pointer!important;transition:transform .2s,box-shadow .2s,background .2s!important;animation:gzFpV7Field .48s .19s both!important}
-  #gzRewardsApp .gz-fp-v7-primary{border:0!important;background:linear-gradient(100deg,#ffad18,#ff6200)!important;color:#171717!important;box-shadow:0 14px 32px rgba(255,107,0,.26)!important}
-  #gzRewardsApp .gz-fp-v7-primary:hover{transform:translateY(-2px)!important;box-shadow:0 19px 38px rgba(255,107,0,.34)!important}
-  #gzRewardsApp .gz-fp-v7-secondary{border:1px solid rgba(255,255,255,.22)!important;background:rgba(255,255,255,.05)!important;color:#fff!important}
-  #gzRewardsApp .gz-fp-v7-secondary:hover{background:#fff!important;color:#171717!important;transform:translateY(-2px)!important}
-  #gzRewardsApp .gz-fp-v7-msg{min-height:20px!important;margin-top:10px!important;color:#ffb5a8!important;font:800 12px/1.5 system-ui!important}
-  #gzRewardsApp .gz-fp-v7-note{display:flex!important;gap:10px!important;align-items:flex-start!important;margin-top:18px!important;padding:13px 14px!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:15px!important;background:rgba(255,255,255,.055)!important;color:#bdb4ab!important;font-size:11px!important;line-height:1.55!important}
-  #gzRewardsApp .gz-fp-v7-note strong{color:#fff!important}
-  #gzRewardsApp .gz-fp-v7-otp{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:9px!important;margin-top:16px!important}
-  #gzRewardsApp .gz-fp-v7-otp input{height:58px!important;width:100%!important;text-align:center!important;font-size:23px!important;font-weight:900!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:15px!important;background:#fff!important;color:#171717!important;padding:0!important;outline:none!important}
-  #gzRewardsApp .gz-fp-v7-otp input:focus{border-color:#ff8a00!important;box-shadow:0 0 0 4px rgba(255,107,0,.15)!important;transform:translateY(-2px)!important}
-  @keyframes gzFpV7In{from{opacity:0;transform:translateY(22px) scale(.985)}to{opacity:1;transform:none}}
-  @keyframes gzFpV7Icon{0%{opacity:0;transform:translateY(14px) rotate(-14deg) scale(.72)}65%{transform:translateY(-5px) rotate(5deg) scale(1.08)}100%{opacity:1;transform:none}}
-  @keyframes gzFpV7Orbit{to{transform:rotate(360deg)}}
-  @keyframes gzFpV7Field{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-  @keyframes gzFpV7Pop{0%{transform:scale(.5);opacity:.25}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
-  @media(max-width:760px){#gzRewardsApp .gz-fp-v7-card{padding:20px!important;border-radius:20px!important}#gzRewardsApp .gz-fp-v7-card h2{font-size:29px!important}#gzRewardsApp .gz-fp-v7-actions{grid-template-columns:1fr!important}#gzRewardsApp .gz-fp-v7-otp{gap:6px!important}#gzRewardsApp .gz-fp-v7-otp input{height:50px!important;font-size:20px!important}}
-  @media(prefers-reduced-motion:reduce){#gzRewardsApp .gz-fp-v7-card,#gzRewardsApp .gz-fp-v7-card:before,#gzRewardsApp .gz-fp-v7-icon,#gzRewardsApp .gz-fp-v7-progress b,#gzRewardsApp .gz-fp-v7-field,#gzRewardsApp .gz-fp-v7-actions button{animation:none!important;transition:none!important}}
-  `;
-  function addCss(){if(document.getElementById(STYLE))return;const s=document.createElement('style');s.id=STYLE;s.textContent=css;document.head.appendChild(s)}
-  function app(){return document.getElementById('gzRewardsApp')}
-  function body(){return document.getElementById('gzRewardsBody')||app()}
-  function decorateForgot(){
-    const b=body(); if(!b)return false;
-    const email=document.getElementById('grResetEmail'), send=document.getElementById('grSendCode'), back=document.getElementById('grBackLogin');
-    if(!email||!send)return false;
-    if(b.querySelector('.gz-fp-v7-card'))return true;
-    const sendFn=send.onclick, backFn=back&&back.onclick;
-    b.innerHTML='<div class="gz-fp-v7-card"><div class="gz-fp-v7-icon">🔐</div><div class="gz-fp-v7-kicker"><i></i>SECURE PIN RECOVERY</div><h2>Forgot your PIN?</h2><p class="gz-fp-v7-copy">Recover your Rewards account securely. We will send a one-time verification code to your registered email.</p><div class="gz-fp-v7-progress"><b class="on">1</b><i></i><b>2</b><i></i><b>3</b></div><label class="gz-fp-v7-label" for="gzFpV7Email">Registered Rewards email</label><input id="gzFpV7Email" class="gz-fp-v7-field" type="email" placeholder="name@example.com" autocomplete="email"><div class="gz-fp-v7-actions"><button type="button" class="gz-fp-v7-primary" id="gzFpV7Send">Send Verification Code →</button><button type="button" class="gz-fp-v7-secondary" id="gzFpV7Back">Back to Login</button></div><div id="gzFpV7Msg" class="gz-fp-v7-msg"></div><div class="gz-fp-v7-note">🛡️ <span><strong>Private & secure.</strong> Your verification code is sent only to the email registered with your Rewards account.</span></div></div>';
-    const ni=document.getElementById('gzFpV7Email'); ni.value=email.value||'';
-    document.getElementById('gzFpV7Send').onclick=()=>{const value=ni.value.trim();let legacyEmail=document.getElementById('grResetEmail');if(!legacyEmail){legacyEmail=document.createElement('input');legacyEmail.id='grResetEmail';legacyEmail.type='hidden';b.appendChild(legacyEmail)}legacyEmail.value=value;email.value=value;const msg=document.getElementById('gzFpV7Msg');msg.id='grMsg';if(!value){msg.textContent='✕ Enter your registered Rewards email.';msg.style.color='#ffb5a8';ni.focus();return}if(sendFn)sendFn()};
-    document.getElementById('gzFpV7Back').onclick=()=>{backFn&&backFn()};
-    ni.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('gzFpV7Send').click()});
-    return true;
-  }
-  function decorateVerify(){
-    const b=body(); if(!b)return false;
-    const otp=document.getElementById('grOtp'), verify=document.getElementById('grVerify');
-    if(!otp||!verify)return false;
-    if(b.querySelector('.gz-fp-v7-card'))return true;
-    const verifyFn=verify.onclick, emailText=(b.textContent.match(/sent to\s+([^\.\n]+@[^\.\n]+)/i)||[])[1]||'';
-    b.innerHTML='<div class="gz-fp-v7-card"><div class="gz-fp-v7-icon">✉️</div><div class="gz-fp-v7-kicker"><i></i>EMAIL VERIFICATION</div><h2>Check your email</h2><p class="gz-fp-v7-copy">Enter the 6-digit code sent to <strong style="color:#fff">'+emailText.replace(/[<>]/g,'')+'</strong>.</p><div class="gz-fp-v7-progress"><b class="on">1</b><i></i><b class="on">2</b><i></i><b>3</b></div><div class="gz-fp-v7-otp"><input inputmode="numeric" maxlength="1" autocomplete="one-time-code"><input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1"></div><div class="gz-fp-v7-actions"><button type="button" class="gz-fp-v7-primary" id="gzFpV7Verify">Verify Code →</button><button type="button" class="gz-fp-v7-secondary" id="gzFpV7BackVerify">Back to Login</button></div><div id="gzFpV7Msg" class="gz-fp-v7-msg"></div><div class="gz-fp-v7-note">📩 <span>Enter the one-time code from your email. The code expires for your security.</span></div></div>';
-    const boxes=[...b.querySelectorAll('.gz-fp-v7-otp input')];
-    const sync=()=>{otp.value=boxes.map(x=>x.value).join('')};
-    boxes.forEach((x,i)=>{x.addEventListener('input',()=>{x.value=x.value.replace(/\\D/g,'').slice(0,1);sync();if(x.value&&boxes[i+1])boxes[i+1].focus()});x.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!x.value&&boxes[i-1])boxes[i-1].focus()});x.addEventListener('paste',e=>{e.preventDefault();const v=(e.clipboardData.getData('text')||'').replace(/\\D/g,'').slice(0,6);boxes.forEach((q,j)=>q.value=v[j]||'');sync();boxes[Math.min(v.length,6)-1]?.focus()})});
-    document.getElementById('gzFpV7Verify').onclick=()=>{
-      sync();
-      let legacyOtp=document.getElementById('grOtp');
-      if(!legacyOtp){legacyOtp=document.createElement('input');legacyOtp.id='grOtp';legacyOtp.type='hidden';b.appendChild(legacyOtp)}
-      legacyOtp.value=otp.value;
-      const msg=document.getElementById('gzFpV7Msg');
-      msg.id='grMsg';
-      if(verifyFn)verifyFn();
-    };
-    document.getElementById('gzFpV7BackVerify').onclick=()=>{const a=document.getElementById('grBackLogin');a&&a.click()};
-    boxes[0]?.focus();
-    return true;
-  }
-  function watch(){
-    addCss();
-    const b=body(); if(!b)return;
-    const hasOtp=document.getElementById('grOtp');
-    if(hasOtp)decorateVerify(); else decorateForgot();
-  }
-  document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.closest('#grForgot'))setTimeout(watch,0)},true);
-  const mo=new MutationObserver(()=>{if(document.getElementById('grResetEmail')||document.getElementById('grOtp'))setTimeout(watch,0)});
-  mo.observe(document.body,{childList:true,subtree:true});
-  setTimeout(()=>mo.disconnect(),30000);
-  setTimeout(watch,150);
 })();
 

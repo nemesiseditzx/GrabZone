@@ -44,7 +44,7 @@
       <div>
         <div class="eyebrow">GRABZONE REWARDS</div>
         <h1><span class="en">Your GrabPoints account.</span><span class="bn">আপনার GrabPoints account।</span></h1>
-        <p><span class="en">Earn GP from eligible orders, follow your membership tier, and redeem rewards securely from one place.</span><span class="bn">যোগ্য order থেকে GP আয় করুন, membership tier দেখুন এবং এক জায়গা থেকেই নিরাপদে reward redeem করুন।</span></p>
+        <p><span class="en">Earn GP on your member orders, follow your membership tier, and redeem rewards securely from one place.</span><span class="bn">আপনার member order থেকে GP cashback earn করুন, membership tier দেখুন এবং এক জায়গা থেকেই নিরাপদে reward redeem করুন।</span></p>
       </div>
       <div class="account-help"><div class="gz-page-title"><span class="icon">🎁</span><div><b><span class="en">Rewards & Membership</span><span class="bn">Rewards & Membership</span></b><small style="display:block;color:#777;margin-top:3px"><span class="en">Secure PIN account</span><span class="bn">Secure PIN account</span></small></div></div><span class="en">Everything about your GP balance, rewards and membership is shown here.</span><span class="bn">আপনার GP balance, reward এবং membership-এর সব তথ্য এখানে সহজে দেখতে পারবেন।</span></div>
     </div>
@@ -59,10 +59,10 @@
     <div class="section-head">
       <div class="eyebrow">WANT TO KNOW?</div>
       <h2><span class="en">What is GrabPoints?</span><span class="bn">GrabPoints কী?</span></h2>
-      <p><span class="en">GrabPoints (GP) is GrabZone's optional loyalty system. It is designed to reward customers who complete eligible orders and keep using GrabZone.</span><span class="bn">GrabPoints (GP) হলো GrabZone-এর optional loyalty system। যোগ্য order complete করা এবং নিয়মিত GrabZone ব্যবহার করার জন্য customers-কে reward করার জন্য এটি তৈরি করা হয়েছে।</span></p>
+      <p><span class="en">GrabPoints (GP) is GrabZone's member cashback system. Members earn GP cashback on their orders according to their membership tier.</span><span class="bn">GrabPoints (GP) হলো GrabZone-এর member cashback system। আপনার membership tier অনুযায়ী member order থেকে GP cashback পাবেন।</span></p>
     </div>
     <div class="cards">
-      <div class="card"><div class="num">01</div><h3><span class="en">Earn GP</span><span class="bn">GP আয় করুন</span></h3><p><span class="en">Eligible completed orders can add GP to your account. The exact earning rule is controlled by GrabZone.</span><span class="bn">যোগ্য completed order থেকে আপনার account-এ GP যোগ হতে পারে। কত GP পাবেন তা GrabZone-এর earning rule অনুযায়ী নির্ধারিত হবে।</span></p></div>
+      <div class="card"><div class="num">01</div><h3><span class="en">Earn GP</span><span class="bn">GP আয় করুন</span></h3><p><span class="en">Completed member orders add GP cashback to your account. Your membership tier determines the cashback rate.</span><span class="bn">Completed member order থেকে আপনার account-এ GP cashback যোগ হবে। আপনার membership tier অনুযায়ী cashback rate নির্ধারিত হবে.</span></p></div>
       <div class="card"><div class="num">02</div><h3><span class="en">Save & track</span><span class="bn">জমা রাখুন ও দেখুন</span></h3><p><span class="en">Your available balance, lifetime earned GP, membership tier and transaction history stay connected to your Rewards account.</span><span class="bn">আপনার available balance, ১২ মাসের earned GP, membership tier এবং transaction history একই Rewards account-এ থাকবে।</span></p></div>
       <div class="card"><div class="num">03</div><h3><span class="en">Redeem securely</span><span class="bn">নিরাপদে Redeem করুন</span></h3><p><span class="en">Enter the amount you want to redeem and confirm with your private Rewards PIN.</span><span class="bn">যত GP redeem করতে চান তা দিন এবং আপনার private Rewards PIN দিয়ে confirm করুন।</span></p></div>
     </div>
@@ -132,11 +132,10 @@
   }catch(e){}
 })();
 </script>
-<script src="rewards.js?v=20260903gpfix3"></script>
-<script src="grabpoints-ui-final.js?v=20260908final1"></script>
+<script src="rewards.js?v=20260909hardening1"></script>
+<script src="grabpoints-ui-final.js?v=20260909hardening1"></script>
 <script src="grabpoints-mobile-responsive.js?v=20260908mobile1"></script>
-<script src="grabpoints-redeem-animation.js?v=20260908redeem2"></script>
-<script src="grabpoints-redeem-flow.js?v=20260908flow3"></script><script>
+<script src="grabpoints-redeem-flow.js?v=20260909hardening1"></script><script>
 (async function(){
   try{
     const r=await window.grabzoneD1?.rpc('rewards_public_settings',{});
