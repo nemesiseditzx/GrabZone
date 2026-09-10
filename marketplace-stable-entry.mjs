@@ -22,41 +22,37 @@ const LOADER_CSS = `
 @keyframes gzSpin{to{transform:rotate(360deg)}}@keyframes gzSpinReverse{to{transform:rotate(-360deg)}}@keyframes gzPulse{0%,100%{transform:scale(.88);opacity:.65}50%{transform:scale(1.08);opacity:1}}@keyframes gzDots{0%{width:8px}33%{width:17px}66%{width:26px}100%{width:34px}}@keyframes gzProgress{0%{transform:translateX(-105%);background-position:0 0}55%{transform:translateX(45%);background-position:100% 0}100%{transform:translateX(160%);background-position:0 0}}
 @media(max-width:600px){.gz-load-corner{display:none}.gz-load-logo{width:96px;height:96px;font-size:48px}.gz-load-logo span{font-size:40px}.gz-load-bar{top:calc(100% + 86px)}}`;
 
-const LOADER_BOOT = `(function(){
-if(window.__gzAdminLoaderBooted)return;window.__gzAdminLoaderBooted=true;
-var css=${JSON.stringify(LOADER_CSS)};
-var style=document.createElement('style');style.id='gz-admin-loading-style';style.textContent=css;document.head.appendChild(style);
-var overlay=document.createElement('div');overlay.id='gzAdminLoading';overlay.setAttribute('aria-live','polite');overlay.setAttribute('aria-label','Loading GrabZone admin panel');
-overlay.innerHTML='<div class="gz-load-orbit"><div class="gz-load-ring"></div><div class="gz-load-ring two"></div><div class="gz-load-ring three"></div><div class="gz-load-logo">G<span>Z</span></div><div class="gz-load-copy"><div class="gz-load-title">PROCESSING <span class="gz-load-dots">...</span></div><div class="gz-load-sub">PLEASE WAIT A MOMENT</div></div><div class="gz-load-bar"><i></i></div></div><div class="gz-load-corner tl">MORE<br>THAN<br>JUST <b>GRABZONE</b></div><div class="gz-load-corner tr">SHOP<br>EXPLORE<br>ENJOY <b>ONLINE</b></div><div class="gz-load-corner bl">GRABZONE<br>ONLINE STORE <b>GRAB IT. LOVE IT.</b></div><div class="gz-load-corner br">A BETTER<br>SHOPPING<br>EXPERIENCE <b>GZ</b></div>';
-function mount(){if(!document.getElementById('gzAdminLoading'))document.documentElement.appendChild(overlay)}mount();
-var active=0,hideTimer=0;
+const LOADER_BOOT = `<style id="gz-admin-loading-style">${LOADER_CSS}</style><script>(function(){
+if(window.__gzGlobalLoader)return;window.__gzGlobalLoader=true;
+var active=0,hideTimer=0,loaded=false,overlay;
+function mount(){if(overlay&&overlay.isConnected)return;overlay=document.createElement('div');overlay.id='gzAdminLoading';overlay.setAttribute('aria-live','polite');overlay.setAttribute('aria-label','Loading GrabZone');overlay.innerHTML='<div class="gz-load-orbit"><div class="gz-load-ring"></div><div class="gz-load-ring two"></div><div class="gz-load-ring three"></div><div class="gz-load-logo">G<span>Z</span></div><div class="gz-load-copy"><div class="gz-load-title">PROCESSING <span class="gz-load-dots">...</span></div><div class="gz-load-sub">PLEASE WAIT A MOMENT</div></div><div class="gz-load-bar"><i></i></div></div><div class="gz-load-corner tl">MORE<br>THAN<br>JUST <b>GRABZONE</b></div><div class="gz-load-corner tr">SHOP<br>EXPLORE<br>ENJOY <b>ONLINE</b></div><div class="gz-load-corner bl">GRABZONE<br>ONLINE STORE <b>GRAB IT. LOVE IT.</b></div><div class="gz-load-corner br">A BETTER<br>SHOPPING<br>EXPERIENCE <b>GZ</b></div>';(document.body||document.documentElement).appendChild(overlay)}
 function show(){mount();clearTimeout(hideTimer);overlay.classList.remove('gz-hide')}
-function hide(){clearTimeout(hideTimer);hideTimer=setTimeout(function(){if(active===0)overlay.classList.add('gz-hide')},260)}
-window.GZLoading={show:show,hide:hide,start:function(){active++;show()},stop:function(){active=Math.max(0,active-1);hide()}};
-var nativeFetch=window.fetch;
-if(nativeFetch)window.fetch=function(){var args=arguments,done=false,timer=setTimeout(function(){if(!done){active++;show()}},100);return nativeFetch.apply(this,args).then(function(r){done=true;clearTimeout(timer);if(active>0){active--;hide()}return r},function(e){done=true;clearTimeout(timer);if(active>0){active--;hide()}throw e})};
-document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a');if(!a)return;var href=a.getAttribute('href')||'';if(!href||href.charAt(0)==='#'||a.target==='_blank'||a.hasAttribute('download'))return;show()});
+function hide(){clearTimeout(hideTimer);hideTimer=setTimeout(function(){if(active===0&&loaded)overlay.classList.add('gz-hide')},180)}
+function start(){active++;show()}
+function stop(){active=Math.max(0,active-1);hide()}
+window.GZLoading={show:show,hide:hide,start:start,stop:stop,isLoading:function(){return active>0||!loaded}};
 show();
-setTimeout(function(){if(active===0)hide()},1200);
-})();\n`;
+var nativeFetch=window.fetch;if(nativeFetch){window.fetch=function(){start();var p;try{p=nativeFetch.apply(this,arguments)}catch(e){stop();throw e}return Promise.resolve(p).then(function(r){stop();return r},function(e){stop();throw e})}}
+var XHR=window.XMLHttpRequest;if(XHR){var open=XHR.prototype.open,send=XHR.prototype.send;XHR.prototype.open=function(){return open.apply(this,arguments)};XHR.prototype.send=function(){start();var x=this,done=false;function finish(){if(done)return;done=true;stop();x.removeEventListener('loadend',finish)}x.addEventListener('loadend',finish,{once:true});try{return send.apply(this,arguments)}catch(e){finish();throw e}}}
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a');if(a){var h=a.getAttribute('href')||'';if(h&&!h.startsWith('#')&&a.target!=='_blank'&&!a.hasAttribute('download'))show()}var f=e.target.closest&&e.target.closest('button[type=submit],input[type=submit]');if(f)show()},{capture:true});
+document.addEventListener('submit',function(){show()},{capture:true});
+window.addEventListener('beforeunload',function(){show()});
+window.addEventListener('load',function(){loaded=true;hide()});
+if(document.readyState==='complete')loaded=true;
+})();</script>`;
 
-const LOADER_ASSETS = new Set(['/admin.js','/marketplace-auth.js']);
-
-async function enhanceAsset(request,response){
-  const path=new URL(request.url).pathname;
-  if(!LOADER_ASSETS.has(path)||!response.ok)return response;
+async function enhanceHtml(request,response){
+  if(!response.ok)return response;
   const type=response.headers.get('content-type')||'';
-  if(!type.includes('javascript')&&!path.endsWith('.js'))return response;
-  const body=await response.text();
+  if(!type.toLowerCase().includes('text/html'))return response;
+  const html=await response.text();
+  if(html.includes('id="gzAdminLoading"')||html.includes('__gzGlobalLoader'))return new Response(html,response);
+  const marker=/<head[^>]*>/i;
+  const enhanced=marker.test(html)?html.replace(marker,m=>m+LOADER_BOOT):LOADER_BOOT+html;
   const headers=new Headers(response.headers);
   headers.set('Cache-Control','no-store, must-revalidate');
   headers.delete('Content-Length');
-  return new Response(LOADER_BOOT+body,{status:response.status,statusText:response.statusText,headers});
+  return new Response(enhanced,{status:response.status,statusText:response.statusText,headers});
 }
 
-export default {
-  async fetch(request,env,ctx){
-    const response=await app.fetch(request,env,ctx);
-    return enhanceAsset(request,response);
-  }
-};
+export default {async fetch(request,env,ctx){const response=await app.fetch(request,env,ctx);return enhanceHtml(request,response)}};
