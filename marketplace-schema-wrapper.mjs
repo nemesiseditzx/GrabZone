@@ -1,5 +1,9 @@
 import app from './marketplace-admin-wrapper.mjs';
 
+const now=()=>new Date().toISOString();
+const clean=(v,n=10000)=>String(v??'').trim().slice(0,n);
+const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+
 async function migrate(env){
   // The dev D1 database may contain marketplace tables created by an older
   // version. CREATE TABLE IF NOT EXISTS does not add missing columns, so
@@ -46,10 +50,54 @@ async function migrate(env){
   }
 }
 
+async function saveVendorPatch(request,env,ctx){
+  const path=new URL(request.url).pathname;
+  if(request.method!=='PATCH'||!path.startsWith('/api/vendor/admin/vendors/'))return null;
+
+  // The existing marketplace router has a parameter-binding bug in this
+  // PATCH handler: it appends the vendor id to the parameter list and then
+  // binds two more ids for "WHERE id=? OR slug=?". Handle this endpoint here
+  // so the Vendor Control Save button remains reliable without changing the
+  // legacy marketplace flow or main branch.
+  const authReq=new Request(new URL('/api/admin-auth',request.url),{
+    method:'GET',headers:new Headers(request.headers)
+  });
+  const auth=await app.fetch(authReq,env,ctx);
+  if(!auth.ok)return json({error:'Unauthorized'},401);
+  const authData=await auth.clone().json().catch(()=>({}));
+  if(!authData.authenticated)return json({error:'Unauthorized'},401);
+
+  const id=clean(path.split('/').pop(),100);
+  const body=await request.clone().json().catch(()=>null);
+  if(!body||typeof body!=='object')return json({error:'Invalid JSON'},400);
+
+  const fields=['business_name','brand_name','email','phone','logo_url','banner_url','description','tagline','accent_color','status','shipping_fee','commission_type','commission_value','homepage_visible','featured','announcement','social_links','contact_info','business_email','order_notification_email','support_email'];
+  const sets=[];const params=[];
+  for(const key of fields){
+    if(body[key]===undefined)continue;
+    let value;
+    if(['social_links','contact_info'].includes(key))value=JSON.stringify(body[key]||{});
+    else if(['shipping_fee','commission_value'].includes(key))value=Math.max(0,Number(body[key]));
+    else if(['homepage_visible','featured'].includes(key))value=body[key]?1:0;
+    else value=clean(body[key],10000);
+    sets.push(key+'=?');params.push(value);
+  }
+  if(!sets.length)return json({ok:true});
+  sets.push('updated_at=?');params.push(now(),id,id);
+  try{
+    await env.DB.prepare('UPDATE vendors SET '+sets.join(',')+' WHERE id=? OR slug=?').bind(...params).run();
+    return json({ok:true});
+  }catch(err){
+    return json({error:err?.message||'Failed to save vendor'},500);
+  }
+}
+
 export default {
   fetch: async (request, env, ctx) => {
     try {
       await migrate(env);
+      const direct=await saveVendorPatch(request,env,ctx);
+      if(direct)return direct;
       return app.fetch(request, env, ctx);
     } catch (err) {
       return new Response(JSON.stringify({error: err?.message || 'Marketplace migration failed'}), {
