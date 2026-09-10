@@ -1,1 +1,80 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GrabZone Vendor Dashboard</title><link rel="stylesheet" href="/vendor.css"></head><body><div class="gz-shell"><header class="gz-top"><div class="gz-logo">Grab<span>Zone</span> <small style="font-size:10px;color:#aaa;letter-spacing:1px">VENDOR</small></div><div class="gz-user"><span id="vendorEmail"></span><button id="logout" class="gz-btn light">Log out</button></div></header><div class="gz-layout"><aside class="gz-side"><nav class="gz-nav"><button data-section="dashboard" class="active">Dashboard</button><button data-section="products">Products</button><button data-section="orders">Orders & Shipments</button><button data-section="store">Store</button><button data-section="settings">Settings</button></nav></aside><main class="gz-main"><section id="dashboard" class="gz-section show"><div class="gz-head"><div><h1>Welcome, <span id="vendorName">Vendor</span></h1><p>Your marketplace performance at a glance.</p></div></div><div class="gz-grid"><div class="gz-card gz-stat"><div class="label">Products</div><div id="statProducts" class="num">—</div></div><div class="gz-card gz-stat"><div class="label">Orders</div><div id="statOrders" class="num">—</div></div><div class="gz-card gz-stat"><div class="label">Sales</div><div id="statSales" class="num">—</div></div><div class="gz-card gz-stat"><div class="label">Net Earnings</div><div id="statEarn" class="num">—</div></div></div><div class="gz-card" style="margin-top:14px"><b>Open shipments</b><div id="statShip" style="font-size:28px;font-weight:950;margin-top:7px">—</div><p style="color:#777">Orders that still need delivery progress updates.</p></div></section><section id="products" class="gz-section"><div class="gz-head"><div><h1>Products</h1><p>Products, inventory and publishing are controlled from here.</p></div><button class="gz-btn primary" onclick="newProduct()">+ Add product</button></div><div class="gz-card" style="overflow:auto"><table class="gz-table"><thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead><tbody id="productRows"></tbody></table></div></section><section id="orders" class="gz-section"><div class="gz-head"><div><h1>Orders & Shipments</h1><p>Manage only your vendor-specific fulfillment.</p></div></div><div class="gz-card" style="overflow:auto"><table class="gz-table"><thead><tr><th>Order</th><th>Subtotal</th><th>Status</th><th>Shipments</th><th></th></tr></thead><tbody id="orderRows"></tbody></table></div></section><section id="store" class="gz-section"><div class="gz-head"><div><h1>Your Store</h1><p>Your storefront uses the profile and sections configured below.</p></div></div><div class="gz-card"><p>Storefront URL:</p><a id="storeLink" href="#">Your store</a><form id="profileForm" class="gz-form" style="margin-top:18px"><div class="gz-two"><div class="gz-field"><label>Business name</label><input id="v_business_name"></div><div class="gz-field"><label>Brand name</label><input id="v_brand_name"></div></div><div class="gz-two"><div class="gz-field"><label>Phone</label><input id="v_phone"></div><div class="gz-field"><label>Accent color</label><input id="v_accent_color" type="text" placeholder="#ff6b00"></div></div><div class="gz-field"><label>Tagline</label><input id="v_tagline"></div><div class="gz-field"><label>Description</label><textarea id="v_description" rows="4"></textarea></div><div class="gz-two"><div class="gz-field"><label>Logo URL</label><input id="v_logo_url"></div><div class="gz-field"><label>Banner URL</label><input id="v_banner_url"></div></div><div class="gz-field"><label>Announcement</label><input id="v_announcement"></div><button class="gz-btn primary">Save store profile</button><span id="profileMsg" style="margin-left:10px;color:#777"></span></form></div></section><section id="settings" class="gz-section"><div class="gz-head"><div><h1>Settings</h1><p>Your account stays isolated from every other vendor.</p></div></div><div class="gz-card"><b>Vendor permissions</b><p style="color:#666;line-height:1.7">You can manage your own products, stock and fulfillment. GrabZone controls marketplace settings, commissions, checkout, membership and other vendors.</p></div></section></main></div></div><div id="modal" class="gz-modal"><div class="gz-modal-box"><div class="gz-head"><div><h2 id="modalTitle" style="margin:0">Product</h2></div><button class="gz-btn light" onclick="closeModal()">Close</button></div><form id="productForm" class="gz-form"><input id="pid" type="hidden"><div class="gz-field"><label>Name</label><input id="p_name" required></div><div class="gz-two"><div class="gz-field"><label>Category</label><input id="p_category" required></div><div class="gz-field"><label>Price</label><input id="p_price" type="number" min="0" step="0.01" required></div></div><div class="gz-two"><div class="gz-field"><label>Old price</label><input id="p_old_price" type="number" min="0" step="0.01"></div><div class="gz-field"><label>Stock</label><input id="p_stock" type="number" min="0" step="1" value="0"></div></div><div class="gz-field"><label>SKU</label><input id="p_sku"></div><div class="gz-field"><label>Image URL</label><input id="p_image_url" required></div><div class="gz-field"><label>Tag</label><input id="p_tag"></div><div class="gz-field"><label>Description</label><textarea id="p_description" rows="5"></textarea></div><label><input id="p_published" type="checkbox" checked> Published</label><button class="gz-btn primary">Save product</button></form><div id="orderTitle" style="display:none"></div><div id="orderBody"></div></div></div><script src="/vendor-dashboard.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GrabZone Vendor Dashboard</title>
+<link rel="stylesheet" href="/vendor.css">
+<style>
+.gz-vendor-note{background:#f7f7f4;border:1px solid #e5e5df;border-radius:16px;padding:14px 16px;color:#666;font-size:13px;line-height:1.6;margin-top:14px}
+.gz-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
+.gz-toolbar input,.gz-toolbar select{border:1px solid #ddd;border-radius:12px;padding:11px 12px;background:#fff;min-width:180px}
+.gz-toolbar input{flex:1}
+.gz-product-card{display:grid;grid-template-columns:72px 1fr auto;gap:13px;align-items:center;border:1px solid #e7e7e2;border-radius:16px;padding:11px;margin-bottom:9px;background:#fff}
+.gz-product-card img{width:72px;height:72px;border-radius:12px;object-fit:cover;background:#eee}
+.gz-product-meta{font-size:12px;color:#777;margin-top:4px;line-height:1.5}
+.gz-order-card{border:1px solid #e4e4df;border-radius:18px;padding:16px;margin-bottom:12px;background:#fff}
+.gz-order-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.gz-order-total{font-size:18px;font-weight:950}
+.gz-order-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.gz-status{display:inline-flex;border-radius:999px;background:#eee;padding:6px 10px;font-size:11px;font-weight:900}
+.gz-detail{margin-top:12px;padding-top:12px;border-top:1px solid #eee}
+.gz-item-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0ed;font-size:13px}
+.gz-editor-section{border:1px solid #e6e6e1;border-radius:16px;padding:14px;margin-top:12px;background:#fafaf8}
+.gz-editor-section h3{margin:0 0 10px;font-size:14px}
+@media(max-width:700px){.gz-product-card{grid-template-columns:58px 1fr}.gz-product-card img{width:58px;height:58px}.gz-product-card .gz-btn{grid-column:2}.gz-toolbar input,.gz-toolbar select{min-width:0;width:100%}}
+</style>
+</head>
+<body>
+<div class="gz-shell">
+<header class="gz-top">
+  <div class="gz-logo">Grab<span>Zone</span> <small style="font-size:10px;color:#aaa;letter-spacing:1px">VENDOR</small></div>
+  <div class="gz-user"><span id="vendorEmail"></span><button id="logout" class="gz-btn light">Log out</button></div>
+</header>
+<div class="gz-layout">
+<aside class="gz-side"><nav class="gz-nav">
+  <button data-section="dashboard" class="active">Dashboard</button>
+  <button data-section="products">Products</button>
+  <button data-section="orders">Orders</button>
+  <button data-section="store">Store</button>
+  <button data-section="settings">Settings</button>
+</nav></aside>
+<main class="gz-main">
+<section id="dashboard" class="gz-section show">
+  <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">VENDOR CONTROL CENTER</div><h1 style="margin:4px 0">Welcome, <span id="vendorName">Vendor</span></h1><p>Your products and your orders — in the same GrabZone workflow.</p></div><button class="gz-btn primary" onclick="show('products');newProduct()">+ Add Product</button></div>
+  <div class="gz-grid">
+    <div class="gz-card gz-stat"><div class="label">Products</div><div id="statProducts" class="num">—</div></div>
+    <div class="gz-card gz-stat"><div class="label">Orders</div><div id="statOrders" class="num">—</div></div>
+    <div class="gz-card gz-stat"><div class="label">Sales</div><div id="statSales" class="num">—</div></div>
+    <div class="gz-card gz-stat"><div class="label">Net Earnings</div><div id="statEarn" class="num">—</div></div>
+  </div>
+  <div class="gz-card" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><b>Open shipments</b><span id="statShip" class="gz-status">—</span></div><p style="color:#777;margin-bottom:0">Orders that still need delivery progress updates.</p></div>
+  <div class="gz-vendor-note"><b>What you can control:</b> your own products, price, stock, publishing and fulfillment. <b>GrabZone controls:</b> marketplace settings, checkout, membership, commissions and other vendors. You never see another vendor's products or orders.</div>
+</section>
+<section id="products" class="gz-section">
+  <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">YOUR CATALOG</div><h1 style="margin:4px 0">Products</h1><p>Add and manage products using the GrabZone product workflow.</p></div><button class="gz-btn primary" onclick="newProduct()">+ Add Product</button></div>
+  <div class="gz-toolbar"><input id="productSearch" placeholder="Search your products…" oninput="renderProducts()"><select id="productFilter" onchange="renderProducts()"><option value="all">All products</option><option value="published">Published</option><option value="hidden">Hidden</option><option value="low">Low stock</option></select><button class="gz-btn light" onclick="loadProducts()">Refresh</button></div>
+  <div id="productList" class="gz-card"></div>
+</section>
+<section id="orders" class="gz-section">
+  <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">FULFILLMENT</div><h1 style="margin:4px 0">Orders</h1><p>When a customer orders your product, the vendor order appears here.</p></div><button class="gz-btn light" onclick="loadOrders()">Refresh</button></div>
+  <div class="gz-toolbar"><input id="orderSearch" placeholder="Search order, customer or phone…" oninput="renderOrders()"><select id="orderFilter" onchange="renderOrders()"><option value="all">All statuses</option><option>Processing</option><option>Picked Up</option><option>In Transit</option><option>Out for Delivery</option><option>Delivered</option><option>Failed</option><option>Returned</option><option>Cancelled</option></select></div>
+  <div id="orderList"></div>
+</section>
+<section id="store" class="gz-section"><div class="gz-head"><div><h1>Your Store</h1><p>Your storefront uses the profile and sections configured below.</p></div></div><div class="gz-card"><p>Storefront URL:</p><a id="storeLink" href="#">Your store</a><form id="profileForm" class="gz-form" style="margin-top:18px"><div class="gz-two"><div class="gz-field"><label>Business name</label><input id="v_business_name"></div><div class="gz-field"><label>Brand name</label><input id="v_brand_name"></div></div><div class="gz-two"><div class="gz-field"><label>Phone</label><input id="v_phone"></div><div class="gz-field"><label>Accent color</label><input id="v_accent_color" type="text" placeholder="#ff6b00"></div></div><div class="gz-field"><label>Tagline</label><input id="v_tagline"></div><div class="gz-field"><label>Description</label><textarea id="v_description" rows="4"></textarea></div><div class="gz-two"><div class="gz-field"><label>Logo URL</label><input id="v_logo_url"></div><div class="gz-field"><label>Banner URL</label><input id="v_banner_url"></div></div><div class="gz-field"><label>Announcement</label><input id="v_announcement"></div><button class="gz-btn primary">Save store profile</button><span id="profileMsg" style="margin-left:10px;color:#777"></span></form></div></section>
+<section id="settings" class="gz-section"><div class="gz-head"><div><h1>Settings</h1><p>Your account stays isolated from every other vendor.</p></div></div><div class="gz-card"><b>Vendor permissions</b><p style="color:#666;line-height:1.7">You can manage your own products, stock and fulfillment. GrabZone controls marketplace settings, commissions, checkout, membership and other vendors.</p></div></section>
+</main></div></div>
+<div id="modal" class="gz-modal"><div class="gz-modal-box"><div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">GRABZONE PRODUCT EDITOR</div><h2 id="modalTitle" style="margin:3px 0">Product</h2></div><button class="gz-btn light" onclick="closeModal()">Close</button></div>
+<form id="productForm" class="gz-form">
+<input id="pid" type="hidden">
+<div class="gz-editor-section"><h3>Basic information</h3><div class="gz-field"><label>Product name</label><input id="p_name" required></div><div class="gz-two"><div class="gz-field"><label>Category</label><input id="p_category" required></div><div class="gz-field"><label>SKU</label><input id="p_sku"></div></div><div class="gz-field"><label>Description</label><textarea id="p_description" rows="5"></textarea></div></div>
+<div class="gz-editor-section"><h3>Pricing & inventory</h3><div class="gz-two"><div class="gz-field"><label>Price</label><input id="p_price" type="number" min="0" step="0.01" required></div><div class="gz-field"><label>Old price</label><input id="p_old_price" type="number" min="0" step="0.01"></div></div><div class="gz-two"><div class="gz-field"><label>Stock</label><input id="p_stock" type="number" min="0" step="1" value="0"></div><div class="gz-field"><label>Tag</label><input id="p_tag" placeholder="New / Hot / Sale"></div></div></div>
+<div class="gz-editor-section"><h3>Product media</h3><div class="gz-field"><label>Main image URL</label><input id="p_image_url" required placeholder="https://..."></div></div>
+<div class="gz-editor-section"><label><input id="p_published" type="checkbox" checked> Publish this product on the GrabZone marketplace</label></div>
+<div class="gz-actions"><button class="gz-btn primary">Save Product</button><button type="button" class="gz-btn light" onclick="closeModal()">Cancel</button></div>
+</form>
+<div id="orderBody"></div>
+</div></div>
+<script src="/vendor-dashboard.js"></script>
+</body>
+</html>
