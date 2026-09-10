@@ -10,6 +10,8 @@ async function migrate(env){
   const migrations=[
     ['vendors','name','TEXT'],
     ['vendors','order_notification_email','TEXT'],['vendors','support_email','TEXT'],['vendors','business_email','TEXT'],
+    ['vendor_users','password_salt','TEXT'],['vendor_users','role',"TEXT DEFAULT 'vendor_admin'"],['vendor_users','status',"TEXT DEFAULT 'Active'"],['vendor_users','created_at','TEXT'],['vendor_users','updated_at','TEXT'],
+    ['vendor_sessions','token_hash','TEXT'],['vendor_sessions','vendor_user_id','TEXT'],['vendor_sessions','expires_at','TEXT'],['vendor_sessions','created_at','TEXT'],
     ['vendor_orders','subtotal','REAL DEFAULT 0'],['vendor_orders','shipping_fee','REAL DEFAULT 0'],['vendor_orders','commission_amount','REAL DEFAULT 0'],['vendor_orders','vendor_earnings','REAL DEFAULT 0'],['vendor_orders','status',"TEXT DEFAULT 'Processing'"],['vendor_orders','created_at','TEXT'],['vendor_orders','updated_at','TEXT'],
     ['vendor_order_items','product_id','TEXT'],['vendor_order_items','quantity','INTEGER DEFAULT 1'],['vendor_order_items','unit_price','REAL DEFAULT 0'],['vendor_order_items','line_total','REAL DEFAULT 0'],
     ['shipments','courier','TEXT'],['shipments','tracking_id','TEXT'],['shipments','tracking_url','TEXT'],['shipments','status',"TEXT DEFAULT 'Pending'"],['shipments','note','TEXT'],['shipments','created_at','TEXT'],['shipments','updated_at','TEXT'],
@@ -18,12 +20,16 @@ async function migrate(env){
     ['vendor_store_sections','title','TEXT'],['vendor_store_sections','body','TEXT'],['vendor_store_sections','sort_order','INTEGER DEFAULT 0'],['vendor_store_sections','enabled','INTEGER DEFAULT 1'],['vendor_store_sections','data_json',"TEXT DEFAULT '{}'"],['vendor_store_sections','created_at','TEXT'],['vendor_store_sections','updated_at','TEXT'],
     ['marketplace_audit_log','actor_id','TEXT'],['marketplace_audit_log','vendor_id','TEXT'],['marketplace_audit_log','details','TEXT'],['marketplace_audit_log','created_at','TEXT'],
     ['products','vendor_id','TEXT'],['products','stock','INTEGER DEFAULT 0'],['products','sku','TEXT'],['products','category_id','TEXT'],
-    ['order_items','vendor_id','TEXT']
+    ['order_items','vendor_id','TEXT'],
+    ['marketplace_categories','parent_id','TEXT'],['marketplace_categories','active','INTEGER DEFAULT 1'],['marketplace_categories','sort_order','INTEGER DEFAULT 0'],['marketplace_categories','created_at','TEXT'],['marketplace_categories','updated_at','TEXT'],
+    ['marketplace_settings','enabled','INTEGER DEFAULT 1'],['marketplace_settings','default_shipping','REAL DEFAULT 130'],['marketplace_settings','show_brands','INTEGER DEFAULT 1'],['marketplace_settings','show_vendor_badges','INTEGER DEFAULT 1'],['marketplace_settings','updated_at','TEXT']
   ];
   for(const [table,column,type] of migrations)await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run().catch(()=>{});
-  await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_users(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,password_salt TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'vendor_admin',status TEXT NOT NULL DEFAULT 'Active',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_users(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,password_salt TEXT,role TEXT NOT NULL DEFAULT 'vendor_admin',status TEXT NOT NULL DEFAULT 'Active',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_sessions(token_hash TEXT PRIMARY KEY,vendor_user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)").run().catch(()=>{});
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketplace_audit_log(id TEXT PRIMARY KEY,actor_type TEXT NOT NULL,actor_id TEXT,action TEXT NOT NULL,vendor_id TEXT,details TEXT,created_at TEXT NOT NULL)").run().catch(()=>{});
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT UNIQUE NOT NULL,slug TEXT UNIQUE NOT NULL,parent_id TEXT,active INTEGER DEFAULT 1,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketplace_settings(id INTEGER PRIMARY KEY,enabled INTEGER DEFAULT 1,default_shipping REAL DEFAULT 130,show_brands INTEGER DEFAULT 1,show_vendor_badges INTEGER DEFAULT 1,updated_at TEXT NOT NULL)").run().catch(()=>{});
   for(const sql of [
     'CREATE INDEX IF NOT EXISTS idx_products_vendor ON products(vendor_id)',
     'CREATE INDEX IF NOT EXISTS idx_order_items_vendor ON order_items(vendor_id)',
@@ -86,7 +92,7 @@ async function protectShipment(request,env,ctx){
   if(!u)return json({error:'Unauthorized'},401);
   const b=await request.clone().json().catch(()=>({}));
   const vendorOrderId=clean(b.vendor_order_id,100);
-  const order= (await env.DB.prepare('SELECT vo.*,o.order_number FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.id=? AND vo.vendor_id=?').bind(vendorOrderId,u.vendor_id).all()).results?.[0];
+  const order=(await env.DB.prepare('SELECT vo.*,o.order_number FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.id=? AND vo.vendor_id=?').bind(vendorOrderId,u.vendor_id).all()).results?.[0];
   if(!order)return json({error:'Vendor order not found'},404);
   const items=(await env.DB.prepare('SELECT id,order_item_id,product_id,quantity FROM vendor_order_items WHERE vendor_order_id=?').bind(order.id).all()).results||[];
   if(!items.length)return json({error:'This vendor order has no shippable items.'},409);
