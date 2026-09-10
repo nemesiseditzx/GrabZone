@@ -1,1 +1,132 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GrabZone Marketplace</title><link rel="stylesheet" href="/vendor.css"><style>body{background:#fff}.wrap{max-width:1200px;margin:auto;padding:28px 18px}.hero{background:#111;color:#fff;border-radius:28px;padding:42px 34px;margin-bottom:22px}.hero h1{font-size:clamp(34px,6vw,68px);letter-spacing:-3px;margin:0}.brands{display:flex;gap:10px;overflow:auto;padding:5px 0 18px}.brand{flex:0 0 auto;border:1px solid #e6e6eb;background:#fff;border-radius:999px;padding:10px 15px;font-weight:850;cursor:pointer}.products{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.product{border:1px solid #e8e8ed;border-radius:18px;overflow:hidden;background:#fff}.product img{width:100%;aspect-ratio:1;object-fit:cover;background:#f4f4f6}.product .p{padding:14px}.brandtag{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#ff6b00;font-weight:900}.price{font-size:19px;font-weight:950;margin-top:6px}.tools{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.tools a,.add{background:#111;color:#fff;text-decoration:none;border-radius:999px;padding:11px 15px;font-weight:900;border:0;cursor:pointer}.add{width:100%;margin-top:12px}@media(max-width:900px){.products{grid-template-columns:repeat(3,1fr)}}@media(max-width:650px){.products{grid-template-columns:repeat(2,1fr)}.hero{padding:30px 22px}}</style></head><body data-gz-loader-wait><div class="wrap"><section class="hero"><div style="font-weight:950;letter-spacing:3px;color:#ff6b00">GRABZONE MARKETPLACE</div><h1>More brands.<br>One GrabZone.</h1><p style="color:#bbb;max-width:650px;line-height:1.7">Shop products from independent brands through one checkout, one GrabZone membership and one order tracking experience.</p><div class="tools"><a href="/track-order.html">Track an order →</a><a href="/">Back to GrabZone</a><a href="/checkout.html">Checkout →</a></div></section><h2>Shop by Brand</h2><div id="brands" class="brands"></div><div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0"><h2 style="margin:0">All Products</h2><span id="cartCount" style="font-weight:800;color:#777"></span></div><div id="products" class="products"></div></div><script>const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));const money=n=>'৳'+Number(n||0).toLocaleString('en-BD');function readCart(){try{const x=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');return Array.isArray(x)?x:[]}catch{return[]}}function writeCart(x){localStorage.setItem('grabzone_cart_v2',JSON.stringify(x));updateCart()}function updateCart(){const n=readCart().reduce((s,x)=>s+Number(x.quantity||1),0);document.querySelector('#cartCount').textContent=n?`${n} item${n>1?'s':''} in cart`:''}function add(p){const cart=readCart(),id=String(p.id),found=cart.find(x=>String(x.product_id||x.id)===id);if(found)found.quantity=Number(found.quantity||1)+1;else cart.push({product_id:p.id,id:p.id,name:p.name,price:Number(p.price||0),image_url:p.image_url,quantity:1});writeCart(cart);alert(p.name+' added to cart.')}async function getJSON(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error('Request failed: '+r.status);return r.json()}async function load(v=''){const box=document.querySelector('#products');try{const d=await getJSON('/api/marketplace/products'+(v?'?vendor='+encodeURIComponent(v):''));const ps=Array.isArray(d.products)?d.products:[];box.innerHTML=ps.map(p=>`<article class="product"><img src="${esc(p.image_url)}" alt=""><div class="p"><div class="brandtag">${esc(p.vendor_name)}</div><div style="font-weight:850;margin-top:5px">${esc(p.name)}</div><div class="price">${money(p.price)}</div><button class="add" data-id="${esc(p.id)}">Add to Cart</button></div></article>`).join('')||'<div class="gz-empty">No products found.</div>';ps.forEach(p=>document.querySelector('[data-id="'+CSS.escape(String(p.id))+'"]')?.addEventListener('click',()=>add(p)));return true}catch(err){box.innerHTML='<div class="gz-empty">Unable to load products right now.</div>';console.error(err);return false}}async function init(){const brandsBox=document.querySelector('#brands');try{const d=await getJSON('/api/marketplace/brands');brandsBox.innerHTML='<button class="brand" id="allBrands">All Brands</button>' +(Array.isArray(d.brands)?d.brands:[]).map(b=>`<button class="brand" data-brand="${esc(b.slug)}">${esc(b.brand_name)}</button>`).join('');document.querySelector('#allBrands').onclick=async()=>{GZLoading.show();await load();GZLoading.hide()};document.querySelectorAll('[data-brand]').forEach(b=>b.onclick=async()=>{GZLoading.show();await load(b.dataset.brand);GZLoading.hide()})}catch(err){brandsBox.innerHTML='<span style="color:#777">Brands unavailable</span>';console.error(err)}await load();updateCart();GZLoading.hide()}if(window.GZLoading)GZLoading.show();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GrabZone Marketplace</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .marketplace-intro{padding:70px 5vw 45px;background:#f1f1ed;border-bottom:1px solid #e7e7e7}
+    .marketplace-intro-inner{max-width:1180px;margin:auto}
+    .marketplace-intro .eyebrow{margin-bottom:14px}
+    .marketplace-intro h1{margin:0 0 16px;font-size:clamp(42px,6vw,76px);line-height:.95;letter-spacing:-.065em}
+    .marketplace-intro h1 em{font-family:Georgia,"Times New Roman",serif;font-weight:400}
+    .marketplace-intro p{max-width:650px;margin:0;color:#5f5f5f;line-height:1.65;font-size:16px}
+    .marketplace-links{display:flex;gap:12px;flex-wrap:wrap;margin-top:25px}
+    .marketplace-shop{padding:65px 5vw 90px}
+    .marketplace-shop-inner{max-width:1180px;margin:auto}
+    .brand-chips{display:flex;flex-wrap:wrap;gap:9px;margin:-10px 0 38px}
+    .brand-chip{border:1px solid #e7e7e7;border-radius:999px;padding:10px 15px;background:#fff;color:#111;font-size:12px;font-weight:800;transition:.2s ease;cursor:pointer}
+    .brand-chip:hover{transform:translateY(-1px)}
+    .brand-chip.active{background:#111;color:#fff;border-color:#111}
+    .marketplace-status{color:#777;font-size:12px;margin-top:-18px;margin-bottom:25px;min-height:18px}
+    .marketplace-products{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}
+    .marketplace-products .product-card{min-width:0}
+    .marketplace-products .product-image img{transition:transform .3s ease}
+    .marketplace-products .product-card:hover .product-image img{transform:scale(1.025)}
+    .marketplace-add{width:100%;margin-top:14px}
+    @media(max-width:900px){.marketplace-products{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:650px){.marketplace-intro{padding:48px 5vw 35px}.marketplace-shop{padding:48px 5vw 65px}.marketplace-products{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.marketplace-products .product-info{padding:13px}.marketplace-products .product-name{font-size:14px}.marketplace-products .price{font-size:16px}}
+  </style>
+</head>
+<body data-gz-loader-wait>
+  <div class="marketplace-intro">
+    <div class="marketplace-intro-inner">
+      <div class="eyebrow">GRABZONE MARKETPLACE</div>
+      <h1>Shop more.<br><em>Grab it your way.</em></h1>
+      <p>Discover products from GrabZone and independent brands, all in one place with the same GrabZone shopping experience.</p>
+      <div class="marketplace-links">
+        <a class="btn btn-dark" href="/">Back to GrabZone</a>
+        <a class="btn" href="/track-order.html">Track an Order →</a>
+        <a class="btn" href="/checkout.html">Checkout →</a>
+      </div>
+    </div>
+  </div>
+
+  <main class="marketplace-shop">
+    <div class="marketplace-shop-inner">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">EXPLORE</div>
+          <h2>Shop by Brand</h2>
+        </div>
+        <div class="shop-tools">
+          <input id="searchBox" type="search" placeholder="Search products..." aria-label="Search products">
+        </div>
+      </div>
+
+      <div id="brands" class="brand-chips" aria-label="Brands"></div>
+      <div id="status" class="marketplace-status"></div>
+      <div id="products" class="marketplace-products"></div>
+    </div>
+  </main>
+
+  <script>
+    const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const money=n=>'৳'+Number(n||0).toLocaleString('en-BD');
+    let allProducts=[];
+    let selectedBrand='';
+
+    function readCart(){try{const x=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');return Array.isArray(x)?x:[]}catch{return[]}}
+    function writeCart(x){localStorage.setItem('grabzone_cart_v2',JSON.stringify(x))}
+    function add(p){const cart=readCart(),id=String(p.id),found=cart.find(x=>String(x.product_id||x.id)===id);if(found)found.quantity=Number(found.quantity||1)+1;else cart.push({product_id:p.id,id:p.id,name:p.name,price:Number(p.price||0),image_url:p.image_url,quantity:1});writeCart(cart);updateCart();alert(p.name+' added to cart.')}
+    function updateCart(){const n=readCart().reduce((s,x)=>s+Number(x.quantity||1),0);const el=document.querySelector('#cartCount');if(el)el.textContent=n?`${n} item${n>1?'s':''}`:''}
+
+    function renderProducts(){
+      const query=document.querySelector('#searchBox').value.trim().toLowerCase();
+      const filtered=allProducts.filter(p=>{
+        const brand=!selectedBrand||String(p.vendor_slug||'')===selectedBrand;
+        const text=`${p.name||''} ${p.vendor_name||''} ${p.category||''}`.toLowerCase();
+        return brand&&(!query||text.includes(query));
+      });
+      const box=document.querySelector('#products');
+      if(!filtered.length){box.innerHTML='<div class="empty" style="grid-column:1/-1">No products found.</div>';return}
+      box.innerHTML=filtered.map(p=>`<article class="product-card">
+        <div class="product-image"><img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy"></div>
+        <div class="product-info">
+          <div class="product-cat">${esc(p.vendor_name||'GRABZONE')}</div>
+          <div class="product-name">${esc(p.name)}</div>
+          <div class="price">${money(p.price)}</div>
+          <button class="btn btn-dark marketplace-add" data-product="${esc(p.id)}">Add to Cart</button>
+        </div>
+      </article>`).join('');
+      box.querySelectorAll('[data-product]').forEach(btn=>btn.addEventListener('click',()=>{const p=allProducts.find(x=>String(x.id)===String(btn.dataset.product));if(p)add(p)}));
+    }
+
+    function renderBrands(brands){
+      const box=document.querySelector('#brands');
+      box.innerHTML='<button class="brand-chip active" data-brand="">All Brands</button>'+(Array.isArray(brands)?brands:[]).map(b=>`<button class="brand-chip" data-brand="${esc(b.slug)}">${esc(b.brand_name)}</button>`).join('');
+      box.querySelectorAll('[data-brand]').forEach(btn=>btn.addEventListener('click',()=>{
+        selectedBrand=btn.dataset.brand||'';
+        box.querySelectorAll('.brand-chip').forEach(x=>x.classList.toggle('active',x===btn));
+        renderProducts();
+      }));
+    }
+
+    async function getJSON(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error('Request failed: '+r.status);return r.json()}
+
+    async function init(){
+      const status=document.querySelector('#status');
+      try{
+        const [brandData,productData]=await Promise.all([getJSON('/api/marketplace/brands'),getJSON('/api/marketplace/products')]);
+        renderBrands(brandData.brands);
+        allProducts=Array.isArray(productData.products)?productData.products:[];
+        status.textContent=`${allProducts.length} products available`;
+        renderProducts();
+      }catch(err){
+        status.textContent='Unable to load marketplace right now.';
+        document.querySelector('#products').innerHTML='<div class="empty" style="grid-column:1/-1">Please try again in a moment.</div>';
+        console.error(err);
+      }finally{
+        if(window.GZLoading)GZLoading.hide();
+      }
+    }
+
+    document.querySelector('#searchBox').addEventListener('input',renderProducts);
+    if(window.GZLoading)GZLoading.show();
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+  </script>
+</body>
+</html>
