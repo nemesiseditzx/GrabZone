@@ -11,6 +11,20 @@ async function adminOK(request,env,ctx){
   if(!r.ok)return false;
   return !!(await r.json().catch(()=>({}))).authenticated;
 }
+async function overview(request,env,ctx){
+  if(request.method!=='GET'||new URL(request.url).pathname!=='/api/vendor/admin/overview')return null;
+  if(!await adminOK(request,env,ctx))return json({error:'Unauthorized'},401);
+  const vendors=await all(env,`SELECT v.id,v.brand_name,v.business_name,v.slug,v.status,v.shipping_fee,v.commission_type,v.commission_value,
+    (SELECT COUNT(*) FROM products p WHERE p.vendor_id=v.id) products,
+    (SELECT COUNT(*) FROM vendor_orders vo WHERE vo.vendor_id=v.id) orders,
+    (SELECT COALESCE(SUM(vo.subtotal),0) FROM vendor_orders vo WHERE vo.vendor_id=v.id) sales,
+    (SELECT COALESCE(SUM(vo.commission_amount),0) FROM vendor_orders vo WHERE vo.vendor_id=v.id) commission,
+    (SELECT COALESCE(SUM(vo.vendor_earnings),0) FROM vendor_orders vo WHERE vo.vendor_id=v.id) earnings
+    FROM vendors v ORDER BY v.rowid DESC`);
+  const rows=vendors.map(v=>({...v,brand_name:v.brand_name||v.business_name||v.slug,products:Number(v.products||0),orders:Number(v.orders||0),sales:Number(v.sales||0),commission:Number(v.commission||0),earnings:Number(v.earnings||0)}));
+  const totals=rows.reduce((x,v)=>(x.sales+=v.sales,x.orders+=v.orders,x.commission+=v.commission,x.earnings+=v.earnings,x),{sales:0,orders:0,commission:0,earnings:0});
+  return json({vendors:rows,totals});
+}
 async function createVendor(request,env,ctx){
   if(request.method!=='POST'||new URL(request.url).pathname!=='/api/vendor/admin/vendors')return null;
   if(!await adminOK(request,env,ctx))return json({error:'Unauthorized'},401);
@@ -48,4 +62,4 @@ async function vendorData(request,env,ctx){
   for(const o of orders)o.shipments=await all(env,'SELECT id,courier,tracking_id,tracking_url,status,note,created_at,updated_at FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY rowid DESC',[o.order_id,v.id]);
   return json({vendor:v,products,orders});
 }
-export default{fetch:async(request,env,ctx)=>{try{const created=await createVendor(request,env,ctx);if(created)return created;const vd=await vendorData(request,env,ctx);if(vd)return vd;return app.fetch(request,env,ctx)}catch(err){return json({error:err?.message||'Marketplace wrapper failed'},500)}}};
+export default{fetch:async(request,env,ctx)=>{try{const ov=await overview(request,env,ctx);if(ov)return ov;const created=await createVendor(request,env,ctx);if(created)return created;const vd=await vendorData(request,env,ctx);if(vd)return vd;return app.fetch(request,env,ctx)}catch(err){return json({error:err?.message||'Marketplace wrapper failed'},500)}}};
