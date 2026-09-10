@@ -1,36 +1,12 @@
 (()=>{
   const originalFetch=window.fetch.bind(window);
   const token=()=>{try{return window.getToken?.()||localStorage.getItem('gz_d1_admin_token')||sessionStorage.getItem('gz_d1_admin_token')||''}catch{return''}};
-  const sameOriginAuth=async()=>{
-    try{
-      const t=token();
-      const headers={Accept:'application/json'};
-      if(t)headers.Authorization='Bearer '+t;
-      if(t)headers['X-GrabZone-Token']=t;
-      const r=await originalFetch('/api/admin-auth',{method:'GET',headers,credentials:'include',cache:'no-store'});
-      const d=await r.json().catch(()=>null);
-      if(d?.authenticated&&d?.session_token){
-        try{localStorage.setItem('gz_d1_admin_token',d.session_token);sessionStorage.setItem('gz_d1_admin_token',d.session_token)}catch{}
-        return true;
-      }
-    }catch{}
-    return false;
-  };
-  const ready=sameOriginAuth();
-  window.marketplaceAdminReady=ready;
-  window.fetch=async(input,init={})=>{
-    let url='';
-    try{url=typeof input==='string'?input:input?.url||''}catch{}
-    let path='';
-    try{path=new URL(url,location.href).pathname}catch{}
-    const isApi=path.startsWith('/api/');
-    if(!isApi)return originalFetch(input,init);
-    if(path!=='/api/admin-auth')await ready;
-    const t=token();
-    if(!t)return originalFetch(input,{...init,credentials:init.credentials||'include'});
-    const headers=new Headers(init.headers||(input instanceof Request?input.headers:undefined));
-    if(!headers.has('Authorization'))headers.set('Authorization','Bearer '+t);
-    if(!headers.has('X-GrabZone-Token'))headers.set('X-GrabZone-Token',t);
-    return originalFetch(input,{...init,headers,credentials:init.credentials||'include',cache:'no-store'});
-  };
+  let active=0,loadingButton=null,loadingMarkup='';
+  const ensureUI=()=>{if(document.getElementById('gz-network-loading'))return;const s=document.createElement('style');s.id='gz-network-loading-style';s.textContent='#gz-network-loading{position:fixed;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,transparent,#ff6b00,#ff9d4d,transparent);background-size:200% 100%;animation:gzload 1s linear infinite;z-index:2147483647;opacity:0;transition:opacity .15s}#gz-network-loading.on{opacity:1}.gz-action-loading{pointer-events:none!important;opacity:.72!important}.gz-action-loading::after{content:"";display:inline-block;width:13px;height:13px;margin-left:9px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;vertical-align:-2px;animation:gzspin .7s linear infinite}@keyframes gzload{to{background-position:-200% 0}}@keyframes gzspin{to{transform:rotate(360deg)}}';document.head.appendChild(s);const b=document.createElement('div');b.id='gz-network-loading';document.documentElement.appendChild(b)};
+  const startVisual=el=>{ensureUI();if(el&&!loadingButton){loadingButton=el;loadingMarkup=el.innerHTML;el.classList.add('gz-action-loading');el.setAttribute('aria-busy','true');if(el.tagName==='BUTTON')el.disabled=true;el.innerHTML='Loading…'}document.getElementById('gz-network-loading')?.classList.add('on')};
+  const stopVisual=()=>{if(active>0)return;const el=loadingButton;if(el){el.innerHTML=loadingMarkup;el.classList.remove('gz-action-loading');el.removeAttribute('aria-busy');if(el.tagName==='BUTTON')el.disabled=false}loadingButton=null;loadingMarkup='';document.getElementById('gz-network-loading')?.classList.remove('on')};
+  document.addEventListener('click',e=>{const el=e.target?.closest?.('button,[role="button"]');if(el&&!el.disabled&&!el.closest('a'))startVisual(el)},true);
+  const sameOriginAuth=async()=>{try{const t=token(),headers={Accept:'application/json'};if(t)headers.Authorization='Bearer '+t;if(t)headers['X-GrabZone-Token']=t;const r=await originalFetch('/api/admin-auth',{method:'GET',headers,credentials:'include',cache:'no-store'});const d=await r.json().catch(()=>null);if(d?.authenticated&&d?.session_token){try{localStorage.setItem('gz_d1_admin_token',d.session_token);sessionStorage.setItem('gz_d1_admin_token',d.session_token)}catch{}return true}}catch{}return false};
+  const ready=sameOriginAuth();window.marketplaceAdminReady=ready;
+  window.fetch=async(input,init={})=>{let url='';try{url=typeof input==='string'?input:input?.url||''}catch{}let path='';try{path=new URL(url,location.href).pathname}catch{}const isApi=path.startsWith('/api/');if(!isApi)return originalFetch(input,init);if(path!=='/api/admin-auth')await ready;const t=token();let reqInit={...init,credentials:init.credentials||'include'};if(t){const headers=new Headers(init.headers||(input instanceof Request?input.headers:undefined));if(!headers.has('Authorization'))headers.set('Authorization','Bearer '+t);if(!headers.has('X-GrabZone-Token'))headers.set('X-GrabZone-Token',t);reqInit={...reqInit,headers,cache:'no-store'}}active++;startVisual(loadingButton);try{return await originalFetch(input,reqInit)}finally{active--;stopVisual()}};
 })();
