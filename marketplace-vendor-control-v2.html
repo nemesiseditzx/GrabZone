@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vendor Control — GrabZone</title>
+<link rel="stylesheet" href="/vendor.css">
+<style>
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.tab{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer;background:#f1f1ee}.tab.active{background:#ff6b00;color:#fff}.panel{display:none}.panel.active{display:block}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.subtle{font-size:12px;color:#777}.msg{padding:10px;border-radius:10px;margin-top:10px;font-weight:800}.msg.ok{background:#effff4;color:#176b35}.msg.err{background:#fff1f1;color:#a11}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:700px){.grid2{grid-template-columns:1fr}}.error{white-space:pre-wrap;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;padding:12px;background:#fff7f7;border:1px solid #e8b8b8;border-radius:10px}.table-wrap{overflow:auto}.empty{padding:18px;color:#777}.danger{color:#a11}
+</style>
+</head>
+<body>
+<header class="gz-top">
+  <div class="gz-logo">Grab<span>Zone</span> <small style="font-size:10px;color:#aaa;letter-spacing:1px">VENDOR CONTROL</small></div>
+  <a class="gz-btn light" href="/vendor-admin.html">← Marketplace Admin</a>
+</header>
+<main class="gz-main">
+  <div id="app"><div class="gz-card">Loading vendor...</div></div>
+</main>
+<script>
+(function(){
+  'use strict';
+  var app=document.getElementById('app');
+  var vendorKey=new URLSearchParams(location.search).get('vendor');
+  var state={vendor:null,products:[],orders:[],categories:[],sections:[]};
+
+  function esc(value){
+    return String(value==null?'':value).replace(/[&<>"']/g,function(ch){
+      var map={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+      return map[ch];
+    });
+  }
+  function money(value){return '৳'+Number(value||0).toLocaleString('en-BD',{maximumFractionDigits:2});}
+  async function api(url,options){
+    options=options||{};
+    options.credentials='include';
+    options.cache='no-store';
+    options.headers=Object.assign({'Content-Type':'application/json'},options.headers||{});
+    var response=await fetch(url,options);
+    var data=await response.json().catch(function(){return {};});
+    if(!response.ok)throw new Error(data.error||('Request failed ('+response.status+')'));
+    return data;
+  }
+  function showError(error){
+    app.innerHTML='<div class="gz-card"><h2>Could not load vendor</h2><div class="error">'+esc(error&&error.message||error)+'</div><div class="actions"><button id="retry" class="gz-btn primary">Retry</button><a class="gz-btn light" href="/vendor-admin.html">Back</a></div></div>';
+    document.getElementById('retry').onclick=load;
+  }
+  function setMessage(id,text,ok){
+    var el=document.getElementById(id);if(!el)return;
+    el.className='msg '+(ok?'ok':'err');el.textContent=text;
+  }
+  async function load(){
+    try{
+      var auth=await api('/api/admin-auth');
+      if(!auth.authenticated){location.href='/admin.html';return;}
+      if(!vendorKey)throw new Error('Missing vendor ID. Open Manage from Marketplace Admin.');
+      var data=await api('/api/vendor/admin/vendor-data?vendor_id='+encodeURIComponent(vendorKey));
+      state.vendor=data.vendor;state.products=data.products||[];state.orders=data.orders||[];
+      var categoryData=await api('/api/vendor/admin/categories').catch(function(){return {categories:[]};});
+      state.categories=categoryData.categories||[];
+      render();
+    }catch(error){showError(error);}
+  }
+  function inputField(label,id,type,value){
+    return '<div class="gz-field"><label>'+label+'</label><input id="'+id+'" type="'+(type||'text')+'" value="'+esc(value==null?'':value)+'"></div>';
+  }
+  function render(){
+    var v=state.vendor;
+    var categoryOptions='<option value="">No category</option>'+state.categories.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+    app.innerHTML='<div class="gz-head"><div><h1>'+esc(v.brand_name||v.business_name||v.slug)+'</h1><p>Super Admin control center · '+esc(v.slug||'')+'</p></div><div class="actions"><a class="gz-btn light" target="_blank" href="/brand.html?slug='+encodeURIComponent(v.slug||'')+'">View Store</a><button id="refresh" class="gz-btn light">Refresh</button></div></div>'+
+      '<div class="tabs"><button class="tab active" data-tab="profile">Profile</button><button class="tab" data-tab="products">Products</button><button class="tab" data-tab="orders">Orders</button><button class="tab" data-tab="store">Store</button><button class="tab" data-tab="security">Security</button></div>'+
+      '<section id="profile" class="panel active"><div class="gz-card"><h2>Vendor Profile & Settings</h2><form id="profileForm" class="gz-form">'+
+      '<div class="grid2">'+inputField('Business Name','businessName','text',v.business_name)+' '+inputField('Brand Name','brandName','text',v.brand_name)+' '+inputField('Business Email','businessEmail','email',v.business_email||v.email)+' '+inputField('Phone','phone','text',v.phone)+' '+inputField('Order Notification Email','orderEmail','email',v.order_notification_email||v.email)+' '+inputField('Support Email','supportEmail','email',v.support_email||v.email)+
+      '<div class="gz-field"><label>Status</label><select id="vendorStatus"><option value="Active">Active</option><option value="Pending">Pending</option><option value="Suspended">Suspended</option></select></div>'+inputField('Shipping Fee','shippingFee','number',Number(v.shipping_fee||0))+
+      '<div class="gz-field"><label>Commission Type</label><select id="commissionType"><option value="percentage">Percentage</option><option value="fixed">Fixed</option></select></div>'+inputField('Commission Value','commissionValue','number',Number(v.commission_value||0))+inputField('Logo URL','logoUrl','text',v.logo_url)+inputField('Banner URL','bannerUrl','text',v.banner_url)+'</div>'+
+      '<div class="gz-field"><label>Description</label><textarea id="description" rows="4">'+esc(v.description||'')+'</textarea></div><div class="actions"><label><input id="homepageVisible" type="checkbox"> Show in Shop by Brands</label><label><input id="featured" type="checkbox"> Featured Brand</label></div><div id="profileMsg"></div><button class="gz-btn primary">Save Vendor</button></form></div></section>'+
+      '<section id="products" class="panel"><div class="gz-card"><h2>Add Product</h2><form id="productForm" class="gz-form"><div class="grid2">'+inputField('Product Name *','productName','text','')+inputField('SKU','productSku','text','')+inputField('Price *','productPrice','number','')+inputField('Stock','productStock','number','0')+'<div class="gz-field"><label>Category</label><select id="productCategory">'+categoryOptions+'</select></div>'+inputField('Image URL','productImage','text','')+'</div><div class="gz-field"><label>Description</label><textarea id="productDescription" rows="4"></textarea></div><label><input id="productPublished" type="checkbox" checked> Published</label><div id="productMsg"></div><button class="gz-btn primary">Add Product</button></form></div><div class="gz-card" style="margin-top:16px"><h2>Products</h2><div class="table-wrap"><table class="gz-table"><thead><tr><th>Product</th><th>SKU</th><th>Price</th><th>Stock</th><th>Published</th><th></th></tr></thead><tbody id="productRows"></tbody></table></div><div class="actions"><button id="saveInventory" class="gz-btn primary">Save Inventory</button></div></div></section>'+
+      '<section id="orders" class="panel"><div class="gz-card"><h2>Vendor Orders</h2><div class="table-wrap"><table class="gz-table"><thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Subtotal</th><th>Status</th><th>Shipments</th></tr></thead><tbody id="orderRows"></tbody></table></div></div></section>'+
+      '<section id="store" class="panel"><div class="gz-card"><h2>Store Sections</h2><div id="sectionsList" class="empty">Loading...</div><form id="sectionForm" class="gz-form"><div class="grid2"><div class="gz-field"><label>Type</label><input id="sectionType" value="custom"></div><div class="gz-field"><label>Title</label><input id="sectionTitle"></div></div><div class="gz-field"><label>Content</label><textarea id="sectionBody" rows="4"></textarea></div><button class="gz-btn primary">Add Section</button></form></div></section>'+
+      '<section id="security" class="panel"><div class="gz-card"><h2>Vendor Login Security</h2><p class="subtle">Reset this vendor login password.</p><form id="resetForm" class="gz-form"><div class="gz-field"><label>New Password</label><input id="newPassword" type="password" minlength="8" required></div><button class="gz-btn primary">Reset Password</button></form><div id="securityMsg"></div></div></section>';
+
+    document.getElementById('vendorStatus').value=v.status||'Active';
+    document.getElementById('commissionType').value=v.commission_type||'percentage';
+    document.getElementById('homepageVisible').checked=!!v.homepage_visible;
+    document.getElementById('featured').checked=!!v.featured;
+    document.getElementById('refresh').onclick=load;
+    document.getElementById('profileForm').onsubmit=saveProfile;
+    document.getElementById('productForm').onsubmit=addProduct;
+    document.getElementById('saveInventory').onclick=saveInventory;
+    document.getElementById('resetForm').onsubmit=resetPassword;
+    document.getElementById('sectionForm').onsubmit=addSection;
+    document.querySelectorAll('.tab').forEach(function(button){button.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active');});document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('active');});button.classList.add('active');document.getElementById(button.getAttribute('data-tab')).classList.add('active');if(button.getAttribute('data-tab')==='store')loadSections();};});
+    renderProducts();renderOrders();loadSections();
+  }
+  function renderProducts(){
+    var rows=state.products.map(function(p){return '<tr><td><b>'+esc(p.name)+'</b><div class="subtle">'+esc(p.category_name||'')+'</div></td><td>'+esc(p.sku||'—')+'</td><td>'+money(p.price)+'</td><td><input class="inventoryStock" data-id="'+esc(p.id)+'" type="number" min="0" value="'+Number(p.stock||0)+'" style="width:85px"></td><td><input class="inventoryPublished" data-id="'+esc(p.id)+'" type="checkbox" '+(p.published?'checked':'')+'></td><td><button class="gz-btn light productEdit" data-id="'+esc(p.id)+'">Edit</button></td></tr>';}).join('');
+    document.getElementById('productRows').innerHTML=rows||'<tr><td colspan="6" class="empty">No products.</td></tr>';
+    document.querySelectorAll('.productEdit').forEach(function(btn){btn.onclick=function(){editProduct(btn.getAttribute('data-id'));};});
+  }
+  function renderOrders(){
+    var statuses=['Processing','Picked Up','In Transit','Out for Delivery','Delivered','Failed','Returned','Cancelled'];
+    var rows=state.orders.map(function(o){var options=statuses.map(function(s){return '<option value="'+esc(s)+'" '+(o.status===s?'selected':'')+'>'+esc(s)+'</option>';}).join('');var shipments=(o.shipments||[]).map(function(s){return esc(s.courier||'Courier')+' · '+esc(s.tracking_id||'Pending')+' · '+esc(s.status||'Pending');}).join('<br>')||'None';return '<tr><td><b>'+esc(o.order_number||o.id)+'</b><div class="subtle">Tracking: '+esc(o.public_tracking_id||'—')+'</div></td><td>'+esc(o.customer_name||'')+'<div class="subtle">'+esc(o.phone||'')+'</div></td><td>'+Number((o.items||[]).length)+'</td><td>'+money(o.subtotal)+'</td><td><select class="orderStatus" data-id="'+esc(o.id)+'">'+options+'</select></td><td>'+shipments+'</td></tr>';}).join('');
+    document.getElementById('orderRows').innerHTML=rows||'<tr><td colspan="6" class="empty">No vendor orders.</td></tr>';
+    document.querySelectorAll('.orderStatus').forEach(function(select){select.onchange=function(){saveStatus(select.getAttribute('data-id'),select.value);};});
+  }
+  async function saveProfile(event){
+    event.preventDefault();
+    try{await api('/api/vendor/admin/vendors/'+encodeURIComponent(state.vendor.id),{method:'PATCH',body:JSON.stringify({business_name:document.getElementById('businessName').value.trim(),brand_name:document.getElementById('brandName').value.trim(),email:document.getElementById('businessEmail').value.trim(),business_email:document.getElementById('businessEmail').value.trim(),phone:document.getElementById('phone').value.trim(),order_notification_email:document.getElementById('orderEmail').value.trim(),support_email:document.getElementById('supportEmail').value.trim(),status:document.getElementById('vendorStatus').value,shipping_fee:Number(document.getElementById('shippingFee').value||0),commission_type:document.getElementById('commissionType').value,commission_value:Number(document.getElementById('commissionValue').value||0),logo_url:document.getElementById('logoUrl').value.trim(),banner_url:document.getElementById('bannerUrl').value.trim(),description:document.getElementById('description').value,homepage_visible:document.getElementById('homepageVisible').checked,featured:document.getElementById('featured').checked})});setMessage('profileMsg','Vendor saved successfully.',true);await load();}catch(error){setMessage('profileMsg',error.message,false);}
+  }
+  async function addProduct(event){
+    event.preventDefault();
+    try{await api('/api/vendor/admin/products',{method:'POST',body:JSON.stringify({vendor_id:state.vendor.id,name:document.getElementById('productName').value.trim(),sku:document.getElementById('productSku').value.trim(),price:Number(document.getElementById('productPrice').value),stock:Number(document.getElementById('productStock').value||0),category_id:document.getElementById('productCategory').value||null,image_url:document.getElementById('productImage').value.trim(),description:document.getElementById('productDescription').value,published:document.getElementById('productPublished').checked})});setMessage('productMsg','Product added successfully.',true);document.getElementById('productForm').reset();document.getElementById('productPublished').checked=true;await load();}catch(error){setMessage('productMsg',error.message,false);}
+  }
+  async function saveInventory(){
+    try{for(var i=0;i<state.products.length;i++){var p=state.products[i];var stock=document.querySelector('.inventoryStock[data-id="'+p.id+'"]');var published=document.querySelector('.inventoryPublished[data-id="'+p.id+'"]');if(stock&&published)await api('/api/vendor/admin/products',{method:'PATCH',body:JSON.stringify({id:p.id,stock:Number(stock.value||0),published:published.checked})});}await load();alert('Inventory saved.');}catch(error){alert(error.message);}
+  }
+  async function editProduct(id){
+    var product=state.products.find(function(p){return String(p.id)===String(id);});if(!product)return;
+    var name=prompt('Product name',product.name);if(name===null)return;var price=prompt('Price',product.price);if(price===null)return;var stock=prompt('Stock',product.stock);if(stock===null)return;
+    try{await api('/api/vendor/admin/products',{method:'PATCH',body:JSON.stringify({id:product.id,name:name.trim(),price:Number(price),stock:Number(stock)})});await load();}catch(error){alert(error.message);}
+  }
+  async function saveStatus(id,status){try{await api('/api/vendor/admin/order-status',{method:'PATCH',body:JSON.stringify({vendor_order_id:id,status:status})});await load();}catch(error){alert(error.message);}}
+  async function loadSections(){
+    var box=document.getElementById('sectionsList');if(!box||!state.vendor)return;
+    try{var data=await api('/api/vendor/admin/store-sections?vendor_id='+encodeURIComponent(state.vendor.id));state.sections=data.sections||[];box.innerHTML=state.sections.map(function(s){return '<div class="gz-card" style="margin:10px 0"><b>'+esc(s.title||s.section_type)+'</b><div class="subtle">'+esc(s.section_type||'custom')+' · '+(s.enabled?'Enabled':'Disabled')+'</div><p>'+esc(s.body||'')+'</p><button class="gz-btn light sectionEdit" data-id="'+esc(s.id)+'">Edit</button> <button class="gz-btn light danger sectionDelete" data-id="'+esc(s.id)+'">Delete</button></div>';}).join('')||'<div class="empty">No custom store sections.</div>';document.querySelectorAll('.sectionEdit').forEach(function(b){b.onclick=function(){editSection(b.getAttribute('data-id'));};});document.querySelectorAll('.sectionDelete').forEach(function(b){b.onclick=function(){deleteSection(b.getAttribute('data-id'));};});}catch(error){box.textContent=error.message;}
+  }
+  async function addSection(event){
+    event.preventDefault();
+    try{await api('/api/vendor/admin/store-sections?vendor_id='+encodeURIComponent(state.vendor.id),{method:'POST',body:JSON.stringify({section_type:document.getElementById('sectionType').value,title:document.getElementById('sectionTitle').value,body:document.getElementById('sectionBody').value,sort_order:0,enabled:true})});event.target.reset();document.getElementById('sectionType').value='custom';await loadSections();}catch(error){alert(error.message);}
+  }
+  async function editSection(id){
+    var section=state.sections.find(function(s){return String(s.id)===String(id);});if(!section)return;var title=prompt('Title',section.title||'');if(title===null)return;var body=prompt('Content',section.body||'');if(body===null)return;
+    try{await api('/api/vendor/admin/store-sections?vendor_id='+encodeURIComponent(state.vendor.id),{method:'PATCH',body:JSON.stringify({id:section.id,title:title,body:body,section_type:section.section_type||'custom',sort_order:Number(section.sort_order||0),enabled:!!section.enabled,data_json:{}})});await loadSections();}catch(error){alert(error.message);}
+  }
+  async function deleteSection(id){if(!confirm('Delete this store section?'))return;try{await api('/api/vendor/admin/store-sections?vendor_id='+encodeURIComponent(state.vendor.id),{method:'DELETE',body:JSON.stringify({id:id})});await loadSections();}catch(error){alert(error.message);}}
+  async function resetPassword(event){event.preventDefault();try{await api('/api/vendor/admin/reset-password',{method:'POST',body:JSON.stringify({vendor_id:state.vendor.id,password:document.getElementById('newPassword').value})});setMessage('securityMsg','Vendor password reset successfully.',true);event.target.reset();}catch(error){setMessage('securityMsg',error.message,false);}}
+  load();
+})();
+</script>
+</body>
+</html>
