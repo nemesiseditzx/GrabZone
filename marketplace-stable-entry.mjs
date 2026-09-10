@@ -1,4 +1,4 @@
-import app from './vendor-create-fix-wrapper.mjs';
+import app from './admin-vendor-capabilities-wrapper.mjs';
 
 export default {
   fetch(request, env, ctx) {
