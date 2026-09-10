@@ -3,7 +3,31 @@
   if (window.__GZ_GLOBAL_LOADER__) return;
   window.__GZ_GLOBAL_LOADER__ = true;
 
-  var CSS = '\n#gzGlobalLoading{position:fixed;inset:0;z-index:2147483647;background:radial-gradient(circle at 50% 42%,#fff 0,#fff 42%,#fffaf7 72%,#fff 100%);display:flex;align-items:center;justify-content:center;overflow:hidden;opacity:1;visibility:visible;pointer-events:auto;transition:opacity .28s ease,visibility .28s ease;font-family:Arial,Helvetica,sans-serif}\n#gzGlobalLoading.gz-hide{opacity:0;visibility:hidden;pointer-events:none}\n.gzgl-orbit{position:relative;width:min(330px,72vw);height:min(330px,72vw);display:flex;align-items:center;justify-content:center}\n.gzgl-orbit:before,.gzgl-orbit:after{content:"";position:absolute;border-radius:50%;inset:0;border:2px solid rgba(255,107,0,.10)}\n.gzgl-orbit:after{inset:22px;border-color:rgba(255,107,0,.08)}\n.gzgl-ring{position:absolute;inset:0;border-radius:50%;border:10px solid rgba(255,107,0,.10);border-top-color:#ff6b00;border-right-color:#ff8a22;animation:gzglSpin 1.55s linear infinite;filter:drop-shadow(0 4px 14px rgba(255,107,0,.22))}\n.gzgl-ring.two{inset:26px;border-width:4px;border-color:transparent transparent rgba(255,107,0,.20) #ffb36f;animation:gzglSpinReverse 2.3s linear infinite}\n.gzgl-ring.three{inset:50px;border-width:2px;border-style:dashed;border-color:rgba(255,107,0,.22);animation:gzglSpin 7s linear infinite}\n.gzgl-logo{position:relative;width:116px;height:116px;border-radius:30px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 18px 55px rgba(0,0,0,.10),0 0 0 1px rgba(0,0,0,.04);font-weight:1000;font-size:58px;letter-spacing:-7px;color:#171717}\n.gzgl-logo span{color:#ff6b00;font-size:48px;margin-left:-4px;font-style:italic}\n.gzgl-logo:after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;border:5px solid #ff6b00;right:-14px;top:10px;box-shadow:0 0 20px rgba(255,107,0,.55);animation:gzglPulse 1.2s ease-in-out infinite}\n.gzgl-copy{position:absolute;top:calc(100% + 28px);left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap}\n.gzgl-title{font-size:14px;letter-spacing:.38em;font-weight:900;color:#333;margin-left:.38em}\n.gzgl-dots{display:inline-block;color:#ff6b00;letter-spacing:.12em;animation:gzglDots 1.1s steps(4,end) infinite;width:34px;text-align:left}\n.gzgl-sub{font-size:8px;letter-spacing:.42em;color:#aaa;margin:12px 0 0 .42em;font-weight:800}\n.gzgl-bar{position:absolute;top:calc(100% + 91px);left:50%;transform:translateX(-50%);width:min(260px,62vw);height:12px;border-radius:999px;background:#ececec;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.05)}\n.gzgl-bar i{display:block;height:100%;width:62%;border-radius:inherit;background:linear-gradient(90deg,#ff6200,#ffad62,#ff6200);background-size:200% 100%;animation:gzglProgress 1.35s ease-in-out infinite;box-shadow:0 0 15px rgba(255,107,0,.35)}\n.gzgl-corner{position:absolute;font-size:7px;letter-spacing:.38em;color:#aaa;font-weight:900;line-height:1.9}.gzgl-corner b{display:block;color:#ff6b00;font-size:9px;letter-spacing:.1em;font-weight:900}.gzgl-corner.tl{top:32px;left:36px}.gzgl-corner.tr{top:32px;right:36px;text-align:right}.gzgl-corner.bl{bottom:32px;left:36px}.gzgl-corner.br{bottom:32px;right:36px;text-align:right}\n@keyframes gzglSpin{to{transform:rotate(360deg)}}@keyframes gzglSpinReverse{to{transform:rotate(-360deg)}}@keyframes gzglPulse{0%,100%{transform:scale(.88);opacity:.65}50%{transform:scale(1.08);opacity:1}}@keyframes gzglDots{0%{width:8px}33%{width:17px}66%{width:26px}100%{width:34px}}@keyframes gzglProgress{0%{transform:translateX(-105%);background-position:0 0}55%{transform:translateX(45%);background-position:100% 0}100%{transform:translateX(160%);background-position:0 0}}\n@media(max-width:600px){.gzgl-corner{display:none}.gzgl-logo{width:96px;height:96px;font-size:48px}.gzgl-logo span{font-size:40px}.gzgl-bar{top:calc(100% + 86px)}}';
+  var CSS = `
+#gzGlobalLoading{position:fixed;inset:0;z-index:2147483647;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;opacity:1;visibility:visible;pointer-events:auto;transition:opacity .24s ease,visibility .24s ease;font-family:Arial,Helvetica,sans-serif}
+#gzGlobalLoading.gz-hide{opacity:0;visibility:hidden;pointer-events:none}
+.gzgl-stage{position:relative;width:min(390px,82vw);height:min(390px,82vw);display:flex;align-items:center;justify-content:center}
+.gzgl-orbit{position:absolute;border-radius:50%;box-sizing:border-box}
+.gzgl-orbit.one{inset:0;border:2px solid rgba(255,107,0,.11);border-top-color:#ff6b00;border-right-color:#ff8a22;animation:gzglSpin 1.35s linear infinite}
+.gzgl-orbit.two{inset:24px;border:1.5px solid rgba(255,107,0,.13);border-bottom-color:#ff8a22;border-left-color:#ffb36f;animation:gzglSpinReverse 2s linear infinite}
+.gzgl-orbit.three{inset:52px;border:1px dashed rgba(255,107,0,.16);animation:gzglSpin 5.5s linear infinite}
+.gzgl-logo-wrap{position:relative;width:116px;height:116px;border-radius:28px;background:#fff;display:grid;place-items:center;box-shadow:0 16px 48px rgba(0,0,0,.10),0 0 0 1px rgba(0,0,0,.045);z-index:2}
+.gzgl-logo{width:82px;height:82px;object-fit:contain;display:block}
+.gzgl-dot{position:absolute;right:-11px;top:8px;width:18px;height:18px;border-radius:50%;background:#fff;border:4px solid #ff6b00;box-shadow:0 0 18px rgba(255,107,0,.45);animation:gzglPulse 1.1s ease-in-out infinite}
+.gzgl-copy{position:absolute;top:calc(100% + 28px);left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap}
+.gzgl-title{font-size:13px;letter-spacing:.32em;font-weight:900;color:#222;margin-left:.32em}
+.gzgl-dots{color:#ff6b00;letter-spacing:.12em}
+.gzgl-sub{font-size:8px;letter-spacing:.38em;color:#aaa;margin:11px 0 0 .38em;font-weight:800}
+.gzgl-bar{position:absolute;top:calc(100% + 78px);left:50%;transform:translateX(-50%);width:min(250px,58vw);height:5px;border-radius:99px;background:#ededed;overflow:hidden}
+.gzgl-bar i{display:block;width:38%;height:100%;border-radius:inherit;background:#ff6b00;animation:gzglProgress 1.15s ease-in-out infinite}
+.gzgl-corner{position:absolute;font-size:7px;letter-spacing:.28em;line-height:1.75;color:#aaa;font-weight:800}
+.gzgl-corner b{display:block;color:#ff6b00;font-size:8px;letter-spacing:.08em}
+.gzgl-corner.tl{top:28px;left:30px}.gzgl-corner.tr{top:28px;right:30px;text-align:right}.gzgl-corner.bl{bottom:28px;left:30px}.gzgl-corner.br{bottom:28px;right:30px;text-align:right}
+@keyframes gzglSpin{to{transform:rotate(360deg)}}
+@keyframes gzglSpinReverse{to{transform:rotate(-360deg)}}
+@keyframes gzglPulse{0%,100%{transform:scale(.88);opacity:.65}50%{transform:scale(1.08);opacity:1}}
+@keyframes gzglProgress{0%{transform:translateX(-150%)}100%{transform:translateX(420%)}}
+@media(max-width:600px){.gzgl-corner{display:none}.gzgl-logo-wrap{width:98px;height:98px;border-radius:24px}.gzgl-logo{width:70px;height:70px}.gzgl-bar{top:calc(100% + 72px)}}`;
 
   var style=document.createElement('style');
   style.id='gz-global-loader-style';
@@ -14,86 +38,51 @@
   overlay.id='gzGlobalLoading';
   overlay.setAttribute('aria-live','polite');
   overlay.setAttribute('aria-label','Loading GrabZone');
-  overlay.innerHTML='<div class="gzgl-orbit"><div class="gzgl-ring"></div><div class="gzgl-ring two"></div><div class="gzgl-ring three"></div><div class="gzgl-logo">G<span>Z</span></div><div class="gzgl-copy"><div class="gzgl-title">PROCESSING <span class="gzgl-dots">...</span></div><div class="gzgl-sub">PLEASE WAIT A MOMENT</div></div><div class="gzgl-bar"><i></i></div></div><div class="gzgl-corner tl">MORE<br>THAN<br>JUST <b>GRABZONE</b></div><div class="gzgl-corner tr">SHOP<br>EXPLORE<br>ENJOY <b>ONLINE</b></div><div class="gzgl-corner bl">GRABZONE<br>ONLINE STORE <b>GRAB IT. LOVE IT.</b></div><div class="gzgl-corner br">A BETTER<br>SHOPPING<br>EXPERIENCE <b>GZ</b></div>';
+  overlay.innerHTML='<div class="gzgl-stage">'
+    +'<div class="gzgl-orbit one"></div><div class="gzgl-orbit two"></div><div class="gzgl-orbit three"></div>'
+    +'<div class="gzgl-logo-wrap"><img class="gzgl-logo" src="/favicon.png" alt="GrabZone"><span class="gzgl-dot"></span></div>'
+    +'<div class="gzgl-copy"><div class="gzgl-title">PROCESSING <span class="gzgl-dots">...</span></div><div class="gzgl-sub">PLEASE WAIT A MOMENT</div></div>'
+    +'<div class="gzgl-bar"><i></i></div></div>'
+    +'<div class="gzgl-corner tl">MORE<br>THAN<br>JUST <b>GRABZONE</b></div>'
+    +'<div class="gzgl-corner tr">SHOP<br>EXPLORE<br>ENJOY <b>ONLINE</b></div>'
+    +'<div class="gzgl-corner bl">GRABZONE<br>ONLINE STORE <b>GRAB IT. LOVE IT.</b></div>'
+    +'<div class="gzgl-corner br">A BETTER<br>SHOPPING<br>EXPERIENCE <b>GZ</b></div>';
 
   function mount(){
-    if (!document.getElementById('gzGlobalLoading')) {
+    if(!document.getElementById('gzGlobalLoading')){
       (document.body||document.documentElement).appendChild(overlay);
     }
   }
   mount();
 
   var hideTimer=0;
-  var navTimer=0;
-  var visibleUntil=0;
-
   function show(){
     mount();
     clearTimeout(hideTimer);
     overlay.classList.remove('gz-hide');
-    visibleUntil=Math.max(visibleUntil,Date.now()+180);
   }
-
   function hide(){
     clearTimeout(hideTimer);
-    var wait=Math.max(0,visibleUntil-Date.now());
-    hideTimer=setTimeout(function(){overlay.classList.add('gz-hide');},wait);
+    hideTimer=setTimeout(function(){overlay.classList.add('gz-hide');},120);
   }
 
-  window.GZLoading={
-    show:show,
-    hide:hide,
-    start:show,
-    stop:hide,
-    isLoading:function(){return !overlay.classList.contains('gz-hide');}
-  };
+  window.GZLoading={show:show,hide:hide,start:show,stop:hide,isLoading:function(){return !overlay.classList.contains('gz-hide');}};
 
-  // IMPORTANT: Do not globally track fetch/XHR. GrabZone has background API
-  // calls that can legitimately stay open or finish later; tracking those made
-  // the full-screen loader remain visible and made the site feel stuck.
-  // Loading is now tied only to real page/navigation transitions and explicit
-  // GZLoading.show()/hide() calls.
+  // Deliberately do NOT globally hook fetch/XHR/click/submit. Those include
+  // background requests and client-side actions that are not page loads.
+  // A global hook was the source of stuck loaders and laggy transitions.
+  function initialHide(){
+    var root=document.documentElement;
+    var wait=root.hasAttribute('data-gz-loader-wait') || document.body&&document.body.hasAttribute('data-gz-loader-wait');
+    if(!wait) hide();
+  }
 
-  document.addEventListener('click',function(e){
-    var a=e.target.closest&&e.target.closest('a');
-    if(!a)return;
-    var href=a.getAttribute('href')||'';
-    if(!href||href.charAt(0)==='#'||href.indexOf('javascript:')===0||a.target==='_blank'||a.hasAttribute('download'))return;
-    if(e.defaultPrevented)return;
-    try{
-      var u=new URL(href,location.href);
-      if(u.origin!==location.origin)return;
-    }catch(_){return}
-    show();
-    clearTimeout(navTimer);
-    navTimer=setTimeout(function(){
-      // If a script prevented navigation or the navigation failed, never leave
-      // the customer behind a permanent overlay.
-      if(document.visibilityState==='visible') hide();
-    },6000);
-  },true);
-
-  document.addEventListener('submit',function(e){
-    var form=e.target;
-    if(!form||form.hasAttribute('data-no-gz-loader')||e.defaultPrevented)return;
-    show();
-    clearTimeout(navTimer);
-    navTimer=setTimeout(function(){
-      if(document.visibilityState==='visible') hide();
-    },6000);
-  },true);
-
-  window.addEventListener('beforeunload',function(){show();});
-  window.addEventListener('pageshow',function(){hide();});
-
-  // Initial load: hide as soon as the DOM is ready instead of waiting for every
-  // image/font/background request. This prevents slow assets from blocking the UI.
   if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',function(){hide();},{once:true});
+    document.addEventListener('DOMContentLoaded',initialHide,{once:true});
   }else{
-    hide();
+    initialHide();
   }
 
-  // Absolute safety valve for unusual browser/extension cases.
-  setTimeout(function(){hide();},3500);
+  // Safety only: never allow a loader to trap a customer indefinitely.
+  setTimeout(function(){hide();},12000);
 })();
