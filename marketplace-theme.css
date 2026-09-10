@@ -1,0 +1,25 @@
+/* GrabZone Marketplace visual identity — intentionally different from the main storefront. */
+:root{--market-ink:#17120d;--market-bg:#fffaf3;--market-soft:#fff0df;--market-orange:#ff6b00;--market-line:#eadfD2}
+body{background:var(--market-bg)!important;color:var(--market-ink)!important}
+.market-header{background:rgba(255,250,243,.96)!important;border-bottom-color:var(--market-line)!important}
+.market-notice{background:#21170f!important}
+.market-notice-label{background:var(--market-orange)!important;color:#fff!important}
+.market-search{background:#fff!important;border-color:var(--market-line)!important}
+.market-search button{background:var(--market-orange)!important}
+.market-action{background:#fff!important;border-color:var(--market-line)!important}
+.market-action.dark{background:var(--market-ink)!important;color:#fff!important;border-color:var(--market-ink)!important}
+.market-links a:hover{color:var(--market-orange)!important}
+.market-intro{background:linear-gradient(135deg,#fff0df 0%,#fffaf3 58%,#ffe2c5 100%)!important;border-bottom-color:var(--market-line)!important}
+.market-intro h1 em{color:#b84c00!important}
+.market-intro .eyebrow,.marketplace-shop .eyebrow{color:#b84c00!important}
+.marketplace-shop{background:var(--market-bg)!important}
+.brand-chip{background:#fff!important;border-color:var(--market-line)!important}
+.brand-chip:hover{border-color:var(--market-orange)!important;color:var(--market-orange)!important}
+.brand-chip.active{background:var(--market-orange)!important;border-color:var(--market-orange)!important;color:#fff!important}
+.marketplace-status{color:#8a7767!important}
+.marketplace-products .product-card{background:#fff!important;border-color:var(--market-line)!important}
+.marketplace-products .product-card:hover{box-shadow:0 16px 35px rgba(150,75,20,.12)!important}
+.marketplace-products .product-cat{color:#b84c00!important}
+.marketplace-add{background:var(--market-ink)!important;border-color:var(--market-ink)!important}
+.market-page-accent:before{background:#ff6b00!important;opacity:.10!important}.market-page-accent:after{background:#ffbd80!important;opacity:.14!important}
+@media(max-width:760px){.market-nav{background:rgba(255,250,243,.98)!important}}
