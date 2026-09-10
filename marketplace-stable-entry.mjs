@@ -2,6 +2,7 @@ import app from './admin-vendor-capabilities-wrapper.mjs';
 
 const LOADER_SCRIPT = '<script src="/grabzone-global-loader.js" data-grabzone-global-loader></script>';
 const CART_BRIDGE_SCRIPT = '<script src="/grabzone-cart-quantity-bridge.js" data-grabzone-cart-bridge></script>';
+const MARKETPLACE_THEME = '<link rel="stylesheet" href="/marketplace-theme.css" data-grabzone-marketplace-theme>';
 
 const json = (data,status=200) => new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 
@@ -31,6 +32,8 @@ async function injectGlobalLoader(request,response){
   const scripts=[];
   if(!body.includes('data-grabzone-global-loader'))scripts.push(LOADER_SCRIPT);
   if(!body.includes('data-grabzone-cart-bridge'))scripts.push(CART_BRIDGE_SCRIPT);
+  const pathname=new URL(request.url).pathname;
+  if((pathname==='/marketplace'||pathname==='/marketplace.html')&&!body.includes('data-grabzone-marketplace-theme'))scripts.push(MARKETPLACE_THEME);
   if(!scripts.length)return response;
 
   const injection=scripts.join('\n');
