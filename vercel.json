@@ -2,5 +2,16 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://grabzone.nemesiseditzx984.workers.dev/api/:path*" }
   ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "</brand-alignment-fix.css>; rel=stylesheet"
+        }
+      ]
+    }
+  ],
   "cleanUrls": true
 }
