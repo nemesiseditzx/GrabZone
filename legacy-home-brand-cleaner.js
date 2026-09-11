@@ -7,11 +7,6 @@ style.textContent='.gh-brands,.gz-mp-brand-bg{display:none!important}';
 (document.head||document.documentElement).appendChild(style);
 function clean(){
   document.querySelectorAll('.gh-brands,.gz-mp-brand-bg').forEach(el=>el.remove());
-  document.querySelectorAll('main > section').forEach(el=>{
-    if(el.classList.contains('gz-home-brands-section'))return;
-    const h=el.querySelector('h1,h2,h3');
-    if(h&&/shop\s+by\s+brands/i.test(h.textContent||''))el.remove();
-  });
 }
 clean();
 const observer=new MutationObserver(clean);
@@ -20,7 +15,7 @@ setTimeout(()=>observer.disconnect(),20000);
 const loadHomeBrands=()=>{
   if(document.querySelector('[data-grabzone-home-brand-fix]'))return;
   const s=document.createElement('script');
-  s.src='/marketplace-home-fix.js?v=20260911-brands4';
+  s.src='/marketplace-home-fix.js?v=20260911-brands5';
   s.dataset.grabzoneHomeBrandFix='true';
   (document.head||document.documentElement).appendChild(s);
 };
