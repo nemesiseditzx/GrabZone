@@ -1,17 +1,27 @@
 (()=>{
 'use strict';
 if(location.pathname!=='/'&&!location.pathname.endsWith('/index.html'))return;
-const style=document.createElement('style');
-style.id='gz-home-legacy-brand-hide';
-style.textContent='.gz-home-brands-section{display:none!important}';
-(document.head||document.documentElement).appendChild(style);
-function clean(){
-  // Remove ONLY the injected marketplace-home-fix section.
-  // Keep the existing/reference .gh-brands section intact.
-  document.querySelectorAll('.gz-home-brands-section,[data-gz-home-brands]').forEach(el=>el.remove());
+function removeLegacy(){
+  // The upper broken/narrow brands block is the legacy .gh-brands section.
+  // Remove only that block; the desired .gz-home-brands-section must remain.
+  document.querySelectorAll('.gh-brands,.gz-mp-brand-bg').forEach(el=>el.remove());
 }
-clean();
-const observer=new MutationObserver(clean);
+function loadDesired(){
+  if(document.querySelector('[data-grabzone-home-brand-fix]'))return;
+  const s=document.createElement('script');
+  s.src='/marketplace-home-fix.js?v=20260911-final-brands';
+  s.defer=true;
+  s.dataset.grabzoneHomeBrandFix='true';
+  document.head.appendChild(s);
+}
+removeLegacy();
+const observer=new MutationObserver(removeLegacy);
 observer.observe(document.documentElement,{childList:true,subtree:true});
 setTimeout(()=>observer.disconnect(),20000);
+const start=()=>{
+  removeLegacy();
+  loadDesired();
+};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+else start();
 })();
