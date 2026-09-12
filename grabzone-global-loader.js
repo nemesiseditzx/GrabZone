@@ -56,73 +56,69 @@
   mount();
 
   var hideTimer=0;
-  function show(){
-    mount();
-    clearTimeout(hideTimer);
-    overlay.classList.remove('gz-hide');
-  }
-  function hide(){
-    clearTimeout(hideTimer);
-    hideTimer=setTimeout(function(){overlay.classList.add('gz-hide');},120);
-  }
-
+  function show(){mount();clearTimeout(hideTimer);overlay.classList.remove('gz-hide');}
+  function hide(){clearTimeout(hideTimer);hideTimer=setTimeout(function(){overlay.classList.add('gz-hide');},120);}
   window.GZLoading={show:show,hide:hide,start:show,stop:hide,isLoading:function(){return !overlay.classList.contains('gz-hide');}};
 
-  // Deliberately do NOT globally hook fetch/XHR/click/submit. Those include
-  // background requests and client-side actions that are not page loads.
-  // A global hook was the source of stuck loaders and laggy transitions.
   function initialHide(){
     var root=document.documentElement;
     var wait=root.hasAttribute('data-gz-loader-wait') || document.body&&document.body.hasAttribute('data-gz-loader-wait');
     if(!wait) hide();
   }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialHide,{once:true});else initialHide();
 
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',initialHide,{once:true});
-  }else{
-    initialHide();
-  }
-
-  // Remove only the legacy Home Page "Shop by Brands" block.
-  // This does not touch marketplace APIs, vendors, products, admin, or D1.
+  // Home-only hard cleanup for the obsolete Shop by Brands card.
+  // The old block can arrive after page load, so keep watching until it is gone.
   function removeLegacyHomeBrands(){
     var path=(location.pathname||'/').replace(/\/+$/,'')||'/';
-    if(path!=='/'&&path!=='/index.html')return;
-    var headings=document.querySelectorAll('h1,h2,h3,h4,h5,h6');
-    for(var i=0;i<headings.length;i++){
-      var h=headings[i];
-      if(String(h.textContent||'').trim().toLowerCase()!=='shop by brands')continue;
-      var node=h;
-      for(var depth=0;depth<8&&node&&node!==document.body;depth++,node=node.parentElement){
-        var text=String(node.textContent||'');
-        if(/View Marketplace/i.test(text)&&/Partner Brands/i.test(text)&&/GRABZONE MARKETPLACE/i.test(text)){
+    if(path!=='/'&&path!=='/index.html')return false;
+    var removed=false;
+
+    function removeAncestorFrom(el){
+      var node=el;
+      for(var depth=0;depth<12&&node&&node!==document.body;depth++,node=node.parentElement){
+        var text=String(node.textContent||'').replace(/\s+/g,' ').trim();
+        if(/Official GrabZone store/i.test(text)&&/Partner Brands/i.test(text)&&(/View Marketplace/i.test(text)||/Coming Soon/i.test(text))){
           node.remove();
-          return;
+          removed=true;
+          return true;
         }
       }
-      var fallback=h.closest('section,article,div');
-      if(fallback&&/View Marketplace/i.test(String(fallback.textContent||'')))fallback.remove();
-      return;
+      return false;
     }
-  }
-  function startLegacyBrandCleanup(){
-    removeLegacyHomeBrands();
-    var count=0;
-    var observer=new MutationObserver(function(){
-      removeLegacyHomeBrands();
-      if(++count>30)observer.disconnect();
-    });
-    if(document.body)observer.observe(document.body,{childList:true,subtree:true});
-    setTimeout(removeLegacyHomeBrands,250);
-    setTimeout(removeLegacyHomeBrands,750);
-    setTimeout(removeLegacyHomeBrands,1500);
-  }
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',startLegacyBrandCleanup,{once:true});
-  }else{
-    startLegacyBrandCleanup();
+
+    var all=document.querySelectorAll('body *');
+    for(var i=0;i<all.length;i++){
+      var el=all[i];
+      var own=String(el.textContent||'').replace(/\s+/g,' ').trim();
+      if(/^Official GrabZone store$/i.test(own)||/^Partner Brands$/i.test(own)||/^COMING SOON$/i.test(own)){
+        removeAncestorFrom(el);
+      }
+    }
+
+    // Also catch a partially-rendered legacy block where only the card labels remain.
+    var candidates=document.querySelectorAll('a,button,div,section,article');
+    for(var j=0;j<candidates.length;j++){
+      var c=candidates[j];
+      var tx=String(c.textContent||'').replace(/\s+/g,' ').trim();
+      if(/Official GrabZone store/i.test(tx)&&/Partner Brands/i.test(tx)&&(/Coming Soon/i.test(tx)||/View Marketplace/i.test(tx))){
+        removeAncestorFrom(c);
+      }
+    }
+    return removed;
   }
 
-  // Safety only: never allow a loader to trap a customer indefinitely.
+  function startLegacyBrandCleanup(){
+    removeLegacyHomeBrands();
+    var observer=new MutationObserver(function(){removeLegacyHomeBrands();});
+    if(document.body)observer.observe(document.body,{childList:true,subtree:true});
+    setTimeout(removeLegacyHomeBrands,100);
+    setTimeout(removeLegacyHomeBrands,300);
+    setTimeout(removeLegacyHomeBrands,750);
+    setTimeout(removeLegacyHomeBrands,1500);
+    setTimeout(function(){observer.disconnect();},8000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startLegacyBrandCleanup,{once:true});else startLegacyBrandCleanup();
+
   setTimeout(function(){hide();},12000);
 })();
