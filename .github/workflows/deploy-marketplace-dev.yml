@@ -18,6 +18,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Remove legacy homepage brand card at build time
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('grabzone-global-loader.js')
+          s = p.read_text(encoding='utf-8')
+          old = "if((legacyCards&&marketplace) || (oldHeading&&marketplace)){"
+          new = "if(legacyCards || (oldHeading&&marketplace)){"
+          if old not in s:
+              raise SystemExit('Expected legacy brand cleanup condition was not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          print('Legacy homepage brand-card cleanup patched.')
+          PY
       - name: Deploy isolated marketplace dev worker
         uses: cloudflare/wrangler-action@v4
         env:
