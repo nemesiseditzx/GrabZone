@@ -29,3 +29,31 @@ body:not(.admin) .btn-dark,body:not(.admin) .dark-btn,body:not(.admin) .confirm-
 }
 @media(min-width:1201px) and (max-width:1500px){.header{grid-template-columns:250px minmax(0,1fr) auto!important}.header .gz-ref-search{left:280px!important;width:430px!important}.header>nav{gap:24px!important}.hero{grid-template-columns:minmax(390px,510px) minmax(500px,660px)!important;gap:34px!important}}
 @media(max-width:1200px) and (min-width:761px){.header{height:76px!important;display:flex!important}.header .gz-ref-search{position:static!important;width:240px!important}.hero{min-height:390px!important;padding:28px 30px!important}.hero-card{height:350px!important}}
+
+/* FINAL HOME: search below the logo, compact hero, full-width coordinated backdrop */
+@media(min-width:1201px){
+  html body .header{height:112px!important;grid-template-columns:250px minmax(0,1fr) auto!important;grid-template-rows:58px 54px!important}
+  html body .header .brand{grid-column:1;grid-row:1!important}
+  html body .header>nav{grid-column:2;grid-row:1!important;justify-self:start!important;padding-left:0!important;gap:26px!important}
+  html body .header>.header-actions{grid-column:3;grid-row:1!important;justify-self:end!important}
+  html body .header .gz-ref-search{left:max(24px,calc((100vw - 1440px)/2 + 28px))!important;top:64px!important;width:min(430px,31vw)!important;height:38px!important}
+  html body .hero{height:405px!important;min-height:405px!important;margin:0 auto!important;background:linear-gradient(135deg,#fff 0%,#fffaf5 100%)!important}
+  html body #gzHomeReferenceMarketplace{margin-top:0!important}
+  html body .gz-home-brands-section{width:100%!important;background:linear-gradient(180deg,#fff9f3 0%,#fff 100%)!important}
+}
+@media(max-width:1200px) and (min-width:761px){
+  html body .header{height:112px!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;grid-template-rows:58px 54px!important;padding:0 24px!important;gap:0 18px!important}
+  html body .header .brand{grid-column:1;grid-row:1!important}
+  html body .header>nav{grid-column:2;grid-row:1!important;gap:15px!important}
+  html body .header>.header-actions{grid-column:3;grid-row:1!important}
+  html body .header .gz-ref-search{position:absolute!important;left:24px!important;top:64px!important;width:360px!important;height:38px!important}
+  html body .hero{height:400px!important;min-height:400px!important}
+}
+@media(max-width:760px){
+  html body .header{height:112px!important;display:flex!important;flex-wrap:wrap!important;align-content:flex-start!important;padding:0 14px!important;gap:0!important}
+  html body .header>.brand{height:58px!important;display:flex!important;align-items:center!important}
+  html body .header>.header-actions{height:58px!important;margin-left:auto!important;display:flex!important;align-items:center!important}
+  html body .header .gz-ref-search{position:absolute!important;left:14px!important;right:14px!important;top:64px!important;width:auto!important;height:40px!important}
+  html body .hero{padding:24px 16px 20px!important;margin-top:0!important}
+  html body .gz-home-brands-section{background:linear-gradient(180deg,#fff9f3 0%,#fff 100%)!important;padding-top:30px!important}
+}
