@@ -67,18 +67,32 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialHide,{once:true});else initialHide();
 
-  // Home-only hard cleanup for the obsolete Shop by Brands card.
-  // The old block can arrive after page load, so keep watching until it is gone.
+  // Home-only hard cleanup for every obsolete Shop by Brands block.
+  // This intentionally removes the entire section, including header/description/button,
+  // and keeps watching briefly for blocks injected after initial page load.
   function removeLegacyHomeBrands(){
     var path=(location.pathname||'/').replace(/\/+$/,'')||'/';
     if(path!=='/'&&path!=='/index.html')return false;
     var removed=false;
 
-    function removeAncestorFrom(el){
+    function cleanText(v){
+      return String(v||'').replace(/\s+/g,' ').trim();
+    }
+
+    function isTarget(node){
+      var t=cleanText(node.textContent);
+      return /Shop by Brands/i.test(t) &&
+        (/View Marketplace/i.test(t) ||
+         /Discover GrabZone and future partner brands in one place\./i.test(t));
+    }
+
+    function removeBestAncestor(el){
       var node=el;
       for(var depth=0;depth<12&&node&&node!==document.body;depth++,node=node.parentElement){
-        var text=String(node.textContent||'').replace(/\s+/g,' ').trim();
-        if(/Official GrabZone store/i.test(text)&&/Partner Brands/i.test(text)&&(/View Marketplace/i.test(text)||/Coming Soon/i.test(text))){
+        var t=cleanText(node.textContent);
+        if(/Shop by Brands/i.test(t) &&
+           (/View Marketplace/i.test(t) ||
+            /Discover GrabZone and future partner brands in one place\./i.test(t))){
           node.remove();
           removed=true;
           return true;
@@ -87,24 +101,31 @@
       return false;
     }
 
-    var all=document.querySelectorAll('body *');
-    for(var i=0;i<all.length;i++){
-      var el=all[i];
-      var own=String(el.textContent||'').replace(/\s+/g,' ').trim();
-      if(/^Official GrabZone store$/i.test(own)||/^Partner Brands$/i.test(own)||/^COMING SOON$/i.test(own)){
-        removeAncestorFrom(el);
+    // Remove every heading occurrence and its containing Shop by Brands section.
+    var headings=document.querySelectorAll('h1,h2,h3,h4,h5,h6');
+    for(var i=0;i<headings.length;i++){
+      if(cleanText(headings[i].textContent).toLowerCase()==='shop by brands'){
+        removeBestAncestor(headings[i]);
       }
     }
 
-    // Also catch a partially-rendered legacy block where only the card labels remain.
-    var candidates=document.querySelectorAll('a,button,div,section,article');
-    for(var j=0;j<candidates.length;j++){
-      var c=candidates[j];
-      var tx=String(c.textContent||'').replace(/\s+/g,' ').trim();
-      if(/Official GrabZone store/i.test(tx)&&/Partner Brands/i.test(tx)&&(/Coming Soon/i.test(tx)||/View Marketplace/i.test(tx))){
-        removeAncestorFrom(c);
+    // Catch sections where the heading is not a semantic H tag.
+    var all=document.querySelectorAll('body *');
+    for(var j=0;j<all.length;j++){
+      var el=all[j];
+      if(cleanText(el.textContent).toLowerCase()==='shop by brands'){
+        removeBestAncestor(el);
       }
     }
+
+    // Final pass for any partially-rendered section containing the exact legacy copy.
+    var candidates=document.querySelectorAll('section,article,div,main');
+    for(var k=0;k<candidates.length;k++){
+      if(isTarget(candidates[k])){
+        removeBestAncestor(candidates[k]);
+      }
+    }
+
     return removed;
   }
 
@@ -116,7 +137,9 @@
     setTimeout(removeLegacyHomeBrands,300);
     setTimeout(removeLegacyHomeBrands,750);
     setTimeout(removeLegacyHomeBrands,1500);
-    setTimeout(function(){observer.disconnect();},8000);
+    setTimeout(removeLegacyHomeBrands,3000);
+    setTimeout(removeLegacyHomeBrands,6000);
+    setTimeout(function(){observer.disconnect();},10000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startLegacyBrandCleanup,{once:true});else startLegacyBrandCleanup();
 
