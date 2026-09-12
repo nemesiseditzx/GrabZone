@@ -1,31 +1,24 @@
 (()=>{
 'use strict';
 if(location.pathname!=='/'&&!location.pathname.endsWith('/index.html'))return;
-const HIDE_STYLE_ID='gz-hide-legacy-home-brands';
-function installHideStyle(){
+
+// Keep the original Home-page .gh-brands section.
+// Remove only the newer replacement section that was added later.
+const HIDE_STYLE_ID='gz-remove-new-home-brands';
+function installStyle(){
   if(document.getElementById(HIDE_STYLE_ID))return;
   const s=document.createElement('style');
   s.id=HIDE_STYLE_ID;
-  s.textContent='.gh-brands,.gz-mp-brand-bg{display:none!important}';
+  s.textContent='.gz-home-brands-section{display:none!important}';
   (document.head||document.documentElement).appendChild(s);
 }
-function removeLegacy(){
-  document.querySelectorAll('.gh-brands,.gz-mp-brand-bg').forEach(el=>el.remove());
+function removeNew(){
+  document.querySelectorAll('.gz-home-brands-section,.gz-mp-brand-bg').forEach(el=>el.remove());
 }
-function loadDesired(){
-  if(document.querySelector('[data-gz-home-brands]'))return;
-  if(!document.querySelector('.gh-hero')){setTimeout(loadDesired,150);return;}
-  if(document.querySelector('[data-grabzone-home-brand-fix]'))return;
-  const s=document.createElement('script');
-  s.src='/marketplace-home-fix.js?v=20260912-final5';
-  s.dataset.grabzoneHomeBrandFix='true';
-  (document.head||document.documentElement).appendChild(s);
-}
-function sync(){installHideStyle();removeLegacy();}
-installHideStyle();
+function sync(){installStyle();removeNew();}
+installStyle();
 sync();
 const observer=new MutationObserver(sync);
 observer.observe(document.documentElement,{childList:true,subtree:true});
-setInterval(sync,250);
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(loadDesired,250),{once:true});else setTimeout(loadDesired,250);
+setInterval(sync,500);
 })();
