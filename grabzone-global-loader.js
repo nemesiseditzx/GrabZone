@@ -67,77 +67,8 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialHide,{once:true});else initialHide();
 
-  // Home-only hard cleanup for every obsolete Shop by Brands block.
-  function removeLegacyHomeBrands(){
-    var path=(location.pathname||'/').replace(/\/+$/,'')||'/';
-    if(path!=='/'&&path!=='/index.html')return false;
-    var removed=false;
-
-    function cleanText(v){return String(v||'').replace(/\s+/g,' ').trim();}
-
-    // Remove the largest nearby container that contains the old marketplace card content.
-    function removeLegacyContainer(el){
-      var node=el;
-      for(var depth=0;depth<20&&node&&node!==document.body;depth++,node=node.parentElement){
-        var t=cleanText(node.textContent);
-        var legacyCards=/Official GrabZone store/i.test(t)&&/Partner Brands/i.test(t);
-        var marketplace=/View Marketplace/i.test(t);
-        var oldHeading=/Shop by Brands/i.test(t);
-        if((legacyCards&&marketplace) || (oldHeading&&marketplace)){
-          node.remove();
-          removed=true;
-          return true;
-        }
-      }
-      return false;
-    }
-
-    // The previous cleanup could remove only the heading wrapper. If the cards remain,
-    // find them by their exact legacy labels and remove their complete parent section.
-    var legacy=document.querySelectorAll('body *');
-    for(var i=0;i<legacy.length;i++){
-      var text=cleanText(legacy[i].textContent);
-      if(/^Official GrabZone store$/i.test(text)||/^Partner Brands$/i.test(text)||/^COMING SOON$/i.test(text)||/^View Marketplace/i.test(text)){
-        removeLegacyContainer(legacy[i]);
-      }
-    }
-
-    // Remove every Shop by Brands heading and the whole containing section.
-    var headings=document.querySelectorAll('h1,h2,h3,h4,h5,h6');
-    for(var j=0;j<headings.length;j++){
-      if(cleanText(headings[j].textContent).toLowerCase()==='shop by brands'){
-        removeLegacyContainer(headings[j]);
-      }
-    }
-
-    // Catch non-semantic headings and partially-rendered legacy blocks.
-    var candidates=document.querySelectorAll('section,article,div,main');
-    for(var k=0;k<candidates.length;k++){
-      var c=candidates[k];
-      var tx=cleanText(c.textContent);
-      if((/Official GrabZone store/i.test(tx)&&/Partner Brands/i.test(tx)&&/View Marketplace/i.test(tx)) ||
-         (/Shop by Brands/i.test(tx)&&/View Marketplace/i.test(tx))){
-        removeLegacyContainer(c);
-      }
-    }
-
-    return removed;
-  }
-
-  function startLegacyBrandCleanup(){
-    removeLegacyHomeBrands();
-    var observer=new MutationObserver(function(){removeLegacyHomeBrands();});
-    if(document.body)observer.observe(document.body,{childList:true,subtree:true});
-    setTimeout(removeLegacyHomeBrands,100);
-    setTimeout(removeLegacyHomeBrands,300);
-    setTimeout(removeLegacyHomeBrands,750);
-    setTimeout(removeLegacyHomeBrands,1500);
-    setTimeout(removeLegacyHomeBrands,3000);
-    setTimeout(removeLegacyHomeBrands,6000);
-    setTimeout(removeLegacyHomeBrands,10000);
-    setTimeout(function(){observer.disconnect();},15000);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startLegacyBrandCleanup,{once:true});else startLegacyBrandCleanup();
+  // Legacy homepage brand-card cleanup is now handled by the dedicated
+  // homepage reference UI so it cannot remove the new marketplace section.
 
   setTimeout(function(){hide();},12000);
 })();
