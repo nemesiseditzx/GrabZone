@@ -83,6 +83,46 @@
     initialHide();
   }
 
+  // Remove only the legacy Home Page "Shop by Brands" block.
+  // This does not touch marketplace APIs, vendors, products, admin, or D1.
+  function removeLegacyHomeBrands(){
+    var path=(location.pathname||'/').replace(/\/+$/,'')||'/';
+    if(path!=='/'&&path!=='/index.html')return;
+    var headings=document.querySelectorAll('h1,h2,h3,h4,h5,h6');
+    for(var i=0;i<headings.length;i++){
+      var h=headings[i];
+      if(String(h.textContent||'').trim().toLowerCase()!=='shop by brands')continue;
+      var node=h;
+      for(var depth=0;depth<8&&node&&node!==document.body;depth++,node=node.parentElement){
+        var text=String(node.textContent||'');
+        if(/View Marketplace/i.test(text)&&/Partner Brands/i.test(text)&&/GRABZONE MARKETPLACE/i.test(text)){
+          node.remove();
+          return;
+        }
+      }
+      var fallback=h.closest('section,article,div');
+      if(fallback&&/View Marketplace/i.test(String(fallback.textContent||'')))fallback.remove();
+      return;
+    }
+  }
+  function startLegacyBrandCleanup(){
+    removeLegacyHomeBrands();
+    var count=0;
+    var observer=new MutationObserver(function(){
+      removeLegacyHomeBrands();
+      if(++count>30)observer.disconnect();
+    });
+    if(document.body)observer.observe(document.body,{childList:true,subtree:true});
+    setTimeout(removeLegacyHomeBrands,250);
+    setTimeout(removeLegacyHomeBrands,750);
+    setTimeout(removeLegacyHomeBrands,1500);
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',startLegacyBrandCleanup,{once:true});
+  }else{
+    startLegacyBrandCleanup();
+  }
+
   // Safety only: never allow a loader to trap a customer indefinitely.
   setTimeout(function(){hide();},12000);
 })();
