@@ -68,31 +68,22 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialHide,{once:true});else initialHide();
 
   // Home-only hard cleanup for every obsolete Shop by Brands block.
-  // This intentionally removes the entire section, including header/description/button,
-  // and keeps watching briefly for blocks injected after initial page load.
   function removeLegacyHomeBrands(){
     var path=(location.pathname||'/').replace(/\/+$/,'')||'/';
     if(path!=='/'&&path!=='/index.html')return false;
     var removed=false;
 
-    function cleanText(v){
-      return String(v||'').replace(/\s+/g,' ').trim();
-    }
+    function cleanText(v){return String(v||'').replace(/\s+/g,' ').trim();}
 
-    function isTarget(node){
-      var t=cleanText(node.textContent);
-      return /Shop by Brands/i.test(t) &&
-        (/View Marketplace/i.test(t) ||
-         /Discover GrabZone and future partner brands in one place\./i.test(t));
-    }
-
-    function removeBestAncestor(el){
+    // Remove the largest nearby container that contains the old marketplace card content.
+    function removeLegacyContainer(el){
       var node=el;
-      for(var depth=0;depth<12&&node&&node!==document.body;depth++,node=node.parentElement){
+      for(var depth=0;depth<20&&node&&node!==document.body;depth++,node=node.parentElement){
         var t=cleanText(node.textContent);
-        if(/Shop by Brands/i.test(t) &&
-           (/View Marketplace/i.test(t) ||
-            /Discover GrabZone and future partner brands in one place\./i.test(t))){
+        var legacyCards=/Official GrabZone store/i.test(t)&&/Partner Brands/i.test(t);
+        var marketplace=/View Marketplace/i.test(t);
+        var oldHeading=/Shop by Brands/i.test(t);
+        if((legacyCards&&marketplace) || (oldHeading&&marketplace)){
           node.remove();
           removed=true;
           return true;
@@ -101,28 +92,32 @@
       return false;
     }
 
-    // Remove every heading occurrence and its containing Shop by Brands section.
+    // The previous cleanup could remove only the heading wrapper. If the cards remain,
+    // find them by their exact legacy labels and remove their complete parent section.
+    var legacy=document.querySelectorAll('body *');
+    for(var i=0;i<legacy.length;i++){
+      var text=cleanText(legacy[i].textContent);
+      if(/^Official GrabZone store$/i.test(text)||/^Partner Brands$/i.test(text)||/^COMING SOON$/i.test(text)||/^View Marketplace/i.test(text)){
+        removeLegacyContainer(legacy[i]);
+      }
+    }
+
+    // Remove every Shop by Brands heading and the whole containing section.
     var headings=document.querySelectorAll('h1,h2,h3,h4,h5,h6');
-    for(var i=0;i<headings.length;i++){
-      if(cleanText(headings[i].textContent).toLowerCase()==='shop by brands'){
-        removeBestAncestor(headings[i]);
+    for(var j=0;j<headings.length;j++){
+      if(cleanText(headings[j].textContent).toLowerCase()==='shop by brands'){
+        removeLegacyContainer(headings[j]);
       }
     }
 
-    // Catch sections where the heading is not a semantic H tag.
-    var all=document.querySelectorAll('body *');
-    for(var j=0;j<all.length;j++){
-      var el=all[j];
-      if(cleanText(el.textContent).toLowerCase()==='shop by brands'){
-        removeBestAncestor(el);
-      }
-    }
-
-    // Final pass for any partially-rendered section containing the exact legacy copy.
+    // Catch non-semantic headings and partially-rendered legacy blocks.
     var candidates=document.querySelectorAll('section,article,div,main');
     for(var k=0;k<candidates.length;k++){
-      if(isTarget(candidates[k])){
-        removeBestAncestor(candidates[k]);
+      var c=candidates[k];
+      var tx=cleanText(c.textContent);
+      if((/Official GrabZone store/i.test(tx)&&/Partner Brands/i.test(tx)&&/View Marketplace/i.test(tx)) ||
+         (/Shop by Brands/i.test(tx)&&/View Marketplace/i.test(tx))){
+        removeLegacyContainer(c);
       }
     }
 
@@ -139,7 +134,8 @@
     setTimeout(removeLegacyHomeBrands,1500);
     setTimeout(removeLegacyHomeBrands,3000);
     setTimeout(removeLegacyHomeBrands,6000);
-    setTimeout(function(){observer.disconnect();},10000);
+    setTimeout(removeLegacyHomeBrands,10000);
+    setTimeout(function(){observer.disconnect();},15000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startLegacyBrandCleanup,{once:true});else startLegacyBrandCleanup();
 
