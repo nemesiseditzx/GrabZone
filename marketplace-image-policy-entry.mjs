@@ -24,5 +24,5 @@ export default {async fetch(req,env,ctx){
       const r=await stable.fetch(new Request(req,{body:JSON.stringify(modified)}),env,ctx);if(!r.ok)return r;const d=await r.clone().json().catch(()=>null);if(d?.product?.id&&body.vendor_id)await saveProductImages(env,d.product.id,body.vendor_id,body.image_urls,req.method==='PATCH');return json(d||{ok:true},r.status);
     }
   }
-  const r=await stable.fetch(req,env,ctx);const type=r.headers.get('content-type')||'';if(!r.ok||!type.toLowerCase().includes('text/html'))return r;const html=await r.text(),out=/<\/head>/i.test(html)?html.replace(/<\/head>/i,IMAGE_UI+'</head>'):IMAGE_UI+html,h=new Headers(r.headers);h.delete('Content-Length');h.set('Cache-Control','no-store,must-revalidate');return new Response(out,{status:r.status,statusText:r.statusText,headers:h});
+  const r=await stable.fetch(req,env,ctx);const type=r.headers.get('content-type')||'';if(!r.ok||!type.toLowerCase().includes('text/html'))return r;let html=await r.text();html=html.replace(/<script[^>]*data-gz-upload-ui[^>]*>[\s\S]*?<\/script>/gi,'');const out=/<\/head>/i.test(html)?html.replace(/<\/head>/i,IMAGE_UI+'</head>'):IMAGE_UI+html,h=new Headers(r.headers);h.delete('Content-Length');h.set('Cache-Control','no-store,must-revalidate');return new Response(out,{status:r.status,statusText:r.statusText,headers:h});
 }};
