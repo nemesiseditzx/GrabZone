@@ -9,18 +9,23 @@ function first(obj,...keys){for(const k of keys){const v=obj?.[k];if(v!==undefin
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function brandUrl(b){return first(b,'url','storeUrl','link')||((first(b,'slug','storeSlug','id'))?'/marketplace?brand='+encodeURIComponent(first(b,'slug','storeSlug','id')):'/marketplace')}
 function removeLegacyBrandPlaceholder(){
- const a='Official GrabZone store',b='More brands will appear here as vendors join';
+ const exact1='Official GrabZone store',exact2='More brands will appear here as vendors join';
  const protectedSection=el=>el?.id==='gzHomeReferenceMarketplace'||el?.closest?.('#gzHomeReferenceMarketplace');
+ const legacy=el=>{
+  if(!el||protectedSection(el))return null;
+  if(el.id==='gzStaticMarketplace')return el;
+  const t=String(el.textContent||'').replace(/\s+/g,' ').trim();
+  return (t.includes(exact1)||t.includes(exact2))?el:null;
+ };
+ const direct=[...document.querySelectorAll('#gzStaticMarketplace')];
+ for(const block of direct){if(block!==document.getElementById('gzHomeReferenceMarketplace')){block.remove();return true}}
  const nodes=[...document.querySelectorAll('body *')];
- const matches=nodes.filter(el=>!protectedSection(el)&&((String(el.textContent||'').replace(/\s+/g,' ').trim().includes(a))||(String(el.textContent||'').replace(/\s+/g,' ').trim().includes(b))));
- for(const el of matches){
-  if(protectedSection(el))continue;
-  let block=el;
-  while(block.parentElement&&block.parentElement!==document.body){
-   const t=String(block.parentElement.textContent||'').replace(/\s+/g,' ').trim();
-   if(t.includes(a)||t.includes(b))block=block.parentElement;else break;
-  }
-  if(block!==document.body&&!protectedSection(block)){block.remove();return true}
+ for(const node of nodes){
+  const match=legacy(node);
+  if(!match)continue;
+  if(match.closest?.('#gzStaticMarketplace')){const block=match.closest('#gzStaticMarketplace');if(block){block.remove();return true}}
+  // Remove only the matching legacy node; never climb into the homepage hero.
+  if(match!==document.body&&match!==document.querySelector('.hero')){match.remove();return true}
  }
  return false;
 }
