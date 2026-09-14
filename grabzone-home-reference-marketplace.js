@@ -77,6 +77,21 @@ html body{background:#fff;color:#101820;overflow-x:hidden}
 function first(obj,...keys){for(const k of keys){const v=obj?.[k];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v}return ''}
 function brandUrl(b){return first(b,'url','storeUrl','link')||((first(b,'slug','storeSlug','id'))?'/marketplace?brand='+encodeURIComponent(first(b,'slug','storeSlug','id')):'/marketplace')}
 
+function removeLegacyBrandPlaceholder(hero){
+ const parent=hero?.parentElement;
+ if(!parent)return;
+ const markers=[...parent.querySelectorAll('*')].filter(el=>{
+  if(el.id==='gzHomeReferenceMarketplace'||el.closest('#gzHomeReferenceMarketplace'))return false;
+  const t=String(el.textContent||'').replace(/\s+/g,' ').trim();
+  return t==='Official GrabZone store'||(t.includes('Partner Brands')&&t.includes('More brands will appear here as vendors join'));
+ });
+ for(const marker of markers){
+  let block=marker;
+  while(block.parentElement&&block.parentElement!==parent)block=block.parentElement;
+  if(block&&block!==hero&&block.parentElement===parent){block.remove();return;}
+ }
+}
+
 async function addShopByBrands(){
  if(document.getElementById('gzHomeReferenceMarketplace'))return;
  const hero=document.querySelector('.hero');
@@ -96,6 +111,7 @@ async function addShopByBrands(){
    <div class="gz-home-vendor-banner"><div><small>PARTNER BRANDS</small><strong>More Partner Brands</strong><p>New vendors can appear here automatically from the existing marketplace system.</p></div><a href="/vendor-apply.html">Become a Vendor <b>→</b></a></div>
    <div class="gz-home-benefits"><div><span>🛒</span><b>One Checkout</b><small>Multiple brands, one simple checkout.</small></div><div><span>🏪</span><b>More Brands</b><small>Your favorite stores in one place.</small></div><div><span>♙</span><b>One Account</b><small>Same GrabZone account everywhere.</small></div><div><span>🎁</span><b>More Rewards</b><small>Earn GrabPoints on every order.</small></div></div>
  </div>`;
+ removeLegacyBrandPlaceholder(hero);
  hero.insertAdjacentElement('afterend',section);
  const grid=section.querySelector('.gz-home-brand-grid');
  const visible=brands.slice(0,4);
