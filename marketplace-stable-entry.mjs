@@ -3,10 +3,21 @@ import app from './admin-vendor-capabilities-wrapper.mjs';
 const LOADER_SCRIPT='<script src="/grabzone-global-loader.js" data-grabzone-global-loader></script>';
 const CART_BRIDGE_SCRIPT='<script src="/grabzone-cart-quantity-bridge.js" data-grabzone-cart-bridge></script>';
 const MARKETPLACE_UI='<script defer src="/marketplace-reference-ui.js?v=20260911-final3" data-grabzone-marketplace-reference-ui></script>';
-const HOME_UI='<link rel="stylesheet" href="/marketplace-home-brand-premium.css?v=20260911-ref1"><script src="/grabzone-home-reference-marketplace.js?v=20260915-fullwidth2" data-grabzone-home-reference-marketplace></script><script src="/grabzone-home-layout-finalizer.js?v=20260912-final1" data-grabzone-home-layout-finalizer></script>';
+const HOME_UI='<link rel="stylesheet" href="/marketplace-home-brand-premium.css?v=20260911-ref1"><script src="/grabzone-home-reference-marketplace.js?v=20260915-fullwidth3" data-grabzone-home-reference-marketplace></script><script src="/grabzone-home-layout-finalizer.js?v=20260912-final1" data-grabzone-home-layout-finalizer></script>';
 const GLOBAL_RESPONSIVE='<link rel="stylesheet" href="/grabzone-site-responsive.css?v=20260912-final2" data-grabzone-site-responsive>';
 const VISUAL_POLISH='<link rel="stylesheet" href="/grabzone-visual-polish.css?v=20260912-final1" data-grabzone-visual-polish>';
 const FINAL_VISUAL='<link rel="stylesheet" href="/grabzone-final-visual-fix.css?v=20260912-final2" data-grabzone-final-visual-fix>';
+const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate'}});
+
+async function marketplaceBrands(request,env){
+  if(new URL(request.url).pathname!=='/api/marketplace/brands'||request.method!=='GET')return null;
+  try{
+    const rows=(await env.DB.prepare(`SELECT id,slug,brand_name,business_name,logo_url,banner_url,description,featured FROM vendors WHERE LOWER(COALESCE(status,'Active'))='active' ORDER BY featured DESC,COALESCE(brand_name,business_name,slug) COLLATE NOCASE`).all()).results||[];
+    return json({brands:rows.map(v=>({...v,brand_name:v.brand_name||v.business_name||v.slug}))});
+  }catch(err){
+    return json({brands:[],error:err?.message||'Unable to load marketplace brands'},200);
+  }
+}
 
 async function inject(response,request){
   if(!response.ok)return response;
@@ -31,5 +42,7 @@ async function inject(response,request){
 }
 
 export default{async fetch(request,env,ctx){
+  const brands=await marketplaceBrands(request,env);
+  if(brands)return brands;
   return inject(await app.fetch(request,env,ctx),request);
 }};
