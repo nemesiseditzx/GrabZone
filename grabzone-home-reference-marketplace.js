@@ -78,17 +78,40 @@ function first(obj,...keys){for(const k of keys){const v=obj?.[k];if(v!==undefin
 function brandUrl(b){return first(b,'url','storeUrl','link')||((first(b,'slug','storeSlug','id'))?'/marketplace?brand='+encodeURIComponent(first(b,'slug','storeSlug','id')):'/marketplace')}
 
 function removeLegacyBrandPlaceholder(hero){
- const parent=hero?.parentElement;
- if(!parent)return;
- const markers=[...parent.querySelectorAll('*')].filter(el=>{
-  if(el.id==='gzHomeReferenceMarketplace'||el.closest('#gzHomeReferenceMarketplace'))return false;
+ const exact1='Official GrabZone store';
+ const exact2='More brands will appear here as vendors join';
+ const isLegacyText=el=>{
+  if(!el||el.id==='gzHomeReferenceMarketplace'||el.closest?.('#gzHomeReferenceMarketplace'))return false;
   const t=String(el.textContent||'').replace(/\s+/g,' ').trim();
-  return t==='Official GrabZone store'||(t.includes('Partner Brands')&&t.includes('More brands will appear here as vendors join'));
- });
- for(const marker of markers){
-  let block=marker;
-  while(block.parentElement&&block.parentElement!==parent)block=block.parentElement;
-  if(block&&block!==hero&&block.parentElement===parent){block.remove();return;}
+  return t.includes(exact1)||t.includes(exact2);
+ };
+ const candidates=[];
+ if(hero?.nextElementSibling&&!hero.nextElementSibling.matches('#gzHomeReferenceMarketplace'))candidates.push(hero.nextElementSibling);
+ const scope=hero?.parentElement||document.body;
+ candidates.push(...[...scope.querySelectorAll('*')].filter(isLegacyText));
+ for(const candidate of candidates){
+  if(!candidate||candidate===hero||candidate.id==='gzHomeReferenceMarketplace'||candidate.closest?.('#gzHomeReferenceMarketplace'))continue;
+  let block=candidate;
+  const base=hero?.parentElement||document.body;
+  while(block.parentElement&&block.parentElement!==base){
+   const parentText=String(block.parentElement.textContent||'').replace(/\s+/g,' ').trim();
+   if(parentText.includes(exact1)||parentText.includes(exact2))block=block.parentElement;else break;
+  }
+  if(block.parentElement===base){block.remove();return true;}
+  if(candidate.parentElement){candidate.remove();return true;}
+ }
+ return false;
+}
+
+function watchForLegacyBrandPlaceholder(hero){
+ const run=()=>removeLegacyBrandPlaceholder(hero);
+ run();
+ let tries=0;
+ const timer=setInterval(()=>{if(run()||++tries>=40)clearInterval(timer)},250);
+ if(window.MutationObserver){
+  const observer=new MutationObserver(()=>run());
+  observer.observe(document.body,{childList:true,subtree:true});
+  setTimeout(()=>observer.disconnect(),12000);
  }
 }
 
@@ -111,8 +134,8 @@ async function addShopByBrands(){
    <div class="gz-home-vendor-banner"><div><small>PARTNER BRANDS</small><strong>More Partner Brands</strong><p>New vendors can appear here automatically from the existing marketplace system.</p></div><a href="/vendor-apply.html">Become a Vendor <b>→</b></a></div>
    <div class="gz-home-benefits"><div><span>🛒</span><b>One Checkout</b><small>Multiple brands, one simple checkout.</small></div><div><span>🏪</span><b>More Brands</b><small>Your favorite stores in one place.</small></div><div><span>♙</span><b>One Account</b><small>Same GrabZone account everywhere.</small></div><div><span>🎁</span><b>More Rewards</b><small>Earn GrabPoints on every order.</small></div></div>
  </div>`;
- removeLegacyBrandPlaceholder(hero);
  hero.insertAdjacentElement('afterend',section);
+ watchForLegacyBrandPlaceholder(hero);
  const grid=section.querySelector('.gz-home-brand-grid');
  const visible=brands.slice(0,4);
  if(!visible.length){
@@ -129,6 +152,8 @@ async function addShopByBrands(){
   return `<a class="gz-home-brand-card" href="${esc(href)}"><div><div class="gz-home-brand-top">${logoHtml}<span class="gz-home-brand-badge">${official?'OFFICIAL':'PARTNER'}</span></div><span class="gz-home-brand-name">${name}</span><span class="gz-home-brand-desc">${desc}</span></div><span class="gz-home-brand-link">View store <b>→</b></span></a>`;
  }).join('');
 }
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 
 function boot(){injectReferenceUI();addShopByBrands()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
