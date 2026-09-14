@@ -2,7 +2,7 @@ import app from './admin-vendor-capabilities-wrapper.mjs';
 const LOADER_SCRIPT='<script src="/grabzone-global-loader.js" data-grabzone-global-loader></script>';
 const CART_BRIDGE_SCRIPT='<script src="/grabzone-cart-quantity-bridge.js" data-grabzone-cart-bridge></script>';
 const MARKETPLACE_UI='<script defer src="/marketplace-reference-ui.js?v=20260911-final3" data-grabzone-marketplace-reference-ui></script>';
-const HOME_UI='<link rel="stylesheet" href="/marketplace-home-brand-premium.css?v=20260911-ref1"><script src="/grabzone-home-reference-marketplace.js?v=20260915-admin-brands5" data-grabzone-home-reference-marketplace></script><script src="/grabzone-home-layout-finalizer.js?v=20260912-final1" data-grabzone-home-layout-finalizer></script>';
+const HOME_UI='<link rel="stylesheet" href="/marketplace-home-brand-premium.css?v=20260911-ref1"><script src="/grabzone-home-reference-marketplace.js?v=20260915-fullwidth1" data-grabzone-home-reference-marketplace></script><script src="/grabzone-home-layout-finalizer.js?v=20260912-final1" data-grabzone-home-layout-finalizer></script>';
 const GLOBAL_RESPONSIVE='<link rel="stylesheet" href="/grabzone-site-responsive.css?v=20260912-final2" data-grabzone-site-responsive>';
 const VISUAL_POLISH='<link rel="stylesheet" href="/grabzone-visual-polish.css?v=20260912-final1" data-grabzone-visual-polish>';
 const FINAL_VISUAL='<link rel="stylesheet" href="/grabzone-final-visual-fix.css?v=20260912-final2" data-grabzone-final-visual-fix>';
