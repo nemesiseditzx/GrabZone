@@ -1,4 +1,4 @@
-import stable from './marketplace-stable-entry.mjs';
+import stable from './marketplace-api-gateway.mjs';
 
 const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store,must-revalidate'}});
 const MB=1024*1024,MAX_IMAGES=10;
