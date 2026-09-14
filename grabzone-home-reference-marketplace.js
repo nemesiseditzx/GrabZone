@@ -2,61 +2,118 @@
 'use strict';
 const path=(location.pathname||'/').replace(/\/+$/,'')||'/';
 if(path!=='/'&&path!=='/index.html')return;
-const esc=v=>String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));
-function css(){if(document.getElementById('gz-home-reference-css'))return;const s=document.createElement('style');s.id='gz-home-reference-css';s.textContent=`
-html,body{overflow-x:hidden!important}body{background:#fff!important;color:#101827!important}
+
+function injectReferenceUI(){
+ if(document.getElementById('gz-home-reference-css'))return;
+ const s=document.createElement('style');
+ s.id='gz-home-reference-css';
+ s.textContent=`
+html body{background:#fff;color:#101820;overflow-x:hidden}
 @media(min-width:901px){
- html body .header{position:relative!important;width:100%!important;height:112px!important;min-height:112px!important;display:grid!important;grid-template-columns:230px minmax(420px,1fr) auto!important;grid-template-rows:64px 48px!important;align-items:center!important;column-gap:22px!important;padding:0 max(28px,calc((100vw - 1440px)/2 + 28px))!important;margin:0!important;box-sizing:border-box!important;background:#fff!important;border-bottom:1px solid #e8e8e8!important;overflow:visible!important;z-index:1000!important}
- html body .header .brand{grid-column:1!important;grid-row:1!important;position:static!important;display:flex!important;align-items:center!important;width:auto!important;height:64px!important;margin:0!important}
- html body .header .gz-ref-search-row{grid-column:2!important;grid-row:1!important;position:static!important;width:100%!important;max-width:600px!important;height:42px!important;display:flex!important;align-items:center!important;justify-self:center!important;margin:0!important;z-index:40!important}
- html body .header .gz-ref-search{width:100%!important;height:42px!important;display:flex!important;align-items:center!important;border:1px solid #e7e9ec!important;border-radius:12px!important;background:#f5f6f7!important;overflow:hidden!important;box-sizing:border-box!important}
- html body .header .gz-ref-search input{min-width:0!important;flex:1!important;height:100%!important;border:0!important;outline:0!important;background:transparent!important;padding:0 14px!important;font:12px system-ui!important;color:#111!important}
- html body .header .gz-ref-search button{width:42px!important;height:100%!important;flex:0 0 42px!important;border:0!important;background:#ff650b!important;color:#fff!important;font-size:18px!important;cursor:pointer!important}
- html body .header>.header-actions{grid-column:3!important;grid-row:1!important;position:static!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:9px!important;height:64px!important;margin:0!important;padding:0!important;z-index:30!important}
- html body .header>nav{grid-column:1/4!important;grid-row:2!important;position:static!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:30px!important;width:auto!important;height:48px!important;margin:0!important;padding:0!important;white-space:nowrap!important;overflow:visible!important;z-index:20!important}
- html body .header>nav a{flex:0 0 auto!important;font-size:12px!important;line-height:48px!important;font-weight:750!important;color:#111923!important;text-decoration:none!important;white-space:nowrap!important}
- html body .header>nav a:hover{color:#ff650b!important}
- html body .header .gz-ref-cart{width:38px!important;height:40px!important;border:0!important;background:transparent!important;position:relative!important;font-size:19px!important;cursor:pointer!important;padding:0!important;display:grid!important;place-items:center!important}
- html body .header .gz-ref-cart i{position:absolute!important;right:0!important;top:1px!important;min-width:14px!important;height:14px!important;padding:0 3px!important;border-radius:999px!important;background:#ff650b!important;color:#fff!important;font:800 8px/14px system-ui!important}
- html body .header .gz-ref-account{width:35px!important;height:35px!important;border:1px solid #e5e5e5!important;border-radius:50%!important;display:grid!important;place-items:center!important;text-decoration:none!important;color:#ff650b!important;font-size:17px!important;background:#fff!important}
- html body .header .language-switch{display:flex!important;align-items:center!important}
- html body .header .header-actions .icon-btn{display:none!important}
- html body #noticeSection{display:flex!important;min-height:34px!important;height:34px!important;align-items:center!important;box-sizing:border-box!important}
- html body .gz-ref-notice-fallback{height:34px!important;min-height:34px!important;display:flex!important;align-items:center!important;background:#101820!important;color:#fff!important;font-size:11px!important;font-weight:700!important;padding:0 max(28px,calc((100vw - 1280px)/2))!important;box-sizing:border-box!important}
- html body .gz-ref-notice-fallback .notice-label{background:#ff650b!important;height:34px!important;display:flex!important;align-items:center!important;padding:0 15px!important;margin-left:0!important;font-size:10px!important;letter-spacing:.08em!important}
- html body .gz-ref-notice-fallback .notice-copy{padding-left:12px!important;white-space:nowrap!important}
- html body .hero{width:100%!important;max-width:1440px!important;height:430px!important;min-height:430px!important;max-height:430px!important;margin:0 auto!important;padding:20px max(28px,calc((100% - 1280px)/2))!important;display:grid!important;grid-template-columns:minmax(430px,.82fr) minmax(560px,1.18fr)!important;align-items:center!important;gap:34px!important;box-sizing:border-box!important;overflow:hidden!important}
- html body .hero-copy{min-width:0!important;max-width:560px!important}.hero-copy h1{font-size:clamp(48px,4.1vw,66px)!important;line-height:.93!important;letter-spacing:-.065em!important;margin:5px 0 11px!important}.hero-copy p{font-size:13px!important;line-height:1.5!important}.hero-buttons{margin:14px 0!important}.hero-card{width:100%!important;height:390px!important;min-height:390px!important;max-height:390px!important;border-radius:16px!important;overflow:hidden!important}
- html body #gzHomeReferenceMarketplace{margin:0!important;width:100vw!important;max-width:100vw!important;margin-left:calc(50% - 50vw)!important;position:relative!important;left:0!important;right:0!important}
- .gz-home-brands-section{width:100%!important;padding:38px 0 42px!important;background:radial-gradient(circle at 14% 42%,rgba(255,132,42,.08),transparent 23%),radial-gradient(circle at 86% 22%,rgba(255,183,112,.10),transparent 24%),linear-gradient(180deg,#fffaf5 0%,#fff 100%)!important;box-sizing:border-box!important;overflow:visible!important}
- .gz-home-brands-inner{width:min(1260px,calc(100% - 48px))!important;margin:0 auto!important}.gz-home-brands-head{display:flex!important;align-items:flex-end!important;justify-content:space-between!important;gap:36px!important;margin-bottom:24px!important}.gz-home-brands-head h2{font-size:clamp(38px,3.4vw,52px)!important;line-height:.98!important;letter-spacing:-.055em!important}.gz-home-brand-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important;width:100%!important}.gz-home-brand-card{display:flex!important;min-height:245px!important}.gz-home-brand-logo{height:112px!important}.gz-home-vendor-banner{margin-top:16px!important}.gz-home-benefits{margin-top:19px!important}
- html body .gz-ref-trending-head{max-width:1260px!important;margin:0 auto!important;padding:16px 0 8px!important;display:flex!important;justify-content:space-between!important;align-items:flex-end!important}.gz-ref-trending-head h2{font-size:28px!important;margin:4px 0 0!important}.gz-ref-trending-head a{font-size:12px!important}html body #shop{padding-top:10px!important}.product-grid{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:10px!important}
+ html body .header{position:relative!important;z-index:10!important}
+ html body #noticeSection{display:flex!important;min-height:34px!important;height:34px!important;align-items:center!important;box-sizing:border-box!important;background:#101820!important;color:#fff!important;overflow:hidden!important}
+ html body #noticeSection>*{font-size:11px!important}
+ html body .hero{width:100%!important;max-width:1440px!important;margin:0 auto!important;min-height:430px!important;padding:20px max(28px,calc((100% - 1280px)/2))!important;box-sizing:border-box!important;display:grid!important;grid-template-columns:minmax(430px,.82fr) minmax(560px,1.18fr)!important;gap:34px!important;align-items:center!important;overflow:hidden!important}
+ html body .hero-copy{min-width:0!important;max-width:560px!important}
+ html body .hero-copy h1{font-size:clamp(48px,4.1vw,66px)!important;line-height:.93!important;letter-spacing:-.065em!important}
+ html body .hero-card{width:100%!important;height:390px!important;min-height:390px!important;max-height:390px!important;border-radius:16px!important;overflow:hidden!important}
+ html body #gzHomeReferenceMarketplace{width:100vw!important;max-width:100vw!important;margin-left:calc(50% - 50vw)!important;margin-right:0!important;position:relative!important}
+ html body .gz-home-brands-section{width:100%!important;padding:40px 0 44px!important;background:linear-gradient(180deg,#fff9f3 0%,#fff 100%)!important;box-sizing:border-box!important}
+ html body .gz-home-brands-inner{width:min(1260px,calc(100% - 48px))!important;margin:0 auto!important}
+ html body .gz-home-brands-head{display:flex!important;align-items:flex-end!important;justify-content:space-between!important;gap:36px!important;margin-bottom:24px!important}
+ html body .gz-home-brands-head small{display:block!important;font-size:10px!important;font-weight:800!important;letter-spacing:.16em!important;color:#ff650b!important;margin-bottom:8px!important}
+ html body .gz-home-brands-head h2{margin:0!important;font-size:clamp(38px,3.4vw,52px)!important;line-height:.98!important;letter-spacing:-.055em!important;color:#101820!important}
+ html body .gz-home-brands-head h2 em{font-style:normal!important;color:#ff650b!important}
+ html body .gz-home-brands-head p{margin:10px 0 0!important;font-size:13px!important;line-height:1.5!important;color:#68717c!important;max-width:600px!important}
+ html body .gz-home-marketplace-btn{display:inline-flex!important;align-items:center!important;gap:8px!important;padding:11px 16px!important;border:1px solid #dedede!important;border-radius:999px!important;background:#fff!important;color:#101820!important;text-decoration:none!important;font-size:12px!important;font-weight:800!important;white-space:nowrap!important}
+ html body .gz-home-marketplace-btn b{color:#ff650b!important;font-size:16px!important}
+ html body .gz-home-brand-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important;width:100%!important}
+ html body .gz-home-brand-card{display:flex!important;flex-direction:column!important;justify-content:space-between!important;min-width:0!important;min-height:245px!important;padding:22px!important;border:1px solid #ece7e2!important;border-radius:18px!important;background:#fff!important;box-shadow:0 8px 26px rgba(35,25,15,.055)!important;box-sizing:border-box!important;text-decoration:none!important;color:#101820!important}
+ html body .gz-home-brand-card:hover{transform:translateY(-2px)!important;box-shadow:0 12px 30px rgba(35,25,15,.09)!important}
+ html body .gz-home-brand-top{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important}
+ html body .gz-home-brand-logo{width:100%!important;height:92px!important;object-fit:contain!important;object-position:left center!important}
+ html body .gz-home-brand-logo-fallback{width:70px!important;height:70px!important;border-radius:16px!important;display:grid!important;place-items:center!important;background:#fff1e8!important;color:#ff650b!important;font-size:25px!important;font-weight:900!important}
+ html body .gz-home-brand-badge{padding:5px 8px!important;border-radius:999px!important;background:#fff2e8!important;color:#e85c09!important;font-size:9px!important;font-weight:900!important;white-space:nowrap!important}
+ html body .gz-home-brand-name{display:block!important;margin-top:14px!important;font-size:21px!important;font-weight:850!important;letter-spacing:-.025em!important}
+ html body .gz-home-brand-desc{display:block!important;margin-top:6px!important;color:#69727c!important;font-size:11px!important;line-height:1.5!important;min-height:34px!important}
+ html body .gz-home-brand-link{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-top:16px!important;padding-top:13px!important;border-top:1px solid #f0ece8!important;color:#ff650b!important;font-size:11px!important;font-weight:850!important}
+ html body .gz-home-vendor-banner{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:24px!important;margin-top:16px!important;padding:22px 24px!important;border-radius:18px!important;background:#111820!important;color:#fff!important;box-sizing:border-box!important}
+ html body .gz-home-vendor-banner small{display:block!important;color:#ff9a55!important;font-size:9px!important;font-weight:900!important;letter-spacing:.14em!important}
+ html body .gz-home-vendor-banner strong{display:block!important;margin-top:5px!important;font-size:24px!important;letter-spacing:-.035em!important}
+ html body .gz-home-vendor-banner p{margin:4px 0 0!important;color:#aeb6be!important;font-size:11px!important}
+ html body .gz-home-vendor-banner a{flex:0 0 auto!important;padding:11px 15px!important;border-radius:999px!important;background:#ff650b!important;color:#fff!important;text-decoration:none!important;font-size:11px!important;font-weight:850!important}
+ html body .gz-home-benefits{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;margin-top:18px!important;border:1px solid #eee9e5!important;border-radius:16px!important;background:#fff!important;overflow:hidden!important}
+ html body .gz-home-benefits>div{min-width:0!important;padding:17px 18px!important;border-right:1px solid #eee9e5!important}
+ html body .gz-home-benefits>div:last-child{border-right:0!important}
+ html body .gz-home-benefits span{display:block!important;font-size:19px!important;margin-bottom:8px!important}
+ html body .gz-home-benefits b{display:block!important;font-size:12px!important}
+ html body .gz-home-benefits small{display:block!important;margin-top:4px!important;color:#78818a!important;font-size:10px!important;line-height:1.4!important}
 }
-@media(min-width:901px) and (max-width:1200px){html body .header{grid-template-columns:180px minmax(320px,1fr) auto!important;padding-inline:20px!important}.header>nav{gap:18px!important}.header>nav a{font-size:11px!important}.header .gz-ref-search-row{max-width:500px!important}}
-@media(max-width:900px){html body .header{height:112px!important;min-height:112px!important;position:relative!important;display:flex!important;flex-wrap:wrap!important;align-content:flex-start!important;padding:0 14px!important;gap:0!important;overflow:visible!important}.header>.brand{height:58px!important;display:flex!important;align-items:center!important}.header>nav{display:none!important}.header>.header-actions{height:58px!important;margin-left:auto!important;display:flex!important;align-items:center!important}.header .gz-ref-search-row{position:absolute!important;left:14px!important;right:14px!important;top:64px!important;width:auto!important;height:40px!important}.header .gz-ref-search{height:40px!important}.hero{height:auto!important;min-height:0!important;padding:24px 16px 20px!important;display:grid!important;grid-template-columns:1fr!important;gap:18px!important}.hero-card{height:auto!important;aspect-ratio:1.18/1!important;min-height:260px!important}.gz-home-brands-section{padding-top:30px!important}.gz-home-brands-inner{width:calc(100% - 28px)!important}.gz-home-brand-grid{grid-template-columns:1fr!important}.gz-ref-notice-fallback{padding:0 14px!important;font-size:9px!important}.gz-ref-notice-fallback .notice-copy{overflow:hidden;text-overflow:ellipsis}}
-@media(max-width:480px){.hero{padding:22px 14px 16px!important}.hero-card{aspect-ratio:1/1!important;min-height:240px!important}}
-`;document.head.appendChild(s)}
-function notice(){
- const existing=document.getElementById('noticeSection');
- if(existing){
-  existing.style.display='flex';
-  if(!(existing.textContent||'').replace(/\s+/g,'').length){existing.innerHTML='<span class="notice-label">NOTICE</span><span class="notice-copy">DM-এ অর্ডার নিন! 🚀 GrabPoints, Cashback & Membership এখন LIVE! ❤️</span><span style="margin-left:auto;padding-right:20px;font-size:10px;opacity:.9">GrabZone&nbsp;&nbsp; Grab it Love it</span>';}
+@media(min-width:901px) and (max-width:1200px){
+ html body .gz-home-brand-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:900px){
+ html body #noticeSection{min-height:34px!important;height:34px!important;overflow:hidden!important}
+ html body .hero{min-height:0!important;padding:24px 16px 20px!important;display:grid!important;grid-template-columns:1fr!important;gap:18px!important}
+ html body .hero-card{height:auto!important;min-height:260px!important;aspect-ratio:1.18/1!important;border-radius:14px!important}
+ html body #gzHomeReferenceMarketplace{width:100%!important;margin:0!important}
+ html body .gz-home-brands-section{padding:30px 0 34px!important}
+ html body .gz-home-brands-inner{width:calc(100% - 28px)!important}
+ html body .gz-home-brands-head{display:block!important;margin-bottom:18px!important}
+ html body .gz-home-marketplace-btn{margin-top:14px!important}
+ html body .gz-home-brand-grid{grid-template-columns:1fr!important}
+ html body .gz-home-brand-card{min-height:220px!important}
+ html body .gz-home-vendor-banner{display:block!important;padding:20px!important}
+ html body .gz-home-vendor-banner a{display:inline-flex!important;margin-top:14px!important}
+ html body .gz-home-benefits{grid-template-columns:1fr 1fr!important}
+ html body .gz-home-benefits>div{border-bottom:1px solid #eee9e5!important}
+ html body .gz-home-benefits>div:nth-child(2){border-right:0!important}
+}
+@media(max-width:480px){html body .gz-home-benefits{grid-template-columns:1fr!important}html body .gz-home-benefits>div{border-right:0!important}}
+`;
+ document.head.appendChild(s);
+}
+
+function first(obj,...keys){for(const k of keys){const v=obj?.[k];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v}return ''}
+function brandUrl(b){return first(b,'url','storeUrl','link')||((first(b,'slug','storeSlug','id'))?'/marketplace?brand='+encodeURIComponent(first(b,'slug','storeSlug','id')):'/marketplace')}
+
+async function addShopByBrands(){
+ if(document.getElementById('gzHomeReferenceMarketplace'))return;
+ const hero=document.querySelector('.hero');
+ if(!hero){setTimeout(addShopByBrands,150);return}
+ let data={brands:[]};
+ try{const r=await fetch('/api/marketplace/brands',{cache:'no-store'});if(r.ok)data=await r.json()}catch{}
+ const brands=Array.isArray(data.brands)?data.brands:[];
+ const section=document.createElement('section');
+ section.id='gzHomeReferenceMarketplace';
+ section.className='gz-home-brands-section';
+ section.innerHTML=`<div class="gz-home-brands-inner">
+   <div class="gz-home-brands-head">
+    <div><small>GRABZONE MARKETPLACE</small><h2>Shop by <em>Brands</em></h2><p>Discover GrabZone and partner brands in one place. More brands. More ways to Grab.</p></div>
+    <a class="gz-home-marketplace-btn" href="/marketplace">View Marketplace <b>→</b></a>
+   </div>
+   <div class="gz-home-brand-grid"></div>
+   <div class="gz-home-vendor-banner"><div><small>PARTNER BRANDS</small><strong>More Partner Brands</strong><p>New vendors can appear here automatically from the existing marketplace system.</p></div><a href="/vendor-apply.html">Become a Vendor <b>→</b></a></div>
+   <div class="gz-home-benefits"><div><span>🛒</span><b>One Checkout</b><small>Multiple brands, one simple checkout.</small></div><div><span>🏪</span><b>More Brands</b><small>Your favorite stores in one place.</small></div><div><span>♙</span><b>One Account</b><small>Same GrabZone account everywhere.</small></div><div><span>🎁</span><b>More Rewards</b><small>Earn GrabPoints on every order.</small></div></div>
+ </div>`;
+ hero.insertAdjacentElement('afterend',section);
+ const grid=section.querySelector('.gz-home-brand-grid');
+ const visible=brands.slice(0,4);
+ if(!visible.length){
+  grid.innerHTML='<div class="gz-home-brand-card"><div><div class="gz-home-brand-top"><div class="gz-home-brand-logo-fallback">G</div><span class="gz-home-brand-badge">GRABZONE</span></div><span class="gz-home-brand-name">GrabZone</span><span class="gz-home-brand-desc">Shop products directly from the main GrabZone store.</span></div><span class="gz-home-brand-link">View store <b>→</b></span></div>';
   return;
  }
- const h=document.querySelector('.header');
- if(!h)return;
- const bar=document.createElement('div');bar.className='gz-ref-notice-fallback';bar.innerHTML='<span class="notice-label">NOTICE</span><span class="notice-copy">DM-এ অর্ডার নিন! 🚀 GrabPoints, Cashback & Membership এখন LIVE! ❤️</span><span style="margin-left:auto;padding-right:20px;font-size:10px;opacity:.9">GrabZone&nbsp;&nbsp; Grab it Love it</span>';h.insertAdjacentElement('beforebegin',bar);
+ grid.innerHTML=visible.map((b,i)=>{
+  const name=esc(first(b,'name','brandName','title')||('Brand '+(i+1)));
+  const desc=esc(first(b,'description','shortDescription','bio')||'Shop products from this GrabZone brand.');
+  const logo=first(b,'logo','logoUrl','image','imageUrl','avatar','icon');
+  const official=first(b,'isOfficial','official')===true||/grabzone/i.test(name);
+  const href=brandUrl(b);
+  const logoHtml=logo?`<img class="gz-home-brand-logo" src="${esc(logo)}" alt="${name} logo" loading="lazy">`:`<div class="gz-home-brand-logo-fallback">${esc((name.replace(/<[^>]*>/g,'').trim()[0]||'B').toUpperCase())}</div>`;
+  return `<a class="gz-home-brand-card" href="${esc(href)}"><div><div class="gz-home-brand-top">${logoHtml}<span class="gz-home-brand-badge">${official?'OFFICIAL':'PARTNER'}</span></div><span class="gz-home-brand-name">${name}</span><span class="gz-home-brand-desc">${desc}</span></div><span class="gz-home-brand-link">View store <b>→</b></span></a>`;
+ }).join('');
 }
-function removeLegacy(){
- const legacy=[...document.querySelectorAll('body *')].filter(el=>{if(el.closest('#gzHomeReferenceMarketplace'))return false;const t=String(el.textContent||'').replace(/\s+/g,' ').trim();return t==='Official GrabZone store'||(t.includes('Partner Brands')&&t.includes('More brands will appear here as vendors join')&&t.length<700)});
- for(const el of legacy){let n=el;for(let i=0;i<8&&n&&n!==document.body;i++,n=n.parentElement){if(n.closest('#gzHomeReferenceMarketplace'))break;const t=String(n.textContent||'').replace(/\s+/g,' ').trim();if((t==='Official GrabZone store'||(/Partner Brands/i.test(t)&&t.length<900))&&n!==document.body){n.remove();break}}}
- const referral=[...document.querySelectorAll('body *')].find(el=>!el.closest('#gzHomeReferenceMarketplace')&&String(el.textContent||'').includes('Approved partner referral codes can unlock'));if(referral){let n=referral;for(let i=0;i<7&&n&&n!==document.body;i++,n=n.parentElement){if((n.textContent||'').length<1200){n.style.display='none';break}}}
-}
-function header(){const h=document.querySelector('.header');if(!h)return;const nav=h.querySelector('nav');if(nav)nav.innerHTML='<a href="/marketplace">Shop</a><a href="/marketplace">Offers</a><a href="/marketplace">Marketplace</a><a href="#how-to-order">How to Order</a><a href="#payment">Payment</a><a href="/track-order.html">Track Order</a><a href="/grabpoints.html">GrabPoints</a><a href="#policies">Policies</a>';if(h.dataset.gzRef==='1')return;h.dataset.gzRef='1';const actions=h.querySelector('.header-actions');if(!actions)return;const oldDm=document.getElementById('headerDm');if(oldDm)oldDm.style.display='none';const oldRow=h.querySelector('.gz-ref-search-row');if(oldRow)oldRow.remove();const row=document.createElement('div');row.className='gz-ref-search-row';const box=document.createElement('div');box.className='gz-ref-search';box.innerHTML='<input id="gzRefSearch" placeholder="Search products, brands, categories..." autocomplete="off"><button type="button">⌕</button>';row.appendChild(box);h.appendChild(row);if(!actions.querySelector('.gz-ref-cart')){const cart=document.createElement('button');cart.className='gz-ref-cart';cart.type='button';cart.innerHTML='🛒<i id="gzRefCartCount"></i>';actions.appendChild(cart);const count=()=>{try{const a=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');const n=a.reduce((x,y)=>x+Number(y.quantity||1),0);const e=document.getElementById('gzRefCartCount');if(e)e.textContent=n||''}catch{}};cart.onclick=()=>window.GrabZoneCart?.open?window.GrabZoneCart.open():(document.getElementById('headerDm')?.click(),location.href='/checkout.html');window.addEventListener('storage',count);window.addEventListener('grabzone-cart-updated',count);count()}
-if(!actions.querySelector('.gz-ref-account')){const acc=document.createElement('a');acc.className='gz-ref-account';acc.href='/grabpoints.html';acc.innerHTML='♙';actions.appendChild(acc)}
-box.querySelector('button').onclick=()=>{const q=box.querySelector('input').value.trim(),s=document.getElementById('search');if(s){s.value=q;s.dispatchEvent(new Event('input',{bubbles:true}));s.scrollIntoView({behavior:'smooth',block:'center'})}};box.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')box.querySelector('button').click()})}
-async function brands(){if(document.getElementById('gzHomeReferenceMarketplace'))return;const hero=document.querySelector('.hero');if(!hero)return setTimeout(brands,120);let data={brands:[]};try{const r=await fetch('/api/marketplace/brands',{cache:'no-store'});if(r.ok)data=await r.json()}catch{}const list=Array.isArray(data.brands)?data.brands:[];const section=document.createElement('section');section.id='gzHomeReferenceMarketplace';section.className='gz-home-brands-section';section.innerHTML='<div class="gz-home-brands-inner"><div class="gz-home-brands-head"><div><small>GRABZONE MARKETPLACE</small><h2>Shop by <em>Brands</em></h2><p>Discover GrabZone and partner brands in one place. More brands. More ways to Grab.</p></div><a class="gz-home-marketplace-btn" href="/marketplace">View Marketplace <b>→</b></a></div><div class="gz-home-brand-grid"></div><div class="gz-home-vendor-banner"><div><small>COMING SOON</small><strong>More Partner Brands</strong><p>Even more amazing brands will appear here as new vendors join GrabZone.</p></div><a href="/vendor-apply.html">Become a Vendor <b>→</b></a></div><div class="gz-home-benefits"><div><span>🛒</span><b>One Checkout</b><small>Multiple brands, one simple checkout.</small></div><div><span>🏪</span><b>More Brands</b><small>Your favorite stores in one place.</small></div><div><span>♙</span><b>One Account</b><small>Same GrabZone account everywhere.</small></div><div><span>🎁</span><b>More Rewards</b><small>Earn GrabPoints on every order.</small></div></div></div>';hero.insertAdjacentElement('afterend',section);const grid=section.querySelector('.gz-home-brand-grid');grid.innerHTML=list.slice(0,4).map((b,i)=>{const name=b.brand_name||b.business_name||b.slug||'Brand';const logo=b.logo_url?'<img src="'+esc(b.logo_url)+'" alt="'+esc(name)+'">':'<span>'+esc(name.slice(0,2).toUpperCase())+'</span>';const desc=b.description||('Explore products from '+name+'.');return '<a class="gz-home-brand-card" href="/marketplace/brand/'+encodeURIComponent(b.slug||'')+'"><div class="gz-home-brand-top"><span class="gz-home-brand-badge">'+(i===0?'Official':'Partner')+'</span></div><div class="gz-home-brand-logo">'+logo+'</div><strong>'+esc(name)+'</strong><small>'+esc(desc)+'</small><div class="gz-home-brand-store"><span>🛍️ &nbsp; View store →</span><b>›</b></div></a>}).join('');if(!list.length)grid.innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:#777">No marketplace brands available yet.</div>'}
-function trending(){const shop=document.getElementById('shop');if(!shop||shop.dataset.gzRefShop==='1')return;shop.dataset.gzRefShop='1';const head=shop.querySelector('.section-head');if(head){const title=head.querySelector('h2');if(title){title.textContent='Trending Now';title.removeAttribute('data-i18n')}const eye=head.querySelector('.eyebrow');if(eye){eye.textContent='Popular products from our partner brands.';eye.removeAttribute('data-i18n')}}shop.insertAdjacentHTML('beforebegin','<div class="gz-ref-trending-head"><div><small>GRABZONE</small><h2>Trending Now</h2></div><a href="#shop">View All →</a></div>')}
-function run(){css();notice();removeLegacy();header();brands();trending();setTimeout(removeLegacy,700);setTimeout(removeLegacy,1800);setTimeout(removeLegacy,4000)}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
+
+function boot(){injectReferenceUI();addShopByBrands()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
