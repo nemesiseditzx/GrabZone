@@ -12,9 +12,9 @@ export default{fetch:async(req,env,ctx)=>{try{
     if(file instanceof File&&file.size>MAX_BYTES)return json({error:'Image must be 1 MB or smaller.'},413);
   }
   const response=await gateway.fetch(req,env,ctx);
-  if(response.ok&&(p==='/marketplace-vendor-control-v2'||p==='/marketplace-vendor-control-v2.html')){
+  if(response.ok&&(p==='/marketplace-vendor-control-v2'||p==='/marketplace-vendor-control-v2.html'||p==='/vendor-admin'||p==='/vendor-admin.html')){
     const type=response.headers.get('content-type')||'';
-    if(type.includes('text/html')){const body=await response.text();const html=body.replace(/<head[^>]*>/i,m=>m+'\n'+UPLOAD_AUTH_FIX);const h=new Headers(response.headers);h.delete('Content-Length');return new Response(html,{status:response.status,statusText:response.statusText,headers:h})}
+    if(type.includes('text/html')){const body=await response.text();const html=body.replace(/<head[^>]*>/i,m=>m+'\n'+UPLOAD_AUTH_FIX);const h=new Headers(response.headers);h.delete('Content-Length');h.set('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');h.set('Pragma','no-cache');return new Response(html,{status:response.status,statusText:response.statusText,headers:h})}
   }
   return response;
 }catch(err){return json({error:err?.message||'Vendor preview failed'},500)}}};
