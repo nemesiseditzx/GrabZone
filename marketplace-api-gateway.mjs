@@ -23,22 +23,42 @@ async function normalizeAdminRequest(req,e){
   const h=new Headers(req.headers);h.set('Cookie',`gz_admin_session=${encodeURIComponent(token)}`);
   return new Request(req.url,{method:req.method,headers:h,body:['GET','HEAD'].includes(req.method)?undefined:req.body,redirect:'manual'});
 }
-function vendorKey(req){const u=new URL(req.url);let key=u.searchParams.get('vendor_id')||u.searchParams.get('vendor');if(key&&key!=='null')return key;try{return new URL(req.headers.get('Referer')||'').searchParams.get('vendor')||''}catch{return''}}
+
+const VENDOR_ADMIN_PATHS=new Set(['/api/vendor/admin/stats','/api/vendor/admin/vendor-data','/api/vendor/admin/products','/api/vendor/admin/categories','/api/vendor/admin/store-sections','/api/vendor/admin/sections','/api/vendor/admin/store/sections']);
+const OFFICIAL_ALIASES=new Set(['official','official-store','official_store','grabzone-official','grabzone-official-store','grabzone-store','grabzone-store-official','grab-zone','grab-zone-store']);
+function vendorKey(req){const u=new URL(req.url);let key=u.searchParams.get('vendor_id')||u.searchParams.get('vendor');if(key&&key!=='null'&&key!=='undefined')return key;try{const r=new URL(req.headers.get('Referer')||'');return r.searchParams.get('vendor')||r.searchParams.get('vendor_id')||''}catch{return''}}
+async function resolveVendor(e,key){const k=String(key||'').trim();if(!k||k==='null'||k==='undefined')return null;if(OFFICIAL_ALIASES.has(k.toLowerCase()))return one(e,"SELECT id,slug FROM vendors WHERE lower(slug)='grabzone' LIMIT 1");return one(e,'SELECT id,slug FROM vendors WHERE id=? OR lower(slug)=lower(?) LIMIT 1',[k,k])}
+async function normalizeVendorRequest(req,e){
+  const p=new URL(req.url).pathname;if(!VENDOR_ADMIN_PATHS.has(p))return req;
+  const key=vendorKey(req);if(!key)return req;
+  const v=await resolveVendor(e,key);if(!v)return req;
+  const u=new URL(req.url);u.searchParams.set('vendor_id',v.id);
+  if(['GET','HEAD'].includes(req.method))return new Request(u.toString(),{method:req.method,headers:req.headers,redirect:'manual'});
+  const type=req.headers.get('content-type')||'';
+  if(type.includes('application/json')){
+    const body=await req.clone().json().catch(()=>null);
+    if(body&&typeof body==='object'&&('vendor_id' in body)&&(!body.vendor_id||body.vendor_id==='null'||body.vendor_id==='undefined')){
+      body.vendor_id=v.id;const h=new Headers(req.headers);h.delete('content-length');return new Request(u.toString(),{method:req.method,headers:h,body:JSON.stringify(body),redirect:'manual'});
+    }
+  }
+  return new Request(u.toString(),{method:req.method,headers:req.headers,body:req.body,redirect:'manual'});
+}
 
 export default {async fetch(req,env,ctx){
   try{
     const normalized=await normalizeAdminRequest(req,env);
+    const vendorNormalized=await normalizeVendorRequest(normalized,env);
     const p=new URL(req.url).pathname;
     if(p==='/api/vendor/admin/stats'&&req.method==='GET'){
-      if(!cookie(normalized,'gz_admin_session'))return json({error:'Unauthorized'},401);
-      const key=vendorKey(normalized);if(!key)return json({error:'Vendor required'},400);
-      const v=await one(env,'SELECT id,brand_name,slug FROM vendors WHERE id=? OR slug=? LIMIT 1',[key,key]);if(!v)return json({error:'Vendor not found'},404);
+      if(!cookie(vendorNormalized,'gz_admin_session'))return json({error:'Unauthorized'},401);
+      const key=vendorKey(vendorNormalized);if(!key)return json({error:'Vendor required'},400);
+      const v=await resolveVendor(env,key);if(!v)return json({error:'Vendor not found'},404);
       const [products,orders,sales]=await Promise.all([one(env,'SELECT COUNT(*) n FROM products WHERE vendor_id=?',[v.id]),one(env,'SELECT COUNT(*) n FROM vendor_orders WHERE vendor_id=?',[v.id]),one(env,'SELECT COALESCE(SUM(subtotal),0) n,COALESCE(SUM(commission_amount),0) commission,COALESCE(SUM(vendor_earnings),0) earnings FROM vendor_orders WHERE vendor_id=?',[v.id])]);
       return json({vendor:v,metrics:{products:Number(products?.n||0),orders:Number(orders?.n||0),sales:Number(sales?.n||0),commission:Number(sales?.commission||0),earnings:Number(sales?.earnings||0)}});
     }
     if(p==='/api/vendor/admin/products'||p==='/api/vendor/admin/categories'||p==='/api/vendor/admin/store-sections'||p==='/api/vendor/admin/sections'||p==='/api/vendor/admin/store/sections'){
-      const r=await handleVendorAdminApi(normalized,env);if(r)return r;
+      const r=await handleVendorAdminApi(vendorNormalized,env);if(r)return r;
     }
-    return stable.fetch(normalized,env,ctx);
+    return stable.fetch(vendorNormalized,env,ctx);
   }catch(err){return json({error:err?.message||'Marketplace API gateway failed'},500)}
 }};
