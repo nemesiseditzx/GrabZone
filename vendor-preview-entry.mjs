@@ -8,6 +8,16 @@ async function one(env,sql,p=[]){return (await env.DB.prepare(sql).bind(...p).al
 async function all(env,sql,p=[]){return (await env.DB.prepare(sql).bind(...p).all()).results||[]}
 function norm(v){return String(v??'').normalize('NFKC').toLowerCase().replace(/[^a-z0-9]+/g,'')}
 
+async function repairVendorId(env,v){
+  if(!v)return null;
+  if(String(v.id??'').trim())return v;
+  const rowid=v.rowid;
+  if(rowid==null)return v;
+  const id=crypto.randomUUID();
+  await env.DB.prepare("UPDATE vendors SET id=? WHERE rowid=? AND (id IS NULL OR trim(id)='')").bind(id,rowid).run();
+  return await one(env,'SELECT * FROM vendors WHERE rowid=? LIMIT 1',[rowid])||v;
+}
+
 async function directVendorData(req,env,ctx){
   const u=new URL(req.url);
   if(u.pathname!=='/api/vendor/admin/vendor-data'||req.method!=='GET')return null;
@@ -16,18 +26,23 @@ async function directVendorData(req,env,ctx){
   if(!auth.ok||!authBody.authenticated)return json({error:'Unauthorized'},401);
   const raw=String(u.searchParams.get('vendor_id')||u.searchParams.get('vendor')||'').trim();
   if(!raw||raw==='null'||raw==='undefined')return json({error:'Vendor required'},400);
-  let v=await one(env,'SELECT * FROM vendors WHERE lower(trim(id))=lower(trim(?)) OR lower(trim(slug))=lower(trim(?)) LIMIT 1',[raw,raw]);
+  let v=await one(env,'SELECT rowid,* FROM vendors WHERE lower(trim(id))=lower(trim(?)) OR lower(trim(slug))=lower(trim(?)) LIMIT 1',[raw,raw]);
   if(!v){
     const target=norm(raw);
-    const rows=await all(env,'SELECT * FROM vendors ORDER BY rowid DESC LIMIT 1000');
+    const rows=await all(env,'SELECT rowid,* FROM vendors ORDER BY rowid DESC LIMIT 1000');
     const matches=rows.filter(x=>['id','slug','brand_name','business_name','name','email','business_email','order_notification_email','support_email'].some(k=>norm(x[k])===target));
     if(matches.length===1)v=matches[0];
     if(!v){
       const base=target.replace(/\d+$/,'');
-      if(base){const candidates=rows.filter(x=>['slug','brand_name','business_name','name'].some(k=>{const n=norm(x[k]);return n===base||n.startsWith(base)}));if(candidates.length===1)v=candidates[0]}
+      if(base){
+        const candidates=rows.filter(x=>['slug','brand_name','business_name','name'].some(k=>{const n=norm(x[k]);return n===base||n.startsWith(base)}));
+        if(candidates.length===1)v=candidates[0]
+      }
     }
   }
   if(!v)return json({error:'Vendor not found'},404);
+  v=await repairVendorId(env,v);
+  if(!v?.id)return json({error:'Vendor record has no usable ID'},500);
   const products=await all(env,'SELECT * FROM products WHERE vendor_id=? ORDER BY COALESCE(updated_at,created_at) DESC',[v.id]);
   let orders=[];
   try{orders=await all(env,'SELECT vo.*,o.order_number,o.public_tracking_id FROM vendor_orders vo LEFT JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC LIMIT 100',[v.id])}catch{}
