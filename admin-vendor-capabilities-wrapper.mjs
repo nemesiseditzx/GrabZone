@@ -2,7 +2,7 @@ import app from './vendor-create-fix-wrapper.mjs';
 
 const now=()=>new Date().toISOString();
 const json=(x,s=200,h={})=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate',...h}});
-const clean=v=>String(v??'').trim();
+const clean=(v,n=10000)=>String(v??'').trim().slice(0,n);
 async function q(e,sql,p=[]){return e.DB.prepare(sql).bind(...p).all()}
 async function one(e,sql,p=[]){return (await q(e,sql,p)).results?.[0]||null}
 async function sha(v){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}
@@ -10,7 +10,25 @@ function cookie(req,n){for(const p of(req.headers.get('Cookie')||'').split(';'))
 async function admin(req,e){const raw=cookie(req,'gz_admin_session');if(raw){const a=await one(e,"SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>? LIMIT 1",[await sha(raw),now()]);if(a)return a}return null}
 async function vendorUser(req,e){const raw=cookie(req,'gz_vendor_session')||(req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!raw)return null;return one(e,"SELECT vu.id,vu.email,vu.vendor_id,vu.role,v.status vendor_status FROM vendor_sessions vs JOIN vendor_users vu ON vu.id=vs.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE vs.token_hash=? AND vs.expires_at>? AND vu.status='Active' LIMIT 1",[await sha(raw),now()])}
 async function schema(e){for(const sql of ["ALTER TABLE products ADD COLUMN vendor_id TEXT","ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0","ALTER TABLE products ADD COLUMN sku TEXT"]){try{await e.DB.prepare(sql).run()}catch{}}await e.DB.prepare(`CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)`).run().catch(()=>{});await e.DB.prepare('CREATE INDEX IF NOT EXISTS vendor_product_images_idx ON vendor_product_images(product_id,vendor_id,sort_order)').run().catch(()=>{})}
-async function findVendor(e,key){const k=clean(key);if(!k)return null;return one(e,'SELECT * FROM vendors WHERE id=? OR lower(slug)=lower(?) LIMIT 1',[k,k])}
+async function findVendor(e,key){
+  const k=clean(key,200);
+  if(!k||k==='null'||k==='undefined')return null;
+  let v=await one(e,'SELECT * FROM vendors WHERE id=? OR lower(trim(slug))=lower(trim(?)) LIMIT 1',[k,k]);
+  if(v)return v;
+  const normalized=k.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  if(!normalized)return null;
+  const compact=normalized.replace(/-/g,'');
+  const rows=(await q(e,"SELECT * FROM vendors WHERE lower(replace(replace(replace(trim(slug),'-',''),'_',''),' ',''))=? LIMIT 10",[compact])).results||[];
+  if(rows.length===1)return rows[0];
+  const base=normalized.replace(/-\d+$/,'');
+  if(base&&base!==normalized){
+    const candidates=(await q(e,"SELECT * FROM vendors WHERE lower(trim(slug))=? OR lower(trim(slug)) LIKE ? ORDER BY CASE WHEN lower(trim(slug))=? THEN 0 ELSE 1 END, rowid DESC LIMIT 10",[base,base+'-%',base])).results||[];
+    const exactBase=candidates.filter(x=>String(x.slug||'').trim().toLowerCase()===base);
+    if(exactBase.length===1)return exactBase[0];
+    if(candidates.length===1)return candidates[0];
+  }
+  return null;
+}
 async function getImages(e,pid,vid){const rows=(await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? AND vendor_id=? ORDER BY sort_order,id',[pid,vid])).results||[];return rows.map(x=>x.image_url).filter(Boolean)}
 async function saveImages(e,pid,vid,urls,main){const list=[...new Set((Array.isArray(urls)?urls:[]).map(clean).filter(Boolean))].slice(0,10);const mainUrl=clean(main||list[0]||'');if(mainUrl&&!list.includes(mainUrl))list.unshift(mainUrl);await e.DB.prepare('DELETE FROM vendor_product_images WHERE product_id=? AND vendor_id=?').bind(pid,vid).run();for(let i=0;i<list.length;i++)await e.DB.prepare('INSERT INTO vendor_product_images(id,product_id,vendor_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),pid,vid,list[i],i,now()).run()}
 async function vendorData(req,e){const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);await schema(e);const u=new URL(req.url),v=await findVendor(e,u.searchParams.get('vendor_id')||u.searchParams.get('vendor')||'');if(!v)return json({error:'Vendor not found'},404);const products=(await q(e,'SELECT p.* FROM products p WHERE p.vendor_id=? ORDER BY p.created_at DESC',[v.id])).results||[];for(const p of products){p.image_urls=await getImages(e,p.id,v.id);if(!p.image_urls.length&&p.image_url)p.image_urls=[p.image_url]}let orders=[];try{orders=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id FROM vendor_orders vo LEFT JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC LIMIT 100`,[v.id])).results||[]}catch{}return json({vendor:v,products,orders})}
