@@ -1,5 +1,6 @@
 import stable from './marketplace-stable-entry.mjs';
 import {handleVendorAdminApi} from './vendor-admin-api-compat.mjs';
+import capabilities from './admin-vendor-capabilities-wrapper.mjs';
 
 const now=()=>new Date().toISOString();
 const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
@@ -49,11 +50,19 @@ export default {async fetch(req,env,ctx){
     const normalized=await normalizeAdminRequest(req,env);
     const vendorNormalized=await normalizeVendorRequest(normalized,env);
     const p=new URL(req.url).pathname;
+
+    // Vendor Control's initial vendor-data endpoint is implemented by the capabilities wrapper.
+    if(p==='/api/vendor/admin/vendor-data')return capabilities.fetch(vendorNormalized,env,ctx);
+
     if(p==='/api/vendor/admin/stats'&&req.method==='GET'){
       if(!cookie(vendorNormalized,'gz_admin_session'))return json({error:'Unauthorized'},401);
       const key=vendorKey(vendorNormalized);if(!key)return json({error:'Vendor required'},400);
       const v=await resolveVendor(env,key);if(!v)return json({error:'Vendor not found'},404);
-      const [products,orders,sales]=await Promise.all([one(env,'SELECT COUNT(*) n FROM products WHERE vendor_id=?',[v.id]),one(env,'SELECT COUNT(*) n FROM vendor_orders WHERE vendor_id=?',[v.id]),one(env,'SELECT COALESCE(SUM(subtotal),0) n,COALESCE(SUM(commission_amount),0) commission,COALESCE(SUM(vendor_earnings),0) earnings FROM vendor_orders WHERE vendor_id=?',[v.id])]);
+      const [products,orders,sales]=await Promise.all([
+        one(env,'SELECT COUNT(*) n FROM products WHERE vendor_id=?',[v.id]),
+        one(env,'SELECT COUNT(*) n FROM vendor_orders WHERE vendor_id=?',[v.id]),
+        one(env,'SELECT COALESCE(SUM(subtotal),0) n,COALESCE(SUM(commission_amount),0) commission,COALESCE(SUM(vendor_earnings),0) earnings FROM vendor_orders WHERE vendor_id=?',[v.id])
+      ]);
       return json({vendor:v,metrics:{products:Number(products?.n||0),orders:Number(orders?.n||0),sales:Number(sales?.n||0),commission:Number(sales?.commission||0),earnings:Number(sales?.earnings||0)}});
     }
     if(p==='/api/vendor/admin/products'||p==='/api/vendor/admin/categories'||p==='/api/vendor/admin/store-sections'||p==='/api/vendor/admin/sections'||p==='/api/vendor/admin/store/sections'){
