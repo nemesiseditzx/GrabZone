@@ -27,8 +27,32 @@ async function normalizeAdminRequest(req,e){
 
 const VENDOR_ADMIN_PATHS=new Set(['/api/vendor/admin/stats','/api/vendor/admin/vendor-data','/api/vendor/admin/products','/api/vendor/admin/categories','/api/vendor/admin/store-sections','/api/vendor/admin/sections','/api/vendor/admin/store/sections']);
 const OFFICIAL_ALIASES=new Set(['official','official-store','official_store','grabzone-official','grabzone-official-store','grabzone-store','grabzone-store-official','grab-zone','grab-zone-store']);
-function vendorKey(req){const u=new URL(req.url);let key=u.searchParams.get('vendor_id')||u.searchParams.get('vendor');if(key&&key!=='null'&&key!=='undefined')return key;try{const r=new URL(req.headers.get('Referer')||'');return r.searchParams.get('vendor')||r.searchParams.get('vendor_id')||''}catch{return''}}
-async function resolveVendor(e,key){const k=String(key||'').trim();if(!k||k==='null'||k==='undefined')return null;if(OFFICIAL_ALIASES.has(k.toLowerCase()))return one(e,"SELECT id,slug FROM vendors WHERE lower(slug)='grabzone' LIMIT 1");return one(e,'SELECT id,slug FROM vendors WHERE id=? OR lower(slug)=lower(?) LIMIT 1',[k,k])}
+function vendorKey(req){const u=new URL(req.url);let key=u.searchParams.get('vendor_id')||u.searchParams.get('vendor');if(key&&key!=='null'&&key!=='undefined')return key;try{const r=new URL(req.headers.get('Referer')||'');return r.searchParams.get('vendor_id')||r.searchParams.get('vendor')||''}catch{return''}}
+async function resolveVendor(e,key){
+  const k=String(key||'').trim();
+  if(!k||k==='null'||k==='undefined')return null;
+  if(OFFICIAL_ALIASES.has(k.toLowerCase()))return one(e,"SELECT id,slug FROM vendors WHERE lower(slug)='grabzone' LIMIT 1");
+  const exact=await one(e,'SELECT id,slug FROM vendors WHERE id=? OR lower(slug)=lower(?) LIMIT 1',[k,k]);
+  if(exact)return exact;
+  // Older vendor links sometimes contain a generated numeric suffix while the
+  // stored slug does not (or vice versa). Only use this fallback when it is
+  // unambiguous, so one vendor can never be mapped to another by accident.
+  const normalized=k.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  const base=normalized.replace(/-\d+$/,'');
+  if(base&&base!==normalized){
+    const rows=(await e.DB.prepare("SELECT id,slug FROM vendors WHERE lower(slug)=? OR lower(slug) LIKE ? ORDER BY CASE WHEN lower(slug)=? THEN 0 ELSE 1 END, rowid DESC LIMIT 5").bind(base,base+'-%',base).all()).results||[];
+    const exactBase=rows.filter(v=>String(v.slug||'').toLowerCase()===base);
+    if(exactBase.length===1)return exactBase[0];
+    if(rows.length===1)return rows[0];
+  }
+  // Also tolerate punctuation/case differences between an old link and the
+  // canonical slug. Again, accept only a single candidate.
+  if(normalized){
+    const rows=(await e.DB.prepare("SELECT id,slug FROM vendors WHERE lower(replace(replace(replace(slug,'-',''),'_',''),' ',''))=? LIMIT 5").bind(normalized.replace(/[-_ ]/g,'')).all()).results||[];
+    if(rows.length===1)return rows[0];
+  }
+  return null;
+}
 async function normalizeVendorRequest(req,e){
   const p=new URL(req.url).pathname;if(!VENDOR_ADMIN_PATHS.has(p))return req;
   const key=vendorKey(req);if(!key)return req;
@@ -51,7 +75,6 @@ export default {async fetch(req,env,ctx){
     const vendorNormalized=await normalizeVendorRequest(normalized,env);
     const p=new URL(req.url).pathname;
 
-    // Vendor Control's initial vendor-data endpoint is implemented by the capabilities wrapper.
     if(p==='/api/vendor/admin/vendor-data')return capabilities.fetch(vendorNormalized,env,ctx);
 
     if(p==='/api/vendor/admin/stats'&&req.method==='GET'){
