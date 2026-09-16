@@ -20,10 +20,10 @@ async function sync(){
   bar.innerHTML='<b class="gz-mp-label">NOTICE</b><div class="gz-mp-viewport"><div class="gz-mp-moving">'+notices.map(n=>'<span class="gz-mp-item"><strong>'+esc(n.title)+'</strong><span>'+esc(n.message)+'</span></span>').join('')+'</div></div>';
   const viewport=bar.querySelector('.gz-mp-viewport'),moving=bar.querySelector('.gz-mp-moving');
   if(!viewport||!moving)return true;
-  requestAnimationFrame(()=>{const w=viewport.clientWidth,c=moving.scrollWidth;if(!w||!c)return;const sx=w,ex=-c;moving.style.transform=`translate3d(${sx}px,0,0)`;moving.animate([{transform:`translate3d(${sx}px,0,0)`},{transform:`translate3d(${ex}px,0,0)`}],{duration:Math.max(12000,((w+c)/150)*1000),iterations:Infinity,easing:'linear'})});
+  requestAnimationFrame(()=>{const w=viewport.clientWidth,c=moving.scrollWidth;if(!w||!c)return;const sx=0,ex=-c;moving.style.transform=`translate3d(${sx}px,0,0)`;moving.animate([{transform:`translate3d(${sx}px,0,0)`},{transform:`translate3d(${ex}px,0,0)`}],{duration:Math.max(12000,(c/150)*1000),iterations:Infinity,easing:'linear'})});
   return true;
  }catch(e){console.warn('GrabZone marketplace notice:',e);return false}
 }
-function boot(){let tries=0;const tick=()=>{if(sync()||++tries>120)return;setTimeout(tick,100)};tick();setInterval(sync,30000)}
+function boot(){let tries=0;const tick=()=>{if(sync()||++tries>120)return;setTimeout(tick,100)};tick();setTimeout(sync,1200);setInterval(sync,30000)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
