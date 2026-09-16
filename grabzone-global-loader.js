@@ -67,13 +67,5 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialHide,{once:true});else initialHide();
 
-  try{
-    var ns=document.createElement('script');
-    ns.src='/grabzone-notice-sync.js?v=20260916-notice9';
-    ns.defer=true;
-    ns.setAttribute('data-grabzone-notice-sync','true');
-    (document.head||document.documentElement).appendChild(ns);
-  }catch(e){}
-
   setTimeout(function(){hide();},12000);
 })();
