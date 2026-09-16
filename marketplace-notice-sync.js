@@ -16,15 +16,144 @@ async function state(){
  ]);
  return {notices:Array.isArray(notices)?notices:[],show:settings?.show_notice!==false};
 }
+function ensureStyle(){
+ if(document.getElementById('gzMarketplaceNoticeStyle'))return;
+ const st=document.createElement('style');
+ st.id='gzMarketplaceNoticeStyle';
+ st.textContent=`
+   .mp-notice.notice-wrap{
+     position:relative!important;
+     z-index:20!important;
+     width:100%!important;
+     height:42px!important;
+     display:flex!important;
+     align-items:center!important;
+     overflow:hidden!important;
+     background:#101010!important;
+     color:#fff!important;
+     isolation:isolate!important;
+   }
+   .mp-notice.notice-wrap .notice-label{
+     position:relative!important;
+     z-index:5!important;
+     flex:0 0 88px!important;
+     width:88px!important;
+     height:100%!important;
+     display:flex!important;
+     align-items:center!important;
+     justify-content:center!important;
+     padding:0 12px!important;
+     background:#ff650b!important;
+     border-right:1px solid #ff650b!important;
+     color:#fff!important;
+     font-size:11px!important;
+     font-weight:900!important;
+     letter-spacing:.16em!important;
+     line-height:1!important;
+     white-space:nowrap!important;
+   }
+   .mp-notice.notice-wrap .notice-track{
+     position:relative!important;
+     flex:1 1 auto!important;
+     width:0!important;
+     min-width:0!important;
+     height:100%!important;
+     overflow:hidden!important;
+     display:block!important;
+     white-space:nowrap!important;
+   }
+   .mp-notice.notice-wrap .notice-loop{
+     position:absolute!important;
+     z-index:1!important;
+     top:50%!important;
+     left:100%!important;
+     display:inline-flex!important;
+     align-items:center!important;
+     width:max-content!important;
+     min-width:max-content!important;
+     height:max-content!important;
+     margin:0!important;
+     padding:0!important;
+     white-space:nowrap!important;
+     transform:translate3d(0,-50%,0)!important;
+     will-change:transform!important;
+     backface-visibility:hidden!important;
+   }
+   .mp-notice.notice-wrap .notice-content,
+   .mp-notice.notice-wrap .notice-group{
+     display:inline-flex!important;
+     align-items:center!important;
+     width:max-content!important;
+     min-width:max-content!important;
+     flex:0 0 auto!important;
+     white-space:nowrap!important;
+   }
+   .mp-notice.notice-wrap .notice-item{
+     display:inline-flex!important;
+     align-items:center!important;
+     width:max-content!important;
+     min-width:max-content!important;
+     flex:0 0 auto!important;
+     margin:0 100px 0 0!important;
+     padding:0!important;
+     font-size:13px!important;
+     font-weight:500!important;
+     line-height:1!important;
+     white-space:nowrap!important;
+   }
+   .mp-notice.notice-wrap .notice-item b{
+     display:inline-block!important;
+     margin:0 14px 0 0!important;
+     font-weight:900!important;
+     white-space:nowrap!important;
+   }
+   .mp-notice.notice-wrap .notice-message{
+     display:inline-block!important;
+     margin:0!important;
+     padding:0!important;
+     white-space:nowrap!important;
+   }
+   .mp-notice.notice-wrap .notice-item::before,
+   .mp-notice.notice-wrap .notice-item::after{
+     content:none!important;
+     display:none!important;
+   }
+   @media(max-width:600px){
+     .mp-notice.notice-wrap{height:42px!important}
+     .mp-notice.notice-wrap .notice-label{flex-basis:88px!important;width:88px!important;font-size:10px!important}
+     .mp-notice.notice-wrap .notice-item{margin-right:60px!important;font-size:10px!important}
+   }
+   @media(prefers-reduced-motion:reduce){
+     .mp-notice.notice-wrap .notice-loop{animation:none!important;left:0!important;transform:translate3d(0,-50%,0)!important}
+   }
+ `;
+ document.head.appendChild(st);
+}
 function render(s){
  const bar=document.querySelector('.mp-notice');if(!bar)return false;
  const notices=s.notices||[],sig=JSON.stringify({show:s.show,notices});if(sig===lastSignature)return true;lastSignature=sig;
  try{animation?.cancel()}catch{}animation=null;
  if(s.show===false||!notices.length){bar.style.display='none';return true}
- let st=document.getElementById('gzMarketplaceNoticeStyle');if(!st){st=document.createElement('style');st.id='gzMarketplaceNoticeStyle';st.textContent='.mp-notice{height:40px!important;background:#101419!important;display:flex!important;align-items:center!important;overflow:hidden!important;white-space:nowrap!important;font-size:11px!important}.mp-notice>.gz-mp-label{width:70px!important;min-width:70px!important;height:40px!important;display:flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;padding:0!important;margin:0!important;background:#ff650b!important;color:#fff!important;font-size:9px!important;font-weight:900!important;letter-spacing:.08em!important;line-height:1!important}.gz-mp-viewport{position:relative!important;flex:1 1 auto!important;min-width:0!important;height:100%!important;overflow:hidden!important;white-space:nowrap!important}.gz-mp-moving{position:absolute!important;left:0!important;top:0!important;display:inline-flex!important;align-items:center!important;width:max-content!important;min-width:max-content!important;height:100%!important;white-space:nowrap!important;will-change:transform!important}.gz-mp-item{display:inline-flex!important;align-items:center!important;flex:0 0 auto!important;width:max-content!important;min-width:max-content!important;margin-right:100px!important;color:#e4e4e4!important;font-size:11px!important;white-space:nowrap!important}.gz-mp-item strong{margin-right:12px!important;color:#fff!important;font-weight:900!important}@media(max-width:700px){.mp-notice{height:40px!important}.mp-notice>.gz-mp-label{width:70px!important;min-width:70px!important;height:40px!important;font-size:9px!important}.gz-mp-item{margin-right:60px!important;font-size:10px!important}.gz-mp-item strong{font-size:10px!important}}';document.head.appendChild(st)}
- bar.style.display='flex';bar.innerHTML='<b class="gz-mp-label">NOTICE</b><div class="gz-mp-viewport"><div class="gz-mp-moving">'+notices.map(n=>'<span class="gz-mp-item"><strong>'+esc(n.title)+'</strong><span>'+esc(n.message)+'</span></span>').join('')+'</div></div>';
- const v=bar.querySelector('.gz-mp-viewport'),m=bar.querySelector('.gz-mp-moving');if(!v||!m)return true;
- requestAnimationFrame(()=>requestAnimationFrame(()=>{const w=v.getBoundingClientRect().width,c=m.getBoundingClientRect().width;if(!w||!c)return;const sx=w,ex=-c,d=Math.max(3000,((sx-ex)/(innerWidth<=700?130:165))*1000);m.style.transform=`translate3d(${sx}px,0,0)`;animation=m.animate([{transform:`translate3d(${sx}px,0,0)`},{transform:`translate3d(${ex}px,0,0)`}],{duration:d,iterations:Infinity,easing:'linear'})}));
+ ensureStyle();
+ bar.classList.add('notice-wrap');
+ bar.style.display='flex';
+ bar.innerHTML='<b class="notice-label" data-i18n="noticeLabel">NOTICE</b><div id="noticeTrack" class="notice-track"><div class="notice-loop"><div class="notice-content"><div class="notice-group">'+notices.map(n=>'<span class="notice-item"><b>'+esc(n.title)+'</b><span class="notice-message">'+esc(n.message)+'</span></span>').join('')+'</div></div></div></div>';
+ const track=bar.querySelector('#noticeTrack'),moving=bar.querySelector('.notice-loop');if(!track||!moving)return true;
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+   const trackWidth=track.getBoundingClientRect().width;
+   const noticeWidth=moving.getBoundingClientRect().width;
+   if(!trackWidth||!noticeWidth)return;
+   const startX=trackWidth;
+   const endX=-noticeWidth;
+   const distance=startX-endX;
+   const speed=window.innerWidth<=600?130:165;
+   const duration=Math.max(3000,(distance/speed)*1000);
+   moving.style.transform=`translate3d(${startX}px,-50%,0)`;
+   animation=moving.animate(
+     [{transform:`translate3d(${startX}px,-50%,0)`},{transform:`translate3d(${endX}px,-50%,0)`}],
+     {duration,iterations:Infinity,easing:'linear'}
+   );
+ });
  return true;
 }
 async function sync(){try{return render(await state())}catch(e){console.warn('GrabZone shared notice sync:',e);return false}}
