@@ -67,18 +67,13 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialHide,{once:true});else initialHide();
 
-  // Shared public notice sync. This is loaded here because this global loader
-  // is injected into both the storefront and marketplace by the stable worker.
   try{
     var ns=document.createElement('script');
-    ns.src='/grabzone-notice-sync.js?v=20260915-notice1';
+    ns.src='/grabzone-notice-sync.js?v=20260915-notice2';
     ns.defer=true;
     ns.setAttribute('data-grabzone-notice-sync','true');
     (document.head||document.documentElement).appendChild(ns);
   }catch(e){}
-
-  // Legacy homepage brand-card cleanup is now handled by the dedicated
-  // homepage reference UI so it cannot remove the new marketplace section.
 
   setTimeout(function(){hide();},12000);
 })();
