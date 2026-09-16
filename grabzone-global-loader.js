@@ -6,7 +6,6 @@
   var CSS = `
 #gzGlobalLoading{position:fixed;inset:0;z-index:2147483647;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;opacity:1;visibility:visible;pointer-events:auto;transition:opacity .24s ease,visibility .24s ease;font-family:Arial,Helvetica,sans-serif}
 #gzGlobalLoading.gz-hide{opacity:0;visibility:hidden;pointer-events:none}
-#noticeSection{display:none!important}
 .gzgl-stage{position:relative;width:min(390px,82vw);height:min(390px,82vw);display:flex;align-items:center;justify-content:center}
 .gzgl-orbit{position:absolute;border-radius:50%;box-sizing:border-box}
 .gzgl-orbit.one{inset:0;border:2px solid rgba(255,107,0,.11);border-top-color:#ff6b00;border-right-color:#ff8a22;animation:gzglSpin 1.35s linear infinite}
@@ -67,6 +66,14 @@
     if(!wait) hide();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialHide,{once:true});else initialHide();
+
+  try{
+    var ns=document.createElement('script');
+    ns.src='/grabzone-notice-sync.js?v=20260916-notice9';
+    ns.defer=true;
+    ns.setAttribute('data-grabzone-notice-sync','true');
+    (document.head||document.documentElement).appendChild(ns);
+  }catch(e){}
 
   setTimeout(function(){hide();},12000);
 })();
