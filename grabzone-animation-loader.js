@@ -11,6 +11,15 @@
     product_cursor_spotlight:true,product_shine:true,product_hover_lift:true,
     product_featured_glow:true
   };
+  function loadNoticeSync(){
+    if(document.querySelector('script[data-grabzone-notice-sync]'))return;
+    const s=document.createElement('script');
+    s.src='/grabzone-notice-sync.js?v=20260916-home-notice1';
+    s.defer=true;
+    s.setAttribute('data-grabzone-notice-sync','true');
+    (document.head||document.documentElement).appendChild(s);
+  }
+  loadNoticeSync();
   async function start(){
     if(!window.supabase||!C.supabaseUrl||C.supabaseUrl.includes("PASTE_"))return;
     try{
