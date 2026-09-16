@@ -9,14 +9,14 @@ if(isMarketplace)return;
 if(window.__GZ_NOTICE_SYNC__)return;
 window.__GZ_NOTICE_SYNC__=true;
 
-/*
-  Home already contains the legacy #noticeTrack used by store.js.
-  Remove that track before DOMContentLoaded so store.js cannot
-  start a second notice renderer. This script becomes the single
-  authoritative Home notice renderer.
-*/
-const legacyTrack=document.getElementById('noticeTrack');
-if(legacyTrack)legacyTrack.remove();
+/* Home already contains the legacy #noticeTrack used by store.js.
+   This script is injected in <head>, so the body may not exist yet.
+   Remove the legacy track immediately after DOMContentLoaded, before
+   store.js can start its own notice renderer. */
+function removeLegacyTrack(){
+  const legacyTrack=document.getElementById('noticeTrack');
+  if(legacyTrack)legacyTrack.remove();
+}
 
 const esc=v=>String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));
 
@@ -102,6 +102,7 @@ async function sync(){
 }
 
 function boot(){
+  removeLegacyTrack();
   sync();
   setTimeout(sync,1500);
   setInterval(sync,30000);
