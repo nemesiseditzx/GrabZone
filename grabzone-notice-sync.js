@@ -1,5 +1,12 @@
 (()=>{
 'use strict';
+/*
+  The homepage notice marquee is owned by store.js, which reads the
+  same window.grabzoneD1 adapter used by the Admin Panel.  Do not let
+  this generic API sync create a second homepage notice renderer.
+  Marketplace keeps its own notice-sync implementation.
+*/
+if(/^\/(?:index\.html)?$/.test(location.pathname))return;
 if(/^\/marketplace(?:\.html)?\/?$/.test(location.pathname))return;
 if(window.__GZ_NOTICE_SYNC__)return;
 window.__GZ_NOTICE_SYNC__=true;
