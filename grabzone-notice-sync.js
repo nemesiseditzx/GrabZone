@@ -5,9 +5,6 @@ const path=String(location.pathname||'/');
 const isHome=/^\/(?:index\.html)?$/.test(path);
 const isMarketplace=/^\/marketplace(?:\.html)?\/?$/.test(path);
 
-/* Homepage notice behavior is copied from the main branch's store.js.
-   Do not let the generic sync layer render or overwrite it. */
-if(isHome)return;
 if(isMarketplace)return;
 if(window.__GZ_NOTICE_SYNC__)return;
 window.__GZ_NOTICE_SYNC__=true;
@@ -83,35 +80,9 @@ async function getApiState(){
   return{notices:Array.isArray(b?.notices)?b.notices:[],show:b?.show_notice!==false};
 }
 
-async function getHomeState(){
-  const db=window.grabzoneD1;
-  if(!db?.from)throw Error('D1 client is not ready');
-
-  const noticesPromise=db.from('notices')
-    .select('id,title,message,active,sort_order,created_at')
-    .eq('active',true)
-    .order('sort_order')
-    .order('created_at');
-
-  const settingsPromise=db.from('site_settings')
-    .select('show_notice')
-    .eq('id',1)
-    .maybeSingle();
-
-  const[{data,error},{data:settings}]=await Promise.all([noticesPromise,settingsPromise]);
-  if(error)throw Error(String(error.message||'Notice query failed'));
-
-  return{
-    notices:Array.isArray(data)?data:[],
-    show:settings?.show_notice!==false
-  };
-}
-
 async function sync(){
   try{
-    if(isHome && document.getElementById('gzNoticeMoving'))return;
-    const s=isHome?await getHomeState():await getApiState();
-    if(isHome && document.getElementById('gzNoticeMoving'))return;
+    const s=await getApiState();
     render(s.notices,s.show);
   }catch(e){
     console.warn('GrabZone notice sync:',e);
@@ -122,12 +93,6 @@ function boot(){
   sync();
   setTimeout(sync,1500);
   setInterval(sync,30000);
-  if(isHome){
-    const mo=new MutationObserver(()=>{
-      if(!document.getElementById('gzNoticeMoving'))sync();
-    });
-    mo.observe(document.documentElement,{childList:true,subtree:true});
-  }
 }
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
