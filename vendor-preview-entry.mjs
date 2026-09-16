@@ -3,11 +3,22 @@ import gateway from './marketplace-api-gateway.mjs';
 const MAX_BYTES=1024*1024;
 const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate'}});
 const UPLOAD_AUTH_FIX=`<script data-gz-vendor-upload-auth-fix>(()=>{if(window.__gzVendorUploadAuthFix)return;window.__gzVendorUploadAuthFix=1;const originalFetch=window.fetch.bind(window);const getToken=()=>{try{return window.getToken?.()||localStorage.getItem('gz_d1_admin_token')||sessionStorage.getItem('gz_d1_admin_token')||''}catch{return''}};const authHeaders=()=>{const t=getToken(),h=new Headers();if(t){h.set('Authorization','Bearer '+t);h.set('X-GrabZone-Token',t)}return h};window.fetch=async(input,init={})=>{let path='';try{path=new URL(typeof input==='string'?input:input?.url||'',location.href).pathname}catch{}if(path!=='/api/vendor/upload')return originalFetch(input,init);try{const h=authHeaders();await originalFetch('/api/admin-auth',{method:'GET',headers:h,credentials:'include',cache:'no-store'}).catch(()=>{});const headers=new Headers(init.headers||(input instanceof Request?input.headers:undefined));const t=getToken();if(t){if(!headers.has('Authorization'))headers.set('Authorization','Bearer '+t);if(!headers.has('X-GrabZone-Token'))headers.set('X-GrabZone-Token',t)}return originalFetch(input,{...init,credentials:init.credentials||'include',headers})}catch{return originalFetch(input,{...init,credentials:init.credentials||'include'})}}})();</script>`;
-const NOTICE_SYNC=`<script data-gz-notice-sync-loader src="/grabzone-notice-sync.js?v=20260916-home1" defer></script>`;
+const NOTICE_SYNC=`<script data-gz-notice-sync-loader src="/grabzone-notice-sync.js?v=20260916-home2" defer></script>`;
 
 async function one(env,sql,p=[]){return (await env.DB.prepare(sql).bind(...p).all()).results?.[0]||null}
 async function all(env,sql,p=[]){return (await env.DB.prepare(sql).bind(...p).all()).results||[]}
 function norm(v){return String(v??'').normalize('NFKC').toLowerCase().replace(/[^a-z0-9]+/g,'')}
+
+async function notices(req,env){
+  const u=new URL(req.url);
+  if(u.pathname!=='/api/marketplace/notices'||req.method!=='GET')return null;
+  const [rows,settings]=await Promise.all([
+    env.DB.prepare('SELECT id,title,message,active,sort_order,created_at FROM notices WHERE active=1 ORDER BY sort_order ASC,created_at ASC').all(),
+    env.DB.prepare('SELECT show_notice FROM site_settings WHERE id=1 LIMIT 1').all()
+  ]);
+  const show=Number(settings.results?.[0]?.show_notice??1)!==0;
+  return json({show_notice:show,notices:show?(rows.results||[]):[]});
+}
 
 async function repairVendorId(env,v){
   if(!v)return null;
@@ -57,6 +68,8 @@ export default{fetch:async(req,env,ctx)=>{try{
     const file=form?.get('file');
     if(file instanceof File&&file.size>MAX_BYTES)return json({error:'Image must be 1 MB or smaller.'},413);
   }
+  const noticeResponse=await notices(req,env);
+  if(noticeResponse)return noticeResponse;
   const direct=await directVendorData(req,env,ctx);
   if(direct)return direct;
   const response=await gateway.fetch(req,env,ctx);
