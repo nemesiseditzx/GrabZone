@@ -2,7 +2,7 @@
 'use strict';
 if(window.__GZ_NOTICE_SYNC__)return;
 window.__GZ_NOTICE_SYNC__=true;
-const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const esc=v=>String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));
 const STYLE=`
 /* Shared Admin notice system: one data source, one visual system. */
 #noticeSection{display:flex;align-items:stretch;width:100%;height:44px;min-height:44px;background:#10151b;color:#fff;overflow:hidden!important;position:relative;z-index:20}
@@ -15,6 +15,7 @@ const STYLE=`
 .mp-notice{display:flex!important;align-items:center!important;overflow:hidden!important}
 .mp-notice>.gzMpNoticeViewport{position:relative!important;flex:1 1 auto!important;min-width:0!important;height:100%!important;overflow:hidden!important;display:block!important}
 .mp-notice>.gzMpNoticeViewport>.gzMpNoticeMoving{top:50%!important;align-items:center!important}
+/* Keep Marketplace's existing bar dimensions/typography; only provide the moving viewport. */
 .mp-notice>.gzMpNoticeViewport .gzNoticeItem{color:#e4e4e4!important;margin-right:70px!important;font-size:12px!important}
 .mp-notice>.gzMpNoticeViewport .gzNoticeItem>b{background:transparent!important;color:#fff!important;height:auto!important;padding:0!important;margin-right:12px!important;font-size:12px!important}
 .mp-notice>.gzMpNoticeViewport .gzNoticeMessage{padding:0!important;color:#e4e4e4!important;font-size:12px!important}
@@ -68,6 +69,9 @@ function renderMain(notices,show){
 function renderMarketplace(notices,show){
   const bar=document.querySelector('.mp-notice');
   if(!bar)return false;
+  /* Marketplace already owns its single notice container. Never create a second one. */
+  const duplicate=document.getElementById('noticeSection');
+  if(duplicate)duplicate.remove();
   if(!show||!notices.length){stopAnimation();bar.style.display='none';return true}
   bar.style.display='flex';
   bar.innerHTML=`<b>NOTICE</b><div class="gzMpNoticeViewport"><div class="gzMpNoticeMoving">${build(notices)}</div></div>`;
@@ -76,17 +80,21 @@ function renderMarketplace(notices,show){
   return true;
 }
 async function sync(){
-  try{const state=await getState();renderMain(state.notices,state.show);renderMarketplace(state.notices,state.show)}catch(e){console.warn('GrabZone notice sync:',e)}
+  try{
+    const state=await getState();
+    if(document.querySelector('.mp-notice'))renderMarketplace(state.notices,state.show);
+    else renderMain(state.notices,state.show);
+  }catch(e){console.warn('GrabZone notice sync:',e)}
 }
 function boot(){
   installStyle();
   sync();
   setInterval(sync,30000);
   const mo=new MutationObserver(()=>{
-    const track=document.getElementById('noticeTrack');
-    if(!track)sync();
-    const bar=document.querySelector('.mp-notice');
-    if(bar&&!bar.querySelector('.gzMpNoticeViewport'))sync();
+    const isMarketplace=!!document.querySelector('.mp-notice');
+    if(isMarketplace){
+      if(!document.querySelector('.mp-notice>.gzMpNoticeViewport'))sync();
+    }else if(!document.getElementById('noticeTrack'))sync();
   });
   mo.observe(document.documentElement,{childList:true,subtree:true});
 }
