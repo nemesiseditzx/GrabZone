@@ -4,6 +4,7 @@ if(window.__GZ_NOTICE_SYNC__)return;
 window.__GZ_NOTICE_SYNC__=true;
 
 const esc=v=>String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));
+const isMarketplacePage=()=>/^\/marketplace(?:\.html)?\/?$/.test(location.pathname);
 
 async function getState(){
   const r=await fetch('/api/marketplace/notices?ts='+Date.now(),{cache:'no-store',credentials:'include'});
@@ -130,8 +131,10 @@ function renderMarketplace(notices,show){
 
 async function sync(){
   try{
+    const marketplace=isMarketplacePage();
+    if(marketplace&&!document.querySelector('.mp-notice'))return;
     const state=await getState();
-    if(document.querySelector('.mp-notice'))renderMarketplace(state.notices,state.show);
+    if(marketplace)renderMarketplace(state.notices,state.show);
     else renderMain(state.notices,state.show);
   }catch(e){console.warn('GrabZone notice sync:',e)}
 }
@@ -140,9 +143,10 @@ function boot(){
   sync();
   setInterval(sync,30000);
   const mo=new MutationObserver(()=>{
-    const isMarketplace=!!document.querySelector('.mp-notice');
-    if(isMarketplace){
-      if(!document.querySelector('.mp-notice>.gzMpNoticeViewport'))sync();
+    const marketplace=isMarketplacePage();
+    const bar=document.querySelector('.mp-notice');
+    if(marketplace){
+      if(bar&&!bar.querySelector('.gzMpNoticeViewport'))sync();
     }else if(!document.getElementById('gzNoticeMoving'))sync();
   });
   mo.observe(document.documentElement,{childList:true,subtree:true});
