@@ -9,6 +9,15 @@ if(isMarketplace)return;
 if(window.__GZ_NOTICE_SYNC__)return;
 window.__GZ_NOTICE_SYNC__=true;
 
+/*
+  Home already contains the legacy #noticeTrack used by store.js.
+  Remove that track before DOMContentLoaded so store.js cannot
+  start a second notice renderer. This script becomes the single
+  authoritative Home notice renderer.
+*/
+const legacyTrack=document.getElementById('noticeTrack');
+if(legacyTrack)legacyTrack.remove();
+
 const esc=v=>String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));
 
 function installStyle(){
@@ -21,7 +30,9 @@ function installStyle(){
     .gzNoticeItem{display:inline-flex!important;align-items:center!important;flex:0 0 auto!important;width:max-content!important;min-width:max-content!important;margin:0 100px 0 0!important;padding:0!important;white-space:nowrap!important;font-size:13px!important;line-height:1!important}
     .gzNoticeItem b{display:inline-block!important;flex:0 0 auto!important;margin:0 12px 0 0!important;padding:0!important;font-weight:900!important;white-space:nowrap!important}
     .gzNoticeMessage{display:inline-block!important;flex:0 0 auto!important;white-space:nowrap!important}
+    .gzNoticeItem::before,.gzNoticeItem::after{content:none!important;display:none!important}
     @media(max-width:600px){.gzNoticeItem{margin-right:60px!important;font-size:10px!important}.gzNoticeItem b{margin-right:8px!important}}
+    @media(prefers-reduced-motion:reduce){#gzNoticeMoving{animation:none!important}}
   `;
   document.head.appendChild(s);
 }
@@ -58,13 +69,14 @@ function render(notices,show=true){
   section.style.display='flex';
   track.innerHTML='<div id="gzNoticeMoving">'+notices.map(n=>'<span class="gzNoticeItem"><b>'+esc(n.title)+'</b><span class="gzNoticeMessage">'+esc(n.message)+'</span></span>').join('')+'</div>';
   const moving=document.getElementById('gzNoticeMoving');
+  if(!moving)return;
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const w=track.getBoundingClientRect().width;
     const c=moving.getBoundingClientRect().width;
     if(!w||!c)return;
     try{animation?.cancel()}catch{}
-    const sx=0,ex=-c;
-    const d=Math.max(3000,(c/(innerWidth<=600?130:165))*1000);
+    const sx=w,ex=-c;
+    const d=Math.max(3000,((w+c)/(innerWidth<=600?130:165))*1000);
     moving.style.transform=`translate3d(${sx}px,0,0)`;
     animation=moving.animate(
       [{transform:`translate3d(${sx}px,0,0)`},{transform:`translate3d(${ex}px,0,0)`}],
