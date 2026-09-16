@@ -3,19 +3,11 @@
 if(window.__GZ_NOTICE_SYNC__)return;
 window.__GZ_NOTICE_SYNC__=true;
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-async function d1(table,orders=[]){
-  const r=await fetch('/api/d1',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},credentials:'include',cache:'no-store',body:JSON.stringify({table,action:'select',columns:'*',filters:[],orders,limit:null,single:null})});
+async function getState(){
+  const r=await fetch('/api/marketplace/notices?ts='+Date.now(),{cache:'no-store',credentials:'include'});
   const b=await r.json().catch(()=>null);
   if(!r.ok)throw Error(String(b?.error||b?.message||('Notice request failed: '+r.status)));
-  return Array.isArray(b?.data)?b.data:[];
-}
-async function getState(){
-  const [notices,settings]=await Promise.all([
-    d1('notices',[{column:'sort_order',ascending:true}]),
-    d1('site_settings')
-  ]);
-  const show=Number(settings?.[0]?.show_notice??1)!==0;
-  return {notices:show?notices.filter(n=>Number(n?.active??1)!==0):[],show};
+  return {notices:Array.isArray(b?.notices)?b.notices:[],show:b?.show_notice!==false};
 }
 function stopAnimation(){try{window.__grabzoneNoticeAnimation?.cancel()}catch{}window.__grabzoneNoticeAnimation=null}
 function animate(track,moving){
@@ -26,10 +18,12 @@ function animate(track,moving){
   window.__grabzoneNoticeAnimation=a;
   a.onfinish=()=>{if(window.__grabzoneNoticeAnimation===a)animate(track,moving)};
 }
-function renderMain(notices){
+function renderMain(notices,show){
   const track=document.getElementById('noticeTrack');
+  const section=document.getElementById('noticeSection');
   if(!track)return false;
-  if(!notices.length){stopAnimation();track.innerHTML='';return true}
+  if(!show||!notices.length){stopAnimation();track.innerHTML='';if(section)section.style.display='none';return true}
+  if(section)section.style.display='flex';
   track.style.overflow='hidden';
   track.innerHTML=`<div id="gzNoticeMoving">${notices.map(n=>`<span class="gzNoticeItem"><b>${esc(n.title)}</b><span class="gzNoticeMessage">${esc(n.message)}</span></span>`).join('')}</div>`;
   const moving=track.querySelector('#gzNoticeMoving');
@@ -50,11 +44,7 @@ function renderMarketplace(notices,show){
   return true;
 }
 async function sync(){
-  try{
-    const state=await getState();
-    renderMain(state.notices);
-    renderMarketplace(state.notices,state.show);
-  }catch(e){console.warn('GrabZone notice sync:',e)}
+  try{const state=await getState();renderMain(state.notices,state.show);renderMarketplace(state.notices,state.show)}catch(e){console.warn('GrabZone notice sync:',e)}
 }
 function boot(){
   sync();
