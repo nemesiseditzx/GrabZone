@@ -69,7 +69,7 @@
 
   try{
     var ns=document.createElement('script');
-    ns.src='/grabzone-notice-sync.js?v=20260916-notice4';
+    ns.src='/grabzone-notice-sync.js?v=20260916-notice5';
     ns.defer=true;
     ns.setAttribute('data-grabzone-notice-sync','true');
     (document.head||document.documentElement).appendChild(ns);
