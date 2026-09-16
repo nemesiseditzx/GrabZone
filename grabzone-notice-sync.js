@@ -95,14 +95,14 @@ function installMarketplaceNoticeStyle(){
   const style=document.createElement('style');
   style.id='gzMpNoticeStyle';
   style.textContent=`
-    .mp-notice{display:flex!important;align-items:center!important;overflow:hidden!important;height:44px!important}
+    .mp-notice{display:flex!important;align-items:center!important;overflow:hidden!important;height:44px!important;white-space:nowrap!important}
     .mp-notice > b{height:44px!important;display:flex!important;align-items:center!important;justify-content:center!important;flex:0 0 auto!important;padding:0 28px!important;background:#ff650b!important;color:#fff!important;font-size:10px!important;letter-spacing:.12em!important;line-height:1!important}
-    .gzMpNoticeViewport{position:relative!important;flex:1 1 auto!important;min-width:0!important;height:44px!important;overflow:hidden!important;display:flex!important;align-items:center!important}
-    .gzMpNoticeMoving{position:absolute!important;left:0!important;top:0!important;height:44px!important;display:inline-flex!important;align-items:center!important;width:max-content!important;min-width:max-content!important;white-space:nowrap!important;will-change:transform!important}
-    .gzMpNoticeMoving .gzNoticeItem{display:inline-flex!important;align-items:center!important;flex:0 0 auto!important;width:max-content!important;min-width:max-content!important;margin:0 100px 0 0!important;padding:0!important;color:#e4e4e4!important;font-size:12px!important;line-height:1!important;white-space:nowrap!important}
-    .gzMpNoticeMoving .gzNoticeItem b{display:inline-block!important;flex:0 0 auto!important;margin:0 12px 0 0!important;padding:0!important;background:none!important;color:#fff!important;font-size:12px!important;font-weight:900!important;line-height:1!important;letter-spacing:normal!important;white-space:nowrap!important}
-    .gzMpNoticeMoving .gzNoticeMessage{display:inline-block!important;flex:0 0 auto!important;color:#e4e4e4!important;font-size:12px!important;line-height:1!important;white-space:nowrap!important}
-    @media(max-width:700px){.mp-notice{height:40px!important}.mp-notice > b{height:40px!important;padding:0 17px!important}.gzMpNoticeViewport,.gzMpNoticeMoving{height:40px!important}.gzMpNoticeMoving .gzNoticeItem{margin-right:60px!important;font-size:10px!important}.gzMpNoticeMoving .gzNoticeItem b,.gzMpNoticeMoving .gzNoticeMessage{font-size:10px!important}}
+    .gzMpNoticeViewport{position:relative!important;flex:1 1 auto!important;min-width:0!important;height:44px!important;overflow:hidden!important;display:block!important;white-space:nowrap!important}
+    .gzMpNoticeMoving{position:absolute!important;left:0!important;top:50%!important;height:44px!important;display:block!important;width:max-content!important;min-width:max-content!important;white-space:nowrap!important;will-change:transform!important;transform:translate3d(0,-50%,0)!important}
+    .gzMpNoticeMoving .gzNoticeItem{display:inline-block!important;vertical-align:middle!important;flex:0 0 auto!important;width:max-content!important;min-width:max-content!important;margin:0 100px 0 0!important;padding:0!important;color:#e4e4e4!important;font-size:12px!important;line-height:44px!important;white-space:nowrap!important}
+    .gzMpNoticeMoving .gzNoticeItem b{display:inline-block!important;flex:none!important;vertical-align:middle!important;margin:0 12px 0 0!important;padding:0!important;background:none!important;color:#fff!important;font-size:12px!important;font-weight:900!important;line-height:1!important;letter-spacing:normal!important;white-space:nowrap!important}
+    .gzMpNoticeMoving .gzNoticeMessage{display:inline!important;vertical-align:middle!important;flex:none!important;margin:0!important;padding:0!important;color:#e4e4e4!important;font-size:12px!important;line-height:1!important;white-space:nowrap!important}
+    @media(max-width:700px){.mp-notice{height:40px!important}.mp-notice > b{height:40px!important;padding:0 17px!important}.gzMpNoticeViewport,.gzMpNoticeMoving{height:40px!important}.gzMpNoticeMoving .gzNoticeItem{margin-right:60px!important;font-size:10px!important;line-height:40px!important}.gzMpNoticeMoving .gzNoticeItem b,.gzMpNoticeMoving .gzNoticeMessage{font-size:10px!important}}
   `;
   (document.head||document.documentElement).appendChild(style);
 }
@@ -121,8 +121,8 @@ function renderMarketplace(notices,show){
   requestAnimationFrame(()=>{
     const width=Math.max(viewport.clientWidth,1),content=Math.max(moving.scrollWidth,1);
     const startX=width,endX=-content;
-    moving.style.transform=`translate3d(${startX}px,0,0)`;
-    const a=moving.animate([{transform:`translate3d(${startX}px,0,0)`},{transform:`translate3d(${endX}px,0,0)`}],{duration:Math.max(12000,((width+content)/150)*1000),iterations:Infinity,easing:'linear'});
+    moving.style.setProperty('transform',`translate3d(${startX}px,-50%,0)`,'important');
+    const a=moving.animate([{transform:`translate3d(${startX}px,-50%,0)`},{transform:`translate3d(${endX}px,-50%,0)`}],{duration:Math.max(12000,((width+content)/150)*1000),iterations:Infinity,easing:'linear'});
     animation=a;
   });
   return true;
