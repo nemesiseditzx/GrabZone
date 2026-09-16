@@ -5,6 +5,9 @@ const path=String(location.pathname||'/');
 const isHome=/^\/(?:index\.html)?$/.test(path);
 const isMarketplace=/^\/marketplace(?:\.html)?\/?$/.test(path);
 
+/* Homepage notice behavior is copied from the main branch's store.js.
+   Do not let the generic sync layer render or overwrite it. */
+if(isHome)return;
 if(isMarketplace)return;
 if(window.__GZ_NOTICE_SYNC__)return;
 window.__GZ_NOTICE_SYNC__=true;
