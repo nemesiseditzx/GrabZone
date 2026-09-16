@@ -45,7 +45,7 @@
     +'<div class="gzgl-bar"><i></i></div></div>'
     +'<div class="gzgl-corner tl">MORE<br>THAN<br>JUST <b>GRABZONE</b></div>'
     +'<div class="gzgl-corner tr">SHOP<br>EXPLORE<br>ENJOY <b>ONLINE</b></div>'
-    +'<div class="gzgl-corner bl">GRABZONE<br>ONLINE STORE <b>GZ</b></div>'
+    +'<div class="gzgl-corner bl">GRABZONE<br>ONLINE STORE <b>GRAB IT. LOVE IT.</b></div>'
     +'<div class="gzgl-corner br">A BETTER<br>SHOPPING<br>EXPERIENCE <b>GZ</b></div>';
 
   function mount(){
