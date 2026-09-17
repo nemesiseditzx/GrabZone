@@ -103,7 +103,8 @@ async function customerVariations(){
    updatePrice(current);updateImage(current);
  }
  renderOptions();
- names.forEach(name=>{const first=area.querySelector('button[data-option="'+esc(name)+'"]');if(first)selected[name]=first.dataset.value;});
+ const initial=vs.find(v=>v.status!=='Disabled'&&Number(v.stock||0)>0)||vs[0];
+ names.forEach(name=>{const value=initial?.options?.[name];if(value!=null)selected[name]=value;});
  area.querySelectorAll('button[data-option]').forEach(b=>b.onclick=()=>{selected[b.dataset.option]=b.dataset.value;update()});
  function item(){if(!current)return null;const price=current.sale_price!=null?Number(current.sale_price):Number(current.regular_price||0);const quantity=Math.max(1,Number(document.querySelector('#gzProductQty')?.textContent||1));return{product_id:pid,variation_id:current.id,variation_options:current.options||{},quantity,unit_price:price,price,name:data.product?.name||'Product',image_url:imageFor(current)||data.product?.image_url||'',sku:current.sku||''}}
  function addCart(){const x=item();if(!x||Number(current.stock||0)<x.quantity)return false;let cart=[];try{cart=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');if(!Array.isArray(cart))cart=[]}catch{}const existing=cart.find(y=>y.product_id===x.product_id&&y.variation_id===x.variation_id);if(existing){const max=current.max_qty?Number(current.max_qty):Infinity;existing.quantity=Math.min(max,Number(existing.quantity||0)+x.quantity)}else cart.push(x);localStorage.setItem('grabzone_cart_v2',JSON.stringify(cart));return true}
