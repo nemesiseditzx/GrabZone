@@ -106,14 +106,14 @@ async function customerVariations(){
  names.forEach(name=>{const first=area.querySelector('button[data-option="'+esc(name)+'"]');if(first)selected[name]=first.dataset.value;});
  area.querySelectorAll('button[data-option]').forEach(b=>b.onclick=()=>{selected[b.dataset.option]=b.dataset.value;update()});
  function item(){if(!current)return null;const price=current.sale_price!=null?Number(current.sale_price):Number(current.regular_price||0);const quantity=Math.max(1,Number(document.querySelector('#gzProductQty')?.textContent||1));return{product_id:pid,variation_id:current.id,variation_options:current.options||{},quantity,unit_price:price,price,name:data.product?.name||'Product',image_url:imageFor(current)||data.product?.image_url||'',sku:current.sku||''}}
- function addCart(){const x=item();if(!x||Number(current.stock||0)<qty)return false;let cart=[];try{cart=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');if(!Array.isArray(cart))cart=[]}catch{}const existing=cart.find(y=>y.product_id===x.product_id&&y.variation_id===x.variation_id);if(existing){const max=current.max_qty?Number(current.max_qty):Infinity;existing.quantity=Math.min(max,Number(existing.quantity||0)+qty)}else cart.push(x);localStorage.setItem('grabzone_cart_v2',JSON.stringify(cart));return true}
- function buyNow(){const x=item();if(!x||Number(current.stock||0)<qty)return false;localStorage.setItem('grabzone_buy_now_v2',JSON.stringify([x]));location.href='checkout.html';return true}
+ function addCart(){const x=item();if(!x||Number(current.stock||0)<x.quantity)return false;let cart=[];try{cart=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');if(!Array.isArray(cart))cart=[]}catch{}const existing=cart.find(y=>y.product_id===x.product_id&&y.variation_id===x.variation_id);if(existing){const max=current.max_qty?Number(current.max_qty):Infinity;existing.quantity=Math.min(max,Number(existing.quantity||0)+x.quantity)}else cart.push(x);localStorage.setItem('grabzone_cart_v2',JSON.stringify(cart));return true}
+ function buyNow(){const x=item();if(!x||Number(current.stock||0)<x.quantity)return false;localStorage.setItem('grabzone_buy_now_v2',JSON.stringify([x]));location.href='checkout.html';return true}
  function intercept(e){
    const b=e.target.closest?.('.gz-product-actions button');if(!b)return;
    const text=(b.textContent||'').toLowerCase();if(!/add to cart|buy now/.test(text))return;
    if(!current){e.preventDefault();e.stopImmediatePropagation();alert('Please select all product options first.');return}
    const selectedQty=Math.max(1,Number(document.querySelector('#gzProductQty')?.textContent||1));
-   if(selectedQty<Number(current.min_qty||1)|| (current.max_qty&&selectedQty>Number(current.max_qty)) || Number(current.stock||0)<selectedQty){e.preventDefault();e.stopImmediatePropagation();alert('This variation is out of stock.');return}
+   if(selectedQty<Number(current.min_qty||1)|| (current.max_qty&&selectedQty>Number(current.max_qty)) || Number(current.stock||0)<selectedQty){e.preventDefault();e.stopImmediatePropagation();alert(Number(current.stock||0)<=0?'This variation is out of stock.':'Please reduce the quantity to the available stock / allowed limit.');return}
    e.preventDefault();e.stopImmediatePropagation();
    if(text.includes('buy now')){if(buyNow()){b.textContent='Opening checkout…';setTimeout(()=>b.textContent='Buy Now',1200)}}else if(addCart()){b.textContent='Added ✓';setTimeout(()=>b.textContent='Add to Cart',900)}
  }
