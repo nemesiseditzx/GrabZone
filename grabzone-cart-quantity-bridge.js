@@ -37,7 +37,7 @@
 
   function changeCheckoutQty(id,delta){
     const source=checkoutSource();
-    const items=source.items.map(x=>String(x.product_id)===String(id)?{...x,quantity:Math.max(1,Number(x.quantity||1)+delta)}:x);
+    const items=source.items.map(x=>{const same=String(x.product_id)===String(id.product_id||id)&&String(x.variation_id||'')===String(id.variation_id||'');return same?{...x,quantity:Math.max(1,Number(x.quantity||1)+delta)}:x});
     write(source.key,items);
     // Keep the normal cart synchronized when checkout came from the cart drawer.
     if(source.key===BUY_KEY){
