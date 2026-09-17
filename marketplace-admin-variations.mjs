@@ -186,7 +186,7 @@ async function handle(req, e) {
     const v = await one(e, 'SELECT * FROM product_variations WHERE id=? AND product_id=?', [id, pid]);
     if (!v) return json({ error: 'Variation not found.' }, 404);
 
-    const sale = b.sale_price === null || b.sale_price === '' ? null : Math.max(0, Number(b.sale_price));
+    const sale = null;
     const regular = Math.max(0, Number(b.regular_price ?? v.regular_price));
     if (sale !== null && sale > regular) return json({ error: 'Sale price cannot exceed regular price.' }, 400);
 
