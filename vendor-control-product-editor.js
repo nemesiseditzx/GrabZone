@@ -1,3 +1,4 @@
+/* GrabZone vendor editor v9 */
 (()=>{
 'use strict';
 if(window.__gzVendorProductEditor)return;window.__gzVendorProductEditor=1;
