@@ -13,25 +13,25 @@ function renderVendor(pid,d,product){const box=$('#gzV2Selected'),opts=d.options
 function vendorRow(v){const labels=Object.entries(v.options||{}).map(([k,x])=>`${k}: ${x}`).join(' · ');return `<tr data-id="${esc(v.id)}"><td><b>${esc(labels)}</b></td><td><input data-f="sku" value="${esc(v.sku||'')}"></td><td><input data-f="regular" type="number" min="0" step="0.01" value="${Number(v.regular_price||0)}"></td><td><input data-f="sale" type="number" min="0" step="0.01" value="${v.sale_price==null?'':Number(v.sale_price)}"></td><td><input data-f="old" type="number" min="0" step="0.01" value="${v.old_price==null?'':Number(v.old_price)}"></td><td><input data-f="stock" type="number" min="0" value="${Number(v.stock||0)}"></td><td><input data-f="low" type="number" min="0" value="${Number(v.low_stock_threshold||0)}"></td><td><select data-f="status"><option ${v.status==='Available'?'selected':''}>Available</option><option ${v.status==='Out of Stock'?'selected':''}>Out of Stock</option><option ${v.status==='Disabled'?'selected':''}>Disabled</option></select></td><td><input data-f="image" value="${esc(v.image_url||'')}" placeholder="image URL"></td><td><button type="button" class="gz-btn light gz-v2-save">Save</button></td></tr>`}
 }
 async function customerVariations(){
- if(window.__gzCustomerVariationUI)return;
- window.__gzCustomerVariationUI=1;
- if(!/\\/product(?:\\.html)?\\/?$/i.test(location.pathname))return;
+ if(window.__gzCustomerVariationUI||window.__gzCustomerVariationLoading)return;
+ window.__gzCustomerVariationLoading=1;
+ if(!/\/product(?:\.html)?\/?$/i.test(location.pathname)){window.__gzCustomerVariationLoading=0;return;}
  const pid=productId();if(!pid)return;
  ensureStyle();
  let data;
  try{data=await api('/api/marketplace/variations?product_id='+encodeURIComponent(pid))}catch{return}
  const vs=(data?.variations||[]).filter(v=>v.status!=='Disabled');
- if(!vs.length)return;
- const detail=$('#productDetail')||$('main');if(!detail)return;
+ if(!vs.length){window.__gzCustomerVariationLoading=0;return;}
+ const detail=$('#productDetail')||$('main');if(!detail){window.__gzCustomerVariationLoading=0;return;}
  if(detail.querySelector('.gz-customer-variations'))return;
  const rawNames=(data.options||[]).map(o=>String(o.name||'').trim()).filter(Boolean);
  const priority=['Color','Size','Number Size'];
  const names=[...priority.filter(n=>rawNames.some(x=>x.toLowerCase()===n.toLowerCase())),...rawNames.filter(n=>!priority.some(x=>x.toLowerCase()===n.toLowerCase()))];
- if(!names.length)return;
+ if(!names.length){window.__gzCustomerVariationLoading=0;return;}
  const wrap=document.createElement('section');wrap.className='gz-customer-variations';
  wrap.innerHTML='<div class="gz-cv-title">Choose your options</div><div id="gzCVOptions"></div><div id="gzCVState" class="gz-cv-state warn">Select all options</div><div class="gz-cv-qty"><button type="button" id="gzCVDec">−</button><span id="gzCVQty">1</span><button type="button" id="gzCVInc">+</button></div><div class="gz-cv-actions-note" id="gzCVQtyNote"></div>';
  const dm=detail.querySelector('.dm-box');
- detail.insertBefore(wrap,dm||detail.firstChild);
+ detail.insertBefore(wrap,dm||detail.firstChild);window.__gzCustomerVariationUI=1;window.__gzCustomerVariationLoading=0;
  const area=wrap.querySelector('#gzCVOptions'),state=wrap.querySelector('#gzCVState'),qtyEl=wrap.querySelector('#gzCVQty'),note=wrap.querySelector('#gzCVQtyNote');
  let selected={},qty=1,current=null;
  const colorMap={black:'#111',white:'#fff',red:'#ef233c',blue:'#2446d8',green:'#2f9e44',yellow:'#ffd43b',pink:'#f783ac',gray:'#8b8f94',grey:'#8b8f94',brown:'#8b5e3c',orange:'#ff7a00',purple:'#7b3fb6',navy:'#172554',maroon:'#800000',beige:'#e7d3ad'};
@@ -111,4 +111,4 @@ async function customerVariations(){
  document.addEventListener('click',intercept,true);
  update();
 }
-function boot(){vendorVariationManager();customerVariations();let n=0;const t=setInterval(()=>{if(window.__gzCustomerVariationUI||++n>80)return clearInterval(t);customerVariations()},250);if(window.MutationObserver)new MutationObserver(()=>{if(!window.__gzCustomerVariationUI)customerVariations()}).observe(document.body,{childList:true,subtree:true})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();})();
+function boot(){vendorVariationManager();customerVariations();let n=0;const t=setInterval(()=>{if(window.__gzCustomerVariationUI||++n>80)return clearInterval(t);customerVariations()},250);if(window.MutationObserver)new MutationObserver(()=>{if(!window.__gzCustomerVariationUI&&!window.__gzCustomerVariationLoading)customerVariations()}).observe(document.body,{childList:true,subtree:true})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();})();
