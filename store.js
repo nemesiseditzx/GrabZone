@@ -1545,11 +1545,11 @@ async function renderDetail() {
 
         </div>
 
-        <p class="detail-desc">
+        <div class="detail-desc">
           ${esc(
             product.description || ""
           )}
-        </p>
+        </div>
 
         <div class="dm-box">
           <button
