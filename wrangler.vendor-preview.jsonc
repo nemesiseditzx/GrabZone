@@ -7,7 +7,7 @@
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
-    "run_worker_first": ["/", "/marketplace", "/*.html", "/api/*"]
+    "run_worker_first": ["/", "/marketplace", "/vendor-control-product-editor.js", "/*.html", "/api/*"]
   },
   "d1_databases": [{
     "binding": "DB",
