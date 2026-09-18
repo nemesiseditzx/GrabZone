@@ -23,7 +23,9 @@ async function customerVariations(){
  ensureStyle();
  let data;
  try{data=await api('/api/marketplace/variations?product_id='+encodeURIComponent(pid))}catch{return}
- const galleryUrls=(()=>{const x=data?.product?.image_urls;if(Array.isArray(x))return x.filter(Boolean);if(typeof x==='string'){try{const y=JSON.parse(x);return Array.isArray(y)?y.filter(Boolean):[]}catch{}}return []})();
+ const vs=(data?.variations||[]).filter(v=>v.status!=='Disabled');
+ if(!vs.length){window.__gzCustomerVariationLoading=0;return;}
+ const detail=$('#productDetail')||$('main');if(!detail){window.__gzCustomerVariationLoading=0;return;} const galleryUrls=(()=>{const x=data?.product?.image_urls;if(Array.isArray(x))return x.filter(Boolean);if(typeof x==='string'){try{const y=JSON.parse(x);return Array.isArray(y)?y.filter(Boolean):[]}catch{}}return []})();
  if(galleryUrls.length){
    const currentGallery=Array.isArray(window.__gallery)?window.__gallery:[];
    const merged=[...currentGallery,...galleryUrls.map(image_url=>({image_url}))];
@@ -43,9 +45,7 @@ async function customerVariations(){
    for(const m of desc.matchAll(/(?:^|\n)\s*(S|M|L|XL|XXL|XXXL)\s*=\s*[^\n]+/gi)){const v=m[1].toUpperCase();if(!found.includes(v))found.push(v)}
    if(found.length) data.options=[{name:'Size',values:found.map((value,i)=>({id:'inferred-'+i,value,sort_order:i}))}];
  }
- const vs=(data?.variations||[]).filter(v=>v.status!=='Disabled');
- if(!vs.length){window.__gzCustomerVariationLoading=0;return;}
- const detail=$('#productDetail')||$('main');if(!detail){window.__gzCustomerVariationLoading=0;return;}
+
  if(detail.querySelector('.gz-customer-variations'))return;
  const rawNames=[...(data.options||[]).map(o=>String(o.name||'').trim()).filter(Boolean),...vs.flatMap(v=>Object.keys(v.options||{}))];
  const priority=['Color','Size','Number Size'];
