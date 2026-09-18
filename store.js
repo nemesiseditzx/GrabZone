@@ -1568,6 +1568,7 @@ async function renderDetail() {
 
   window.__gallery =
     gallery;
+  window.dispatchEvent(new Event('grabzone:product-rendered'));
 
   const orderButton =
     document.getElementById(
