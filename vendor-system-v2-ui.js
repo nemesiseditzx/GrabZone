@@ -54,7 +54,10 @@ async function customerVariations(){
  const wrap=document.createElement('section');wrap.className='gz-customer-variations';
  wrap.innerHTML='<div class="gz-cv-title">Choose your options</div><div id="gzCVOptions"></div><div id="gzCVState" class="gz-cv-state warn">Select all options</div><div class="gz-cv-actions-note" id="gzCVQtyNote"></div>';
  const dm=detail.querySelector('.dm-box');
- detail.insertBefore(wrap,dm||detail.firstChild);window.__gzCustomerVariationUI=1;window.__gzCustomerVariationLoading=0;
+ const productColumn=dm?.parentElement||detail.querySelector('.detail-grid > div:last-child')||detail;
+ if(dm&&dm.parentElement===productColumn)productColumn.insertBefore(wrap,dm);
+ else productColumn.appendChild(wrap);
+ window.__gzCustomerVariationUI=1;window.__gzCustomerVariationLoading=0;
  const area=wrap.querySelector('#gzCVOptions'),state=wrap.querySelector('#gzCVState'),note=wrap.querySelector('#gzCVQtyNote');
  let selected={},current=null;
  const colorMap={black:'#111',white:'#fff',red:'#ef233c',blue:'#2446d8',green:'#2f9e44',yellow:'#ffd43b',pink:'#f783ac',gray:'#8b8f94',grey:'#8b8f94',brown:'#8b5e3c',orange:'#ff7a00',purple:'#7b3fb6',navy:'#172554',maroon:'#800000',beige:'#e7d3ad'};
