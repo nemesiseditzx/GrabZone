@@ -23,6 +23,26 @@ async function customerVariations(){
  ensureStyle();
  let data;
  try{data=await api('/api/marketplace/variations?product_id='+encodeURIComponent(pid))}catch{return}
+ const galleryUrls=(()=>{const x=data?.product?.image_urls;if(Array.isArray(x))return x.filter(Boolean);if(typeof x==='string'){try{const y=JSON.parse(x);return Array.isArray(y)?y.filter(Boolean):[]}catch{}}return []})();
+ if(galleryUrls.length){
+   const currentGallery=Array.isArray(window.__gallery)?window.__gallery:[];
+   const merged=[...currentGallery,...galleryUrls.map(image_url=>({image_url}))];
+   const seen=new Set();
+   window.__gallery=merged.filter(x=>{const u=String(x?.image_url||'').trim();if(!u||seen.has(u))return false;seen.add(u);return true});
+   const gallery=detail.querySelector('.gallery');
+   const thumbs=detail.querySelector('.gallery-thumbs');
+   const main=detail.querySelector('#mainProductImage');
+   if(gallery&&thumbs&&main){
+     thumbs.innerHTML=window.__gallery.map((image,index)=>'<button type="button" class="gallery-thumb '+(index===0?'active':'')+'" data-gz-gallery-index="'+index+'"><img src="'+esc(image.image_url)+'" alt="'+esc(data.product?.name||'Product')+' '+(index+1)+'"></button>').join('');
+     thumbs.querySelectorAll('[data-gz-gallery-index]').forEach(b=>b.onclick=()=>showGalleryImage(Number(b.dataset.gzGalleryIndex)));
+   }
+ }
+ if(!vs.length && String(data?.product?.product_type||'').toLowerCase()==='variable' && !(data?.options||[]).length){
+   const desc=String(data?.product?.description||'');
+   const found=[];
+   for(const m of desc.matchAll(/(?:^|\n)\s*(S|M|L|XL|XXL|XXXL)\s*=\s*[^\n]+/gi)){const v=m[1].toUpperCase();if(!found.includes(v))found.push(v)}
+   if(found.length) data.options=[{name:'Size',values:found.map((value,i)=>({id:'inferred-'+i,value,sort_order:i}))}];
+ }
  const vs=(data?.variations||[]).filter(v=>v.status!=='Disabled');
  if(!vs.length){window.__gzCustomerVariationLoading=0;return;}
  const detail=$('#productDetail')||$('main');if(!detail){window.__gzCustomerVariationLoading=0;return;}
