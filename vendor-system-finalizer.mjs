@@ -53,7 +53,7 @@ async function createVendorOrders(e,orderId){
     const commission=g.commission_type==='percentage'?Math.round(subtotal*Math.max(0,g.commission_value)/100*100)/100:Math.min(subtotal,Math.max(0,g.commission_value));
     const earnings=Math.max(0,subtotal-commission);
     const delivery=Math.max(0,Number(g.shipping_fee));
-    const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,commission_amount:commission,vendor_earnings:earnings,delivery_charge:delivery,status:'Processing',created_at:now(),updated_at:now()};
+    const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,shipping_fee:delivery,delivery_charge:delivery,commission_amount:commission,vendor_earnings:earnings,status:'Processing',created_at:now(),updated_at:now()};
     const vfields=Object.keys(vo).filter(k=>voCols.has(k));
     if(!vfields.includes('id')||!vfields.includes('order_id')||!vfields.includes('vendor_id'))continue;
     await e.DB.prepare('INSERT INTO vendor_orders('+vfields.join(',')+') VALUES('+vfields.map(()=>'?').join(',')+')').bind(...vfields.map(k=>vo[k])).run();
