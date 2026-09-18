@@ -284,7 +284,17 @@ async function business(req,env){
  if(order)await env.DB.prepare("UPDATE orders SET business_koro_sent_at=?,business_koro_order_ids=?,updated_at=? WHERE id=?").bind(now(),JSON.stringify(out.map(x=>x.supplierOrderId)),now(),order.id).run();
  return json({success:true,orderNumber,submitted:out.length,orders:out});
 }
-async function gmailToken(env){const body=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID||"",client_secret:env.GOOGLE_CLIENT_SECRET||"",refresh_token:env.GOOGLE_REFRESH_TOKEN||"",grant_type:"refresh_token"}),r=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body}),d=await r.json().catch(()=>({}));if(!r.ok||!d.access_token)throw new Error(d.error_description||d.error||"Google OAuth failed.");return d.access_token}
+async function gmailToken(env){
+ const body=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID||"",client_secret:env.GOOGLE_CLIENT_SECRET||"",refresh_token:env.GOOGLE_REFRESH_TOKEN||"",grant_type:"refresh_token"});
+ const r=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
+ const d=await r.json().catch(()=>({}));
+ if(!r.ok||!d.access_token){
+   const code=String(d.error||"").trim();
+   if(code==="invalid_grant")throw new Error("Gmail authorization has expired or been revoked. Reconnect the GrabZone Gmail account and update GOOGLE_REFRESH_TOKEN.");
+   throw new Error(d.error_description||d.error||"Google OAuth failed.");
+ }
+ return d.access_token
+}
 async function email(req,env){
  const b=await req.json().catch(()=>({}));
  const isOrderCreatedEmail=String(b.type||"").trim()==="order_created";
