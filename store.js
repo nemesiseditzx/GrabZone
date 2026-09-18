@@ -1410,16 +1410,39 @@ async function renderDetail() {
       .eq("product_id", productId)
       .order("sort_order");
 
-  const gallery =
-    images && images.length
-      ? images
-      : [
-          {
-            image_url:
-              product.image_url,
-            is_main: true
-          }
-        ];
+  /*
+    Vendor editor stores the complete gallery in products.image_urls.
+    Older products may not have product_images rows, so always use
+    image_urls as the fallback (and merge it with any DB gallery rows).
+  */
+  const storedUrls = Array.isArray(product.image_urls)
+    ? product.image_urls.filter(Boolean)
+    : (typeof product.image_urls === "string"
+        ? (() => { try { const x = JSON.parse(product.image_urls); return Array.isArray(x) ? x.filter(Boolean) : []; } catch { return []; } })()
+        : []);
+
+  const dbGallery = Array.isArray(images)
+    ? images.filter(x => x && x.image_url)
+    : [];
+
+  const seenGallery = new Set();
+  const gallery = [...dbGallery, ...storedUrls.map((image_url, i) => ({
+    image_url,
+    is_main: i === 0
+  }))]
+    .filter(x => {
+      const url = String(x.image_url || "").trim();
+      if (!url || seenGallery.has(url)) return false;
+      seenGallery.add(url);
+      return true;
+    });
+
+  if (!gallery.length && product.image_url) {
+    gallery.push({
+      image_url: product.image_url,
+      is_main: true
+    });
+  }
 
   const currency =
     SITE.currency || "৳";
