@@ -17,9 +17,15 @@ async function customerVariations(){
  if(!/\/product(?:\.html)?\/?$/i.test(location.pathname)){window.__gzCustomerVariationLoading=0;return;}
  const pid=productId();if(!pid){window.__gzCustomerVariationLoading=0;return;}
  ensureStyle();
- let data;
- try{data=await api('/api/marketplace/variations?product_id='+encodeURIComponent(pid))}catch(e){window.__gzCustomerVariationLoading=0;return}
- const vs=(data?.variations||[]).filter(v=>v.status!=='Disabled');
+ let data=null,vs=[];
+ for(let attempt=0;attempt<8;attempt++){
+   try{
+     data=await api('/api/marketplace/variations?product_id='+encodeURIComponent(pid));
+     vs=(data?.variations||[]).filter(v=>v.status!=='Disabled');
+     if(vs.length)break;
+   }catch(e){}
+   await new Promise(r=>setTimeout(r,350));
+ }
  if(!vs.length){window.__gzCustomerVariationLoading=0;window.__gzCustomerVariationUI=0;return;}
  const detail=$('#productDetail')||document.querySelector('main');if(!detail){window.__gzCustomerVariationLoading=0;setTimeout(customerVariations,150);return;}
  if(detail.querySelector('.gz-customer-variations'))return;
