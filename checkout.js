@@ -6,6 +6,7 @@ const d1=window.grabzoneD1||null;
 
 const CART_KEY='grabzone_cart_v2';
 const BUY_NOW_KEY='grabzone_buy_now_v2';
+const CHECKOUT_MODE_KEY='grabzone_checkout_mode_v1';
 const currency=C.currency||'৳';
 const flatShippingCharge=130;
 let vendorShipping=new Map(),vendorShippingMeta=new Map();
@@ -15,11 +16,11 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const read=(key,fallback)=>{try{const v=JSON.parse(localStorage.getItem(key)||'null');return v??fallback}catch{return fallback}};
 const money=n=>currency+Number(n||0).toLocaleString('en-BD');
-const getSource=()=>{const buy=read(BUY_NOW_KEY,null);return Array.isArray(buy)&&buy.length?buy:read(CART_KEY,[])};
+const getSource=()=>{const mode=localStorage.getItem(CHECKOUT_MODE_KEY);if(mode==='buy'){const buy=read(BUY_NOW_KEY,null);if(Array.isArray(buy)&&buy.length)return buy;localStorage.removeItem(CHECKOUT_MODE_KEY)}return read(CART_KEY,[])};
 async function loadGrabPointsSettings(){try{const{data,error}=await d1.from('site_settings').select('grabpoints_enabled,grabpoints_earn_rate,grabpoints_value').eq('id',1).maybeSingle();if(error)throw error;grabPointsEnabled=Number(data?.grabpoints_enabled??1)===1;grabPointsEarnRate=Number(data?.grabpoints_earn_rate??10);grabPointsValue=Number(data?.grabpoints_value??0.1);const box=document.querySelector('.grabpoints-box'),opt=document.querySelector('.grabpoints-optin');if(box)box.hidden=!grabPointsEnabled;if(opt)opt.hidden=!grabPointsEnabled;}catch{grabPointsEnabled=true;}}
 function loadMystery(){const x=read('grabzone_mystery_v1',null);if(x?.token&&x?.expires_at&&Date.parse(x.expires_at)>Date.now())mysteryState={token:String(x.token),discount:Number(x.discount||0)};else{mysteryState={token:'',discount:0};try{localStorage.removeItem('grabzone_mystery_v1')}catch{}}}
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
-const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
+const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.unit_price??i.price??0)*Number(i.quantity||0),0);
 function shippingForCheckout(){if(!checkoutItems.length)return 0;const fees=new Map();let unknown=false;for(const item of checkoutItems){const vid=String(item.vendor_id||'');if(!vid){unknown=true;continue}if(!fees.has(vid))fees.set(vid,Number(vendorShipping.get(vid)??flatShippingCharge));}if(unknown)fees.set('__fallback__',flatShippingCharge);return [...fees.values()].reduce((a,b)=>a+Math.max(0,Number(b||0)),0)}
 const shippingForLocation=()=>shippingForCheckout();
 async function loadVendorShipping(productIds){vendorShipping=new Map();vendorShippingMeta=new Map();if(!productIds.length)return;try{const url=(C.backendUrl||'')+'/api/marketplace/checkout-shipping?product_ids='+encodeURIComponent(productIds.join(','));const r=await fetch(url,{credentials:'include',cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Unable to load vendor delivery charges.');for(const v of d.vendors||[]){vendorShipping.set(String(v.vendor_id),Number(v.shipping_fee??flatShippingCharge));vendorShippingMeta.set(String(v.vendor_id),v)} }catch(e){console.warn('GrabZone vendor delivery charges:',e);checkoutItems.forEach(i=>{if(i.vendor_id&&!vendorShipping.has(String(i.vendor_id)))vendorShipping.set(String(i.vendor_id),flatShippingCharge)})}}
@@ -254,7 +255,7 @@ function render(){
   box.innerHTML=checkoutItems.map(i=>`<div class="checkout-item">
     <img src="${esc(i.image_url)}" alt="${esc(i.name)}">
     <div class="checkout-item-info"><strong>${esc(i.name)}</strong><span>Quantity: ${i.quantity}</span></div>
-    <b>${money(i.price*i.quantity)}</b>
+    <b>${money(Number(i.unit_price??i.price??0)*i.quantity)}</b>
   </div>`).join('');
   side.innerHTML=checkoutItems.map(i=>`<div class="summary-product">
     <img src="${esc(i.image_url)}" alt="">
@@ -322,7 +323,7 @@ async function hydrate(){
   const map=new Map((data||[]).map(p=>[p.id,p]));
   checkoutItems=raw.map(x=>{
     const p=map.get(x.product_id);if(!p)return null;
-    return{...x,product_id:p.id,name:p.name,image_url:x.image_url||p.image_url,price:Number(x.price??x.unit_price??p.price??0),unit_price:Number(x.unit_price??x.price??p.price??0),vendor_id:p.vendor_id||x.vendor_id||'',quantity:Math.max(1,Number(x.quantity||1))}
+    return{...x,product_id:p.id,name:p.name,image_url:x.image_url||p.image_url,price:Number(x.unit_price??x.price??p.price??0),unit_price:Number(x.unit_price??x.price??p.price??0),vendor_id:p.vendor_id||x.vendor_id||'',quantity:Math.max(1,Number(x.quantity||1))}
   }).filter(Boolean);
   await loadVendorShipping(ids);
   render();
@@ -429,7 +430,7 @@ async function submit(e){
     }
     if(!privateTrackingId)throw new Error('Order was created, but the private Tracking ID could not be generated. Please contact GrabZone support.');
 
-    localStorage.removeItem(CART_KEY);localStorage.removeItem(BUY_NOW_KEY);
+    localStorage.removeItem(CART_KEY);localStorage.removeItem(BUY_NOW_KEY);localStorage.removeItem(CHECKOUT_MODE_KEY);
     $('checkoutForm').hidden=true;$('checkoutSuccess').hidden=false;
     $('successOrderNumber').textContent=order.order_number;
     $('successTrackingId').textContent=privateTrackingId;
@@ -460,8 +461,8 @@ async function submit(e){
       checkoutItems.map(i=>({
         product_name:i.name,
         quantity:Number(i.quantity||1),
-        unit_price:Number(i.price||0),
-        line_total:Number(i.price||0)*Number(i.quantity||1),
+        unit_price:Number(i.unit_price??i.price??0),
+        line_total:Number(i.unit_price??i.price??0)*Number(i.quantity||1),
         image_url:i.image_url||''
       }))
     );
