@@ -97,8 +97,8 @@ async function customerVariations(){
    if(mainQty)mainQty.textContent=String(mainQ);
    if(mainDec)mainDec.disabled=mainQ<=min;
    if(mainInc)mainInc.disabled=mainQ>=Math.min(max||Infinity,stock||Infinity);
-   note.textContent=max?'Minimum '+min+' · Maximum '+max:'Minimum '+min;
-   state.innerHTML='<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px"></span>'+(stock>0?'In Stock':'Out of Stock')+(current.sku?' <span style="color:#777;font-weight:600;margin-left:8px">SKU: '+esc(current.sku)+'</span>':'');
+   
+   state.innerHTML='<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px"></span>'+(stock>0?'In Stock':'Out of Stock');
    state.className=stock>0?'gz-cv-state':'gz-cv-state warn';
    updatePrice(current);updateImage(current);
  }
