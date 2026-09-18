@@ -53,7 +53,7 @@ function closeDrawer(){const d=$('gzCartDrawer');if(d)d.classList.remove('open')
 function renderDrawer(){const box=$('gzCartItems');if(!box)return;if(!cart.length){box.innerHTML='<div style="padding:30px 5px;text-align:center;color:#777">Your cart is empty.</div>';$('gzCartTotal').textContent=money(0);return}box.innerHTML=cart.map(i=>`<div class="gz-cart-item"><img src="${esc(i.image_url)}" alt=""><div><strong>${esc(i.name)}</strong><small>${money(i.price)} each</small><div class="gz-qty"><button data-act="dec" data-id="${esc(cartKey(i))}">−</button><b>${i.quantity}</b><button data-act="inc" data-id="${esc(cartKey(i))}">+</button><button class="remove" data-act="remove" data-id="${esc(cartKey(i))}">Remove</button></div></div><b>${money(i.price*i.quantity)}</b></div>`).join('');$('gzCartTotal').textContent=money(total());box.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{const id=b.dataset.id;if(b.dataset.act==='remove')remove(id);else{const x=cart.find(i=>cartKey(i)===id);setQty(id,(x?.quantity||1)+(b.dataset.act==='inc'?1:-1))}})
 }
 function update(){cart=read();const c=$('gzCartCount');if(c)c.textContent=cart.reduce((s,i)=>s+Number(i.quantity||0),0);renderDrawer()}
-async function productData(id){if(!sb)return null;const{data}=await sb.from('products').select('id,name,price,image_url,published').eq('id',id).maybeSingle();return data||null}
+async function productData(id){if(!sb)return null;const{data}=await sb.from('products').select('id,name,price,image_url,published,product_type').eq('id',id).maybeSingle();return data||null}
 async function variationAction(product,action){
   let d;
   try{
@@ -62,7 +62,7 @@ async function variationAction(product,action){
     if(!r.ok)throw new Error(d.error||'Unable to load product options.');
   }catch(e){alert(e.message);return}
   const vs=(d.variations||[]).filter(v=>v.status!=='Disabled');
-  if(!vs.length){return action({...product,quantity:1})}
+  if(!vs.length){if(String(product.product_type||'').toLowerCase()==='variable'){alert('This variable product has no available variations yet. Please contact the store.');return}return action({...product,quantity:1)}
   const names=[...new Set(vs.flatMap(v=>Object.keys(v.options||{})))];
   let selected={},chosen=null;
   const modal=document.createElement('div');modal.className='gz-var-picker';
