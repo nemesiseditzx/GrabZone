@@ -322,7 +322,7 @@ async function hydrate(){
   const map=new Map((data||[]).map(p=>[p.id,p]));
   checkoutItems=raw.map(x=>{
     const p=map.get(x.product_id);if(!p)return null;
-    return{product_id:p.id,name:p.name,image_url:p.image_url,price:Number(p.price||0),vendor_id:p.vendor_id||'',quantity:Math.max(1,Number(x.quantity||1))}
+    return{...x,product_id:p.id,name:p.name,image_url:x.image_url||p.image_url,price:Number(x.price??x.unit_price??p.price??0),unit_price:Number(x.unit_price??x.price??p.price??0),vendor_id:p.vendor_id||x.vendor_id||'',quantity:Math.max(1,Number(x.quantity||1))}
   }).filter(Boolean);
   render();
 }
