@@ -324,6 +324,7 @@ async function hydrate(){
     const p=map.get(x.product_id);if(!p)return null;
     return{...x,product_id:p.id,name:p.name,image_url:x.image_url||p.image_url,price:Number(x.price??x.unit_price??p.price??0),unit_price:Number(x.unit_price??x.price??p.price??0),vendor_id:p.vendor_id||x.vendor_id||'',quantity:Math.max(1,Number(x.quantity||1))}
   }).filter(Boolean);
+  await loadVendorShipping(ids);
   render();
 }
 async function syncOrderToSheet(orderId){
@@ -406,7 +407,7 @@ async function submit(e){
     district:d.district,upazila:d.upazila,address:d.address,
     referral_code:d.referral_code||null,rewards_voucher_code:d.rewards_voucher_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
-    items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price)})),
+    items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.unit_price??i.price),variation_id:i.variation_id||null,variation_options:i.variation_options||{},variation_sku:i.variation_sku||i.sku||''})),
     subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:1,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
   };
   try{
