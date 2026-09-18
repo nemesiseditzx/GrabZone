@@ -7,7 +7,8 @@ const page=(title,body,clear=false)=>new Response("<!doctype html><html><head><m
 function stateCookie(req){for(const p of(req.headers.get("Cookie")||"").split(";")){const a=p.trim().split("=");if(a[0]==="gz_google_oauth_state")return decodeURIComponent(a.slice(1).join("="))}return ""}
 async function start(req,env){
  if(req.method!=="GET")return json({error:"Method not allowed."},405);
- if(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET)return json({error:"Google OAuth client credentials are not configured."},503);
+ const missing=["GOOGLE_CLIENT_ID","GOOGLE_CLIENT_SECRET"].filter(k=>!String(env[k]||"").trim());
+ if(missing.length)return json({error:"Google OAuth client credentials are not configured.",missing},503);
  const state=crypto.randomUUID()+"."+Date.now().toString(36),u=new URL("https://accounts.google.com/o/oauth2/v2/auth");
  u.searchParams.set("client_id",env.GOOGLE_CLIENT_ID);u.searchParams.set("redirect_uri",REDIRECT_URI);u.searchParams.set("response_type","code");u.searchParams.set("access_type","offline");u.searchParams.set("prompt","consent");u.searchParams.set("include_granted_scopes","true");u.searchParams.set("login_hint",env.GMAIL_FROM_EMAIL||"grabzonesupport@gmail.com");u.searchParams.set("scope",SCOPES.join(" "));
  return new Response(null,{status:302,headers:{"Location":u.toString(),"Set-Cookie":"gz_google_oauth_state="+encodeURIComponent(state)+"; Max-Age=600; Path=/; HttpOnly; Secure; SameSite=Lax","Cache-Control":"no-store"}});
@@ -25,6 +26,16 @@ async function callback(req,env){
 }
 export default async function fetchGoogleOAuth(req,env){
  const p=new URL(req.url).pathname;
+ if(p==="/api/google/oauth/status"){
+   return json({
+     ok:true,
+     client_id_configured:!!String(env.GOOGLE_CLIENT_ID||"").trim(),
+     client_secret_configured:!!String(env.GOOGLE_CLIENT_SECRET||"").trim(),
+     refresh_token_configured:!!String(env.GOOGLE_REFRESH_TOKEN||"").trim(),
+     sheets_id_configured:!!String(env.GOOGLE_SHEETS_SPREADSHEET_ID||"").trim(),
+     sender:String(env.GMAIL_FROM_EMAIL||"grabzonesupport@gmail.com")
+   });
+ }
  if(p==="/api/google/oauth/start")return start(req,env);
  if(p==="/api/google/oauth/callback")return callback(req,env);
  return null;
