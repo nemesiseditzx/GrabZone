@@ -117,7 +117,7 @@ const html="<!doctype html><html><head><meta charset='UTF-8'><meta name='color-s
 const plain=String(safeTitle)+"\n\n"+(memberName?"Hey, "+String(memberName)+"!\n":"")+(memberId?"Member ID: "+String(memberId)+"\n":"")+"Tier: "+String(th.label)+"\n\n"+rawBody.replace(/<[^>]+>/g,"");
 const boundary="gzr_v2_"+crypto.randomUUID().replace(/-/g,"");
 const raw=["From: GrabZone <"+env.GMAIL_FROM_EMAIL+">","To: "+to,"Subject: "+mimeSubject(safeSubject),"MIME-Version: 1.0","Content-Type: multipart/alternative; boundary=\""+boundary+"\"","","--"+boundary,'Content-Type: text/plain; charset="UTF-8"',"Content-Transfer-Encoding: 8bit","",plain,"--"+boundary,'Content-Type: text/html; charset="UTF-8"',"Content-Transfer-Encoding: 8bit","",html,"--"+boundary+"--",""] .join("\r\n");
-const rr=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+await gmailToken(env),"Content-Type":"application/json"},body:JSON.stringify({raw:btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"")})});
+const rr=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+await gmailToken(env),"Content-Type":"application/json"},body:JSON.stringify({raw:base64UrlUtf8(raw)})});
 if(!rr.ok){const ed=await rr.json().catch(()=>({})),msg=ed?.error?.message||("Gmail request failed ("+rr.status+").");if(strict)throw new Error(msg);console.warn("Rewards email:",msg);return false}
 return true;
 }catch(e){console.warn("Rewards email:",e);if(strict)throw e;return false}
@@ -285,15 +285,43 @@ async function business(req,env){
  return json({success:true,orderNumber,submitted:out.length,orders:out});
 }
 async function gmailToken(env){
- const body=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID||"",client_secret:env.GOOGLE_CLIENT_SECRET||"",refresh_token:env.GOOGLE_REFRESH_TOKEN||"",grant_type:"refresh_token"});
+ const missing=["GOOGLE_CLIENT_ID","GOOGLE_CLIENT_SECRET","GOOGLE_REFRESH_TOKEN","GMAIL_FROM_EMAIL"].filter(k=>!String(env[k]||"").trim());
+ if(missing.length)throw new Error("Gmail email service is not configured. Missing: "+missing.join(", "));
+ const body=new URLSearchParams({client_id:String(env.GOOGLE_CLIENT_ID),client_secret:String(env.GOOGLE_CLIENT_SECRET),refresh_token:String(env.GOOGLE_REFRESH_TOKEN),grant_type:"refresh_token"});
  const r=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
  const d=await r.json().catch(()=>({}));
  if(!r.ok||!d.access_token){
    const code=String(d.error||"").trim();
    if(code==="invalid_grant")throw new Error("Gmail authorization has expired or been revoked. Reconnect the GrabZone Gmail account and update GOOGLE_REFRESH_TOKEN.");
-   throw new Error(d.error_description||d.error||"Google OAuth failed.");
+   if(code==="unauthorized_client")throw new Error("Google OAuth client is not authorized for this refresh token. Reconnect GrabZone Gmail and use the current Google OAuth client.");
+   throw new Error(d.error_description||d.error||("Google OAuth failed ("+r.status+")."));
  }
  return d.access_token
+}
+function base64UrlUtf8(value){
+ const bytes=new TextEncoder().encode(String(value??""));
+ let binary="";for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+ return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"")
+}
+async function emailStatus(req,env){
+ const s=await session(req,env);if(!s)return json({error:"Unauthorized."},401);
+ const out={ok:false,sender:String(env.GMAIL_FROM_EMAIL||""),credentials_configured:["GOOGLE_CLIENT_ID","GOOGLE_CLIENT_SECRET","GOOGLE_REFRESH_TOKEN","GMAIL_FROM_EMAIL"].every(k=>!!String(env[k]||"").trim()),gmail:false,sheets:false};
+ try{
+  const token=await gmailToken(env);
+  const pr=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile",{headers:{Authorization:"Bearer "+token}});
+  const pd=await pr.json().catch(()=>({}));
+  if(!pr.ok)throw new Error(pd?.error?.message||"Gmail authorization failed.");
+  out.gmail=true;out.gmail_account=String(pd.emailAddress||"");
+  const sid=String(env.GOOGLE_SHEETS_SPREADSHEET_ID||"").trim();
+  if(sid){
+   const sr=await fetch("https://sheets.googleapis.com/v4/spreadsheets/"+encodeURIComponent(sid)+"?fields=spreadsheetId,properties.title,sheets.properties.title",{headers:{Authorization:"Bearer "+token}});
+   const sd=await sr.json().catch(()=>({}));
+   if(!sr.ok)throw new Error(sd?.error?.message||"Google Sheets authorization failed.");
+   out.sheets=true;out.spreadsheet_title=String(sd.properties?.title||"");out.orders_sheet=!!sd.sheets?.some(x=>x.properties?.title==="GZ Orders");
+  }
+  out.ok=out.credentials_configured&&out.gmail&&out.sheets;
+  return json(out);
+ }catch(e){return json({...out,error:e?.message||"Google email service check failed."},502)}
 }
 async function email(req,env){
  const b=await req.json().catch(()=>({}));
@@ -304,7 +332,8 @@ async function email(req,env){
  if(!num)return json({error:"Missing order number."},400);
  const o=(await q(env,"SELECT * FROM orders WHERE order_number=? LIMIT 1",[num])).results?.[0];
  if(!o)return json({error:"Order not found."},404);
- if(!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET||!env.GOOGLE_REFRESH_TOKEN||!env.GMAIL_FROM_EMAIL)return json({error:"Gmail email service is not configured."},503);
+ if(!String(env.GOOGLE_CLIENT_ID||"").trim()||!String(env.GOOGLE_CLIENT_SECRET||"").trim()||!String(env.GOOGLE_REFRESH_TOKEN||"").trim()||!String(env.GMAIL_FROM_EMAIL||"").trim())return json({error:"Gmail email service is not configured."},503);
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(o.email||"").trim()))return json({error:"Order does not contain a valid customer email address."},400);
  const items=(await q(env,"SELECT * FROM order_items WHERE order_id=? ORDER BY id",[o.id])).results||[];
  const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
  const status=String(o.status||"New").trim()||"New";
@@ -329,7 +358,7 @@ async function email(req,env){
 }
 async function sheet(req,env){const missing=["GOOGLE_CLIENT_ID","GOOGLE_CLIENT_SECRET","GOOGLE_REFRESH_TOKEN","GOOGLE_SHEETS_SPREADSHEET_ID"].filter(k=>!env[k]);if(missing.length)return json({ok:false,skipped:true,missing},200);try{const token=await gmailToken(env),sid=env.GOOGLE_SHEETS_SPREADSHEET_ID,base="https://sheets.googleapis.com/v4/spreadsheets/"+encodeURIComponent(sid),headers={Authorization:"Bearer "+token,"Content-Type":"application/json"},orders=(await q(env,"SELECT * FROM orders ORDER BY created_at ASC")).results||[],items=(await q(env,"SELECT * FROM order_items ORDER BY id ASC")).results||[],refs=(await q(env,"SELECT * FROM referral_codes ORDER BY created_at ASC")).results||[],by=new Map(),rm=new Map(refs.map(x=>[String(x.code||"").toUpperCase(),x]));for(const i of items){if(!by.has(i.order_id))by.set(i.order_id,[]);by.get(i.order_id).push(i)}const fmt=v=>v?new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Dhaka",year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}).format(new Date(v)):"",rows=[["Order ID","Order Date (BDT)","Customer Name","Phone","Email","Delivery Address","District","Division","Thana / Upazila","Products","Qty","Subtotal","Discount","Shipping","Total","Payment Method","Status","Admin Code","Admin Name","Admin Email","Admin Benefit Type","Admin Benefit Value","Admin Code Usage","Admin Active","Tracking Provider","Tracking Number","Tracking URL","Updated (BDT)","Admin Note"]];for(const o of orders){const xs=by.get(o.id)||[],code=String(o.referral_code||"").toUpperCase(),a=rm.get(code);rows.push([o.order_number||"",fmt(o.created_at),o.customer_name||"",o.phone||"",o.email||"",o.address||"",o.district||"",o.division||"",o.upazila||"",xs.map(x=>x.product_name).join(" | "),xs.reduce((n,x)=>n+Number(x.quantity||0),0),Number(o.subtotal||0),Number(o.referral_discount||o.discount_amount||0),Number(o.shipping_charge||0),Number(o.total||0),o.payment_method||"Cash on Delivery",o.status||"New",code,a?.admin_name||o.referral_admin_name||"",a?.admin_email||"",a?.benefit_type||"",Number(a?.benefit_value||0),Number(a?.used_count||0),a?.active===false?"Disabled":"Active",o.tracking_provider||"",o.tracking_number||"",o.tracking_url||"",fmt(o.updated_at),o.admin_note||""])}const meta=await fetch(base+"?fields=sheets.properties",{headers}),md=await meta.json(),sh=md.sheets?.find(x=>x.properties?.title==="GZ Orders");if(sh){await fetch(base+"/values/"+encodeURIComponent("GZ Orders!A:AC")+"?valueInputOption=USER_ENTERED",{method:"PUT",headers,body:JSON.stringify({range:"GZ Orders!A:AC",majorDimension:"ROWS",values:rows})})}return json({ok:true,orders:orders.length})}catch(e){return json({error:e.message||"Google Sheets sync failed."},500)}}
 async function api(req,env){const p=new URL(req.url).pathname;
-if(p==="/api/admin-auth")return auth(req,env);if(p==="/api/d1")return d1(req,env);if(p==="/api/track-order")return track(req,env);if(p==="/api/r2-upload")return upload(req,env);if(p.startsWith("/api/r2/"))return r2(req,env);if(p==="/api/r2-presign")return json({error:"Legacy upload endpoint removed. Use /api/r2-upload."},410);if(p==="/api/business-koro-order")return req.method==="POST"?business(req,env):json({error:"Method not allowed."},405);if(p==="/api/send-order-email"||p==="/send-order-email")return req.method==="POST"?email(req,env):json({error:"Method not allowed."},405);if(p==="/api/sync-order-sheet")return req.method==="POST"?sheet(req,env):json({error:"Method not allowed."},405);if(p==="/api/product-reviews")return productReviews(req,env);if(p==="/api/product-review-photo")return productReviewPhoto(req,env);if(p==="/api/health")return json({ok:true,backend:"cloudflare-worker",d1:!!env.DB,r2:!!env.ASSETS_BUCKET,admin_auth_configured:!!String(env.GRABZONE_ADMIN_EMAIL||"").trim()&&!!String(env.GRABZONE_ADMIN_PASSWORD||"")});return null}
+if(p==="/api/admin-auth")return auth(req,env);if(p==="/api/d1")return d1(req,env);if(p==="/api/track-order")return track(req,env);if(p==="/api/r2-upload")return upload(req,env);if(p.startsWith("/api/r2/"))return r2(req,env);if(p==="/api/r2-presign")return json({error:"Legacy upload endpoint removed. Use /api/r2-upload."},410);if(p==="/api/business-koro-order")return req.method==="POST"?business(req,env):json({error:"Method not allowed."},405);if(p==="/api/send-order-email"||p==="/send-order-email")return req.method==="POST"?email(req,env):json({error:"Method not allowed."},405);if(p==="/api/email/status")return req.method==="GET"?emailStatus(req,env):json({error:"Method not allowed."},405);if(p==="/api/sync-order-sheet")return req.method==="POST"?sheet(req,env):json({error:"Method not allowed."},405);if(p==="/api/product-reviews")return productReviews(req,env);if(p==="/api/product-review-photo")return productReviewPhoto(req,env);if(p==="/api/health")return json({ok:true,backend:"cloudflare-worker",d1:!!env.DB,r2:!!env.ASSETS_BUCKET,admin_auth_configured:!!String(env.GRABZONE_ADMIN_EMAIL||"").trim()&&!!String(env.GRABZONE_ADMIN_PASSWORD||"")});return null}
 function cors(r,req){
  const h=new Headers(r.headers);
  const origin=req?.headers?.get("Origin")||"";
