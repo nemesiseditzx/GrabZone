@@ -1568,7 +1568,9 @@ async function renderDetail() {
 
   window.__gallery =
     gallery;
+  window.__gzProductRendered = true;
   window.dispatchEvent(new Event('grabzone:product-rendered'));
+  if(typeof window.GZMountCustomerVariations==='function') window.GZMountCustomerVariations();
 
   const orderButton =
     document.getElementById(
