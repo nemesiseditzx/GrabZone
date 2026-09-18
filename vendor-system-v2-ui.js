@@ -67,9 +67,10 @@ async function customerVariations(){
  }
  function updatePrice(v){
    if(!v)return;
-   const price=Number(v.regular_price||0);
-   detail.querySelectorAll('#productPrice,.product-price,.price,.detail-price,[data-product-price]').forEach(el=>{el.textContent=money(price)});
-   
+   const price=Number(v.regular_price||0),old=v.old_price!=null&&Number(v.old_price)>price?Number(v.old_price):null;
+   detail.querySelectorAll('#productPrice,.product-price,.price,.detail-price,[data-product-price]').forEach(el=>{
+     el.innerHTML=money(price)+(old!==null?' <span class="old">'+money(old)+'</span>':'');
+   });
    detail.querySelectorAll('[data-sku]').forEach(el=>{el.textContent=v.sku||''});
  }
  function update(){
