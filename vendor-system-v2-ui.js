@@ -14,6 +14,9 @@ function vendorRow(v){const labels=Object.entries(v.options||{}).map(([k,x])=>`$
 }
 async function customerVariations(){
  if(window.__gzCustomerVariationUI||window.__gzCustomerVariationLoading)return;
+ // product.html renders the real product asynchronously. Never mount into the
+ // temporary "Loading product..." placeholder because store.js replaces it.
+ if(!window.__gzProductRendered){return}
  window.__gzCustomerVariationLoading=1;
  if(!/\/product(?:\.html)?\/?$/i.test(location.pathname)){window.__gzCustomerVariationLoading=0;return;}
  const pid=productId();if(!pid)return;
@@ -24,7 +27,7 @@ async function customerVariations(){
  if(!vs.length){window.__gzCustomerVariationLoading=0;return;}
  const detail=$('#productDetail')||$('main');if(!detail){window.__gzCustomerVariationLoading=0;return;}
  if(detail.querySelector('.gz-customer-variations'))return;
- const rawNames=(data.options||[]).map(o=>String(o.name||'').trim()).filter(Boolean);
+ const rawNames=[...(data.options||[]).map(o=>String(o.name||'').trim()).filter(Boolean),...vs.flatMap(v=>Object.keys(v.options||{}))];
  const priority=['Color','Size','Number Size'];
  const names=[...priority.filter(n=>rawNames.some(x=>x.toLowerCase()===n.toLowerCase())),...rawNames.filter(n=>!priority.some(x=>x.toLowerCase()===n.toLowerCase()))];
  if(!names.length){window.__gzCustomerVariationLoading=0;return;}
@@ -106,6 +109,27 @@ async function customerVariations(){
  document.addEventListener('click',intercept,true);
  update();
 }
+function mountCustomerVariations(){
+ window.__gzCustomerVariationUI=0;
+ window.__gzCustomerVariationLoading=0;
+ setTimeout(customerVariations,0);
+}
+window.GZMountCustomerVariations=mountCustomerVariations;
 function boot(){
- window.addEventListener('grabzone:product-rendered',()=>{window.__gzCustomerVariationUI=0;window.__gzCustomerVariationLoading=0;setTimeout(customerVariations,0)});
- vendorVariationManager();customerVariations();let n=0;const t=setInterval(()=>{if(window.__gzCustomerVariationUI||++n>80)return clearInterval(t);customerVariations()},250);if(window.MutationObserver)new MutationObserver(()=>{if(!window.__gzCustomerVariationUI&&!window.__gzCustomerVariationLoading)customerVariations()}).observe(document.body,{childList:true,subtree:true})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();})();
+ window.addEventListener('grabzone:product-rendered',mountCustomerVariations);
+ vendorVariationManager();
+ customerVariations();
+ let n=0;
+ const t=setInterval(()=>{
+   if(window.__gzCustomerVariationUI||++n>120)return clearInterval(t);
+   customerVariations();
+ },250);
+ const detail=document.querySelector('#productDetail');
+ if(detail&&window.MutationObserver)new MutationObserver(()=>{
+   if(window.__gzProductRendered&&!detail.querySelector('.gz-customer-variations')&&!window.__gzCustomerVariationLoading){
+     window.__gzCustomerVariationUI=0;
+     customerVariations();
+   }
+ }).observe(detail,{childList:true,subtree:false});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();})();
