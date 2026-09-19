@@ -34,7 +34,7 @@ if(action==='create_vendor_user'){const vid=clean(b.vendor_id),email=clean(b.ema
 if(action==='assign_product'){await env.DB.prepare('UPDATE products SET vendor_id=?,vendor_featured=? WHERE id=?').bind(clean(b.vendor_id)||'vendor_grabzone',b.featured?1:0,clean(b.product_id)).run();return json({ok:true})}
 if(action==='update_shipping'){const vid=clean(b.vendor_id);await env.DB.prepare('INSERT INTO vendor_shipping_settings(vendor_id,shipping_fee,enabled,updated_at) VALUES(?,?,?,?) ON CONFLICT(vendor_id) DO UPDATE SET shipping_fee=excluded.shipping_fee,enabled=excluded.enabled,updated_at=excluded.updated_at').bind(vid,Math.max(0,Number(b.shipping_fee||0)),b.enabled===false?0:1,now()).run();return json({ok:true})}
 if(action==='update_vendor_order'){const oid=clean(b.id);const row=(await q(env,'SELECT order_id FROM vendor_orders WHERE id=?',[oid])).results?.[0];if(!row)return json({error:'Vendor order not found.'},404);const status=clean(b.status)||'New';await env.DB.prepare('UPDATE vendor_orders SET status=?,admin_note=?,updated_at=? WHERE id=?').bind(status,b.admin_note||null,now(),oid).run();await refreshParentStatus(env,row.order_id);return json({ok:true,status})}
-if(action==='update_shipment'){const id=clean(b.id),s=(await q(env,'SELECT * FROM shipments WHERE id=?',[id])).results?.[0];if(!s)return json({error:'Shipment not found.'},404);await env.DB.prepare('UPDATE shipments SET courier_name=?,courier_tracking_number=?,courier_tracking_url=?,status=?,note=?,updated_at=? WHERE id=?').bind(clean(b.courier_name)||null,clean(b.courier_tracking_number)||null,clean(b.courier_tracking_url)||null,clean(b.status)||s.status,clean(b.note)||null,now(),id).run();await refreshParentStatus(env,s.order_id);return json({ok:true,status:clean(b.status)||s.status})}
+if(action==='update_shipment'){const id=clean(b.id),s=(await q(env,'SELECT * FROM shipments WHERE id=?',[id])).results?.[0];if(!s)return json({error:'Shipment not found.'},404);await env.DB.prepare('UPDATE shipments SET courier_name=?,courier_tracking_number=?,courier_tracking_url=?,status=?,note=?,updated_at=? WHERE id=?').bind(clean(b.courier_name)||null,clean(b.courier_tracking_number)||null,clean(b.courier_tracking_url)||null,clean(b.status)||s.status,clean(b.note)||null,now(),id).run();await syncVendorOrderShipmentStatus(env,s.vendor_order_id);await refreshParentStatus(env,s.order_id);return json({ok:true,status:clean(b.status)||s.status})}
 if(action==='create_shipment')return createShipment(b,env,false);
 return json({error:'Unknown marketplace action.'},400)}
 async function createShipment(b,env,own){
@@ -60,6 +60,15 @@ async function createShipment(b,env,own){
   const parentStatus=delivered&&shippedQty>=totalQty?'Delivered':shippedAny?'Partially Shipped':'Processing';
   await env.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(parentStatus,t,vo.id).run();
   return json({ok:true,shipment_id:id,shipment_tracking_id:tid,status:clean(b.status)||'Processing'});
+}
+async function syncVendorOrderShipmentStatus(env,vendorOrderId){
+  const source=(await q(env,'SELECT quantity FROM vendor_order_items WHERE vendor_order_id=?',[vendorOrderId])).results||[];
+  const total=source.reduce((n,x)=>n+Number(x.quantity||0),0);
+  const rows=(await q(env,'SELECT s.status,si.quantity FROM shipments s JOIN shipment_items si ON si.shipment_id=s.id WHERE s.vendor_order_id=?',[vendorOrderId])).results||[];
+  if(!rows.length)return;
+  const shipped=rows.reduce((n,x)=>n+Number(x.quantity||0),0),allDelivered=rows.every(x=>String(x.status).toLowerCase()==='delivered');
+  const status=allDelivered&&shipped>=total?'Delivered':rows.some(x=>['shipped','picked up','in transit','out for delivery','delivered'].includes(String(x.status).toLowerCase()))?'Partially Shipped':'Processing';
+  await env.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(status,now(),vendorOrderId).run();
 }
 async function refreshParentStatus(env,orderId){
   const vendors=(await q(env,'SELECT id,status FROM vendor_orders WHERE order_id=?',[orderId])).results||[];
