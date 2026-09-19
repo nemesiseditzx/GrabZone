@@ -141,9 +141,9 @@ async function createOrder(req,env){
       }
     }
   }
-  if(code)statements.push(env.DB.prepare("UPDATE referral_codes SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?) AND active=1 AND (usage_limit IS NULL OR used_count<usage_limit)").bind(t,code));
-  if(voucherCode)statements.push(env.DB.prepare("UPDATE rewards_vouchers SET status='USED',used_at=?,used_order_id=? WHERE code=? AND phone=? AND status='UNUSED' AND expires_at>?").bind(t,orderId,voucherCode,phone,t));
-  if(mysteryToken)statements.push(env.DB.prepare("UPDATE mystery_claims SET used=1 WHERE token=? AND used=0").bind(mysteryToken));
+  if(code){statements.push(env.DB.prepare("UPDATE referral_codes SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?) AND active=1 AND (usage_limit IS NULL OR used_count<usage_limit)").bind(t,code));statements.push(env.DB.prepare("INSERT INTO marketplace_inventory_guards(id,ok) SELECT ?,changes()").bind(crypto.randomUUID()));statements.push(env.DB.prepare("DELETE FROM marketplace_inventory_guards WHERE id=(SELECT id FROM marketplace_inventory_guards ORDER BY rowid DESC LIMIT 1)"));}
+  if(voucherCode){statements.push(env.DB.prepare("UPDATE rewards_vouchers SET status='USED',used_at=?,used_order_id=? WHERE code=? AND phone=? AND status='UNUSED' AND expires_at>?").bind(t,orderId,voucherCode,phone,t));statements.push(env.DB.prepare("INSERT INTO marketplace_inventory_guards(id,ok) SELECT ?,changes()").bind(crypto.randomUUID()));statements.push(env.DB.prepare("DELETE FROM marketplace_inventory_guards WHERE id=(SELECT id FROM marketplace_inventory_guards ORDER BY rowid DESC LIMIT 1)"));}
+  if(mysteryToken){statements.push(env.DB.prepare("UPDATE mystery_claims SET used=1 WHERE token=? AND used=0").bind(mysteryToken));statements.push(env.DB.prepare("INSERT INTO marketplace_inventory_guards(id,ok) SELECT ?,changes()").bind(crypto.randomUUID()));statements.push(env.DB.prepare("DELETE FROM marketplace_inventory_guards WHERE id=(SELECT id FROM marketplace_inventory_guards ORDER BY rowid DESC LIMIT 1)"));}
   try{
     const out=await env.DB.batch(statements);
     return json({data:{id:orderId,order_number:orderNumber,public_tracking_id:tracking,subtotal,shipping_charge:shipping,total,referral_discount:referralDiscount,rewards_voucher_code:voucherCode||null,rewards_voucher_discount:voucherDiscount,mystery_discount:mysteryDiscount,status:'New'}});
