@@ -1457,10 +1457,6 @@ async function renderDetail() {
     Share the already-fetched product with cart.js/other storefront
     enhancements so they do not issue another product query.
   */
-  product.variations = variations;
-  window.__grabzoneCurrentProduct = product;
-  window.__grabzoneVariationCache = window.__grabzoneVariationCache || {};
-  if (variations.length) window.__grabzoneVariationCache[String(product.id)] = variations;
 
   const { data: images } =
     await sb
@@ -1484,6 +1480,11 @@ async function renderDetail() {
   } catch (variationError) {
     console.warn("Product variations could not be loaded:", variationError);
   }
+
+  product.variations = variations;
+  window.__grabzoneCurrentProduct = product;
+  window.__grabzoneVariationCache = window.__grabzoneVariationCache || {};
+  if (variations.length) window.__grabzoneVariationCache[String(product.id)] = variations;
 
   const gallery =
     images && images.length
