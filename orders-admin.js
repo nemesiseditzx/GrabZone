@@ -134,7 +134,7 @@ async function loadOrders(){
      const sub=Number(order.subtotal||0), ship=Number(order.shipping_charge??0);
      const referral=Number(order.referral_discount||0), gp=Number(order.rewards_voucher_discount||0), mystery=Number(order.mystery_discount||0);
      const correctDiscount=Math.max(0,referral+gp+mystery);
-     const correctTotal=Math.max(0,sub+ship-correctDiscount);
+     const storedTotal=Number(order.total); const correctTotal=Number.isFinite(storedTotal)&&storedTotal>0?storedTotal:Math.max(0,sub+ship-correctDiscount);
      if(Math.abs(Number(order.discount_amount||0)-correctDiscount)>0.009||Math.abs(Number(order.total||0)-correctTotal)>0.009){
        order.discount_amount=correctDiscount; order.total=correctTotal;
        try{await sb.from('orders').update({discount_amount:correctDiscount,total:correctTotal,updated_at:new Date().toISOString()}).eq('id',order.id);}catch(e){console.warn('Order total normalization:',e)}
