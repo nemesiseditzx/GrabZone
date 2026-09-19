@@ -71,7 +71,7 @@ async function loadVariations(id){
   window.__grabzoneVariationCache=window.__grabzoneVariationCache||{};
   if(window.__grabzoneVariationCache[String(id)])return window.__grabzoneVariationCache[String(id)];
   const current=window.__grabzoneCurrentProduct;
-  if(current&&String(current.id)===String(id)&&Array.isArray(current.variations)){window.__grabzoneVariationCache[String(id)]=current.variations;return current.variations}
+  if(current&&String(current.id)===String(id)&&Array.isArray(current.variations)&&current.variations.length){window.__grabzoneVariationCache[String(id)]=current.variations;return current.variations}
   const base=String(C.backendUrl||'').replace(/\/$/,'');if(!base)return[];
   try{const r=await fetch(base+'/api/marketplace/public?product_id='+encodeURIComponent(id),{cache:'no-store'}),d=await r.json().catch(()=>({}));if(!r.ok)return[];const v=Array.isArray(d.products?.[0]?.variations)?d.products[0].variations:[];window.__grabzoneVariationCache[String(id)]=v;return v}catch{return[]}
 }
