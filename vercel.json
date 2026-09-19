@@ -1,6 +1,9 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://grabzone.nemesiseditzx984.workers.dev/api/:path*" }
+    {
+      "source": "/api/:path*",
+      "destination": "https://grabzone-marketplace-dev.nemesiseditzx984.workers.dev/api/:path*"
+    }
   ],
   "cleanUrls": true
 }
