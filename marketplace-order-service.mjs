@@ -128,11 +128,12 @@ async function createOrder(req,env){
   for(const item of items){
     statements.push(env.DB.prepare("INSERT INTO order_items(id,order_id,product_id,product_name,image_url,quantity,unit_price,line_total,vendor_id,variation_id,variation_options,variation_sku,stock_managed) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(item.id,orderId,item.product_id,item.product_name,item.image_url,item.quantity,item.unit_price,item.line_total,item.vendor_id,item.variation_id,JSON.stringify(item.variation_options||{}),item.variation_sku||null,item.stock_managed?1:0));
   }
-  for(const [vid,g] of groups){
+  const vendorEntries=[...groups.entries()];let allocatedDiscount=0;
+  for(let gi=0;gi<vendorEntries.length;gi++){const [vid,g]=vendorEntries[gi];
     const vendor=(await q(env,"SELECT commission_type,commission_value FROM vendors WHERE id=?",[vid])).results?.[0]||{};
     const shippingCfg=(await q(env,"SELECT shipping_fee,enabled FROM vendor_shipping_settings WHERE vendor_id=? LIMIT 1",[vid])).results?.[0]||{};
     const vendorShipping=Number(shippingCfg.enabled??1)===1?Math.max(0,Number(shippingCfg.shipping_fee||0)):0;
-    const vendorDiscount=subtotal>0?Math.min(g.subtotal,Math.round(discountTotal*(g.subtotal/subtotal)*100)/100):0;
+    const proportionalDiscount=subtotal>0?Math.round(discountTotal*(g.subtotal/subtotal)*100)/100:0;const vendorDiscount=gi===vendorEntries.length-1?Math.max(0,Math.min(g.subtotal,discountTotal-allocatedDiscount)):Math.min(g.subtotal,proportionalDiscount);allocatedDiscount+=vendorDiscount;
     const voId=crypto.randomUUID(),gross=Math.max(0,g.subtotal+vendorShipping-vendorDiscount);
     statements.push(env.DB.prepare("INSERT INTO vendor_orders(id,order_id,vendor_id,subtotal,shipping_charge,total,discount_amount,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)").bind(voId,orderId,vid,g.subtotal,vendorShipping,gross,vendorDiscount,'New',t,t));
     for(const item of g.items)statements.push(env.DB.prepare("INSERT INTO vendor_order_items(id,vendor_order_id,order_item_id,vendor_id,product_id,product_name,variation_id,variation_options,variation_sku,quantity,unit_price,line_total,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(crypto.randomUUID(),voId,item.id,vid,item.product_id,item.product_name,item.variation_id,JSON.stringify(item.variation_options||{}),item.variation_sku||null,item.quantity,item.unit_price,item.line_total,t));
