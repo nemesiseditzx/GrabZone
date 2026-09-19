@@ -1453,6 +1453,12 @@ async function renderDetail() {
     return;
   }
 
+  /*
+    Share the already-fetched product with cart.js/other storefront
+    enhancements so they do not issue another product query.
+  */
+  window.__grabzoneCurrentProduct = product;
+
   const { data: images } =
     await sb
       .from("product_images")
