@@ -600,16 +600,66 @@ async function load() {
     return;
   }
 
+  /*
+    PRODUCT DETAIL PERFORMANCE:
+    The detail page used to wait for site settings + the entire
+    product catalog + notices before it rendered the requested
+    product. A slow/cold D1 request therefore made the product
+    page sit on "Loading product..." for several seconds.
+
+    Render the requested product first. Settings/catalog/notices
+    are secondary and can load in the background. The server/API
+    remains authoritative for checkout and marketplace pricing.
+  */
+  const hasProductDetail =
+    !!document.getElementById("productDetail") &&
+    !!new URLSearchParams(window.location.search).get("id");
+
   try {
+    if (hasProductDetail) {
+      /*
+        Start settings immediately, but do not make product rendering
+        wait for it. renderDetail() has safe defaults for currency
+        and store name.
+      */
+      const settingsPromise = loadSettings();
+
+      await renderDetail();
+
+      await settingsPromise;
+      applySiteSettings();
+
+      /*
+        renderDetail() sets the product-specific title. Re-apply it
+        after settings so site settings cannot overwrite that title.
+      */
+      const detailTitle = document.querySelector("#productDetail h1")?.textContent?.trim();
+      const storeName = SITE.store_name || C?.storeName || "GRABZONE";
+      if (detailTitle) document.title = detailTitle + " — " + storeName;
+
+      /*
+        These are not needed to display the product itself.
+        Load them after the detail UI is already visible.
+      */
+      void Promise.allSettled([
+        loadProducts(),
+        loadNotices()
+      ]);
+
+      return;
+    }
+
+    /*
+      Homepage/store page: keep the existing initialization flow,
+      but run independent requests concurrently.
+    */
     await loadSettings();
     applySiteSettings();
 
-    await Promise.all([
+    void Promise.allSettled([
       loadProducts(),
       loadNotices()
     ]);
-
-    await renderDetail();
   } catch (error) {
     console.error("Website loading error:", error);
   }
