@@ -51,7 +51,7 @@ async function notifyVendor(e,vendorOrderId){
   const raw=["From: GrabZone <"+String(e.GMAIL_FROM_EMAIL||"grabzonesupport@gmail.com")+">","To: "+to,"Subject: "+subject,"MIME-Version: 1.0","Content-Type: text/plain; charset=\"UTF-8\"","",""+plain].join("\r\n");
   const tokenReq=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({client_id:String(e.GOOGLE_CLIENT_ID||""),client_secret:String(e.GOOGLE_CLIENT_SECRET||""),refresh_token:String(e.GOOGLE_REFRESH_TOKEN||""),grant_type:"refresh_token"})});
   const td=await tokenReq.json().catch(()=>({}));if(!tokenReq.ok||!td.access_token)return false;
-  const resp=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+td.access_token,"Content-Type":"application/json"},body:JSON.stringify({raw:btoa(unescape(encodeURIComponent(raw))).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=/g,"")})});
+  const resp=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+td.access_token,"Content-Type":"application/json"},body:JSON.stringify({raw:btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"")})});
   if(!resp.ok)return false;
   await e.DB.prepare("UPDATE vendor_orders SET vendor_notified_at=?,updated_at=? WHERE id=?").bind(now(),now(),vendorOrderId).run().catch(()=>{});
   return true;
