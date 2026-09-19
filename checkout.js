@@ -10,7 +10,9 @@ const currency=C.currency||'৳';
 let marketplaceShipping=0,shippingBreakdown=[],marketplaceProductsLoaded=false;
 async function loadMarketplaceShipping(){
   try{
-    const r=await fetch('/api/marketplace/products?limit=500',{credentials:'include',cache:'no-store'});
+    const ids=[...new Set(checkoutItems.map(i=>i.product_id).filter(Boolean).map(String))];
+    const query=ids.length?'?ids='+encodeURIComponent(ids.join(','))+'&limit=500':'?limit=500';
+    const r=await fetch('/api/marketplace/products'+query,{credentials:'include',cache:'no-store'});
     const d=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(d.error||'Marketplace products unavailable');
     const products=Array.isArray(d.products)?d.products:[];
@@ -345,7 +347,7 @@ async function hydrate(){
   if(!raw.length){render();return}
   if(!d1){checkoutItems=raw;render();return}
   const ids=[...new Set(raw.map(x=>x.product_id).filter(Boolean))];
-  const{data,error}=await d1.from('products').select('id,name,price,image_url,published').in('id',ids);
+  const{data,error}=await d1.from('products').select('id,name,price,image_url,published,vendor_id').in('id',ids);
   if(error){console.error(error);checkoutItems=raw;render();return}
   const map=new Map((data||[]).map(p=>[p.id,p]));
   checkoutItems=raw.map(x=>{
