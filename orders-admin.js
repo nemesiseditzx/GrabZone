@@ -207,8 +207,7 @@ async function confirmOrder(order){
  const mysteryDiscount=Number(order.mystery_discount||0);
  const discount=Number(order.discount_amount||referralDiscount+voucherDiscount+mysteryDiscount);
  const district=String(order.district||'').trim().toLowerCase();
- const division=String(order.division||'').trim().toLowerCase();
- const confirmedShipping=(district.includes('dhaka')||division.includes('dhaka'))?70:130;
+ const confirmedShipping=district.includes('dhaka')?70:130;
  const updates={status:'Confirmed',shipping_charge:confirmedShipping,discount_amount:discount,total:Math.max(0,subtotal+confirmedShipping-discount),updated_at:new Date().toISOString()};
 
  const {error}=await sb.from('orders').update(updates).eq('id',order.id);
@@ -223,8 +222,7 @@ async function changeStatus(id,status){
  const order=orders.find(x=>x.id===id); if(!order||order.status===status)return;
  if(status==='Confirmed'){
   const district=String(order.district||'').trim().toLowerCase();
-  const division=String(order.division||'').trim().toLowerCase();
-  const confirmedShipping=(district.includes('dhaka')||division.includes('dhaka'))?70:130;
+  const confirmedShipping=district.includes('dhaka')?70:130;
   const label=confirmedShipping===70?'৳70 for Dhaka City':'৳130 for outside Dhaka City';
   if(!(await gzUiConfirm('Confirm '+order.order_number+'? Delivery charge will be '+label+'. The customer receipt/status email will be sent.')))return;
   try{
