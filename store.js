@@ -1460,7 +1460,7 @@ async function renderDetail() {
   product.variations = variations;
   window.__grabzoneCurrentProduct = product;
   window.__grabzoneVariationCache = window.__grabzoneVariationCache || {};
-  window.__grabzoneVariationCache[String(product.id)] = variations;
+  if (variations.length) window.__grabzoneVariationCache[String(product.id)] = variations;
 
   const { data: images } =
     await sb
