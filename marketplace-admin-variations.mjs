@@ -39,11 +39,12 @@ async function schema(e) {
 }
 
 function opts(b) {
+  const seen=new Set();
   return (Array.isArray(b) ? b : []).map((o, i) => ({
     name: clean(o?.name, 80),
-    values: (Array.isArray(o?.values) ? o.values : []).map(v => clean(v, 120)).filter(Boolean),
+    values: [...new Set((Array.isArray(o?.values) ? o.values : []).map(v => clean(v, 120)).filter(Boolean))],
     sort_order: i
-  })).filter(o => o.name && o.values.length);
+  })).filter(o => o.name && o.values.length && !seen.has(o.name) && seen.add(o.name));
 }
 function combos(os) {
   let r = [{}];
@@ -157,7 +158,7 @@ async function handle(req, e) {
       const old = oldBy.get(k);
       const id = old?.id || crypto.randomUUID();
       if (old) {
-        await e.DB.prepare("UPDATE product_variations SET status=CASE WHEN stock_mode='tracked' AND stock<=0 THEN 'Out of Stock' ELSE 'Available' END,updated_at=? WHERE id=?")
+        await e.DB.prepare("UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Disabled' ELSE status END,updated_at=? WHERE id=?")
           .bind(t, id).run();
       } else {
         await e.DB.prepare(
@@ -167,7 +168,7 @@ async function handle(req, e) {
       for (const o of os) {
         const m = map.get(`${o.name}\u0000${selected[o.name]}`);
         if (m) await e.DB.prepare(
-          'INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)'
+          'INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)'
         ).bind(id, m.option_id, m.value_id).run();
       }
     }
@@ -177,7 +178,6 @@ async function handle(req, e) {
         "UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?"
       ).bind(t, x.id).run();
     }
-    await e.DB.prepare('UPDATE products SET stock=0 WHERE id=?').bind(pid).run();
     return json({ ok: true, count: rows.length });
   }
 
@@ -185,39 +185,24 @@ async function handle(req, e) {
     const id = clean(u.pathname.split('/').pop(), 120);
     const v = await one(e, 'SELECT * FROM product_variations WHERE id=? AND product_id=?', [id, pid]);
     if (!v) return json({ error: 'Variation not found.' }, 404);
-
-    const sale = null;
-    const regular = Math.max(0, Number(b.regular_price ?? v.regular_price));
-    if (sale !== null && sale > regular) return json({ error: 'Sale price cannot exceed regular price.' }, 400);
-
-    const minInput = b.min_qty ?? v.min_qty ?? 1;
-    const min = Math.max(1, Math.floor(Number(minInput)));
-    const max = b.max_qty === null || b.max_qty === '' ? null : Math.max(1, Math.floor(Number(b.max_qty)));
-    if (max !== null && max < min) return json({ error: 'Maximum quantity cannot be below minimum quantity.' }, 400);
-
     const status = ['Available', 'Out of Stock', 'Disabled'].includes(b.status) ? b.status : v.status;
     await e.DB.prepare(
-      'UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,stock_mode=?,low_stock_threshold=?,image_url=?,status=?,min_qty=?,max_qty=?,updated_at=? WHERE id=?'
+      'UPDATE product_variations SET sku=?,regular_price=?,old_price=?,image_url=?,status=?,updated_at=? WHERE id=?'
     ).bind(
-      clean(b.sku ?? v.sku, 120), regular, sale,
+      clean(b.sku ?? v.sku, 120),
+      Math.max(0, Number(b.regular_price ?? v.regular_price)),
       b.old_price === null || b.old_price === '' ? null : Math.max(0, Number(b.old_price)),
-      Math.max(0, Math.floor(Number(b.stock ?? v.stock))),
-      (Number(b.stock ?? v.stock) > 0 ? 'tracked' : (status === 'Available' ? 'untracked' : (v.stock_mode || 'tracked'))),
-      Math.max(0, Math.floor(Number(b.low_stock_threshold ?? v.low_stock_threshold))),
-      clean(b.image_url ?? v.image_url, 2000), status, min, max, now(), id
+      clean(b.image_url ?? v.image_url, 2000),
+      status, now(), id
     ).run();
-
     if (Array.isArray(b.images)) {
       await e.DB.prepare('DELETE FROM variation_images WHERE variation_id=?').bind(id).run();
-      for (let i = 0; i < Math.min(10, b.images.length); i++) {
-        await e.DB.prepare(
-          'INSERT INTO variation_images(id,variation_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?)'
-        ).bind(crypto.randomUUID(), id, clean(b.images[i], 2000), i, now()).run();
-      }
+      for (let i = 0; i < Math.min(10, b.images.length); i++) await e.DB.prepare(
+        'INSERT INTO variation_images(id,variation_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?)'
+      ).bind(crypto.randomUUID(), id, clean(b.images[i], 2000), i, now()).run();
     }
     return json({ ok: true, variation: await load(e, id) });
   }
-
   if (req.method === 'DELETE') {
     const id = clean(u.pathname.split('/').pop(), 120);
     await e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=? AND product_id=?")
