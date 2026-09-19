@@ -131,7 +131,7 @@ async function loadOrders(){
    orders=Array.isArray(data)?data:[];
    // Normalize legacy order totals from the two primary customer discount fields.
    for(const order of orders){
-     const sub=Number(order.subtotal||0), ship=Number(order.shipping_charge||130);
+     const sub=Number(order.subtotal||0), ship=Number(order.shipping_charge??0);
      const referral=Number(order.referral_discount||0), gp=Number(order.rewards_voucher_discount||0), mystery=Number(order.mystery_discount||0);
      const correctDiscount=Math.max(0,referral+gp+mystery);
      const correctTotal=Math.max(0,sub+ship-correctDiscount);
@@ -165,7 +165,7 @@ function renderOrders(){
  <td class="gz-order-email" title="${esc(o.email)}">${esc(o.email)}</td>
  <td><div class="gz-discount-box referral"><b>Referral Code</b><span>${esc(o.referral_code||'—')}</span><small>${Number(o.referral_discount||0)>0?'Discount: -'+money(o.referral_discount):'No referral discount'}</small></div></td>
  <td><div class="gz-discount-box grabpoints"><b>GrabPoints Code</b><span>${esc(o.rewards_voucher_code||'—')}</span><small>${Number(o.rewards_voucher_discount||0)>0?'Discount: -'+money(o.rewards_voucher_discount):'No GrabPoints discount'}</small></div></td>
- <td><b>${money(Math.max(0,Number(o.subtotal||0)+Number(o.shipping_charge||130)-Number(o.referral_discount||0)-Number(o.rewards_voucher_discount||0)-Number(o.mystery_discount||0)))}</b></td>
+ <td><b>${money(Math.max(0,Number(o.subtotal||0)+Number(o.shipping_charge??0)-Number(o.referral_discount||0)-Number(o.rewards_voucher_discount||0)-Number(o.mystery_discount||0)))}</b></td>
  <td><select class="gz-status-select" data-status-order="${esc(o.id)}" aria-label="Change order status">${statuses.map(s=>`<option value="${esc(s)}" ${s===o.status?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
  <td>${o.created_at?formatBdDateTime(o.created_at):'—'}</td>
  <td><div class="gz-order-actions-cell"><button class="gz-order-action edit" data-edit-order="${esc(o.id)}">Edit</button><button class="gz-order-action" data-send-bk="${esc(o.id)}" ${o.status!=='Confirmed'||o.business_koro_sent_at?'disabled':''}>${o.business_koro_sent_at?'Sent ✓':o.status==='Confirmed'?'Send to Business Koro':'Confirm order first'}</button><button class="gz-order-action delete" data-delete-order="${esc(o.id)}">Delete</button></div></td>
