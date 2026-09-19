@@ -18,21 +18,12 @@ async function reserveInventory(e,items){
  for(const item of items){
   const n=qty(item.quantity);
   if(item.variation_id){
-   const v=await one(e,"SELECT pv.*,p.vendor_id,p.published,p.name product_name FROM product_variations pv JOIN products p ON p.id=pv.product_id WHERE pv.id=?",[clean(item.variation_id,120)]);
+   const v=await one(e,"SELECT pv.id,pv.min_qty,pv.max_qty,pv.status,p.product_id,p.vendor_id,p.published,p.name product_name FROM product_variations pv JOIN products p ON p.id=pv.product_id WHERE pv.id=?",[clean(item.variation_id,120)]);
    if(!v||!v.published||v.status!=='Available')throw Object.assign(new Error('One selected variation is no longer available.'),{status:409});
-   if(n<v.min_qty||(v.max_qty&&n>v.max_qty))throw Object.assign(new Error(`Quantity for ${v.product_name} must be between ${v.min_qty} and ${v.max_qty}.`),{status:409});
-   if(v.stock_mode!=='tracked'){
-     held.push({kind:'variation_untracked',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name});
-   }else{
-     const r=await e.DB.prepare("UPDATE product_variations SET stock=stock-?,status=CASE WHEN stock-?<=0 THEN 'Out of Stock' ELSE status END,updated_at=? WHERE id=? AND status='Available' AND stock>=?").bind(n,n,now(),v.id,n).run();
-     if(!r.meta?.changes){await restoreInventory(e,held);throw Object.assign(new Error(`Not enough stock for ${v.product_name}.`),{status:409})}
-     held.push({kind:'variation',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name});
-   }
+   held.push({kind:'variation',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name});
   }else{
-   const p=await one(e,"SELECT id,name,stock,published,vendor_id FROM products WHERE id=?",[clean(item.product_id,120)]);
+   const p=await one(e,"SELECT id,name,published,vendor_id FROM products WHERE id=?",[clean(item.product_id,120)]);
    if(!p||!p.published)throw Object.assign(new Error('One selected product is no longer available.'),{status:409});
-   const r=await e.DB.prepare("UPDATE products SET stock=stock-?,updated_at=? WHERE id=? AND published=1 AND stock>=?").bind(n,now(),p.id,n).run();
-   if(!r.meta?.changes){await restoreInventory(e,held);throw Object.assign(new Error(`Not enough stock for ${p.name}.`),{status:409})}
    held.push({kind:'product',id:p.id,qty:n,product_id:p.id,vendor_id:p.vendor_id,name:p.name});
   }
  }
