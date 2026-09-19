@@ -56,9 +56,9 @@ async function notifyVendor(e,vendorOrderId){
 async function createVendorOrders(e,orderId){
   const table=(await one(e,"SELECT name FROM sqlite_master WHERE type='table' AND name='vendor_orders'"))?.name;
   if(!table)return;
-  const rows=(await q(e,"SELECT oi.id order_item_id,oi.product_id,oi.product_name,oi.quantity,oi.unit_price,oi.line_total,oi.variation_id,oi.variation_options,oi.variation_sku,p.vendor_id,COALESCE(v.brand_name,v.business_name,v.slug,'GrabZone Vendor') vendor_name,COALESCE(v.shipping_fee,130) shipping_fee,COALESCE(v.commission_type,'percentage') commission_type,COALESCE(v.commission_value,0) commission_value FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN vendors v ON v.id=p.vendor_id WHERE oi.order_id=? ORDER BY oi.rowid",[orderId])).results||[];
+  const rows=(await q(e,"SELECT oi.id order_item_id,oi.product_id,oi.product_name,oi.quantity,oi.unit_price,oi.line_total,oi.variation_id,oi.variation_options,oi.variation_sku,p.vendor_id,COALESCE(v.brand_name,v.business_name,v.slug,'GrabZone Vendor') vendor_name,COALESCE(v.shipping_fee,0) shipping_fee,COALESCE(v.commission_type,'percentage') commission_type,COALESCE(v.commission_value,0) commission_value FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN vendors v ON v.id=p.vendor_id WHERE oi.order_id=? ORDER BY oi.rowid",[orderId])).results||[];
   const groups=new Map();
-  for(const row of rows){if(!row.vendor_id)continue;if(!groups.has(row.vendor_id))groups.set(row.vendor_id,{vendor_id:row.vendor_id,vendor_name:row.vendor_name,shipping_fee:Number(row.shipping_fee??130),commission_type:String(row.commission_type||'percentage'),commission_value:Number(row.commission_value||0),items:[]});groups.get(row.vendor_id).items.push(row);}
+  for(const row of rows){if(!row.vendor_id)continue;if(!groups.has(row.vendor_id))groups.set(row.vendor_id,{vendor_id:row.vendor_id,vendor_name:row.vendor_name,shipping_fee:Number(row.shipping_fee??0),commission_type:String(row.commission_type||'percentage'),commission_value:Number(row.commission_value||0),items:[]});groups.get(row.vendor_id).items.push(row);}
   if(!groups.size)return;
   const voCols=new Set(((await q(e,'PRAGMA table_info(vendor_orders)')).results||[]).map(x=>x.name));
   const voiCols=new Set(((await q(e,'PRAGMA table_info(vendor_order_items)')).results||[]).map(x=>x.name));
@@ -68,7 +68,7 @@ async function createVendorOrders(e,orderId){
     const subtotal=Math.max(0,g.items.reduce((n,x)=>n+Number(x.line_total||0),0));
     const commission=g.commission_type==='percentage'?Math.round(subtotal*Math.max(0,g.commission_value)/100*100)/100:Math.min(subtotal,Math.max(0,g.commission_value));
     const earnings=Math.max(0,subtotal-commission);
-    const delivery=Math.max(0,Number(g.shipping_fee));
+    const delivery=Math.max(0,Number(g.shipping_fee??0));
     const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,shipping_fee:delivery,delivery_charge:delivery,commission_amount:commission,vendor_earnings:earnings,status:'Processing',created_at:now(),updated_at:now()};
     const vfields=Object.keys(vo).filter(k=>voCols.has(k));
     if(!vfields.includes('id')||!vfields.includes('order_id')||!vfields.includes('vendor_id'))continue;
