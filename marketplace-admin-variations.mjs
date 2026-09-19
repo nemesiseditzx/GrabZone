@@ -31,11 +31,11 @@ async function schema(e) {
   for (const sql of [
     `CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
-    `CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,low_stock_threshold INTEGER NOT NULL DEFAULT 5,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(product_id,options_key))`,
+    `CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 5,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(product_id,options_key))`,
     `CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))`,
     `CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)`
-  ]) await e.DB.prepare(sql).run().catch(() => {});
+  ]) await e.DB.prepare(sql).run().catch(() => {}); await e.DB.prepare("ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'").run().catch(() => {});
 }
 
 function opts(b) {
@@ -157,12 +157,12 @@ async function handle(req, e) {
       const old = oldBy.get(k);
       const id = old?.id || crypto.randomUUID();
       if (old) {
-        await e.DB.prepare("UPDATE product_variations SET status='Available',updated_at=? WHERE id=?")
+        await e.DB.prepare("UPDATE product_variations SET status=CASE WHEN stock_mode='tracked' AND stock<=0 THEN 'Out of Stock' ELSE 'Available' END,updated_at=? WHERE id=?")
           .bind(t, id).run();
       } else {
         await e.DB.prepare(
-          'INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
-        ).bind(id, pid, '', Number(b.default_price ?? productRow.price ?? 0), null, null, 0, 5, '', 'Available', 1, null, k, t, t).run();
+          'INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        ).bind(id, pid, '', Number(b.default_price ?? productRow.price ?? 0), null, null, 0, 'untracked', 5, '', 'Available', 1, null, k, t, t).run();
       }
       for (const o of os) {
         const m = map.get(`${o.name}\u0000${selected[o.name]}`);
@@ -197,11 +197,12 @@ async function handle(req, e) {
 
     const status = ['Available', 'Out of Stock', 'Disabled'].includes(b.status) ? b.status : v.status;
     await e.DB.prepare(
-      'UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,low_stock_threshold=?,image_url=?,status=?,min_qty=?,max_qty=?,updated_at=? WHERE id=?'
+      'UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,stock_mode=?,low_stock_threshold=?,image_url=?,status=?,min_qty=?,max_qty=?,updated_at=? WHERE id=?'
     ).bind(
       clean(b.sku ?? v.sku, 120), regular, sale,
       b.old_price === null || b.old_price === '' ? null : Math.max(0, Number(b.old_price)),
       Math.max(0, Math.floor(Number(b.stock ?? v.stock))),
+      (Number(b.stock ?? v.stock) > 0 ? 'tracked' : (status === 'Available' ? 'untracked' : (v.stock_mode || 'tracked'))),
       Math.max(0, Math.floor(Number(b.low_stock_threshold ?? v.low_stock_threshold))),
       clean(b.image_url ?? v.image_url, 2000), status, min, max, now(), id
     ).run();
