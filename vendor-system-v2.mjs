@@ -14,7 +14,7 @@ async function schema(e){if(schemaPromise)return schemaPromise;schemaPromise=(as
 `ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0`,
 `CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
 `CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,low_stock_threshold INTEGER NOT NULL DEFAULT 5,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(product_id,options_key))`,
+`CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 5,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(product_id,options_key))`,
 `CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))`,
 `CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`,
 `CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)`,
@@ -51,7 +51,7 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
      opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[id])).results||[];
      for(const o of opts)o.values=(await q(e,'SELECT id,value,sort_order FROM option_values WHERE option_id=? ORDER BY sort_order,id',[o.id])).results||[];
    }
- }let vs=(await q(e,"SELECT id,sku,regular_price,sale_price,old_price,stock,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
+ }let vs=(await q(e,"SELECT id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
  // Repair products that have saved option definitions but never got variation rows.
  // This keeps the public product page usable without recreating intentionally disabled variations.
  if(!vs.length&&opts.length&&String(product.product_type||'').toLowerCase()==='variable'){
@@ -81,7 +81,7 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
        if(m)await e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(vid,m.option_id,m.value_id).run();
      }
    }
-   vs=(await q(e,"SELECT id,sku,regular_price,old_price,stock,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
+   vs=(await q(e,"SELECT id,sku,regular_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
  }
  for(const v of vs){
    const links=(await q(e,'SELECT vo.option_id,vo.option_value_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=?',[v.id])).results||[];
