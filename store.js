@@ -1457,7 +1457,10 @@ async function renderDetail() {
     Share the already-fetched product with cart.js/other storefront
     enhancements so they do not issue another product query.
   */
+  product.variations = variations;
   window.__grabzoneCurrentProduct = product;
+  window.__grabzoneVariationCache = window.__grabzoneVariationCache || {};
+  window.__grabzoneVariationCache[String(product.id)] = variations;
 
   const { data: images } =
     await sb
@@ -1465,6 +1468,22 @@ async function renderDetail() {
       .select("*")
       .eq("product_id", productId)
       .order("sort_order");
+
+  /*
+    Variations are loaded with the product so Product Detail, Add to Cart,
+    Buy Now and Quick Add all use the same authoritative option/stock data.
+  */
+  let variations = [];
+  try {
+    const variationQuery = await sb
+      .from("variations")
+      .select("*")
+      .eq("product_id", productId)
+      .order("created_at");
+    if (!variationQuery.error) variations = variationQuery.data || [];
+  } catch (variationError) {
+    console.warn("Product variations could not be loaded:", variationError);
+  }
 
   const gallery =
     images && images.length
