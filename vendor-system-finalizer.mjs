@@ -11,7 +11,7 @@ async function ensureVendorOrderTables(e){
  await e.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN vendor_notified_at TEXT").run().catch(()=>{});
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT)").run().catch(()=>{});
 }
-async function schema(e){for(const sql of ["ALTER TABLE order_items ADD COLUMN variation_id TEXT","ALTER TABLE order_items ADD COLUMN variation_options TEXT","ALTER TABLE order_items ADD COLUMN variation_sku TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT","ALTER TABLE shipments ADD COLUMN customer_notified_at TEXT","CREATE INDEX IF NOT EXISTS order_items_variation_idx ON order_items(variation_id)","CREATE INDEX IF NOT EXISTS vendor_order_items_variation_idx ON vendor_order_items(variation_id)"])await e.DB.prepare(sql).run().catch(()=>{});}
+async function schema(e){for(const sql of ["ALTER TABLE order_items ADD COLUMN variation_id TEXT","ALTER TABLE order_items ADD COLUMN variation_options TEXT","ALTER TABLE order_items ADD COLUMN variation_sku TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT","ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'","ALTER TABLE shipments ADD COLUMN customer_notified_at TEXT","CREATE INDEX IF NOT EXISTS order_items_variation_idx ON order_items(variation_id)","CREATE INDEX IF NOT EXISTS vendor_order_items_variation_idx ON vendor_order_items(variation_id)"])await e.DB.prepare(sql).run().catch(()=>{});}
 function qty(x){return Math.max(1,Math.floor(Number(x||1)))}
 async function reserveInventory(e,items){
  const held=[];
@@ -21,9 +21,13 @@ async function reserveInventory(e,items){
    const v=await one(e,"SELECT pv.*,p.vendor_id,p.published,p.name product_name FROM product_variations pv JOIN products p ON p.id=pv.product_id WHERE pv.id=?",[clean(item.variation_id,120)]);
    if(!v||!v.published||v.status!=='Available')throw Object.assign(new Error('One selected variation is no longer available.'),{status:409});
    if(n<v.min_qty||(v.max_qty&&n>v.max_qty))throw Object.assign(new Error(`Quantity for ${v.product_name} must be between ${v.min_qty} and ${v.max_qty}.`),{status:409});
-   const r=await e.DB.prepare("UPDATE product_variations SET stock=stock-?,status=CASE WHEN stock-?<=0 THEN 'Out of Stock' ELSE status END,updated_at=? WHERE id=? AND status='Available' AND stock>=?").bind(n,n,now(),v.id,n).run();
-   if(!r.meta?.changes){await restoreInventory(e,held);throw Object.assign(new Error(`Not enough stock for ${v.product_name}.`),{status:409})}
-   held.push({kind:'variation',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name});
+   if(v.stock_mode!=='tracked'){
+     held.push({kind:'variation_untracked',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name});
+   }else{
+     const r=await e.DB.prepare("UPDATE product_variations SET stock=stock-?,status=CASE WHEN stock-?<=0 THEN 'Out of Stock' ELSE status END,updated_at=? WHERE id=? AND status='Available' AND stock>=?").bind(n,n,now(),v.id,n).run();
+     if(!r.meta?.changes){await restoreInventory(e,held);throw Object.assign(new Error(`Not enough stock for ${v.product_name}.`),{status:409})}
+     held.push({kind:'variation',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name});
+   }
   }else{
    const p=await one(e,"SELECT id,name,stock,published,vendor_id FROM products WHERE id=?",[clean(item.product_id,120)]);
    if(!p||!p.published)throw Object.assign(new Error('One selected product is no longer available.'),{status:409});
