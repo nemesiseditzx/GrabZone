@@ -279,7 +279,7 @@ function render(){
   if(empty)empty.hidden=true;if(form)form.hidden=false;
   box.innerHTML=checkoutItems.map(i=>`<div class="checkout-item">
     <img src="${esc(i.image_url)}" alt="${esc(i.name)}">
-    <div class="checkout-item-info"><strong>${esc(i.name)}</strong><span>Quantity: ${i.quantity}</span></div>
+    <div class="checkout-item-info"><strong>${esc(i.name)}</strong><span>Quantity: ${i.quantity}${i.variation_options&&typeof i.variation_options==='object'?' · '+Object.entries(i.variation_options).map(([k,v])=>esc(k)+': '+esc(v)).join(' · '):''}${i.variation_sku||i.sku?' · SKU: '+esc(i.variation_sku||i.sku):''}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
   side.innerHTML=checkoutItems.map(i=>`<div class="summary-product">
