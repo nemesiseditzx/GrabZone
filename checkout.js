@@ -7,20 +7,35 @@ const d1=window.grabzoneD1||null;
 const CART_KEY='grabzone_cart_v2';
 const BUY_NOW_KEY='grabzone_buy_now_v2';
 const currency=C.currency||'৳';
-let flatShippingCharge=130;
-let shippingSettingLoaded=false;
-async function loadGlobalShipping(){
-  if(shippingSettingLoaded)return flatShippingCharge;
+let marketplaceShipping=0,shippingBreakdown=[],marketplaceProductsLoaded=false;
+async function loadMarketplaceShipping(){
   try{
-    const base=String(C.backendUrl||'').replace(/\/$/,'');
-    const r=await fetch(base+'/api/marketplace/shipping-settings',{credentials:'include',cache:'no-store'});
+    const r=await fetch('/api/marketplace/products?limit=500',{credentials:'include',cache:'no-store'});
     const d=await r.json().catch(()=>({}));
-    const fee=Number(d.global_shipping_fee);
-    if(r.ok&&Number.isFinite(fee)&&fee>=0)flatShippingCharge=fee;
-  }catch(e){console.warn('GrabZone shipping setting:',e)}
-  shippingSettingLoaded=true;
-  return flatShippingCharge;
+    if(!r.ok)throw new Error(d.error||'Marketplace products unavailable');
+    const products=Array.isArray(d.products)?d.products:[];
+    const map=new Map(products.map(p=>[String(p.id),p]));
+    const groups=new Map();
+    checkoutItems.forEach(i=>{
+      const p=map.get(String(i.product_id));
+      if(!p)return;
+      const vid=String(p.vendor_id||'');
+      if(!vid)return;
+      if(!groups.has(vid))groups.set(vid,{vendor_id:vid,name:String(p.vendor_name||p.brand_name||p.vendor_slug||'Vendor'),fee:Number(p.vendor_shipping_fee??p.shipping_fee??0)});
+    });
+    shippingBreakdown=[...groups.values()].map(x=>({...x,fee:Math.max(0,x.fee)}));
+    marketplaceShipping=shippingBreakdown.reduce((s,x)=>s+x.fee,0);
+    checkoutItems=checkoutItems.map(i=>{const p=map.get(String(i.product_id));return p?{...i,vendor_id:p.vendor_id,vendor_name:p.vendor_name||p.brand_name||p.vendor_slug,vendor_shipping_fee:Number(p.vendor_shipping_fee??p.shipping_fee??0)}:i});
+    marketplaceProductsLoaded=true;
+    return marketplaceShipping;
+  }catch(e){
+    console.warn('GrabZone marketplace shipping:',e);
+    marketplaceProductsLoaded=false;
+    shippingBreakdown=[];marketplaceShipping=0;
+    return 0;
+  }
 }
+async function loadGlobalShipping(){ return loadMarketplaceShipping(); }
 
 let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0},grabPointsState={balance:0,use:0,discount:0},mysteryState={token:'',discount:0},grabPointsEnabled=true,grabPointsEarnRate=10,grabPointsValue=0.1;
 const $=id=>document.getElementById(id);
@@ -32,7 +47,7 @@ async function loadGrabPointsSettings(){try{const{data,error}=await d1.from('sit
 function loadMystery(){const x=read('grabzone_mystery_v1',null);if(x?.token&&x?.expires_at&&Date.parse(x.expires_at)>Date.now())mysteryState={token:String(x.token),discount:Number(x.discount||0)};else{mysteryState={token:'',discount:0};try{localStorage.removeItem('grabzone_mystery_v1')}catch{}}}
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
-const shippingForLocation=()=>flatShippingCharge;
+const shippingForLocation=()=>marketplaceShipping;
 function deliveryEtaForLocation(division,district){
   const d=String(district||'').toLowerCase(),v=String(division||'').toLowerCase();
   if(d||v)return '2–7 days';
@@ -267,12 +282,17 @@ function render(){
   </div>`).join('');
   side.innerHTML=checkoutItems.map(i=>`<div class="summary-product">
     <img src="${esc(i.image_url)}" alt="">
-    <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}</span></div>
+    <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}${i.variation_options&&typeof i.variation_options==='object'?' · '+Object.entries(i.variation_options).map(([k,v])=>esc(k)+': '+esc(v)).join(' · '):''}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
-  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||''),discount=Number(referralState.discount||0),pointsDiscount=Number(rewardsVoucherState.discount||0),mysteryDiscount=Math.min(sub,sub*Number(mysteryState.discount||0)/100);
+  const sub=subtotal(),shipping=shippingForLocation(),discount=Number(referralState.discount||0),pointsDiscount=Number(rewardsVoucherState.discount||0),mysteryDiscount=Math.min(sub,sub*Number(mysteryState.discount||0)/100);
   $('checkoutSubtotal').textContent=money(sub);
   $('checkoutShipping').textContent=money(shipping);
+  const breakdown=$('checkoutShippingBreakdown');
+  if(breakdown){
+    breakdown.hidden=!shippingBreakdown.length;
+    breakdown.innerHTML=shippingBreakdown.map(x=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#666;padding:2px 0"><span>${esc(x.name)} delivery</span><b>${money(x.fee)}</b></div>`).join('');
+  }
   $('checkoutDiscount').textContent='-'+money(discount);
   $('checkoutDiscountRow').hidden=discount<=0;
   const pointsRow=$('checkoutPointsRow');if(pointsRow)pointsRow.hidden=pointsDiscount<=0;const pointsEl=$('checkoutPointsDiscount');if(pointsEl)pointsEl.textContent='-'+money(pointsDiscount);
@@ -330,8 +350,9 @@ async function hydrate(){
   const map=new Map((data||[]).map(p=>[p.id,p]));
   checkoutItems=raw.map(x=>{
     const p=map.get(x.product_id);if(!p)return null;
-    return{product_id:p.id,name:p.name,image_url:p.image_url,price:Number(p.price||0),quantity:Math.max(1,Number(x.quantity||1))}
+    return{...x,product_id:p.id,name:p.name,image_url:p.image_url,price:Number(x.price??x.unit_price??p.price??0),quantity:Math.max(1,Number(x.quantity||1)),vendor_id:p.vendor_id,product_type:p.product_type}
   }).filter(Boolean);
+  await loadMarketplaceShipping();
   render();
 }
 async function syncOrderToSheet(orderId){
@@ -365,7 +386,7 @@ function openOrderConfirm(d){
   return new Promise(resolve=>{
     const modal=$('orderConfirmModal');
     if(!modal){resolve(window.confirm('Please review your order details carefully before placing the order.'));return}
-    const shipping=shippingForLocation(d.division);
+    const shipping=shippingForLocation();
     const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100));
     const address=[d.address,d.upazila,d.district,d.division].filter(Boolean).join(', ');
     $('confirmCustomer').textContent=d.customer_name||'—';
@@ -414,7 +435,7 @@ async function submit(e){
     district:d.district,upazila:d.upazila,address:d.address,
     referral_code:d.referral_code||null,rewards_voucher_code:d.rewards_voucher_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
-    items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price)})),
+    items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price),variation_id:i.variation_id||null,variation_options:i.variation_options||{},variation_sku:i.variation_sku||i.sku||'',variation_stock_managed:i.variation_stock_managed!==false})),
     subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:1,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
   };
   try{
@@ -455,13 +476,13 @@ async function submit(e){
         upazila:d.upazila,
         address:d.address,
         payment_method:'Cash on Delivery',
-        shipping_charge:130,
+        shipping_charge:shipping,
         subtotal:subtotal(),
         referral_discount:Number(referralState.discount||0),
         rewards_voucher_code:String(order.rewards_voucher_code||rewardsVoucherState.code||''),
         rewards_voucher_discount:Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0),
         mystery_discount:Number(order.mystery_discount||0),
-        total:Math.max(0,subtotal()+130-Number(referralState.discount||0)-Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0)-Number(order.mystery_discount||0)),
+        total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0)-Number(order.mystery_discount||0)),
         public_tracking_id:privateTrackingId
       },
       checkoutItems.map(i=>({
@@ -510,6 +531,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('grabpointsOptIn')?.addEventListener('change',()=>{const on=$('grabpointsOptIn').checked;const m=$('grabpointsMsg');if(m&&!on&&rewardsVoucherState.code)m.textContent='Your reward voucher can still be used; this checkbox only controls earning GP on this order.';render()});
 
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
-  loadMystery();await loadGlobalShipping();await loadGrabPointsSettings();await loadLocations();await loadSite();await hydrate();
+  loadMystery();await loadGrabPointsSettings();await loadLocations();await loadSite();await hydrate();await loadMarketplaceShipping();render();
 });
 })();
