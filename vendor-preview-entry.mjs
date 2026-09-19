@@ -58,7 +58,15 @@ async function directVendorData(req,env,ctx){
   if(!v?.id)return json({error:'Vendor record has no usable ID'},500);
   const products=await all(env,'SELECT * FROM products WHERE vendor_id=? ORDER BY COALESCE(updated_at,created_at) DESC',[v.id]);
   let orders=[];
-  try{orders=await all(env,'SELECT vo.*,o.order_number,o.public_tracking_id FROM vendor_orders vo LEFT JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC LIMIT 100',[v.id])}catch{}
+  try{
+    orders=await all(env,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.division,o.district,o.upazila,o.address,o.payment_method,o.subtotal order_subtotal,o.shipping_charge,o.total,o.status order_status,o.created_at order_created_at FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC LIMIT 100`,[v.id]);
+    for(const order of orders){
+      let items=await all(env,`SELECT voi.*,oi.product_name,oi.image_url,oi.variation_id oi_variation_id,oi.variation_options oi_variation_options,oi.variation_sku oi_variation_sku,p.name product_name_current,p.image_url product_image,p.sku product_sku,COALESCE(NULLIF(voi.variation_sku,''),NULLIF(oi.variation_sku,''),NULLIF(pv.sku,''),NULLIF(p.sku,'')) sku,COALESCE(voi.variation_options,oi.variation_options) options_json,pv.image_url variation_image FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id LEFT JOIN products p ON p.id=voi.product_id LEFT JOIN product_variations pv ON pv.id=COALESCE(voi.variation_id,oi.variation_id) WHERE voi.vendor_order_id=? ORDER BY voi.rowid`,[order.id]);
+      if(!items.length) items=await all(env,`SELECT oi.*,p.vendor_id,p.image_url product_image,p.sku product_sku,COALESCE(NULLIF(oi.variation_sku,''),NULLIF(pv.sku,''),NULLIF(p.sku,'')) sku,oi.variation_options options_json,pv.image_url variation_image FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN product_variations pv ON pv.id=oi.variation_id WHERE oi.order_id=? AND p.vendor_id=? ORDER BY oi.rowid`,[order.order_id,v.id]);
+      for(const item of items){let parsed={};try{parsed=item.options_json?JSON.parse(item.options_json):{}}catch{};item.variation_options=parsed;item.sku=item.sku||'';item.product_details={name:item.product_name_current||item.product_name||'Product',image_url:item.variation_image||item.image_url||item.product_image||null,sku:item.sku||item.product_sku||null};delete item.options_json;}
+      order.items=items;order.item_count=items.reduce((n,item)=>n+Number(item.quantity||1),0);order.shipments=await all(env,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[order.order_id,v.id]);
+    }
+  }catch(err){console.warn('Vendor preview order enrichment:',err)}
   return json({vendor:v,products,orders});
 }
 
