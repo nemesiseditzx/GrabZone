@@ -7,7 +7,20 @@ const d1=window.grabzoneD1||null;
 const CART_KEY='grabzone_cart_v2';
 const BUY_NOW_KEY='grabzone_buy_now_v2';
 const currency=C.currency||'৳';
-const flatShippingCharge=130;
+let flatShippingCharge=130;
+let shippingSettingLoaded=false;
+async function loadGlobalShipping(){
+  if(shippingSettingLoaded)return flatShippingCharge;
+  try{
+    const base=String(C.backendUrl||'').replace(/\/$/,'');
+    const r=await fetch(base+'/api/marketplace/shipping-settings',{credentials:'include',cache:'no-store'});
+    const d=await r.json().catch(()=>({}));
+    const fee=Number(d.global_shipping_fee);
+    if(r.ok&&Number.isFinite(fee)&&fee>=0)flatShippingCharge=fee;
+  }catch(e){console.warn('GrabZone shipping setting:',e)}
+  shippingSettingLoaded=true;
+  return flatShippingCharge;
+}
 
 let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0},grabPointsState={balance:0,use:0,discount:0},mysteryState={token:'',discount:0},grabPointsEnabled=true,grabPointsEarnRate=10,grabPointsValue=0.1;
 const $=id=>document.getElementById(id);
@@ -497,6 +510,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('grabpointsOptIn')?.addEventListener('change',()=>{const on=$('grabpointsOptIn').checked;const m=$('grabpointsMsg');if(m&&!on&&rewardsVoucherState.code)m.textContent='Your reward voucher can still be used; this checkbox only controls earning GP on this order.';render()});
 
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
-  loadMystery();await loadGrabPointsSettings();await loadLocations();await loadSite();await hydrate();
+  loadMystery();await loadGlobalShipping();await loadGrabPointsSettings();await loadLocations();await loadSite();await hydrate();
 });
 })();
