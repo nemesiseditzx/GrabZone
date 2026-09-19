@@ -1619,112 +1619,12 @@ async function renderDetail() {
   // Marketplace variable-product UI is mounted here, after the real product
   // has rendered. This is intentionally self-contained so Buy Now/Add to Cart
   // never depends on a secondary injected script winning a race.
-  mountCustomerVariationUI(productId, product);
-
 }
 
 /* =========================================================
    PRODUCT GALLERY
 ========================================================= */
 
-async function mountCustomerVariationUI(productId, product) {
-  const detail = document.getElementById("productDetail");
-  if (!detail || detail.querySelector(".gz-customer-variations")) return;
-  try {
-    const r = await fetch("/api/marketplace/variations?product_id="+encodeURIComponent(productId), {cache:"no-store"});
-    if (!r.ok) return;
-    const data = await r.json();
-    const variations = Array.isArray(data.variations)
-      ? data.variations.filter(v => v.status !== "Disabled")
-      : [];
-    if (!variations.length) return;
-
-    const optionNames = [...new Set([
-      ...(data.options || []).map(o => String(o.name || "").trim()).filter(Boolean),
-      ...variations.flatMap(v => Object.keys(v.options || {}))
-    ])];
-    if (!optionNames.length) return;
-
-    const escV = v => String(v ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-    const moneyV = n => (SITE.currency || "৳")+Number(n||0).toLocaleString("en-BD");
-    const style=document.createElement("style");
-    style.textContent=".gz-customer-variations{margin:18px 0;padding:18px;border:1px solid #e4e5e1;border-radius:16px;background:#fff}.gz-cv-title{font-size:17px;font-weight:900;margin-bottom:12px}.gz-cv-row{margin:12px 0}.gz-cv-row>label{display:block;font-size:11px;font-weight:900;color:#555;margin-bottom:7px;text-transform:uppercase}.gz-cv-values{display:flex;gap:7px;flex-wrap:wrap}.gz-cv-values button{border:1px solid #d9d9d5;background:#fff;border-radius:10px;padding:10px 15px;font-weight:850;cursor:pointer}.gz-cv-values button.selected{border-color:#ff6b00;background:#fff7ef;box-shadow:0 0 0 2px #ff6b00 inset}.gz-cv-values button.unavailable{opacity:.35;text-decoration:line-through}.gz-cv-state{margin-top:13px;padding:11px 12px;border-radius:10px;background:#f6f6f3;font-size:12px}.gz-cv-state.warn{background:#fff6ed;color:#9a4d00}";
-    document.head.appendChild(style);
-
-    const wrap=document.createElement("section");
-    wrap.className="gz-customer-variations";
-    wrap.innerHTML='<div class="gz-cv-title">Choose your options</div><div id="gzCVOptions"></div><div id="gzCVState" class="gz-cv-state warn">Select all options</div>';
-    const dm=detail.querySelector(".dm-box");
-    const col=dm?.parentElement || detail.querySelector(".detail-grid > div:last-child") || detail;
-    if(dm && dm.parentElement===col) col.insertBefore(wrap,dm); else col.appendChild(wrap);
-
-    const area=wrap.querySelector("#gzCVOptions"), state=wrap.querySelector("#gzCVState");
-    let selected={}, current=null;
-    const valuesFor=name=>[...new Set(variations.map(v=>v.options?.[name]).filter(Boolean))];
-    const match=()=>variations.find(v=>Object.entries(v.options||{}).every(([k,val])=>selected[k]===val))||null;
-    const compatible=(name,val)=>variations.some(v=>v.status!=="Disabled"&&v.options?.[name]===val&&Object.entries(selected).every(([k,x])=>k===name||v.options?.[k]===x));
-    const updatePrice=v=>{
-      if(!v)return;
-      const price=Number(v.sale_price>0&&v.sale_price<v.regular_price?v.sale_price:v.regular_price);
-      const old=Number(v.old_price||0)>price?Number(v.old_price):0;
-      detail.querySelectorAll(".detail-price,#productPrice,.product-price,[data-product-price]").forEach(el=>el.innerHTML=moneyV(price)+(old?'<span class="old">'+moneyV(old)+"</span>":""));
-    };
-    const render=()=>{
-      area.innerHTML=optionNames.map(name=>'<div class="gz-cv-row"><label>'+escV(name)+'</label><div class="gz-cv-values">'+valuesFor(name).map(v=>'<button type="button" data-o="'+escV(name)+'" data-v="'+escV(v)+'">'+escV(v)+'</button>').join("")+'</div></div>').join("");
-      area.querySelectorAll("button[data-o]").forEach(b=>b.onclick=()=>{selected[b.dataset.o]=b.dataset.v;update()});
-      update();
-    };
-    const update=()=>{
-      current=match();
-      area.querySelectorAll("button[data-o]").forEach(b=>{
-        const active=selected[b.dataset.o]===b.dataset.v;
-        b.classList.toggle("selected",active);
-        b.classList.toggle("unavailable",!active&&!compatible(b.dataset.o,b.dataset.v));
-        b.disabled=!active&&!compatible(b.dataset.o,b.dataset.v);
-      });
-      if(!current){state.textContent="Select all options";state.className="gz-cv-state warn";return}
-      const available=current.status==="Available" && Number(current.stock||0)>0;
-      state.textContent=available ? "✓ In Stock · "+Number(current.stock)+" available" : "Out of Stock";
-      state.className=available ? "gz-cv-state" : "gz-cv-state warn";
-      updatePrice(current);
-    };
-    const item=()=>{
-      if(!current)return null;
-      const qty=Math.max(1,Number(document.getElementById("gzProductQty")?.textContent||1));
-      const price=Number(current.sale_price>0&&current.sale_price<current.regular_price?current.sale_price:current.regular_price);
-      return {product_id:productId,variation_id:current.id,variation_options:current.options||{},variation_stock_managed:true,quantity:qty,unit_price:price,price,name:product.name,image_url:current.image_url||product.image_url,sku:current.sku||""};
-    };
-    const add=()=>{
-      const x=item();
-      if(!x){alert("Please select all product options first.");return}
-      if(current.status!=="Available"||Number(current.stock||0)<x.quantity){alert("This variation is out of stock.");return}
-      window.GrabZoneCart?.add?.(x,x.quantity);
-    };
-    const buy=()=>{
-      const x=item();
-      if(!x){alert("Please select all product options first.");return}
-      if(current.status!=="Available"||Number(current.stock||0)<x.quantity){alert("This variation is out of stock.");return}
-      localStorage.setItem("grabzone_buy_now_v2",JSON.stringify([x]));
-      location.href="checkout.html";
-    };
-    render();
-    const bind=()=>{
-      detail.querySelectorAll(".gz-product-actions button").forEach(b=>{
-        if(b.dataset.gzVariationBound==="1")return;
-        b.dataset.gzVariationBound="1";
-        const isBuy=(b.textContent||"").toLowerCase().includes("buy");
-        b.addEventListener("click",e=>{
-          e.preventDefault();e.stopImmediatePropagation();
-          isBuy?buy():add();
-        },true);
-      });
-    };
-    bind();
-    new MutationObserver(bind).observe(detail,{childList:true,subtree:true});
-  } catch(e) {
-    console.warn("GrabZone customer variation UI:",e);
-  }
-}
 
 /* =========================================================
    PRODUCT GALLERY NEXT / PREVIOUS
