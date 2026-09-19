@@ -468,6 +468,7 @@ async function submit(e){
     b.disabled=false;b.textContent='Confirm Order';
   }
 }
+loadGlobalShipping().then(()=>{try{render();renderDeliveryEta()}catch{}}).catch(()=>{});
 document.addEventListener('DOMContentLoaded',async()=>{
   $('checkoutForm')?.addEventListener('submit',submit);
   $('division')?.addEventListener('change',onDivisionChange);
