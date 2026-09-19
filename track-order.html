@@ -54,49 +54,33 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
  loadSocial();
 
  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
- function render(o){
-   const idx=statuses.indexOf(o.status);
-   const safeIdx=idx<0?0:idx;
-   const descriptions={
-     New:'Order received',
-     Contacting:'We are contacting you to confirm the order',
-     Confirmed:'Order confirmed successfully',
-     Processing:'Your order is being prepared',
-     Shipped:'Your package is on the way',
-     Delivered:'Order delivered',
-     Cancelled:'This order has been cancelled'
-   };
+ function render(payload){
+   const o=payload.order||payload;
+   const vendorOrders=Array.isArray(payload.vendor_orders)?payload.vendor_orders:[];
+   const shipments=Array.isArray(payload.shipments)?payload.shipments:[];
+   const statusMap={New:0,Contacting:1,Confirmed:2,Processing:3,'Partially Shipped':4,Shipped:4,Delivered:5,Completed:5,Cancelled:6};
+   const currentIndex=statusMap[o.status]??0;
+   const descriptions={New:'Order received',Contacting:'We are contacting you to confirm the order',Confirmed:'Order confirmed successfully',Processing:'Your order is being prepared', 'Partially Shipped':'Some seller packages are on the way',Shipped:'Your order has been shipped',Delivered:'Order delivered',Completed:'All seller packages have been delivered',Cancelled:'This order has been cancelled'};
    $('result').hidden=false;
-   const currentLabel=descriptions[o.status]||'Your order status has been updated';
-   const district=String(o.district||'').toLowerCase(),division=String(o.division||'').toLowerCase();
-   const eta=(district.includes('dhaka')||division==='dhaka')?'1–2 days':(district.includes('chattogram')||district.includes('chittagong')||division.includes('chattogram')||division.includes('chittagong'))?'2–4 days':(division?'2–5 days':'');
-   const statusMarkup=statuses.map((s,i)=>{
-     const isCancelled=s==='Cancelled';
-     const cls=o.status==='Cancelled'?(isCancelled?'cancelled current':''):(i<safeIdx?'completed':i===safeIdx?'current':'');
+   const statusMarkup=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'].map((s,i)=>{
+     const cls=o.status==='Cancelled'?(s==='Cancelled'?'cancelled current':''):(i<currentIndex?'completed':(i===currentIndex||((o.status==='Partially Shipped')&&s==='Shipped')?'current':''));
      return '<div class="track-status-step '+cls+'"><span class="track-status-icon">'+statusIcons[s]+'</span><span>'+esc(s)+'</span></div>';
    }).join('');
-   $('result').innerHTML='<b>Order #'+esc(o.orderNumber)+'</b>'+
-   '<div class="current-status">Current Status: '+esc(o.status||'Unknown')+'<small>'+esc(currentLabel)+'</small></div>'+
-   (eta?'<div class="tracking-box"><b>📦 Estimated Arrival</b><div>'+esc(eta)+'</div></div>':'')+
-   '<div class="track-status-line" aria-label="Order status progress">'+statusMarkup+'</div>'+
-   (o.tracking?.number||o.tracking?.courier||o.tracking?.url?
-     '<div class="tracking-box"><b>Package Tracking</b><div>'+esc(o.tracking.courier||'Courier')+(o.tracking.number?' · '+esc(o.tracking.number):'')+'</div>'+
-     (o.tracking.url?'<a class="tracking-link" href="'+esc(o.tracking.url)+'" target="_blank" rel="noopener">Track Package →</a>':'')+'</div>':
-     '<div class="tracking-box">Courier tracking details will appear here once your package is shipped.</div>')+
-   (o.items?.length?'<div class="items"><b>Order Items</b>'+o.items.map(i=>'<div class="item"><span>'+esc(i.name)+' × '+i.quantity+'</span><span>৳'+Number(i.price*i.quantity).toLocaleString('en-BD')+'</span></div>').join('')+'</div>':'');
+   const vendorMarkup=vendorOrders.length?'<div style="display:grid;gap:14px;margin-top:18px">'+vendorOrders.map(v=>{
+     const vs=String(v.status||'New');
+     const items=(v.items||[]).map(i=>'<div class="item"><span>'+esc(i.product_name)+' × '+Number(i.quantity||1)+'</span><span>'+money(Number(i.line_total||0))+'</span></div>').join('');
+     const sellerShip=shipments.filter(s=>String(s.vendor_id)===String(v.vendor_id)||String(s.vendor_order_id)===String(v.id));
+     const shipMarkup=sellerShip.length?sellerShip.map(s=>'<div style="margin-top:9px;padding:10px;border:1px solid #e4e4df;border-radius:12px"><b>'+esc(s.shipment_tracking_id)+'</b><div style="font-size:12px;color:#666;margin-top:4px">'+esc(s.courier_name||'Courier pending')+(s.courier_tracking_number?' · '+esc(s.courier_tracking_number):'')+' · '+esc(s.status||'Processing')+'</div>'+(s.courier_tracking_url?'<a class="tracking-link" href="'+esc(s.courier_tracking_url)+'" target="_blank" rel="noopener">Track with courier →</a>':'')+'</div>').join(''):'<div style="font-size:12px;color:#777;margin-top:8px">Seller shipment tracking will appear after the vendor creates a shipment.</div>';
+     return '<div class="tracking-box"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div><b>'+esc(v.vendor_name)+'</b><div style="font-size:12px;color:#777;margin-top:3px">'+esc(v.vendor_slug||'')+'</div></div><strong>'+esc(vs)+'</strong></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;font-size:12px"><div><span style="color:#777">Items</span><br><b>'+money(v.subtotal)+'</b></div><div><span style="color:#777">Delivery</span><br><b>'+money(v.shipping_charge)+'</b></div><div><span style="color:#777">Seller total</span><br><b>'+money(v.total)+'</b></div></div><div class="items" style="margin-top:12px">'+items+'</div>'+shipMarkup+'</div>';
+   }).join('')+'</div>':'';
+   $('result').innerHTML='<b>Order #'+esc(o.order_number)+'</b><div class="current-status">Current Status: '+esc(o.status||'Unknown')+'<small>'+esc(descriptions[o.status]||'Your order status has been updated')+'</small></div><div class="track-status-line" aria-label="Order status progress">'+statusMarkup+'</div>'+vendorMarkup+(shipments.length?'':'<div class="tracking-box">Seller shipment tracking details will appear here once packages are shipped.</div>')+'<div class="tracking-box"><b>Delivery Address</b><div style="margin-top:5px">'+esc([o.address,o.upazila,o.district,o.division].filter(Boolean).join(', '))+'</div></div>';
  }
-
  async function getOrder(id){
-   const clean=String(id||'').trim().toUpperCase();
-   if(!clean) throw new Error('Please enter your Order Tracking ID.');
-   if(!window.grabzoneD1) throw new Error('Tracking service is not configured.');
-   const sb=window.grabzoneD1;
-   const {data,error}=await sb.rpc('track_public_order',{p_tracking_id:clean});
-   if(!error&&data) return {success:true,order:data};
-   console.warn('Direct tracking RPC failed:',error);
-   const response=await fetch('/api/track-order?trackingId='+encodeURIComponent(clean),{cache:'no-store'});
-   let body={}; try{body=await response.json()}catch{}
-   if(!response.ok) throw new Error(body.error||'Order not found. Please check your Order ID.');
+   const cleanId=String(id||'').trim().toUpperCase();
+   if(!cleanId)throw new Error('Please enter your Order Tracking ID.');
+   const response=await fetch((C.backendUrl||'')+'/api/marketplace/track?trackingId='+encodeURIComponent(cleanId),{cache:'no-store'});
+   let body={};try{body=await response.json()}catch{}
+   if(!response.ok)throw new Error(body.error||'Order not found. Please check your Tracking ID.');
    return body;
  }
 
