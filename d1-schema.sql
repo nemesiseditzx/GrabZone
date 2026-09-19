@@ -93,6 +93,22 @@ CREATE TABLE IF NOT EXISTS vendor_shipping_settings (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS variations (
+  id TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL,
+  name TEXT,
+  options TEXT NOT NULL DEFAULT '{}',
+  sku TEXT,
+  regular_price REAL NOT NULL DEFAULT 0,
+  sale_price REAL NOT NULL DEFAULT 0,
+  stock INTEGER NOT NULL DEFAULT 0,
+  stock_managed INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'Available',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS variations_product_idx ON variations(product_id,status);
+
 CREATE TABLE IF NOT EXISTS vendor_email_settings (
   vendor_id TEXT PRIMARY KEY,
   order_notification_email TEXT,
