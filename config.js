@@ -8,7 +8,7 @@ window.GRABZONE_CONFIG = {
   instagram: "https://instagram.com/yourstore"
 };
 (function(){
-  var v='20260918-marketplacefix1';
+  var v='20260919-marketplace-final2';
   var p=String(location.pathname||'');
   var pl=p.toLowerCase();
   var isAdmin=pl==='/admin'||pl==='/admin/'||pl.endsWith('/admin.html');
