@@ -98,7 +98,7 @@ async function decorateProduct(){
   const p=await productData(id);if(!p)return;
   const box=detail.querySelector('.dm-box');if(!box)return;
   detail.dataset.gzCartDecorated='1';
-  box.innerHTML=\`<strong>Ready to order?</strong><p>Choose your options and quantity, add it to your cart, or buy it now. Payment is Cash on Delivery.</p><div id="gzProductVariants"></div><div class="gz-qty-large"><button type="button" id="gzProductDec">−</button><span id="gzProductQty">1</span><button type="button" id="gzProductInc">+</button></div><div class="gz-product-actions"><button type="button" id="gzProductAdd">Add to Cart</button><button type="button" class="buy" id="gzProductBuy">Buy Now</button></div>\`;
+  box.innerHTML=`<strong>Ready to order?</strong><p>Choose your options and quantity, add it to your cart, or buy it now. Payment is Cash on Delivery.</p><div id="gzProductVariants"></div><div class="gz-qty-large"><button type="button" id="gzProductDec">−</button><span id="gzProductQty">1</span><button type="button" id="gzProductInc">+</button></div><div class="gz-product-actions"><button type="button" id="gzProductAdd">Add to Cart</button><button type="button" class="buy" id="gzProductBuy">Buy Now</button></div>`;
   let q=1,vars=await loadVariations(p.id),selected=null;
   const setQty=()=>{$('gzProductQty').textContent=q;if(selected&&!stockAvailable(p,selected,q)){$('gzProductVariants .gz-variant-message').textContent='Not enough stock for this option.';$('gzProductVariants .gz-variant-message').classList.add('error')}};
   $('gzProductDec').onclick=()=>{q=Math.max(1,q-1);setQty()};
