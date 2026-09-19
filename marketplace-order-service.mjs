@@ -129,7 +129,9 @@ async function createOrder(req,env){
   }
   for(const [vid,g] of groups){
     const vendor=(await q(env,"SELECT commission_type,commission_value FROM vendors WHERE id=?",[vid])).results?.[0]||{};
-    const voId=crypto.randomUUID(),gross=g.subtotal+(Number((await q(env,"SELECT shipping_fee FROM vendor_shipping_settings WHERE vendor_id=? LIMIT 1",[vid])).results?.[0]?.shipping_fee||0));
+    const shippingCfg=(await q(env,"SELECT shipping_fee,enabled FROM vendor_shipping_settings WHERE vendor_id=? LIMIT 1",[vid])).results?.[0]||{};
+    const vendorShipping=Number(shippingCfg.enabled??1)===1?Math.max(0,Number(shippingCfg.shipping_fee||0)):0;
+    const voId=crypto.randomUUID(),gross=g.subtotal+vendorShipping;
     statements.push(env.DB.prepare("INSERT INTO vendor_orders(id,order_id,vendor_id,subtotal,shipping_charge,total,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)").bind(voId,orderId,vid,g.subtotal,gross-g.subtotal,gross,'New',t,t));
     for(const item of g.items)statements.push(env.DB.prepare("INSERT INTO vendor_order_items(id,vendor_order_id,order_item_id,vendor_id,product_id,product_name,variation_id,variation_options,variation_sku,quantity,unit_price,line_total,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(crypto.randomUUID(),voId,item.id,vid,item.product_id,item.product_name,item.variation_id,JSON.stringify(item.variation_options||{}),item.variation_sku||null,item.quantity,item.unit_price,item.line_total,t));
     const commission=String(vendor.commission_type||'percentage')==='fixed'?Math.min(g.subtotal,Math.max(0,Number(vendor.commission_value||0))):Math.round(g.subtotal*Math.max(0,Number(vendor.commission_value||0))/100*100)/100;
