@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://grabzone-marketplace-dev.nemesiseditzx984.workers.dev/api/:path*"
+    },
+    {
+      "source": "/brand/:slug",
+      "destination": "/index.html?vendor=:slug"
     }
   ],
   "cleanUrls": true
