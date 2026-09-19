@@ -81,7 +81,7 @@ async function createOrder(req,env){
     }
     const unit=effectivePrice(product,variation), line=unit*qty;
     if(!Number.isFinite(unit)||unit<0)return json({error:'Invalid product price.'},400);
-    const item={id:crypto.randomUUID(),product_id:pid,vendor_id:vendorId,product_name:product.name,image_url:product.image_url||'',quantity:qty,unit_price:unit,line_total:line,variation_id:variation?.id||null,variation_options:raw.variation_options||variation?.options||{},variation_sku:clean(raw.variation_sku||variation?.sku||''),stock_managed:Boolean(Number(product.stock_managed||0)||variation&&Number(variation.stock_managed??0))};
+    const item={id:crypto.randomUUID(),product_id:pid,vendor_id:vendorId,product_name:product.name,image_url:product.image_url||'',quantity:qty,unit_price:unit,line_total:line,variation_id:variation?.id||null,variation_options:raw.variation_options||variation?.options||{},variation_sku:clean(raw.variation_sku||variation?.sku||''),stock_managed:Boolean(Number(product.stock_managed||0)===1||(variation&&(variation.stock!==undefined||Number(variation.stock_managed??0)===1)))};
     items.push(item);
     if(!groups.has(vendorId))groups.set(vendorId,{vendor_id:vendorId,subtotal:0,items:[]});
     groups.get(vendorId).subtotal+=line;groups.get(vendorId).items.push(item);
