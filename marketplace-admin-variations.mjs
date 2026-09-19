@@ -91,7 +91,7 @@ async function handle(req, e) {
     for (const o of options) o.values = (await q(e,
       'SELECT * FROM option_values WHERE option_id=? ORDER BY sort_order,id', [o.id])).results || [];
     const variations = (await q(e,
-      'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at', [pid])).results || [];
+      'SELECT * FROM product_variations WHERE product_id=? AND status!=\'Disabled\' ORDER BY created_at', [pid])).results || [];
     for (const v of variations) {
       v.options = {};
       for (const x of (await q(e,
