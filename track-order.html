@@ -54,6 +54,7 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
  loadSocial();
 
  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+ const money=v=>'৳'+Number(v||0).toLocaleString('en-BD');
  function render(payload){
    const o=payload.order||payload;
    const vendorOrders=Array.isArray(payload.vendor_orders)?payload.vendor_orders:[];
