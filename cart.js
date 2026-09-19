@@ -92,7 +92,50 @@ async function chooseVariant(p,qty,mode){
   const close=()=>modal.remove();modal.querySelector('.gz-variant-close').onclick=close;modal.querySelector('.gz-variant-cancel').onclick=close;modal.querySelector('.gz-variant-confirm').onclick=()=>{const v=vars.find(x=>String(x.id)===String(msg.dataset.variant));if(!v){msg.textContent='Select all options';return}if(!stockAvailable(p,v,qty)){msg.textContent='Out of stock';return}const price=variationPrice(v,p),item={product_id:p.id,name:p.name,image_url:p.image_url,price,unit_price:price,quantity:qty,variation_id:v.id,variation_options:parseVariationOptions(v),variation_sku:v.sku||''};close();mode==='buy'?checkout([item]):add(item,qty)};modal.classList.add('open');
 }
 function decorateCards(){const grid=$('products');if(!grid)return;grid.querySelectorAll('.product-card').forEach(card=>{if(card.querySelector('.gz-card-actions'))return;const href=card.getAttribute('href')||'';const id=new URL(href,location.href).searchParams.get('id');if(!id)return;const name=card.querySelector('.product-name')?.textContent.trim()||'Product';const priceText=card.querySelector('.price')?.textContent||'';const price=Number((priceText.match(/[0-9][0-9,]*/)||['0'])[0].replace(/,/g,''));const image=card.querySelector('img')?.src||'';const a=document.createElement('div');a.className='gz-card-actions';a.innerHTML='<button type="button">Add to Cart</button><button type="button" class="buy">Buy Now</button>';card.appendChild(a);a.children[0].onclick=e=>{e.preventDefault();e.stopPropagation();add({product_id:id,name,image_url:image,price},1)};a.children[1].onclick=e=>{e.preventDefault();e.stopPropagation();checkout([{product_id:id,name,image_url:image,price,quantity:1}])}})}
-async function decorateProduct(){const detail=$('productDetail');if(!detail||detail.dataset.gzCartDecorated==='1'||!detail.querySelector('h1'))return;const id=new URLSearchParams(location.search).get('id');if(!id)return;const p=await productData(id);if(!p)return;const box=detail.querySelector('.dm-box');if(!box)return;detail.dataset.gzCartDecorated='1';box.innerHTML=`<strong>Ready to order?</strong><p>Choose a quantity, add it to your cart, or buy it now. Payment is Cash on Delivery.</p><div id="gzProductVariants"></div><div class="gz-qty-large"><button type="button" id="gzProductDec">−</button><span id="gzProductQty">1</span><button type="button" id="gzProductInc">+</button></div><div class="gz-product-actions"><button type="button" id="gzProductAdd">Add to Cart</button><button type="button" class="buy" id="gzProductBuy">Buy Now</button></div>`;let q=1;const set=()=>{$('gzProductQty').textContent=q};$('gzProductDec').onclick=()=>{q=Math.max(1,q-1);set()};$('gzProductInc').onclick=()=>{q++;set()};$('gzProductAdd').onclick=()=>chooseVariant(p,q,'add');$('gzProductBuy').onclick=()=>chooseVariant(p,q,'buy')
+async function decorateProduct(){
+  const detail=$('productDetail');if(!detail||detail.dataset.gzCartDecorated==='1'||!detail.querySelector('h1'))return;
+  const id=new URLSearchParams(location.search).get('id');if(!id)return;
+  const p=await productData(id);if(!p)return;
+  const box=detail.querySelector('.dm-box');if(!box)return;
+  detail.dataset.gzCartDecorated='1';
+  box.innerHTML=\`<strong>Ready to order?</strong><p>Choose your options and quantity, add it to your cart, or buy it now. Payment is Cash on Delivery.</p><div id="gzProductVariants"></div><div class="gz-qty-large"><button type="button" id="gzProductDec">−</button><span id="gzProductQty">1</span><button type="button" id="gzProductInc">+</button></div><div class="gz-product-actions"><button type="button" id="gzProductAdd">Add to Cart</button><button type="button" class="buy" id="gzProductBuy">Buy Now</button></div>\`;
+  let q=1,vars=await loadVariations(p.id),selected=null;
+  const setQty=()=>{$('gzProductQty').textContent=q;if(selected&&!stockAvailable(p,selected,q)){$('gzProductVariants .gz-variant-message').textContent='Not enough stock for this option.';$('gzProductVariants .gz-variant-message').classList.add('error')}};
+  $('gzProductDec').onclick=()=>{q=Math.max(1,q-1);setQty()};
+  $('gzProductInc').onclick=()=>{q++;setQty()};
+  const host=$('gzProductVariants');
+  if(vars.length){
+    host.innerHTML=variantChooserHtml(vars);
+    const message=host.querySelector('.gz-variant-message');
+    host.querySelectorAll('[data-opt-group]').forEach(btn=>btn.onclick=()=>{
+      const group=btn.dataset.optGroup;
+      const selectedOptions={};
+      host.querySelectorAll('[data-opt-group].active').forEach(x=>selectedOptions[x.dataset.optGroup]=x.dataset.optValue);
+      selectedOptions[group]=btn.dataset.optValue;
+      host.querySelectorAll('[data-opt-group="'+CSS.escape(group)+'"]').forEach(x=>x.classList.toggle('active',x===btn));
+      const exact=vars.find(v=>{const o=parseVariationOptions(v),ks=Object.keys(o);return ks.length===Object.keys(selectedOptions).length&&ks.every(k=>String(selectedOptions[k]??'')===String(o[k]))});
+      selected=exact||null;
+      if(selected){
+        const price=variationPrice(selected,p),ok=stockAvailable(p,selected,q);
+        message.textContent=ok?(variationLabel(selected)+' · '+money(price)):'Out of stock';
+        message.classList.toggle('error',!ok);
+      }else{message.textContent='Select all options';message.classList.remove('error')}
+    });
+  }else{
+    const managed=Number(p.stock_managed||0)===1;
+    host.innerHTML='<div class="gz-stock-note">'+(managed?(Number(p.stock||0)>0?'✓ In Stock · '+Number(p.stock)+' available':'✕ Out of Stock'):'✓ In Stock')+'</div>';
+  }
+  const getItem=()=>{
+    if(vars.length&&!selected){alert('Please select all product options first.');return null}
+    if(vars.length&&!stockAvailable(p,selected,q)){alert('Not enough stock for the selected option.');return null}
+    if(!vars.length&&!stockAvailable(p,null,q)){alert('Not enough stock for '+p.name+'.');return null}
+    const price=selected?variationPrice(selected,p):Number(p.price);
+    return {product_id:p.id,name:p.name,image_url:p.image_url,price,unit_price:price,quantity:q,variation_id:selected?.id||null,variation_options:selected?parseVariationOptions(selected):{},variation_sku:selected?.sku||''};
+  };
+  $('gzProductAdd').onclick=()=>{const item=getItem();if(item)add(item,q)};
+  $('gzProductBuy').onclick=()=>{const item=getItem();if(item)checkout([item])};
+}
+
 function observe(){const grid=$('products');if(grid)new MutationObserver(decorateCards).observe(grid,{childList:true,subtree:true});const detail=$('productDetail');if(detail)new MutationObserver(decorateProduct).observe(detail,{childList:true,subtree:true});decorateCards();decorateProduct()}
 document.addEventListener('DOMContentLoaded',()=>{ensureUI();observe();update()});
 window.GrabZoneCart={add,checkout,open:openDrawer,chooseVariant,loadVariations};
