@@ -63,6 +63,8 @@ async function createShipment(b,env,own){
   const totalQty=source.reduce((n,x)=>n+Number(x.quantity||0),0),shippedQty=all.reduce((n,x)=>n+Number(x.quantity||0),0);
   const parentStatus=delivered&&shippedQty>=totalQty?'Delivered':shippedAny?'Partially Shipped':'Processing';
   await env.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(parentStatus,t,vo.id).run();
+  await emitMarketplaceEmail(env,'shipment_updated',{shipment_id:id});
+  await emitMarketplaceEmail(env,'status_updated',{id:vo.order_id});
   return json({ok:true,shipment_id:id,shipment_tracking_id:tid,status:clean(b.status)||'Processing'});
 }
 async function syncVendorOrderShipmentStatus(env,vendorOrderId){
