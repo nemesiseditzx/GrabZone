@@ -11,6 +11,7 @@ async function ensure(env){
     "CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,shipping_charge REAL NOT NULL DEFAULT 0,total REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'New',admin_note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id))",
     "CREATE TABLE IF NOT EXISTS vendor_shipping_settings(vendor_id TEXT PRIMARY KEY,shipping_fee REAL NOT NULL DEFAULT 0,enabled INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS vendor_payouts(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,vendor_order_id TEXT NOT NULL,gross_amount REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,net_amount REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'cod_commission_due',paid_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS marketplace_inventory_guards(id TEXT PRIMARY KEY,ok INTEGER NOT NULL CHECK(ok=1))",
     "CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,vendor_id TEXT NOT NULL,product_id TEXT,product_name TEXT NOT NULL,variation_id TEXT,variation_options TEXT NOT NULL DEFAULT '{}',variation_sku TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,created_at TEXT NOT NULL,UNIQUE(vendor_order_id,order_item_id))",
     "CREATE INDEX IF NOT EXISTS vendor_order_items_vendor_idx ON vendor_order_items(vendor_id,vendor_order_id)",
     "CREATE TABLE IF NOT EXISTS shipments(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,shipment_tracking_id TEXT NOT NULL UNIQUE,courier_name TEXT,courier_tracking_number TEXT,courier_tracking_url TEXT,status TEXT NOT NULL DEFAULT 'Processing',note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
@@ -126,7 +127,6 @@ async function createOrder(req,env){
   for(const item of items){
     statements.push(env.DB.prepare("INSERT INTO order_items(id,order_id,product_id,product_name,image_url,quantity,unit_price,line_total,vendor_id,variation_id,variation_options,variation_sku,stock_managed) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(item.id,orderId,item.product_id,item.product_name,item.image_url,item.quantity,item.unit_price,item.line_total,item.vendor_id,item.variation_id,JSON.stringify(item.variation_options||{}),item.variation_sku||null,item.stock_managed?1:0));
   }
-  const stockIndexes=[];
   for(const [vid,g] of groups){
     const vendor=(await q(env,"SELECT commission_type,commission_value FROM vendors WHERE id=?",[vid])).results?.[0]||{};
     const voId=crypto.randomUUID(),gross=g.subtotal+(Number((await q(env,"SELECT shipping_fee FROM vendor_shipping_settings WHERE vendor_id=? LIMIT 1",[vid])).results?.[0]?.shipping_fee||0));
@@ -136,8 +136,8 @@ async function createOrder(req,env){
     statements.push(env.DB.prepare("INSERT INTO vendor_payouts(id,vendor_id,vendor_order_id,gross_amount,commission_amount,net_amount,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)").bind('pay_'+crypto.randomUUID(),vid,voId,gross,commission,gross-commission,'cod_commission_due',t,t));
     for(const item of g.items){
       if(item.stock_managed){
-        if(item.variation_id&&await hasTable(env,'variations')){stockIndexes.push(statements.length);statements.push(env.DB.prepare("UPDATE variations SET stock=stock-? WHERE id=? AND stock>=?").bind(item.quantity,item.variation_id,item.quantity));}
-        else {stockIndexes.push(statements.length);statements.push(env.DB.prepare("UPDATE products SET stock=stock-? WHERE id=? AND stock_managed=1 AND stock>=?").bind(item.quantity,item.product_id,item.quantity));}
+        if(item.variation_id&&await hasTable(env,'variations')){statements.push(env.DB.prepare("UPDATE variations SET stock=stock-? WHERE id=? AND stock>=?").bind(item.quantity,item.variation_id,item.quantity));statements.push(env.DB.prepare("INSERT INTO marketplace_inventory_guards(id,ok) SELECT ?,changes()").bind(crypto.randomUUID()));statements.push(env.DB.prepare("DELETE FROM marketplace_inventory_guards WHERE id=(SELECT id FROM marketplace_inventory_guards ORDER BY rowid DESC LIMIT 1)"));}
+        else {statements.push(env.DB.prepare("UPDATE products SET stock=stock-? WHERE id=? AND stock_managed=1 AND stock>=?").bind(item.quantity,item.product_id,item.quantity));statements.push(env.DB.prepare("INSERT INTO marketplace_inventory_guards(id,ok) SELECT ?,changes()").bind(crypto.randomUUID()));statements.push(env.DB.prepare("DELETE FROM marketplace_inventory_guards WHERE id=(SELECT id FROM marketplace_inventory_guards ORDER BY rowid DESC LIMIT 1)"));}
       }
     }
   }
@@ -146,7 +146,6 @@ async function createOrder(req,env){
   if(mysteryToken)statements.push(env.DB.prepare("UPDATE mystery_claims SET used=1 WHERE token=? AND used=0").bind(mysteryToken));
   try{
     const out=await env.DB.batch(statements);
-    for(const i of stockIndexes)if(Number(out[i]?.meta?.changes||0)!==1)throw new Error('Stock changed while placing the order. Please try again.');
     return json({data:{id:orderId,order_number:orderNumber,public_tracking_id:tracking,subtotal,shipping_charge:shipping,total,referral_discount:referralDiscount,rewards_voucher_code:voucherCode||null,rewards_voucher_discount:voucherDiscount,mystery_discount:mysteryDiscount,status:'New'}});
   }catch(e){return json({error:e.message||'Could not create order.'},409)}
 }
