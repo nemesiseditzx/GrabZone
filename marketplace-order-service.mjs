@@ -9,6 +9,7 @@ async function ensure(env){
   const sql=[
     "CREATE TABLE IF NOT EXISTS vendors(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT NOT NULL UNIQUE,logo_url TEXT,banner_url TEXT,description TEXT,tagline TEXT,accent_color TEXT,category TEXT,business_email TEXT,support_email TEXT,phone TEXT,status TEXT NOT NULL DEFAULT 'active',show_on_homepage INTEGER NOT NULL DEFAULT 1,featured_on_homepage INTEGER NOT NULL DEFAULT 0,commission_type TEXT NOT NULL DEFAULT 'percentage',commission_value REAL NOT NULL DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,shipping_charge REAL NOT NULL DEFAULT 0,total REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'New',admin_note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id))",
+    "ALTER TABLE vendor_orders ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0",
     "CREATE TABLE IF NOT EXISTS vendor_shipping_settings(vendor_id TEXT PRIMARY KEY,shipping_fee REAL NOT NULL DEFAULT 0,enabled INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS vendor_payouts(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,vendor_order_id TEXT NOT NULL,gross_amount REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,net_amount REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'cod_commission_due',paid_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS marketplace_inventory_guards(id TEXT PRIMARY KEY,ok INTEGER NOT NULL CHECK(ok=1))",
@@ -131,10 +132,11 @@ async function createOrder(req,env){
     const vendor=(await q(env,"SELECT commission_type,commission_value FROM vendors WHERE id=?",[vid])).results?.[0]||{};
     const shippingCfg=(await q(env,"SELECT shipping_fee,enabled FROM vendor_shipping_settings WHERE vendor_id=? LIMIT 1",[vid])).results?.[0]||{};
     const vendorShipping=Number(shippingCfg.enabled??1)===1?Math.max(0,Number(shippingCfg.shipping_fee||0)):0;
-    const voId=crypto.randomUUID(),gross=g.subtotal+vendorShipping;
-    statements.push(env.DB.prepare("INSERT INTO vendor_orders(id,order_id,vendor_id,subtotal,shipping_charge,total,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)").bind(voId,orderId,vid,g.subtotal,gross-g.subtotal,gross,'New',t,t));
+    const vendorDiscount=subtotal>0?Math.min(g.subtotal,Math.round(discountTotal*(g.subtotal/subtotal)*100)/100):0;
+    const voId=crypto.randomUUID(),gross=Math.max(0,g.subtotal+vendorShipping-vendorDiscount);
+    statements.push(env.DB.prepare("INSERT INTO vendor_orders(id,order_id,vendor_id,subtotal,shipping_charge,total,discount_amount,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)").bind(voId,orderId,vid,g.subtotal,vendorShipping,gross,vendorDiscount,'New',t,t));
     for(const item of g.items)statements.push(env.DB.prepare("INSERT INTO vendor_order_items(id,vendor_order_id,order_item_id,vendor_id,product_id,product_name,variation_id,variation_options,variation_sku,quantity,unit_price,line_total,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(crypto.randomUUID(),voId,item.id,vid,item.product_id,item.product_name,item.variation_id,JSON.stringify(item.variation_options||{}),item.variation_sku||null,item.quantity,item.unit_price,item.line_total,t));
-    const commission=String(vendor.commission_type||'percentage')==='fixed'?Math.min(g.subtotal,Math.max(0,Number(vendor.commission_value||0))):Math.round(g.subtotal*Math.max(0,Number(vendor.commission_value||0))/100*100)/100;
+    const commissionBase=Math.max(0,g.subtotal-vendorDiscount);const commission=String(vendor.commission_type||'percentage')==='fixed'?Math.min(commissionBase,Math.max(0,Number(vendor.commission_value||0))):Math.round(commissionBase*Math.max(0,Number(vendor.commission_value||0))/100*100)/100;
     statements.push(env.DB.prepare("INSERT INTO vendor_payouts(id,vendor_id,vendor_order_id,gross_amount,commission_amount,net_amount,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)").bind('pay_'+crypto.randomUUID(),vid,voId,gross,commission,gross-commission,'cod_commission_due',t,t));
     for(const item of g.items){
       if(item.stock_managed){
@@ -148,7 +150,9 @@ async function createOrder(req,env){
   if(mysteryToken){statements.push(env.DB.prepare("UPDATE mystery_claims SET used=1 WHERE token=? AND used=0").bind(mysteryToken));statements.push(env.DB.prepare("INSERT INTO marketplace_inventory_guards(id,ok) SELECT ?,changes()").bind(crypto.randomUUID()));statements.push(env.DB.prepare("DELETE FROM marketplace_inventory_guards WHERE id=(SELECT id FROM marketplace_inventory_guards ORDER BY rowid DESC LIMIT 1)"));}
   try{
     const out=await env.DB.batch(statements);
-    return json({data:{id:orderId,order_number:orderNumber,public_tracking_id:tracking,subtotal,shipping_charge:shipping,total,referral_discount:referralDiscount,rewards_voucher_code:voucherCode||null,rewards_voucher_discount:voucherDiscount,mystery_discount:mysteryDiscount,status:'New'}});
+    const vendorBreakdown=[...groups.entries()].map(([vendor_id,g])=>({vendor_id,subtotal:g.subtotal,shipping_charge:Number((g.subtotal>0?0:0)),total:g.subtotal}));
+    for(const v of vendorBreakdown){const row=(await q(env,'SELECT vo.total,vo.shipping_charge,vo.discount_amount,v.name vendor_name,v.slug vendor_slug FROM vendor_orders vo JOIN vendors v ON v.id=vo.vendor_id WHERE vo.id IN (SELECT id FROM vendor_orders WHERE order_id=? AND vendor_id=?) LIMIT 1',[orderId,v.vendor_id])).results?.[0];if(row){v.vendor_name=row.vendor_name;v.vendor_slug=row.vendor_slug;v.shipping_charge=Number(row.shipping_charge||0);v.discount_amount=Number(row.discount_amount||0);v.total=Number(row.total||0)}}
+    return json({data:{id:orderId,order_number:orderNumber,public_tracking_id:tracking,subtotal,shipping_charge:shipping,total,referral_discount:referralDiscount,rewards_voucher_code:voucherCode||null,rewards_voucher_discount:voucherDiscount,mystery_discount:mysteryDiscount,status:'New',vendor_orders:vendorBreakdown}});
   }catch(e){return json({error:e.message||'Could not create order.'},409)}
 }
 async function track(req,env){
