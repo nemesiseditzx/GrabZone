@@ -9,7 +9,7 @@ const writeCart=x=>{localStorage.setItem(CART,JSON.stringify(x));window.dispatch
 const qty=()=>readCart().reduce((n,x)=>n+Number(x.quantity||1),0);
 const img=p=>p?.image_url||p?.image||'/favicon.png';
 async function get(u){const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw Error(r.status);return r.json()}
-function add(p){const c=readCart(),id=String(p.id),f=c.find(x=>String(x.product_id||x.id)===id);if(f)f.quantity=Number(f.quantity||1)+1;else c.push({product_id:p.id,id:p.id,name:p.name,price:Number(p.price||0),image_url:img(p),quantity:1,vendor_id:p.vendor_id,vendor_slug:p.vendor_slug,vendor_name:p.vendor_name});writeCart(c);updateCart();toast('Added to cart')}
+function add(p){if(String(p.product_type||'').toLowerCase()==='variable'){location.href='/product.html?id='+encodeURIComponent(p.id);return}const c=readCart(),id=String(p.id),f=c.find(x=>String(x.product_id||x.id)===id);if(f)f.quantity=Number(f.quantity||1)+1;else c.push({product_id:p.id,id:p.id,name:p.name,price:Number(p.price||0),image_url:img(p),quantity:1,vendor_id:p.vendor_id,vendor_slug:p.vendor_slug,vendor_name:p.vendor_name});writeCart(c);updateCart();toast('Added to cart')}
 function updateCart(){const e=document.querySelector('#mpCartCount');if(e)e.textContent=qty()||''}
 function toast(t){let e=document.querySelector('.mp-toast');if(!e){e=document.createElement('div');e.className='mp-toast';document.body.appendChild(e)}e.textContent=t;e.classList.add('show');clearTimeout(window.__mpToast);window.__mpToast=setTimeout(()=>e.classList.remove('show'),1600)}
 function openCart(){if(window.GrabZoneCart?.open)return window.GrabZoneCart.open();location.href='/checkout.html'}
