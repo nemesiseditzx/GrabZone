@@ -206,7 +206,10 @@ async function confirmOrder(order){
  const voucherDiscount=Number(order.rewards_voucher_discount||0);
  const mysteryDiscount=Number(order.mystery_discount||0);
  const discount=Number(order.discount_amount||referralDiscount+voucherDiscount+mysteryDiscount);
- const updates={status:'Confirmed',shipping_charge:130,discount_amount:discount,total:Math.max(0,subtotal+130-discount),updated_at:new Date().toISOString()};
+ const district=String(order.district||'').trim().toLowerCase();
+ const division=String(order.division||'').trim().toLowerCase();
+ const confirmedShipping=(district.includes('dhaka')||division.includes('dhaka'))?70:130;
+ const updates={status:'Confirmed',shipping_charge:confirmedShipping,discount_amount:discount,total:Math.max(0,subtotal+confirmedShipping-discount),updated_at:new Date().toISOString()};
 
  const {error}=await sb.from('orders').update(updates).eq('id',order.id);
  if(error)throw error;
@@ -219,11 +222,15 @@ async function confirmOrder(order){
 async function changeStatus(id,status){
  const order=orders.find(x=>x.id===id); if(!order||order.status===status)return;
  if(status==='Confirmed'){
-  if(!(await gzUiConfirm('Confirm '+order.order_number+'? Delivery charge is ৳130. The customer receipt/status email will be sent.')))return;
+  const district=String(order.district||'').trim().toLowerCase();
+  const division=String(order.division||'').trim().toLowerCase();
+  const confirmedShipping=(district.includes('dhaka')||division.includes('dhaka'))?70:130;
+  const label=confirmedShipping===70?'৳70 for Dhaka City':'৳130 for outside Dhaka City';
+  if(!(await gzUiConfirm('Confirm '+order.order_number+'? Delivery charge will be '+label+'. The customer receipt/status email will be sent.')))return;
   try{
    const emailed=await confirmOrder(order);
    document.dispatchEvent(new CustomEvent('grabzone:orders-updated'));
-   gzUiToast(emailed?'✓ Order confirmed with ৳130 delivery charge and the customer email was sent.':'✓ Order confirmed and saved. Email could not be sent; check email settings.');
+   gzUiToast(emailed?'✓ Order confirmed with the correct delivery charge and the customer email was sent.':'✓ Order confirmed and saved. Email could not be sent; check email settings.');
   }catch(e){gzUiToast('Could not confirm order: '+e.message,'error')}
   return;
  }
@@ -308,7 +315,7 @@ async function openEditor(id){
  <label>Division<input id="oeDivision" value="${esc(current.division)}"></label><label>District<input id="oeDistrict" value="${esc(current.district)}"></label>
  <label>Thana<input id="oeUpazila" value="${esc(current.upazila||'')}"></label><label>Referral Code<input id="oeReferral" value="${esc(current.referral_code||'')}"></label>
  <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label><div class="gz-order-full" style="padding:13px 14px;border:1px solid #e4e4df;border-radius:12px;background:#fafaf8"><div style="font-size:10px;font-weight:900;letter-spacing:.08em;color:#777">CUSTOMER ORDER HISTORY</div><div style="margin-top:6px;font-size:12px;font-weight:800">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).length} order(s) linked to this phone number</div><div style="margin-top:7px;color:#666;font-size:11px;line-height:1.6">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).slice(0,8).map(x=>esc(x.order_number)+' · '+esc(x.status)+' · '+money(x.total)).join('<br>')||'No other orders found.'}</div></div>
- <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" min="130" max="130" value="130" readonly></label>
+ <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" min="0" value="${Number(current.shipping_charge??130)}" readonly></label>
  <label>Referral Discount<input id="oeDiscount" type="number" step="0.01" min="0" value="${Number(current.referral_discount||0)}"></label>
  <label>GrabPoints Discount<input id="oeGpDiscount" type="number" step="0.01" min="0" value="${Number(current.rewards_voucher_discount||0)}" readonly></label>
  <div class="gz-order-full" style="font-size:12px;color:#666;padding:10px 12px;background:#f7f7f5;border-radius:10px">Final discount = Referral Discount + GrabPoints Discount${Number(current.mystery_discount||0)>0?' + Mystery Deal':''}. Total is recalculated automatically.</div>
@@ -322,7 +329,7 @@ async function openEditor(id){
 function itemRow(it,i){return`<div class="gz-item-edit" data-item-index="${i}"><input class="it-name" placeholder="Product name" value="${esc(it.product_name)}"><input class="it-qty" type="number" min="1" value="${Math.max(1,Number(it.quantity||1))}"><input class="it-price" type="number" step="1" min="0" value="${Number(it.unit_price||0)}"><input class="it-image" placeholder="Image URL" value="${esc(it.image_url||'')}"><button type="button" class="it-remove">×</button></div>`}
 function bindItemRow(i){const row=document.querySelector(`.gz-item-edit[data-item-index="${i}"]`);if(!row)return;const sync=()=>{current.items[i].product_name=row.querySelector('.it-name').value.trim();current.items[i].quantity=Math.max(1,Number(row.querySelector('.it-qty').value||1));current.items[i].unit_price=Math.max(0,Number(row.querySelector('.it-price').value||0));current.items[i].image_url=row.querySelector('.it-image').value.trim();updatePreview()};row.querySelectorAll('input').forEach(x=>x.oninput=sync);row.querySelector('.it-remove').onclick=()=>{current.items.splice(i,1);renderItemEditor();updatePreview()}}
 function renderItemEditor(){const box=$('oeItems');box.innerHTML=current.items.map((it,i)=>itemRow(it,i)).join('');current.items.forEach((_,i)=>bindItemRow(i))}
-function updatePreview(){const sub=current.items.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0),ship=130,ref=Number($('oeDiscount')?.value||current.referral_discount||0),gp=Number(current.rewards_voucher_discount||0),myst=Number(current.mystery_discount||0),disc=Math.max(0,ref+gp+myst);$('oePreview').textContent=`Subtotal: ${money(sub)} · Referral: -${money(ref)} · GrabPoints: -${money(gp)} · Total: ${money(Math.max(0,sub+ship-disc))}`}
+function updatePreview(){const sub=current.items.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0),ship=Number($('oeShipping')?.value||current.shipping_charge||130),ref=Number($('oeDiscount')?.value||current.referral_discount||0),gp=Number(current.rewards_voucher_discount||0),myst=Number(current.mystery_discount||0),disc=Math.max(0,ref+gp+myst);$('oePreview').textContent=`Subtotal: ${money(sub)} · Shipping: ${money(ship)} · Referral: -${money(ref)} · GrabPoints: -${money(gp)} · Total: ${money(Math.max(0,sub+ship-disc))}`}
 function closeEditor(){$('gzOrderModal')?.classList.remove('open');document.body.style.overflow='';current=null}
 
 async function saveEditor(){
@@ -331,7 +338,7 @@ async function saveEditor(){
   customer_name:$('oeName').value.trim(),phone:$('oePhone').value.trim(),email:$('oeEmail').value.trim(),
   division:$('oeDivision').value.trim(),district:$('oeDistrict').value.trim(),upazila:$('oeUpazila').value.trim(),
   address:$('oeAddress').value.trim(),referral_code:$('oeReferral').value.trim()||null,
-  payment_method:$('oePayment').value.trim()||'Cash on Delivery',shipping_charge:130,referral_discount:Math.max(0,Number($('oeDiscount').value||0)),
+  payment_method:$('oePayment').value.trim()||'Cash on Delivery',shipping_charge:Number($('oeShipping').value||current.shipping_charge||130),referral_discount:Math.max(0,Number($('oeDiscount').value||0)),
   status:$('oeStatus').value,
   admin_note:saveTrackingNote($('oeNote').value.trim()),
   tracking_provider:$('oeTrackingCourier').value.trim()||null,
@@ -348,10 +355,10 @@ async function saveEditor(){
  if(!/^01[3-9]\d{8}$/.test(payload.phone.replace(/\D/g,''))){$('gzOrderEditorMsg').textContent='⚠ Mobile number must be a valid 11-digit Bangladesh number (01XXXXXXXXX).';return}
  if(!items.length){$('gzOrderEditorMsg').textContent='⚠ Add at least one product.';return}
  payload.phone=payload.phone.replace(/\D/g,'');
- payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.shipping_charge=130;
+ payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.shipping_charge=Number($('oeShipping').value||current.shipping_charge||130);
   const preservedVoucherDiscount=Number(current.rewards_voucher_discount||0),preservedMysteryDiscount=Number(current.mystery_discount||0);
   payload.discount_amount=Math.max(0,payload.referral_discount+preservedVoucherDiscount+preservedMysteryDiscount);
-  payload.total=Math.max(0,payload.subtotal+130-payload.discount_amount);payload.updated_at=new Date().toISOString();
+  payload.total=Math.max(0,payload.subtotal+payload.shipping_charge-payload.discount_amount);payload.updated_at=new Date().toISOString();
  $('gzOrderSave').disabled=true;
  try{
   const {error:e1}=await sb.from('orders').update(payload).eq('id',current.id);if(e1)throw e1;
