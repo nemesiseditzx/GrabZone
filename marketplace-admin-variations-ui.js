@@ -124,7 +124,7 @@ async function openVariationManager(pid,name){
 function renderVariationEditor(pid,d,name){
   const body=$('#gzAvBody');
   const opts=d.options||[],vs=d.variations||[];
-  body.innerHTML='<div class="gz-av-builder"><b>Option setup</b><div style="font-size:12px;color:#777;margin:4px 0 10px">Example: Color → Black, White · Size → S, M, L. Regenerating combinations keeps existing matching variation data.</div><div id="gzAvOpts">'+opts.map(o=>optionRow(o)).join('')+'</div><div class="gz-av-actions"><button type="button" id="gzAvAdd" class="gz-btn light">＋ Add Option</button><button type="button" id="gzAvGenerate" class="gz-btn primary">Generate / Update Variations</button></div></div><div class="gz-av-bulk"><input id="gzAvPrice" type="number" min="0" step="0.01" placeholder="Regular price for all"><input id="gzAvSale" type="number" min="0" step="0.01" placeholder="Sale price for all"><input id="gzAvStock" type="number" min="0" step="1" placeholder="Stock for all"><button id="gzAvBulk" type="button" class="gz-btn light">Apply to all</button></div><div class="gz-av-table-wrap"><table class="gz-av-table"><thead><tr><th>Variation</th><th>SKU</th><th>Regular</th><th>Sale</th><th>Old</th><th>Stock</th><th>Low stock</th><th>Status</th><th>Min Qty</th><th>Max Qty</th><th>Image URL</th><th></th></tr></thead><tbody>'+ (vs.length?vs.map(v=>variationRow(v)).join(''):'<tr><td colspan="12" class="gz-av-muted">No variations yet. Add an option and its values, then click Generate / Update Variations.</td></tr>')+'</tbody></table></div>';
+  body.innerHTML='<div class="gz-av-builder"><b>Option setup</b><div style="font-size:12px;color:#777;margin:4px 0 10px">Example: Color → Black, White · Size → S, M, L. Regenerating combinations keeps existing matching variation data.</div><div id="gzAvOpts">'+opts.map(o=>optionRow(o)).join('')+'</div><div class="gz-av-actions"><button type="button" id="gzAvAdd" class="gz-btn light">＋ Add Option</button><button type="button" id="gzAvGenerate" class="gz-btn primary">Generate / Update Variations</button></div></div><div class="gz-av-bulk"><input id="gzAvPrice" type="number" min="0" step="0.01" placeholder="Regular price for all"><button id="gzAvBulk" type="button" class="gz-btn light">Apply price to all</button></div><div class="gz-av-table-wrap"><table class="gz-av-table"><thead><tr><th>Variation</th><th>SKU</th><th>Regular</th><th>Old</th><th>Status</th><th>Image URL</th><th></th></tr></thead><tbody>'+ (vs.length?vs.map(v=>variationRow(v)).join(''):'<tr><td colspan="12" class="gz-av-muted">No variations yet. Add an option and its values, then click Generate / Update Variations.</td></tr>')+'</tbody></table></div>';
   body.querySelectorAll('.gz-av-remove').forEach(b=>b.onclick=()=>b.parentElement.remove());
   $('#gzAvAdd').onclick=()=>{
     const row=document.createElement('div');row.className='gz-av-opt';row.innerHTML='<input class="gz-av-name" placeholder="Option name"><input class="gz-av-values" placeholder="Values separated by commas"><button type="button" class="gz-btn light gz-av-remove">×</button>';row.querySelector('.gz-av-remove').onclick=()=>row.remove();$('#gzAvOpts').appendChild(row);
@@ -138,26 +138,17 @@ function renderVariationEditor(pid,d,name){
     }catch(e){alert(e.message)}
   };
   $('#gzAvBulk').onclick=async()=>{
-    const regular=$('#gzAvPrice').value,sale=$('#gzAvSale').value,stock=$('#gzAvStock').value;
+    const regular=$('#gzAvPrice').value;
     const rows=[...body.querySelectorAll('.gz-av-table tbody tr[data-id]')];
     if(!rows.length)return alert('There are no variations to update.');
-    try{
-      for(const tr of rows){
-        const b={product_id:pid};
-        if(regular!=='')b.regular_price=Number(regular);
-        if(sale!=='')b.sale_price=Number(sale);
-        if(stock!=='')b.stock=Number(stock);
-        await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify(b)});
-      }
-      await openVariationManager(pid,name);
-    }catch(e){alert(e.message)}
+    try{for(const tr of rows){if(regular!=='')await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify({product_id:pid,regular_price:Number(regular)})});}await openVariationManager(pid,name)}catch(e){alert(e.message)}
   };
   body.querySelectorAll('.gz-av-save').forEach(button=>button.onclick=async()=>{
-    const tr=button.closest('tr');
-    const value=k=>tr.querySelector('[data-k="'+k+'"]')?.value??'';
-    const payload={product_id:pid,sku:value('sku'),regular_price:Number(value('regular')||0),sale_price:value('sale')===''?null:Number(value('sale')),old_price:value('old')===''?null:Number(value('old')),stock:Number(value('stock')||0),low_stock_threshold:Number(value('low')||0),status:value('status'),min_qty:Number(value('min')||1),max_qty:value('max')===''?null:Number(value('max')),image_url:value('image')};
+    const tr=button.closest('tr'),value=k=>tr.querySelector('[data-k="'+k+'"]')?.value??'';
+    const payload={product_id:pid,sku:value('sku'),regular_price:Number(value('regular')||0),old_price:value('old')===''?null:Number(value('old')),status:value('status'),image_url:value('image')};
     try{await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify(payload)});button.textContent='Saved ✓';setTimeout(()=>button.textContent='Save',900)}catch(e){alert(e.message)}
   });
+
 }
 
 function optionRow(o){
@@ -166,7 +157,7 @@ function optionRow(o){
 
 function variationRow(v){
   const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(' · ');
-  return '<tr data-id="'+esc(v.id)+'"><td class="opt-label">'+esc(labels)+'</td><td><input data-k="sku" value="'+esc(v.sku||'')+'"></td><td><input data-k="regular" type="number" min="0" step="0.01" value="'+Number(v.regular_price||0)+'"></td><td><input data-k="sale" type="number" min="0" step="0.01" value="'+(v.sale_price==null?'':Number(v.sale_price))+'"></td><td><input data-k="old" type="number" min="0" step="0.01" value="'+(v.old_price==null?'':Number(v.old_price))+'"></td><td><input data-k="stock" type="number" min="0" step="1" value="'+Number(v.stock||0)+'"></td><td><input data-k="low" type="number" min="0" step="1" value="'+Number(v.low_stock_threshold||0)+'"></td><td><select data-k="status"><option '+(v.status==='Available'?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><input data-k="min" type="number" min="1" step="1" value="'+Number(v.min_qty||1)+'"></td><td><input data-k="max" type="number" min="1" step="1" value="'+(v.max_qty==null?'':Number(v.max_qty))+'"></td><td><input data-k="image" value="'+esc(v.image_url||'')+'" placeholder="/api/vendor/media/..."></td><td><button type="button" class="gz-btn light gz-av-save">Save</button></td></tr>';
+  return '<tr data-id="'+esc(v.id)+'"><td class="opt-label">'+esc(labels)+'</td><td><input data-k="sku" value="'+esc(v.sku||'')+'"></td><td><input data-k="regular" type="number" min="0" step="0.01" value="'+Number(v.regular_price||0)+'"></td><td><input data-k="old" type="number" min="0" step="0.01" value="'+(v.old_price==null?'':Number(v.old_price))+'"></td><td><select data-k="status"><option '+(v.status==='Available'?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><input data-k="image" value="'+esc(v.image_url||'')+'" placeholder="/api/vendor/media/..."></td><td><button type="button" class="gz-btn light gz-av-save">Save</button></td></tr>';
 }
 
 function boot(){
