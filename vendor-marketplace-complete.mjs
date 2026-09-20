@@ -79,8 +79,7 @@ const oid=clean(b.order_id||b.vendor_order_id,100),st=clean(b.status,40);
 const allowed=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];if(!allowed.includes(st))return json({error:'Invalid status'},400);
 const vo=await one(e,'SELECT id,order_id,vendor_id FROM vendor_orders WHERE id=? OR order_id=? LIMIT 1',[oid,oid]);if(!vo)return json({error:'Vendor order not found'},404);
 const t=now();
-await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE order_id=?').bind(st,t,vo.order_id).run();
-await e.DB.prepare('UPDATE orders SET status=?,updated_at=? WHERE id=?').bind(st,t,vo.order_id).run();
+await parentStatus(e,vo.order_id,st);
 return json({ok:true,order_id:vo.order_id,status:st});
 }
 if(p==='/api/vendor/admin/shipment'&&(req.method==='POST'||req.method==='PATCH')){
@@ -119,8 +118,37 @@ if(p==='/api/marketplace/store'){const s=clean(new URL(req.url).searchParams.get
 if(p==='/api/marketplace/track'){return track(req,e,clean(new URL(req.url).searchParams.get('tracking_id'),120))}
 if(p==='/api/marketplace/order'&&req.method==='POST'){return json({error:'Use the existing checkout.'},400)}
 return null}
-async function parentStatus(e,id,forcedStatus){const t=now();if(forcedStatus)await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE order_id=?').bind(forcedStatus,t,id).run();const s=(await q(e,'SELECT status FROM vendor_orders WHERE order_id=?',[id])).results?.map(x=>String(x.status||''))||[];let x=forcedStatus||'New';if(!forcedStatus){if(!s.length)x='New';else if(s.every(a=>a==='Delivered'))x='Delivered';else if(s.every(a=>a==='Cancelled'))x='Cancelled';else if(s.every(a=>a==='Shipped'))x='Shipped';else if(s.every(a=>a==='Processing'))x='Processing';else if(s.every(a=>a==='Confirmed'))x='Confirmed';else if(s.every(a=>a==='Contacting'))x='Contacting';else if(s.some(a=>a==='Shipped'))x='Shipped';else if(s.some(a=>a==='Processing'))x='Processing';else if(s.some(a=>a==='Confirmed'))x='Confirmed';else if(s.some(a=>a==='Contacting'))x='Contacting';}const agg=(await q(e,'SELECT COUNT(*) n,COALESCE(SUM(shipping_fee),0) shipping FROM vendor_orders WHERE order_id=?',[id])).results?.[0];if(Number(agg?.n||0)>0){const o=await one(e,'SELECT subtotal,referral_discount,grabpoints_discount,mystery_discount,rewards_voucher_discount FROM orders WHERE id=?',[id]);const ship=Math.max(0,Number(agg.shipping||0));const total=Math.max(0,Number(o?.subtotal||0)+ship-Number(o?.referral_discount||0)-Number(o?.grabpoints_discount||0)-Number(o?.mystery_discount||0)-Number(o?.rewards_voucher_discount||0));await e.DB.prepare('UPDATE orders SET status=?,shipping_charge=?,total=?,updated_at=? WHERE id=?').bind(x,ship,total,t,id).run();}else await e.DB.prepare('UPDATE orders SET status=?,updated_at=? WHERE id=?').bind(x,t,id).run();return}const s=(await q(e,'SELECT status FROM vendor_orders WHERE order_id=?',[id])).results?.map(x=>String(x.status||''))||[];let x='New';if(!s.length)x='New';else if(s.every(a=>a==='Delivered'))x='Delivered';else if(s.every(a=>a==='Cancelled'))x='Cancelled';else if(s.every(a=>a==='Shipped'))x='Shipped';else if(s.every(a=>a==='Processing'))x='Processing';else if(s.every(a=>a==='Confirmed'))x='Confirmed';else if(s.every(a=>a==='Contacting'))x='Contacting';else if(s.some(a=>a==='Shipped'))x='Shipped';else if(s.some(a=>a==='Processing'))x='Processing';else if(s.some(a=>a==='Confirmed'))x='Confirmed';else if(s.some(a=>a==='Contacting'))x='Contacting';await e.DB.prepare('UPDATE orders SET status=?,updated_at=? WHERE id=?').bind(x,now(),id).run()}
-
+async function parentStatus(e,id,forcedStatus){
+  const t=now();
+  let status=forcedStatus;
+  if(status){
+    await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE order_id=?').bind(status,t,id).run();
+  }else{
+    const s=(await q(e,'SELECT status FROM vendor_orders WHERE order_id=?',[id])).results?.map(x=>String(x.status||''))||[];
+    status='New';
+    if(!s.length)status='New';
+    else if(s.every(a=>a==='Delivered'))status='Delivered';
+    else if(s.every(a=>a==='Cancelled'))status='Cancelled';
+    else if(s.every(a=>a==='Shipped'))status='Shipped';
+    else if(s.every(a=>a==='Processing'))status='Processing';
+    else if(s.every(a=>a==='Confirmed'))status='Confirmed';
+    else if(s.every(a=>a==='Contacting'))status='Contacting';
+    else if(s.some(a=>a==='Shipped'))status='Shipped';
+    else if(s.some(a=>a==='Processing'))status='Processing';
+    else if(s.some(a=>a==='Confirmed'))status='Confirmed';
+    else if(s.some(a=>a==='Contacting'))status='Contacting';
+  }
+  const agg=(await q(e,'SELECT COUNT(*) n,COALESCE(SUM(shipping_fee),0) shipping FROM vendor_orders WHERE order_id=?',[id])).results?.[0];
+  if(Number(agg?.n||0)>0){
+    const o=await one(e,'SELECT subtotal,referral_discount,grabpoints_discount,mystery_discount,rewards_voucher_discount FROM orders WHERE id=?',[id]);
+    const ship=Math.max(0,Number(agg.shipping||0));
+    const total=Math.max(0,Number(o?.subtotal||0)+ship-Number(o?.referral_discount||0)-Number(o?.grabpoints_discount||0)-Number(o?.mystery_discount||0)-Number(o?.rewards_voucher_discount||0));
+    await e.DB.prepare('UPDATE orders SET status=?,shipping_charge=?,total=?,updated_at=? WHERE id=?').bind(status,ship,total,t,id).run();
+  }else{
+    await e.DB.prepare('UPDATE orders SET status=?,updated_at=? WHERE id=?').bind(status,t,id).run();
+  }
+  return status;
+}
 async function track(req,e,id){const o=await one(e,'SELECT * FROM orders WHERE upper(public_tracking_id)=upper(?) OR upper(order_number)=upper(?)',[id,id]);if(!o)return json({error:'Order not found'},404);const vs=(await q(e,'SELECT vo.*,v.brand_name,v.slug,v.logo_url FROM vendor_orders vo JOIN vendors v ON v.id=vo.vendor_id WHERE vo.order_id=?',[o.id])).results||[];for(const v of vs){v.items=(await q(e,'SELECT voi.*,oi.product_name,oi.image_url FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id WHERE voi.vendor_order_id=?',[v.id])).results||[];v.shipments=(await q(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at',[o.id,v.vendor_id])).results||[]}return json({order:{order_number:o.order_number,tracking_id:o.public_tracking_id,status:o.status,created_at:o.created_at,updated_at:o.updated_at,subtotal:o.subtotal,shipping_charge:o.shipping_charge,total:o.total},vendors:vs})}
 async function handle(req,e){try{if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':req.headers.get('Origin')||'*','Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':'Content-Type,Authorization','Access-Control-Allow-Methods':'GET,POST,PATCH,OPTIONS'}});const r=await api(req,e);if(r){const h=new Headers(r.headers);h.set('Access-Control-Allow-Origin',req.headers.get('Origin')||'*');h.set('Access-Control-Allow-Credentials','true');return new Response(r.body,{status:r.status,headers:h})}return legacy.fetch(req,e)}catch(err){console.error(err);return json({error:err.message||'Internal server error'},500)}}
 export default {fetch:handle};
