@@ -19,11 +19,8 @@ async function marketplaceCategories(r,e){
   const p=new URL(r.url).pathname;
   if(p!=='/api/vendor/admin/categories')return null;
   if(!cookie(r,'gz_admin_session'))return json({error:'Unauthorized'},401);
-  try{
-    await e.DB.prepare(`CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT UNIQUE NOT NULL,created_at TEXT,updated_at TEXT)`).run();
-  }catch(err){
-    return json({error:'Category storage is unavailable.',detail:String(err?.message||err)},500);
-  }
+  // The marketplace schema initializer already creates this table. Do not run DDL
+  // during a category request: D1 schema locks can make the UI appear to hang.
   if(r.method==='GET'){
     try{
       const rows=(await e.DB.prepare('SELECT id,name,slug FROM marketplace_categories ORDER BY name COLLATE NOCASE').all()).results||[];
