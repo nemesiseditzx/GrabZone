@@ -56,6 +56,24 @@ async function customerVariations(){
  const productColumn=dm?.parentElement||detail.querySelector('.detail-grid > div:last-child')||detail;
  if(dm&&dm.parentElement===productColumn)productColumn.insertBefore(wrap,dm);
  else productColumn.appendChild(wrap);
+ // Keep one customer action bar: remove the legacy non-variation action block.
+ (function removeDuplicateProductActions(){
+   try{
+     const hasBothButtons=node=>{
+       const labels=Array.from(node?.querySelectorAll?.('button')||[]).map(b=>String(b.textContent||'').trim().toLowerCase());
+       return labels.some(x=>x==='add to cart')&&labels.some(x=>x==='buy now');
+     };
+     for(const leaf of Array.from(detail.querySelectorAll('*'))){
+       if(String(leaf.textContent||'').trim()!=='Ready to order?')continue;
+       let node=leaf;
+       for(let depth=0;depth<6&&node&&node!==detail;depth++,node=node.parentElement){
+         if(hasBothButtons(node)){node.remove();break;}
+       }
+     }
+     // View Cart was the old action block; variation UI now owns product actions.
+     detail.querySelector('.dm-box')?.remove();
+   }catch{}
+ })();
  window.__gzCustomerVariationUI=1;window.__gzCustomerVariationLoading=0;
  const area=wrap.querySelector('#gzCVOptions'),state=wrap.querySelector('#gzCVState'),note=wrap.querySelector('#gzCVQtyNote');
  let selected={},current=null;
