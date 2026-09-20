@@ -28,15 +28,17 @@ function renderVarTable(vs,activeNames=[]){
   if(activeNames.length) vs=vs.filter(v=>{const ks=Object.keys(v.options||{}).map(String).sort();const want=activeNames.map(String).sort();return ks.length===want.length&&ks.every((x,i)=>x===want[i])});
   if(!host)return;
   if(!vs.length){host.innerHTML='<div class="gz-fpm-note" style="margin-top:12px">No variations generated yet.</div>';return}
-  host.innerHTML='<div class="gz-fpm-var-table-wrap"><table class="gz-fpm-var-table"><thead><tr><th>Variation</th><th>SKU</th><th>Regular</th><th>Sale</th><th>Old</th><th>Status</th><th>Image URL</th></tr></thead><tbody>'+vs.map(v=>{
+  host.innerHTML='<div class="gz-fpm-var-table-wrap"><table class="gz-fpm-var-table"><thead><tr><th>Variation</th><th>SKU</th><th>Regular</th><th>Old</th><th>Status</th><th>Variation Image</th></tr></thead><tbody>'+vs.map(v=>{
     const label=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(' · ');
-    return '<tr data-id="'+esc(v.id)+'"><td><b>'+esc(label)+'</b></td><td><input data-v="sku" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="'+Number(v.regular_price||0)+'"></td><td><input data-v="old" type="number" min="0" step="0.01" value="'+(v.old_price==null?'':Number(v.old_price))+'"></td><td><select data-v="status"><option '+(v.status==='Available'?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><input data-v="image" value="'+esc(v.image_url||'')+'"></td></tr>'
+    return '<tr data-id="'+esc(v.id)+'"><td><b>'+esc(label)+'</b></td><td><input data-v="sku" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="'+Number(v.regular_price||0)+'"></td><td><input data-v="old" type="number" min="0" step="0.01" value="'+(v.old_price==null?'':Number(v.old_price))+'"></td><td><select data-v="status"><option '+(v.status==='Available'?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><div class="gz-var-image-cell"><input data-v="image" value="'+esc(v.image_url||'')+'" placeholder="Paste image URL"><input data-upload="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" style="display:none"><button type="button" class="gz-fpm-btn light" data-upload-btn>Upload</button></div></td></tr>'
   }).join('')+'</tbody></table></div>'
+  host.querySelectorAll('[data-upload-btn]').forEach(btn=>btn.onclick=()=>btn.previousElementSibling.click());
+  host.querySelectorAll('[data-upload="image"]').forEach(inp=>inp.onchange=async()=>{try{const file=inp.files?.[0];if(!file)return;const url=await upload(file);inp.closest('.gz-var-image-cell').querySelector('[data-v="image"]').value=url}catch(e){msgEditor(e.message,false)}});
 }
 async function saveVars(pid){
   for(const tr of document.querySelectorAll('#fpmVarTable tr[data-id]')){
     const v=k=>tr.querySelector('[data-v="'+k+'"]')?.value??'';
-    await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify({product_id:pid,sku:v('sku'),regular_price:Number(v('regular')||0),sale_price:v('sale')===''?null:Number(v('sale')),old_price:v('old')===''?null:Number(v('old')),status:v('status'),image_url:v('image')})});
+    await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify({product_id:pid,sku:v('sku'),regular_price:Number(v('regular')||0),sale_price:null,old_price:v('old')===''?null:Number(v('old')),status:v('status'),image_url:v('image')})});
   }
 }
 
