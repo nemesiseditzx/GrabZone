@@ -49,7 +49,7 @@ async function overview(req,e){
   return json({error:'Could not load marketplace overview: '+String(err?.message||err)},500);
  }
 }
-async function ensureShipmentTable(e){await e.DB.prepare(`CREATE TABLE IF NOT EXISTS shipments(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,courier TEXT,tracking_id TEXT,tracking_url TEXT,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});await e.DB.prepare("ALTER TABLE shipments ADD COLUMN tracking_url TEXT").run().catch(()=>{});}
+async function ensureShipmentTable(e){await e.DB.prepare(`CREATE TABLE IF NOT EXISTS shipments(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,courier TEXT,tracking_id TEXT,tracking_url TEXT,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});await e.DB.prepare("ALTER TABLE shipments ADD COLUMN tracking_url TEXT").run().catch(()=>{});await e.DB.prepare("UPDATE shipments SET status=CASE WHEN status='Pending' THEN 'New' WHEN status IN ('Picked Up','In Transit','Out for Delivery','Partially Shipped') THEN 'Shipped' WHEN status IN ('Failed','Returned') THEN 'Cancelled' WHEN status IS NULL OR status NOT IN ('New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled') THEN 'Processing' ELSE status END").run().catch(()=>{});}
 async function orderData(req,e){
  if(new URL(req.url).pathname!=='/api/vendor/admin/order-data'||req.method!=='GET')return null;
  const a=await admin(req,e),vu=a?null:await vendorUser(req,e);if(!a&&!vu)return json({error:'Unauthorized'},401);
