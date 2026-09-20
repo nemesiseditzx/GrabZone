@@ -96,11 +96,13 @@ return json({ok:true,global_shipping_fee:fee});
 if(p==='/api/vendor/admin/categories'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 if(req.method==='GET'){
- const rows=(await q(e,"SELECT id,name,slug FROM marketplace_categories ORDER BY name",[])).results||[];
- const legacy=(await q(e,"SELECT category name,category id FROM products WHERE category IS NOT NULL AND trim(category)<>'' GROUP BY category ORDER BY category",[])).results||[];
- const seen=new Set(rows.map(x=>String(x.name).toLowerCase()));
- for(const x of legacy){if(!seen.has(String(x.name).toLowerCase()))rows.push({id:String(x.id||x.name),name:x.name,slug:String(x.name).toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')});}
- return json({categories:rows});
+ try{
+  const rows=(await q(e,"SELECT id,name,slug FROM marketplace_categories ORDER BY name COLLATE NOCASE",[])).results||[];
+  return json({categories:rows});
+ }catch(err){
+  console.error('marketplace categories GET failed',err);
+  return json({categories:[],error:'Categories could not be loaded.'},200);
+ }
 }
 if(req.method==='POST'){
  let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
@@ -108,11 +110,16 @@ if(req.method==='POST'){
  const slug=(String(b.slug||name).trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')).slice(0,120);
  if(!name)return json({error:'Category name is required'},400);
  if(!slug)return json({error:'Valid slug is required'},400);
- const exists=await one(e,'SELECT id FROM marketplace_categories WHERE slug=? OR lower(name)=lower(?)',[slug,name]);
- if(exists)return json({error:'Category already exists'},409);
- const id=crypto.randomUUID();
- await e.DB.prepare('INSERT INTO marketplace_categories(id,name,slug,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id,name,slug,now(),now()).run();
- return json({ok:true,category:{id,name,slug}},201);
+ try{
+  const exists=await one(e,'SELECT id FROM marketplace_categories WHERE slug=? OR lower(name)=lower(?)',[slug,name]);
+  if(exists)return json({error:'Category already exists'},409);
+  const id=crypto.randomUUID();
+  await e.DB.prepare('INSERT INTO marketplace_categories(id,name,slug,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id,name,slug,now(),now()).run();
+  return json({ok:true,category:{id,name,slug}},201);
+ }catch(err){
+  console.error('marketplace categories POST failed',err);
+  return json({error:'Category could not be saved.'},500);
+ }
 }
 return json({error:'Method not allowed'},405);
 }
