@@ -15,41 +15,65 @@ async function publicVariations(req,e){
  const pid=String(u.searchParams.get('product_id')||'').trim();
  if(!pid)return json({error:'product_id is required.'},400);
  try{
+  // Read existing tables with SELECT * so older D1 schemas do not cause a 500
+  // merely because one legacy column is missing.
   await e.DB.prepare(`CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});
   await e.DB.prepare(`CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});
   await e.DB.prepare(`CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,options TEXT,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});
-  // The public endpoint must be able to read the same variation schema used by the admin variation editor.
-  for(const sql of [
-    `CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))`,
-    `CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`,
-    `ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0`,
-    `ALTER TABLE product_variations ADD COLUMN sale_price REAL`,
-    `ALTER TABLE product_variations ADD COLUMN old_price REAL`,
-    `ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'`,
-    `ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1`,
-    `ALTER TABLE product_variations ADD COLUMN max_qty INTEGER`,
-    `ALTER TABLE product_variations ADD COLUMN options_key TEXT`,
-    `ALTER TABLE product_variations ADD COLUMN status TEXT NOT NULL DEFAULT 'Available'`
-  ])await e.DB.prepare(sql).run().catch(()=>{});
-  const product=await one(e,'SELECT id,name,description,image_url,image_urls,price,old_price,product_type,published,vendor_id FROM products WHERE id=? AND published=1 LIMIT 1',[pid]);
+  await e.DB.prepare(`CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))`).run().catch(()=>{});
+  await e.DB.prepare(`CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`).run().catch(()=>{});
+
+  const product=await one(e,'SELECT * FROM products WHERE id=? LIMIT 1',[pid]);
   if(!product)return json({error:'Product not found.'},404);
-  const options=(await e.DB.prepare('SELECT id,name,sort_order FROM product_options WHERE product_id=? ORDER BY sort_order,id').bind(pid).all()).results||[];
-  for(const o of options)o.values=(await e.DB.prepare('SELECT id,value,sort_order FROM option_values WHERE option_id=? ORDER BY sort_order,id').bind(o.id).all()).results||[];
-  const variations=(await e.DB.prepare("SELECT id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at,id").bind(pid).all()).results||[];
-  for(const v of variations){
-   v.options={};
-   const rows=(await e.DB.prepare('SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order').bind(v.id).all()).results||[];
-   for(const x of rows)v.options[x.name]=x.value;
-   v.images=(await e.DB.prepare('SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id').bind(v.id).all()).results?.map(x=>x.image_url)||[];
-   if(!Object.keys(v.options).length&&v.options_key){
-    for(const pair of String(v.options_key).split('|')){const n=pair.indexOf('=');if(n>0)v.options[pair.slice(0,n)]=pair.slice(n+1)}
-   }
+  if(Number(product.published??1)!==1)return json({error:'Product not found.'},404);
+
+  const options=(await e.DB.prepare('SELECT * FROM product_options WHERE product_id=?').bind(pid).all()).results||[];
+  options.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||String(a.id||'').localeCompare(String(b.id||'')));
+  for(const o of options){
+   o.values=(await e.DB.prepare('SELECT * FROM option_values WHERE option_id=?').bind(o.id).all()).results||[];
+   o.values.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||String(a.id||'').localeCompare(String(b.id||'')));
   }
+
+  const rawVariations=(await e.DB.prepare('SELECT * FROM product_variations WHERE product_id=?').bind(pid).all()).results||[];
+  const variations=[];
+  for(const v of rawVariations){
+   if(String(v.status||'Available').toLowerCase()==='disabled')continue;
+   v.status=v.status||'Available';
+   v.options={};
+
+   // Primary source: normalized variation_options rows.
+   try{
+    const rows=(await e.DB.prepare('SELECT vo.option_id,vo.option_value_id,po.name,ov.value FROM variation_options vo LEFT JOIN product_options po ON po.id=vo.option_id LEFT JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=?').bind(v.id).all()).results||[];
+    for(const x of rows)if(x.name&&x.value)v.options[x.name]=x.value;
+   }catch{}
+
+   // Legacy source: JSON options stored directly on the variation.
+   if(!Object.keys(v.options).length&&v.options){
+    try{
+     const parsed=typeof v.options==='string'?JSON.parse(v.options):v.options;
+     if(parsed&&typeof parsed==='object')for(const [k,val] of Object.entries(parsed))if(String(k).trim()&&String(val).trim())v.options[String(k).trim()]=String(val).trim();
+    }catch{}
+   }
+
+   // Last source: the generated options_key.
+   if(!Object.keys(v.options).length&&v.options_key){
+    for(const pair of String(v.options_key).split('|')){
+     const n=pair.indexOf('=');
+     if(n>0)v.options[pair.slice(0,n)]=pair.slice(n+1);
+    }
+   }
+
+   try{
+    v.images=(await e.DB.prepare('SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id').bind(v.id).all()).results?.map(x=>x.image_url).filter(Boolean)||[];
+   }catch{v.images=[]}
+   if(!v.image_url&&v.images?.[0])v.image_url=v.images[0];
+   variations.push(v);
+  }
+
   return json({product,enabled:options.length>0||variations.length>0,options,variations});
  }catch(err){
   console.error('Public marketplace variations failed',err);
-  return json({error:'Variations could not be loaded.'},500);
+  return json({error:'Variations could not be loaded.',detail:String(err?.message||err)},500);
  }
 }
 async function shippingSettings(req,e){
