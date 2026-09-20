@@ -24,7 +24,14 @@ async function chooseVariant(p,qty=1,mode='add'){
     // A failed/invalid variation request must fail closed instead of adding the base product.
     if(!r.ok)return false;
     const vs=(d.variations||[]).filter(v=>v.status!=='Disabled');
-    if(!vs.length){const item={product_id:p.id,name:p.name||'Product',image_url:p.image_url||'',price:Number(p.price||0),quantity:Math.max(1,Number(qty||1))};if(mode==='buy'){checkout([item]);return true}add(item,item.quantity);return true}
+    const isVariable=String(d.product?.product_type||p.product_type||'').toLowerCase()==='variable';
+    // A variable product must never fall back to the base product when variation rows are missing.
+    if(!vs.length){
+      if(isVariable)return false;
+      const item={product_id:p.id,name:p.name||'Product',image_url:p.image_url||'',price:Number(p.price||0),quantity:Math.max(1,Number(qty||1))};
+      if(mode==='buy'){checkout([item]);return true}
+      add(item,item.quantity);return true
+    }
     const names=[...new Set([...(d.options||[]).map(o=>String(o.name||'').trim()),...vs.flatMap(v=>Object.keys(v.options||{}))].filter(Boolean))];
     if(!names.length)return false;
     let selected={},current=null;
