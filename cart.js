@@ -31,7 +31,8 @@ async function chooseVariant(p,qty=1,mode='add'){
     document.body.appendChild(modal);
     const area=modal.querySelector('.gz-vp-options'),state=modal.querySelector('.gz-vp-state'),go=modal.querySelector('.gz-vp-go');
     const vals=n=>[...new Set(vs.map(v=>v.options?.[n]).filter(Boolean))];
-    const match=()=>vs.find(v=>Object.entries(v.options||{}).every(([k,v])=>selected[k]===v))||null;
+    const allSelected=()=>names.length>0&&names.every(n=>String(selected[n]??'').trim()!=='');
+    const match=()=>{if(!allSelected())return null;return vs.find(v=>Object.keys(v.options||{}).length===names.length&&names.every(n=>String(v.options?.[n]??'')===String(selected[n]??'')))||null};
     const compatible=(n,val)=>vs.some(v=>v.options?.[n]===val&&Object.entries(selected).every(([k,x])=>k===n||v.options?.[k]===x));
     const isAvailable=v=>!!v&&v.status==='Available';
     const refresh=()=>{current=match();area.querySelectorAll('button[data-n]').forEach(b=>{const on=selected[b.dataset.n]===b.dataset.v;b.classList.toggle('selected',on);b.classList.toggle('unavailable',!on&&!compatible(b.dataset.n,b.dataset.v))});const n=Math.max(1,Number(qty||1));if(!current){state.textContent='Select all options';state.className='gz-vp-state';go.disabled=true;return}const available=isAvailable(current);state.textContent=available?'✓ Available':'Out of Stock';state.className='gz-vp-state'+(available?' ok':'');go.disabled=!available};
