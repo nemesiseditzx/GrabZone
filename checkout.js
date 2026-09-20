@@ -33,7 +33,7 @@ async function loadMarketplaceShipping(){
   }catch(e){
     console.warn('GrabZone marketplace shipping:',e);
     marketplaceProductsLoaded=false;
-    shippingBreakdown=[];marketplaceShipping=0;
+    shippingBreakdown=[];marketplaceShipping=0;marketplaceShippingError=e.message||'Unable to calculate vendor delivery charges.';
     return 0;
   }
 }
@@ -428,6 +428,8 @@ async function submit(e){
     if(d.referral_code&&!referralState.code){msg('Please apply a valid referral code or remove it.',true);return}
   }
   d.phone=d.phone.replace(/\D/g,'');
+  const requiresVendorShipping=checkoutItems.some(i=>i&&i.vendor_id);
+  if(requiresVendorShipping&&!marketplaceProductsLoaded){msg(marketplaceShippingError||'Delivery charge could not be verified. Please refresh and try again.',true);return}
   const confirmed=await openOrderConfirm(d);
   if(!confirmed)return;
   const b=$('placeOrderBtn');b.disabled=true;b.textContent='Placing order…';msg('');
