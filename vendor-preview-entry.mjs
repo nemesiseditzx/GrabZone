@@ -1,7 +1,7 @@
 import gateway from './marketplace-api-gateway.mjs';
 
 const MAX_BYTES=1024*1024;
-const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate'}});
+const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate'}});function previewTrustedOrigin(req,env){const origin=req?.headers?.get('Origin')||'';if(!origin)return '';try{if(new URL(origin).origin===new URL(req.url).origin)return origin}catch{}const allowed=String(env?.MARKETPLACE_ALLOWED_ORIGINS||env?.ALLOWED_ORIGINS||'').split(',').map(x=>x.trim()).filter(Boolean);return allowed.includes(origin)?origin:''}function previewSecurityHeaders(h,req){h.set('X-Content-Type-Options','nosniff');h.set('X-Frame-Options','DENY');h.set('Referrer-Policy','strict-origin-when-cross-origin');h.set('Permissions-Policy','camera=(), microphone=(), geolocation=()');if(new URL(req.url).protocol==='https:')h.set('Strict-Transport-Security','max-age=31536000');return h}function previewSecure(r,req){if(!r)return r;const h=previewSecurityHeaders(new Headers(r.headers),req);if(r.status>=500&&String(h.get('Content-Type')||'').includes('application/json'))return new Response(JSON.stringify({error:'Internal server error.'}),{status:r.status,headers:h});return new Response(r.body,{status:r.status,statusText:r.statusText,headers:h})}
 const UPLOAD_AUTH_FIX=`<script data-gz-vendor-upload-auth-fix>(()=>{if(window.__gzVendorUploadAuthFix)return;window.__gzVendorUploadAuthFix=1;const originalFetch=window.fetch.bind(window);const getToken=()=>{try{return window.getToken?.()||localStorage.getItem('gz_d1_admin_token')||sessionStorage.getItem('gz_d1_admin_token')||''}catch{return''}};const authHeaders=()=>{const t=getToken(),h=new Headers();if(t){h.set('Authorization','Bearer '+t);h.set('X-GrabZone-Token',t)}return h};window.fetch=async(input,init={})=>{let path='';try{path=new URL(typeof input==='string'?input:input?.url||'',location.href).pathname}catch{}if(path!=='/api/vendor/upload')return originalFetch(input,init);try{const h=authHeaders();await originalFetch('/api/admin-auth',{method:'GET',headers:h,credentials:'include',cache:'no-store'}).catch(()=>{});const headers=new Headers(init.headers||(input instanceof Request?input.headers:undefined));const t=getToken();if(t){if(!headers.has('Authorization'))headers.set('Authorization','Bearer '+t);if(!headers.has('X-GrabZone-Token'))headers.set('X-GrabZone-Token',t)}return originalFetch(input,{...init,credentials:init.credentials||'include',headers})}catch{return originalFetch(input,{...init,credentials:init.credentials||'include'})}}})();</script>`;
 const VENDOR_PRODUCT_EDITOR='<script src="/vendor-control-product-editor.js?v=20260918-v9" data-gz-vendor-product-editor></script>';
 const NOTICE_SYNC=`<script data-gz-notice-sync-loader src="/grabzone-notice-sync.js?v=20260916-home3" defer></script>`;
@@ -70,7 +70,7 @@ async function directVendorData(req,env,ctx){
   return json({vendor:v,products,orders});
 }
 
-export default{fetch:async(req,env,ctx)=>{try{
+export default{fetch:async(req,env,ctx)=>{try{const origin=req.headers.get('Origin')||'',allowed=previewTrustedOrigin(req,env);if(origin&&!allowed&&['POST','PUT','PATCH','DELETE'].includes(req.method))return previewSecure(json({error:'Forbidden origin.'},403),req);
   const p=new URL(req.url).pathname;
   if(p==='/api/vendor/upload'&&req.method==='POST'){
     const form=await req.clone().formData().catch(()=>null);
@@ -78,9 +78,9 @@ export default{fetch:async(req,env,ctx)=>{try{
     if(file instanceof File&&file.size>MAX_BYTES)return json({error:'Image must be 1 MB or smaller.'},413);
   }
   const noticeResponse=await notices(req,env);
-  if(noticeResponse)return noticeResponse;
+  if(noticeResponse)return previewSecure(noticeResponse,req);
   const direct=await directVendorData(req,env,ctx);
-  if(direct)return direct;
+  if(direct)return previewSecure(direct,req);
   const response=await gateway.fetch(req,env,ctx);
   const type=response.headers.get('content-type')||'';
   if(response.ok&&type.includes('text/html')&&(p==='/'||p==='/index.html')){
@@ -90,10 +90,10 @@ export default{fetch:async(req,env,ctx)=>{try{
     h.delete('Content-Length');
     h.set('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');
     h.set('Pragma','no-cache');
-    return new Response(html,{status:response.status,statusText:response.statusText,headers:h});
+    return previewSecure(new Response(html,{status:response.status,statusText:response.statusText,headers:h}),req);
   }
   if((p==='/marketplace-vendor-control-v2'||p==='/marketplace-vendor-control-v2.html'||p==='/vendor-admin'||p==='/vendor-admin.html')){
     if(type.includes('text/html')){const body=await response.text();const extra=p.startsWith('/marketplace-vendor-control-v2')?UPLOAD_AUTH_FIX+'\n'+VENDOR_PRODUCT_EDITOR:UPLOAD_AUTH_FIX;const html=body.replace(/<head[^>]*>/i,m=>m+'\n'+extra);const h=new Headers(response.headers);h.delete('Content-Length');h.set('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');h.set('Pragma','no-cache');return new Response(html,{status:response.status,statusText:response.statusText,headers:h})}
   }
-  return response;
-}catch(err){return json({error:err?.message||'Vendor preview failed'},500)}}};
+  return previewSecure(response,req);
+}catch(err){console.error('Vendor preview failed',err);return previewSecure(json({error:'Internal server error.'},500),req)}}};
