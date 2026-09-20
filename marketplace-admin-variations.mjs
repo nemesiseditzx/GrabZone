@@ -31,11 +31,11 @@ async function schema(e) {
   for (const sql of [
     `CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
-    `CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 5,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(product_id,options_key))`,
+    `CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(product_id,options_key))`,
     `CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))`,
     `CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)`
-  ]) await e.DB.prepare(sql).run().catch(() => {}); await e.DB.prepare("ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'").run().catch(() => {}); await e.DB.prepare("UPDATE product_variations SET stock_mode=CASE WHEN stock>0 OR status='Out of Stock' THEN 'tracked' ELSE 'untracked' END WHERE stock_mode='untracked'").run().catch(() => {});
+  ]) await e.DB.prepare(sql).run().catch(() => {}); await e.DB.prepare("ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'").run().catch(() => {}); await e.DB.prepare("UPDATE product_variations SET stock_mode='untracked',low_stock_threshold=0,min_qty=1,max_qty=NULL WHERE stock_mode IS NULL OR stock_mode='untracked'").run().catch(() => {});
 }
 
 function opts(b) {
@@ -187,10 +187,11 @@ async function handle(req, e) {
     if (!v) return json({ error: 'Variation not found.' }, 404);
     const status = ['Available', 'Out of Stock', 'Disabled'].includes(b.status) ? b.status : v.status;
     await e.DB.prepare(
-      'UPDATE product_variations SET sku=?,regular_price=?,old_price=?,image_url=?,status=?,updated_at=? WHERE id=?'
+      'UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,image_url=?,status=?,stock_mode=\'untracked\',low_stock_threshold=0,min_qty=1,max_qty=NULL,updated_at=? WHERE id=?'
     ).bind(
       clean(b.sku ?? v.sku, 120),
       Math.max(0, Number(b.regular_price ?? v.regular_price)),
+      b.sale_price === null || b.sale_price === '' ? null : Math.max(0, Number(b.sale_price)),
       b.old_price === null || b.old_price === '' ? null : Math.max(0, Number(b.old_price)),
       clean(b.image_url ?? v.image_url, 2000),
       status, now(), id
