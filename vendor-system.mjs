@@ -48,7 +48,7 @@ const VENDOR_SCHEMA = [
 `CREATE INDEX IF NOT EXISTS vendor_order_items_order_idx ON vendor_order_items(vendor_order_id)`,
 `CREATE TABLE IF NOT EXISTS shipments (
  id TEXT PRIMARY KEY, order_id TEXT NOT NULL, vendor_id TEXT NOT NULL, courier TEXT, tracking_id TEXT,
- tracking_url TEXT, status TEXT NOT NULL DEFAULT 'Pending', note TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+ tracking_url TEXT, status TEXT NOT NULL DEFAULT 'Processing', note TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
  FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE, FOREIGN KEY(vendor_id) REFERENCES vendors(id) ON DELETE CASCADE
 )`,
 `CREATE INDEX IF NOT EXISTS shipments_order_idx ON shipments(order_id,created_at)`,
