@@ -96,4 +96,14 @@ export default{fetch:async(req,env,ctx)=>{try{const origin=req.headers.get('Orig
     if(type.includes('text/html')){const body=await response.text();const extra=p.startsWith('/marketplace-vendor-control-v2')?UPLOAD_AUTH_FIX+'\n'+VENDOR_PRODUCT_EDITOR:UPLOAD_AUTH_FIX;const html=body.replace(/<head[^>]*>/i,m=>m+'\n'+extra);const h=new Headers(response.headers);h.delete('Content-Length');h.set('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');h.set('Pragma','no-cache');return new Response(html,{status:response.status,statusText:response.statusText,headers:h})}
   }
   return previewSecure(response,req);
-}catch(err){console.error('Vendor preview failed',err);return previewSecure(json({error:'Internal server error.'},500),req)}}};
+}catch(err){
+  console.error('Vendor preview failed',err);
+  const path=new URL(req.url).pathname;
+  if(!path.startsWith('/api/')&&env?.ASSETS){
+    try{
+      const asset=await env.ASSETS.fetch(req);
+      if(asset) return previewSecure(asset,req);
+    }catch(assetErr){console.error('Vendor preview asset fallback failed',assetErr)}
+  }
+  return previewSecure(json({error:'Internal server error.'},500),req)
+}};
