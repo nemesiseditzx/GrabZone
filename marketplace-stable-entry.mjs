@@ -18,6 +18,20 @@ async function publicVariations(req,e){
   await e.DB.prepare(`CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});
   await e.DB.prepare(`CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});
   await e.DB.prepare(`CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,options TEXT,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});
+  // The public endpoint must be able to read the same variation schema used by the admin variation editor.
+  for(const sql of [
+    `CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))`,
+    `CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`,
+    `ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0`,
+    `ALTER TABLE product_variations ADD COLUMN sale_price REAL`,
+    `ALTER TABLE product_variations ADD COLUMN old_price REAL`,
+    `ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'`,
+    `ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE product_variations ADD COLUMN max_qty INTEGER`,
+    `ALTER TABLE product_variations ADD COLUMN options_key TEXT`,
+    `ALTER TABLE product_variations ADD COLUMN status TEXT NOT NULL DEFAULT 'Available'`
+  ])await e.DB.prepare(sql).run().catch(()=>{});
   const product=await one(e,'SELECT id,name,description,image_url,image_urls,price,old_price,product_type,published,vendor_id FROM products WHERE id=? AND published=1 LIMIT 1',[pid]);
   if(!product)return json({error:'Product not found.'},404);
   const options=(await e.DB.prepare('SELECT id,name,sort_order FROM product_options WHERE product_id=? ORDER BY sort_order,id').bind(pid).all()).results||[];
