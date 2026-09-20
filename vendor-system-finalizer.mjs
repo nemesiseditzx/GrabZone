@@ -7,7 +7,7 @@ async function sha(v){return[...new Uint8Array(await crypto.subtle.digest('SHA-2
 function cookie(r,n){for(const p of(r.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}
 async function vendor(r,e){const t=cookie(r,'gz_vendor_session')||(r.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!t)return null;return one(e,"SELECT vu.id,vu.vendor_id,vu.email,vu.role,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active' LIMIT 1",[await sha(t),now()])}
 async function ensureVendorOrderTables(e){
- await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
+ await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'New',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
  await e.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN vendor_notified_at TEXT").run().catch(()=>{});
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT)").run().catch(()=>{});
 }
@@ -75,7 +75,7 @@ async function createVendorOrders(e,orderId){
     const commission=g.commission_type==='percentage'?Math.round(subtotal*Math.max(0,g.commission_value)/100*100)/100:Math.min(subtotal,Math.max(0,g.commission_value));
     const earnings=Math.max(0,subtotal-commission);
     const delivery=Math.max(0,Number(g.shipping_fee??0));
-    const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,shipping_fee:delivery,delivery_charge:delivery,commission_amount:commission,vendor_earnings:earnings,status:'Processing',created_at:now(),updated_at:now()};
+    const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,shipping_fee:delivery,delivery_charge:delivery,commission_amount:commission,vendor_earnings:earnings,status:'New',created_at:now(),updated_at:now()};
     const vfields=Object.keys(vo).filter(k=>voCols.has(k));
     if(!vfields.includes('id')||!vfields.includes('order_id')||!vfields.includes('vendor_id'))continue;
     await e.DB.prepare('INSERT INTO vendor_orders('+vfields.join(',')+') VALUES('+vfields.map(()=>'?').join(',')+')').bind(...vfields.map(k=>vo[k])).run();
