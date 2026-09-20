@@ -79,8 +79,10 @@ async function customerVariations(){
  let selected={},current=null;
  const colorMap={black:'#111',white:'#fff',red:'#ef233c',blue:'#2446d8',green:'#2f9e44',yellow:'#ffd43b',pink:'#f783ac',gray:'#8b8f94',grey:'#8b8f94',brown:'#8b5e3c',orange:'#ff7a00',purple:'#7b3fb6',navy:'#172554',maroon:'#800000',beige:'#e7d3ad'};
  const valueList=name=>[...new Set(vs.map(v=>v.options?.[name]).filter(Boolean))];
+ function allOptionsSelected(){return names.length>0&&names.every(name=>String(selected[name]??'').trim()!=='')}
  function matching(){
-   return vs.find(v=>Object.entries(v.options||{}).every(([k,val])=>selected[k]===val))||null;
+   if(!allOptionsSelected())return null;
+   return vs.find(v=>Object.keys(v.options||{}).length===names.length&&names.every(name=>String(v.options?.[name]??'')===String(selected[name]??'')))||null;
  }
  function compatible(name,value){
    return vs.some(v=>v.status!=='Disabled' && v.options?.[name]===value && Object.entries(selected).every(([k,val])=>k===name||v.options?.[k]===val));
@@ -121,7 +123,7 @@ async function customerVariations(){
      b.disabled=!active&&!compatible(b.dataset.option,b.dataset.value);
    });
    if(!current){
-     state.textContent='Select all options';
+     state.textContent=allOptionsSelected()?'This exact combination is unavailable':'Select all options';
      state.className='gz-cv-state warn';
      note.textContent='';
      return;
@@ -137,12 +139,12 @@ async function customerVariations(){
  let cvQty=1;const qtyEl=wrap.querySelector('#gzCVQty'),addBtn=wrap.querySelector('[data-gz-add]'),buyBtn=wrap.querySelector('[data-gz-buy]');
  wrap.querySelector('[data-gz-qty-minus]').onclick=()=>{cvQty=Math.max(1,cvQty-1);qtyEl.textContent=cvQty};
  wrap.querySelector('[data-gz-qty-plus]').onclick=()=>{cvQty+=1;qtyEl.textContent=cvQty};
- const doAdd=()=>{const x=item();if(!x||current?.status!=='Available'){alert('Please select an available variation first.');return}x.quantity=cvQty;let cart=[];try{cart=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');if(!Array.isArray(cart))cart=[]}catch{}const same=cart.find(y=>String(y.product_id)===String(x.product_id)&&String(y.variation_id)===String(x.variation_id));if(same)same.quantity=Number(same.quantity||0)+cvQty;else cart.push(x);localStorage.setItem('grabzone_cart_v2',JSON.stringify(cart));addBtn.textContent='Added ✓';setTimeout(()=>addBtn.textContent='Add to Cart',900)};
- const doBuy=()=>{const x=item();if(!x||current?.status!=='Available'){alert('Please select an available variation first.');return}x.quantity=cvQty;localStorage.setItem('grabzone_buy_now_v2',JSON.stringify([x]));location.href='/checkout'};
+ const doAdd=()=>{const x=item();if(!allOptionsSelected()||!x||current?.status!=='Available'){alert('Please select every product option and an available variation first.');return}x.quantity=cvQty;let cart=[];try{cart=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');if(!Array.isArray(cart))cart=[]}catch{}const same=cart.find(y=>String(y.product_id)===String(x.product_id)&&String(y.variation_id)===String(x.variation_id));if(same)same.quantity=Number(same.quantity||0)+cvQty;else cart.push(x);localStorage.setItem('grabzone_cart_v2',JSON.stringify(cart));addBtn.textContent='Added ✓';setTimeout(()=>addBtn.textContent='Add to Cart',900)};
+ const doBuy=()=>{const x=item();if(!allOptionsSelected()||!x||current?.status!=='Available'){alert('Please select every product option and an available variation first.');return}x.quantity=cvQty;localStorage.setItem('grabzone_buy_now_v2',JSON.stringify([x]));location.href='/checkout'};
  addBtn.onclick=doAdd;buyBtn.onclick=doBuy;
  function item(){if(!current)return null;const regular=Number(current.regular_price||0),price=regular,quantity=Math.max(1,Number(document.querySelector('#gzProductQty')?.textContent||1));return{product_id:pid,variation_id:current.id,variation_options:current.options||{},quantity,unit_price:price,price,name:data.product?.name||'Product',image_url:imageFor(current)||data.product?.image_url||'',sku:current.sku||''}}
- function addCart(){const x=item();if(!x||current.status!=='Available')return false;let cart=[];try{cart=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');if(!Array.isArray(cart))cart=[]}catch{}const existing=cart.find(y=>y.product_id===x.product_id&&y.variation_id===x.variation_id);if(existing){existing.quantity=Number(existing.quantity||0)+x.quantity}else cart.push(x);localStorage.setItem('grabzone_cart_v2',JSON.stringify(cart));return true}
- function buyNow(){const x=item();if(!x||current.status!=='Available')return false;localStorage.setItem('grabzone_buy_now_v2',JSON.stringify([x]));location.href='/checkout';return true}
+ function addCart(){const x=item();if(!allOptionsSelected()||!x||current.status!=='Available')return false;let cart=[];try{cart=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');if(!Array.isArray(cart))cart=[]}catch{}const existing=cart.find(y=>y.product_id===x.product_id&&y.variation_id===x.variation_id);if(existing){existing.quantity=Number(existing.quantity||0)+x.quantity}else cart.push(x);localStorage.setItem('grabzone_cart_v2',JSON.stringify(cart));return true}
+ function buyNow(){const x=item();if(!allOptionsSelected()||!x||current.status!=='Available')return false;localStorage.setItem('grabzone_buy_now_v2',JSON.stringify([x]));location.href='/checkout';return true}
 
  update();
 }
