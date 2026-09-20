@@ -17,6 +17,8 @@ async function loadMarketplaceShipping(){
     if(!r.ok)throw new Error(d.error||'Marketplace products unavailable');
     const products=Array.isArray(d.products)?d.products:[];
     const map=new Map(products.map(p=>[String(p.id),p]));
+    const missingVendorProduct=checkoutItems.some(i=>i&&i.vendor_id&&!map.has(String(i.product_id)));
+    if(missingVendorProduct)throw new Error('One or more vendor products could not be verified for delivery charges.');
     const groups=new Map();
     checkoutItems.forEach(i=>{
       const p=map.get(String(i.product_id));
