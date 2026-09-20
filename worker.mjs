@@ -50,6 +50,7 @@ const val=v=>v===undefined||v===null?null:typeof v==="boolean"?(v?1:0):typeof v=
 function ident(v){const s=String(v);if(!IDENT.test(s))throw new Error("Invalid identifier.");return '"'+s+'"'}
 function normalize(r){if(!r||typeof r!=="object")return r;const o={...r};for(const k of Object.keys(o))if((o[k]===0||o[k]===1)&&BOOLS.has(k))o[k]=!!o[k];for(const k of ["payment_methods","content","business_koro_order_ids"])if(typeof o[k]==="string")try{o[k]=JSON.parse(o[k])}catch{}return o}
 async function q(env,sql,params=[]){if(!env.DB)throw new Error("Cloudflare D1 binding DB is missing.");return env.DB.prepare(sql).bind(...params.map(val)).all()}
+async function one(env,sql,params=[]){const r=await q(env,sql,params);return r.results?.[0]||null}
 function getCookie(req,name){const raw=req.headers.get("Cookie")||"";for(const p of raw.split(";")){const a=p.trim().split("=");if(a[0]===name)return decodeURIComponent(a.slice(1).join("="))}return ""}
 async function sha(v){return [...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,"0")).join("")}
 function b64(bytes){let s="";for(const b of bytes)s+=String.fromCharCode(b);return btoa(s).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_")}
