@@ -18,8 +18,11 @@ function checkout(items){localStorage.setItem(BUY,JSON.stringify(items));locatio
 async function chooseVariant(p,qty=1,mode='add'){
   if(!p?.id)return false;
   try{
-    const r=await fetch('/api/marketplace/variations?product_id='+encodeURIComponent(p.id),{cache:'no-store'});
+    const r=await fetch('/api/marketplace/variations?product_id='+encodeURIComponent(p.id),{cache:'no-store',credentials:'include'});
     const d=await r.json().catch(()=>({}));
+    // Never bypass variation selection when the variation endpoint fails.
+    // A failed/invalid variation request must fail closed instead of adding the base product.
+    if(!r.ok)return false;
     const vs=(d.variations||[]).filter(v=>v.status!=='Disabled');
     if(!vs.length){const item={product_id:p.id,name:p.name||'Product',image_url:p.image_url||'',price:Number(p.price||0),quantity:Math.max(1,Number(qty||1))};if(mode==='buy'){checkout([item]);return true}add(item,item.quantity);return true}
     const names=[...new Set([...(d.options||[]).map(o=>String(o.name||'').trim()),...vs.flatMap(v=>Object.keys(v.options||{}))].filter(Boolean))];
