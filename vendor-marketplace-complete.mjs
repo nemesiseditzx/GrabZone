@@ -28,7 +28,8 @@ const s=[
 `CREATE TABLE IF NOT EXISTS shipment_items(id TEXT PRIMARY KEY,shipment_id TEXT NOT NULL,order_item_id TEXT NOT NULL,quantity INTEGER NOT NULL)`,
 `CREATE TABLE IF NOT EXISTS vendor_store_sections(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,section_type TEXT NOT NULL,title TEXT,body TEXT,sort_order INTEGER DEFAULT 0,enabled INTEGER DEFAULT 1,data_json TEXT DEFAULT '{}',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
 `CREATE TABLE IF NOT EXISTS marketplace_audit_log(id TEXT PRIMARY KEY,actor_type TEXT NOT NULL,actor_id TEXT,action TEXT NOT NULL,vendor_id TEXT,details TEXT,created_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS marketplace_settings(id INTEGER PRIMARY KEY,enabled INTEGER DEFAULT 1,default_shipping REAL DEFAULT 130,show_brands INTEGER DEFAULT 1,show_vendor_badges INTEGER DEFAULT 1,updated_at TEXT NOT NULL)`];
+`CREATE TABLE IF NOT EXISTS marketplace_settings(id INTEGER PRIMARY KEY,enabled INTEGER DEFAULT 1,default_shipping REAL DEFAULT 130,show_brands INTEGER DEFAULT 1,show_vendor_badges INTEGER DEFAULT 1,updated_at TEXT NOT NULL)`,
+`CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT UNIQUE NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`];
 for(const x of s)await env.DB.prepare(x).run();
 await env.DB.prepare("INSERT OR IGNORE INTO marketplace_settings(id,enabled,default_shipping,show_brands,show_vendor_badges,updated_at) VALUES(1,1,130,1,1,?)").bind(now()).run();
 for(const x of [`ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0`,`ALTER TABLE product_variations ADD COLUMN sale_price REAL`,`ALTER TABLE product_variations ADD COLUMN old_price REAL`,`ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'`,`ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0`,`ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1`,`ALTER TABLE product_variations ADD COLUMN max_qty INTEGER`,`ALTER TABLE product_variations ADD COLUMN options_key TEXT NOT NULL DEFAULT ''`]){try{await env.DB.prepare(x).run()}catch{}}
@@ -92,10 +93,28 @@ if(!Number.isFinite(fee)||fee<0||fee>100000)return json({error:'Enter a valid sh
 await e.DB.prepare('UPDATE marketplace_settings SET default_shipping=?,updated_at=? WHERE id=1').bind(fee,now()).run();
 return json({ok:true,global_shipping_fee:fee});
 }
-if(p==='/api/vendor/admin/categories'&&req.method==='GET'){
+if(p==='/api/vendor/admin/categories'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
-const rows=(await q(e,"SELECT category name,category id FROM products WHERE category IS NOT NULL AND trim(category)<>'' GROUP BY category ORDER BY category",[ ])).results||[];
-return json({categories:rows});
+if(req.method==='GET'){
+ const rows=(await q(e,"SELECT id,name,slug FROM marketplace_categories ORDER BY name",[])).results||[];
+ const legacy=(await q(e,"SELECT category name,category id FROM products WHERE category IS NOT NULL AND trim(category)<>'' GROUP BY category ORDER BY category",[])).results||[];
+ const seen=new Set(rows.map(x=>String(x.name).toLowerCase()));
+ for(const x of legacy){if(!seen.has(String(x.name).toLowerCase()))rows.push({id:String(x.id||x.name),name:x.name,slug:String(x.name).toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')});}
+ return json({categories:rows});
+}
+if(req.method==='POST'){
+ let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
+ const name=String(b.name||'').trim().slice(0,120);
+ const slug=(String(b.slug||name).trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')).slice(0,120);
+ if(!name)return json({error:'Category name is required'},400);
+ if(!slug)return json({error:'Valid slug is required'},400);
+ const exists=await one(e,'SELECT id FROM marketplace_categories WHERE slug=? OR lower(name)=lower(?)',[slug,name]);
+ if(exists)return json({error:'Category already exists'},409);
+ const id=crypto.randomUUID();
+ await e.DB.prepare('INSERT INTO marketplace_categories(id,name,slug,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id,name,slug,now(),now()).run();
+ return json({ok:true,category:{id,name,slug}},201);
+}
+return json({error:'Method not allowed'},405);
 }
 if(p==='/api/vendor/admin/order-data'&&req.method==='GET'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
