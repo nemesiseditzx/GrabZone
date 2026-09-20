@@ -354,6 +354,31 @@ async function hydrate(){
     const p=map.get(x.product_id);if(!p)return null;
     return{...x,product_id:p.id,name:p.name,image_url:p.image_url,price:Number(x.price??x.unit_price??p.price??0),quantity:Math.max(1,Number(x.quantity||1)),vendor_id:p.vendor_id,product_type:p.product_type}
   }).filter(Boolean);
+  const variationItems=checkoutItems.filter(x=>x.variation_id);
+  if(variationItems.length){
+    await Promise.all(variationItems.map(async item=>{
+      try{
+        const r=await fetch('/api/marketplace/variations?product_id='+encodeURIComponent(item.product_id),{credentials:'include',cache:'no-store'});
+        const d=await r.json().catch(()=>({}));
+        const v=(d.variations||[]).find(x=>String(x.id)===String(item.variation_id));
+        if(!v||String(v.status||'')!=='Available')throw new Error('This selected variation is no longer available.');
+        const regular=Number(v.regular_price||v.price||0),sale=Number(v.sale_price||0);
+        item.price=sale>0&&sale<regular?sale:regular;
+        item.unit_price=item.price;
+        item.image_url=v.image_url||item.image_url;
+        item.sku=v.sku||item.sku||'';
+        item.variation_options=v.options||item.variation_options||{};
+      }catch(e){
+        item.__variationError=e.message||'Selected variation is unavailable.';
+      }
+    }));
+    const unavailable=checkoutItems.find(x=>x.__variationError);
+    if(unavailable){
+      msg(unavailable.__variationError,true);
+      checkoutItems=checkoutItems.filter(x=>!x.__variationError);
+      if(!checkoutItems.length){render();return}
+    }
+  }
   await loadMarketplaceShipping();
   render();
 }
