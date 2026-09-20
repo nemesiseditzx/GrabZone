@@ -736,6 +736,17 @@ function applySiteSettings() {
           "
         >
       `;
+      const logoImg = element.querySelector("img");
+      if (logoImg) {
+        logoImg.addEventListener("error",()=>{
+          logoImg.remove();
+          element.textContent = "GZ";
+          element.style.fontWeight = "900";
+          element.style.fontSize = "14px";
+          element.style.color = "#fff";
+          element.style.background = "#111";
+        },{once:true});
+      }
     });
   }
 
@@ -771,11 +782,19 @@ function applySiteSettings() {
     const hero = document.getElementById("heroCard");
 
     if (hero) {
-      hero.style.backgroundImage =
-        `url("${escAttr(SITE.hero_image_url)}")`;
-
+      const heroUrl = String(SITE.hero_image_url || "").trim();
+      hero.style.backgroundImage = "linear-gradient(135deg,#111820,#1b2630)";
       hero.style.backgroundSize = "cover";
       hero.style.backgroundPosition = "center";
+
+      const probe = new Image();
+      probe.onload = () => {
+        hero.style.backgroundImage = `url("${escAttr(heroUrl)}")`;
+      };
+      probe.onerror = () => {
+        hero.style.backgroundImage = "linear-gradient(135deg,#111820 0%,#1b2630 58%,#ff6b00 170%)";
+      };
+      probe.src = heroUrl;
     }
   }
 
