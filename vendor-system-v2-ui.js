@@ -14,16 +14,16 @@ function vendorRow(v){const labels=Object.entries(v.options||{}).map(([k,x])=>`$
 }
 async function customerVariations(){
  if(window.__gzCustomerVariationUI||window.__gzCustomerVariationLoading)return;
- // product.html renders the real product asynchronously. Never mount into the
- // temporary "Loading product..." placeholder because store.js replaces it.
- if(!window.__gzProductRendered){return}
+ // product.html renders asynchronously. Wait until the real product heading exists.
+ const readyDetail=$('#productDetail');
+ if(!readyDetail||!readyDetail.querySelector('h1'))return;
  window.__gzCustomerVariationLoading=1;
  if(!/\/product(?:\.html)?\/?$/i.test(location.pathname)){window.__gzCustomerVariationLoading=0;return;}
  const pid=productId();if(!pid)return;
  ensureStyle();
  let data;
  try{data=await api('/api/marketplace/variations?product_id='+encodeURIComponent(pid))}catch{window.__gzCustomerVariationLoading=0;return}
- const vs=(data?.variations||[]).filter(v=>v.status!=='Disabled');
+ const vs=(data?.variations||[]).filter(v=>!['Disabled'].includes(String(v.status||'')));
  const detail=$('#productDetail')||$('main');if(!detail){window.__gzCustomerVariationLoading=0;return;} const galleryUrls=(()=>{const x=data?.product?.image_urls;if(Array.isArray(x))return x.filter(Boolean);if(typeof x==='string'){try{const y=JSON.parse(x);return Array.isArray(y)?y.filter(Boolean):[]}catch{}}return []})();
  if(galleryUrls.length){
    const currentGallery=Array.isArray(window.__gallery)?window.__gallery:[];
@@ -60,12 +60,13 @@ async function customerVariations(){
  const area=wrap.querySelector('#gzCVOptions'),state=wrap.querySelector('#gzCVState'),note=wrap.querySelector('#gzCVQtyNote');
  let selected={},current=null;
  const colorMap={black:'#111',white:'#fff',red:'#ef233c',blue:'#2446d8',green:'#2f9e44',yellow:'#ffd43b',pink:'#f783ac',gray:'#8b8f94',grey:'#8b8f94',brown:'#8b5e3c',orange:'#ff7a00',purple:'#7b3fb6',navy:'#172554',maroon:'#800000',beige:'#e7d3ad'};
- const valueList=name=>[...new Set(vs.map(v=>v.options?.[name]).filter(Boolean))];
+ const valueList=name=>{const fromVariations=vs.map(v=>v.options?.[name]).filter(Boolean);const fromOptions=(data.options||[]).find(o=>String(o.name||'').toLowerCase()===String(name).toLowerCase())?.values||[];return [...new Set([...fromVariations,...fromOptions.map(x=>typeof x==='string'?x:x?.value).filter(Boolean)])]};
+ function variationAvailable(v){const status=String(v?.status||'Available').toLowerCase();if(status==='disabled'||status==='out of stock'||status==='inactive')return false;return String(v?.stock_mode||'untracked').toLowerCase()!=='tracked'||Number(v?.stock||0)>0}
  function matching(){
    return vs.find(v=>Object.entries(v.options||{}).every(([k,val])=>selected[k]===val))||null;
  }
  function compatible(name,value){
-   return vs.some(v=>v.status!=='Disabled' && v.options?.[name]===value && Object.entries(selected).every(([k,val])=>k===name||v.options?.[k]===val));
+   return vs.some(v=>variationAvailable(v)&&v.options?.[name]===value&&Object.entries(selected).every(([k,val])=>k===name||v.options?.[k]===val));
  }
  function renderOptions(){
    area.innerHTML='';
@@ -89,7 +90,7 @@ async function customerVariations(){
  }
  function updatePrice(v){
    if(!v)return;
-   const price=Number(v.regular_price||0),candidateOld=v.old_price!=null?Number(v.old_price):Number(data.product?.old_price||0),old=candidateOld>price?candidateOld:null;
+   const regular=Number(v.regular_price||v.price||0),sale=Number(v.sale_price||0),price=sale>0&&sale<regular?sale:regular,candidateOld=v.old_price!=null?Number(v.old_price):Number(data.product?.old_price||0),old=candidateOld>price?candidateOld:null;
    detail.querySelectorAll('#productPrice,.product-price,.price,.detail-price,[data-product-price]').forEach(el=>{el.innerHTML=money(price)+(old!==null?' <span class="old">'+money(old)+'</span>':'')});
    detail.querySelectorAll('[data-sale-price]').forEach(el=>{el.textContent='' });
    detail.querySelectorAll('[data-sku]').forEach(el=>{el.textContent=v.sku||''});
@@ -108,7 +109,7 @@ async function customerVariations(){
      note.textContent='';
      return;
    }
-   const available=current.status==='Available';
+   const available=variationAvailable(current);
    state.innerHTML='<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px"></span>'+(available?'Available':'Unavailable');
    state.className=available?'gz-cv-state':'gz-cv-state warn';
    note.textContent='';
@@ -119,10 +120,10 @@ async function customerVariations(){
  let cvQty=1;const qtyEl=wrap.querySelector('#gzCVQty'),addBtn=wrap.querySelector('[data-gz-add]'),buyBtn=wrap.querySelector('[data-gz-buy]');
  wrap.querySelector('[data-gz-qty-minus]').onclick=()=>{cvQty=Math.max(1,cvQty-1);qtyEl.textContent=cvQty};
  wrap.querySelector('[data-gz-qty-plus]').onclick=()=>{cvQty+=1;qtyEl.textContent=cvQty};
- const doAdd=()=>{const x=item();if(!x||current?.status!=='Available'){alert('Please select an available variation first.');return}x.quantity=cvQty;let cart=[];try{cart=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');if(!Array.isArray(cart))cart=[]}catch{}const same=cart.find(y=>String(y.product_id)===String(x.product_id)&&String(y.variation_id)===String(x.variation_id));if(same)same.quantity=Number(same.quantity||0)+cvQty;else cart.push(x);localStorage.setItem('grabzone_cart_v2',JSON.stringify(cart));addBtn.textContent='Added ✓';setTimeout(()=>addBtn.textContent='Add to Cart',900)};
+ const doAdd=()=>{const x=item();if(!x||current?.status!=='Available'){alert('Please select an available variation first.');return}x.quantity=cvQty;let cart=[];try{cart=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');if(!Array.isArray(cart))cart=[]}catch{}const same=cart.find(y=>String(y.product_id)===String(x.product_id)&&String(y.variation_id)===String(x.variation_id));if(same)same.quantity=Number(same.quantity||0)+cvQty;else cart.push(x);localStorage.setItem('grabzone_cart_v2',JSON.stringify(cart));window.dispatchEvent(new Event('grabzone-cart-updated'));addBtn.textContent='Added ✓';setTimeout(()=>addBtn.textContent='Add to Cart',900)};
  const doBuy=()=>{const x=item();if(!x||current?.status!=='Available'){alert('Please select an available variation first.');return}x.quantity=cvQty;localStorage.setItem('grabzone_buy_now_v2',JSON.stringify([x]));location.href='/checkout'};
  addBtn.onclick=doAdd;buyBtn.onclick=doBuy;
- function item(){if(!current)return null;const regular=Number(current.regular_price||0),price=regular,quantity=Math.max(1,Number(document.querySelector('#gzProductQty')?.textContent||1));return{product_id:pid,variation_id:current.id,variation_options:current.options||{},quantity,unit_price:price,price,name:data.product?.name||'Product',image_url:imageFor(current)||data.product?.image_url||'',sku:current.sku||''}}
+ function item(){if(!current)return null;const regular=Number(current.regular_price||current.price||0),sale=Number(current.sale_price||0),price=sale>0&&sale<regular?sale:regular;return{product_id:pid,variation_id:current.id,variation_options:current.options||{},quantity:Math.max(1,Number(cvQty||1)),unit_price:price,price,name:data.product?.name||'Product',image_url:imageFor(current)||data.product?.image_url||'',sku:current.sku||''}}
  function addCart(){const x=item();if(!x||current.status!=='Available')return false;let cart=[];try{cart=JSON.parse(localStorage.getItem('grabzone_cart_v2')||'[]');if(!Array.isArray(cart))cart=[]}catch{}const existing=cart.find(y=>y.product_id===x.product_id&&y.variation_id===x.variation_id);if(existing){existing.quantity=Number(existing.quantity||0)+x.quantity}else cart.push(x);localStorage.setItem('grabzone_cart_v2',JSON.stringify(cart));return true}
  function buyNow(){const x=item();if(!x||current.status!=='Available')return false;localStorage.setItem('grabzone_buy_now_v2',JSON.stringify([x]));location.href='/checkout';return true}
 
