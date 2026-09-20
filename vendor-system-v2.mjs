@@ -10,7 +10,7 @@ async function vendor(r,e){const t=cookie(r,'gz_vendor_session')||(r.headers.get
 async function audit(e,type,id,action,vid,details={}){await e.DB.prepare('INSERT INTO marketplace_audit_log(id,actor_type,actor_id,action,vendor_id,details,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),type,id,action,vid,JSON.stringify(details),now()).run().catch(()=>{})}
 let schemaPromise=null;
 async function schema(e){if(schemaPromise)return schemaPromise;schemaPromise=(async()=>{for(const x of[
-`ALTER TABLE vendors ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 130`,
+`ALTER TABLE vendors ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 0`,
 `ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0`,
 `CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
 `CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
@@ -52,37 +52,6 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
      for(const o of opts)o.values=(await q(e,'SELECT id,value,sort_order FROM option_values WHERE option_id=? ORDER BY sort_order,id',[o.id])).results||[];
    }
  }let vs=(await q(e,"SELECT id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
- // Repair products that have saved option definitions but never got variation rows.
- // This keeps the public product page usable without recreating intentionally disabled variations.
- if(!vs.length&&opts.length&&String(product.product_type||'').toLowerCase()==='variable'){
-   // Variable products must have active variation rows. Rebuild them when
-   // an earlier save left the option definitions without active rows.
-   let combos=[{}];
-   for(const o of opts){
-     const next=[];
-     for(const x of combos)for(const val of(o.values||[]))next.push({...x,[o.name]:val.value});
-     combos=next;
-   }
-   const t=new Date().toISOString();
-   const rows=(await q(e,'SELECT po.id option_id,po.name,ov.id value_id,ov.value FROM product_options po JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? ORDER BY po.sort_order,ov.sort_order',[id])).results||[];
-   const map=new Map(rows.map(x=>[x.name+'\\u0000'+x.value,{option_id:x.option_id,value_id:x.value_id}]));
-   for(const selected of combos){
-     const key=Object.entries(selected).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>k+'='+v).join('|').slice(0,1000);
-     const existing=await one(e,'SELECT id FROM product_variations WHERE product_id=? AND options_key=?',[id,key]);
-     const vid=existing?.id||crypto.randomUUID();
-     if(existing){
-       await e.DB.prepare("UPDATE product_variations SET status='Available',updated_at=? WHERE id=?").bind(t,vid).run();
-       await e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(vid).run();
-     }else{
-       await e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(vid,id,'',Number(product.price||0),null,null,0,5,'', 'Available',1,null,key,t,t).run();
-     }
-     for(const o of opts){
-       const m=map.get(o.name+'\\u0000'+selected[o.name]);
-       if(m)await e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(vid,m.option_id,m.value_id).run();
-     }
-   }
-   vs=(await q(e,"SELECT id,sku,regular_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
- }
  for(const v of vs){
    const links=(await q(e,'SELECT vo.option_id,vo.option_value_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=?',[v.id])).results||[];
 
