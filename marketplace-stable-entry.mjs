@@ -13,12 +13,12 @@ const json=(x,s=200,h={})=>new Response(JSON.stringify(x),{status:s,headers:{'Co
 async function shippingSettings(req,e){
  const p=new URL(req.url).pathname;
  if(p!=='/api/marketplace/shipping-settings')return null;
- await e.DB.prepare("ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 130").run().catch(()=>{});
- await e.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee) VALUES(1,130)").run().catch(()=>{});
+ await e.DB.prepare("ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 0").run().catch(()=>{});
+ await e.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee) VALUES(1,0)").run().catch(()=>{});
  if(req.method==='GET'){
   const row=(await e.DB.prepare("SELECT global_shipping_fee FROM site_settings WHERE id=1 LIMIT 1").all()).results?.[0];
   const fee=Number(row?.global_shipping_fee);
-  return json({ok:true,global_shipping_fee:Number.isFinite(fee)&&fee>=0?fee:130});
+  return json({ok:true,global_shipping_fee:Number.isFinite(fee)&&fee>=0?fee:0});
  }
  if(req.method!=='PATCH')return json({error:'Method not allowed.'},405);
  if(!await admin(req,e))return json({error:'Unauthorized'},401);
