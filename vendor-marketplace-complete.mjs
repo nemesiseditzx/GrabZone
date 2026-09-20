@@ -65,6 +65,32 @@ o.items=items;o.item_count=items.reduce((n,x)=>n+Number(x.quantity||1),0);o.stat
 }
 return json({vendor:v,products,orders});
 }
+if(p==='/api/vendor/admin/settings'){
+const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+if(req.method==='GET'){
+ const s=await one(e,'SELECT * FROM marketplace_settings WHERE id=1');
+ return json({settings:s||{id:1,enabled:1,default_shipping:130,show_brands:1,show_vendor_badges:1}});
+}
+if(req.method!=='PATCH')return json({error:'Method not allowed'},405);
+let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
+const enabled=b.enabled?1:0,showBrands=b.show_brands===false?0:1,showBadges=b.show_vendor_badges===false?0:1,fee=Math.max(0,Number(b.default_shipping??130));
+if(!Number.isFinite(fee))return json({error:'Invalid default shipping fee'},400);
+await e.DB.prepare('UPDATE marketplace_settings SET enabled=?,default_shipping=?,show_brands=?,show_vendor_badges=?,updated_at=? WHERE id=1').bind(enabled,fee,showBrands,showBadges,now()).run();
+return json({ok:true,settings:await one(e,'SELECT * FROM marketplace_settings WHERE id=1')});
+}
+if(p==='/api/marketplace/shipping-settings'){
+if(req.method==='GET'){
+ const s=await one(e,'SELECT default_shipping FROM marketplace_settings WHERE id=1');
+ return json({ok:true,global_shipping_fee:Number(s?.default_shipping??130)});
+}
+const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+if(req.method!=='PATCH')return json({error:'Method not allowed'},405);
+let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
+const fee=Number(b.global_shipping_fee);
+if(!Number.isFinite(fee)||fee<0||fee>100000)return json({error:'Enter a valid shipping fee.'},400);
+await e.DB.prepare('UPDATE marketplace_settings SET default_shipping=?,updated_at=? WHERE id=1').bind(fee,now()).run();
+return json({ok:true,global_shipping_fee:fee});
+}
 if(p==='/api/vendor/admin/categories'&&req.method==='GET'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const rows=(await q(e,"SELECT category name,category id FROM products WHERE category IS NOT NULL AND trim(category)<>'' GROUP BY category ORDER BY category",[ ])).results||[];
