@@ -145,7 +145,6 @@ async function save(id){
       tracking_number:number,
       tracking_url:url,
       status:nextStatus,
-      shipping_charge:130,
       updated_at:new Date().toISOString()
     });
     if(item){
