@@ -20,6 +20,12 @@ async function reserveInventory(e,items){
   if(item.variation_id){
    const v=await one(e,"SELECT pv.id,pv.status,pv.product_id,p.vendor_id,p.published,p.name product_name FROM product_variations pv JOIN products p ON p.id=pv.product_id WHERE pv.id=?",[clean(item.variation_id,120)]);
    if(!v||!v.published||v.status!=='Available')throw Object.assign(new Error('One selected variation is no longer available.'),{status:409});
+   const expected=(await q(e,"SELECT po.name option_name,ov.value option_value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order",[v.id])).results||[];
+   const expectedMap=Object.fromEntries(expected.map(x=>[String(x.option_name),String(x.option_value)]));
+   let supplied={};try{supplied=typeof item.variation_options==='string'?JSON.parse(item.variation_options||'{}'):(item.variation_options||{})}catch{supplied={}};
+   const keys=Object.keys(expectedMap);
+   const valid=keys.length>0&&keys.length===Object.keys(supplied).length&&keys.every(k=>String(supplied[k]??'')===expectedMap[k]);
+   if(!valid)throw Object.assign(new Error('Selected variation options do not match the selected variation.'),{status:409});
    held.push({kind:'variation',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name});
   }else{
    const p=await one(e,"SELECT id,name,published,vendor_id FROM products WHERE id=?",[clean(item.product_id,120)]);
