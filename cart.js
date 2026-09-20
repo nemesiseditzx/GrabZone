@@ -20,8 +20,8 @@ async function chooseVariant(p,qty=1,mode='add'){
   try{
     const r=await fetch('/api/marketplace/variations?product_id='+encodeURIComponent(p.id),{cache:'no-store'});
     const d=await r.json().catch(()=>({}));
-    const vs=(d.variations||[]).filter(v=>v.status!=='Disabled');
     const vs=(d.variations||[]).filter(v=>v.status==='Available'||v.status==='Out of Stock');
+    const names=[...new Set(vs.flatMap(v=>Object.keys(v.options||{})))];
     if(!vs.length){const isVariable=String(p.product_type||'').toLowerCase()==='variable'||d.enabled===true;if(isVariable){alert('No available variation is currently available for this product.');return true}const item={product_id:p.id,name:p.name||'Product',image_url:p.image_url||'',price:Number(p.price||0),quantity:Math.max(1,Number(qty||1))};if(mode==='buy'){checkout([item]);return true}add(item,item.quantity);return true}
     if(!names.length)return false;
     let selected={},current=null;
