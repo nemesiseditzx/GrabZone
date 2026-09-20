@@ -39,6 +39,7 @@ async function publicVariations(req,e){
   for(const v of rawVariations){
    if(String(v.status||'Available').toLowerCase()==='disabled')continue;
    v.status=v.status||'Available';
+   const legacyOptions=v.options;
    v.options={};
 
    // Primary source: normalized variation_options rows.
@@ -48,9 +49,9 @@ async function publicVariations(req,e){
    }catch{}
 
    // Legacy source: JSON options stored directly on the variation.
-   if(!Object.keys(v.options).length&&v.options){
+   if(!Object.keys(v.options).length&&legacyOptions){
     try{
-     const parsed=typeof v.options==='string'?JSON.parse(v.options):v.options;
+     const parsed=typeof legacyOptions==='string'?JSON.parse(legacyOptions):legacyOptions;
      if(parsed&&typeof parsed==='object')for(const [k,val] of Object.entries(parsed))if(String(k).trim()&&String(val).trim())v.options[String(k).trim()]=String(val).trim();
     }catch{}
    }
