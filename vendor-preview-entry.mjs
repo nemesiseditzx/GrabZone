@@ -82,6 +82,12 @@ export default{fetch:async(req,env,ctx)=>{try{const origin=req.headers.get('Orig
   const direct=await directVendorData(req,env,ctx);
   if(direct)return previewSecure(direct,req);
   const response=await gateway.fetch(req,env,ctx);
+  if(response.status>=500&&!new URL(req.url).pathname.startsWith('/api/')&&env?.ASSETS){
+    try{
+      const asset=await env.ASSETS.fetch(req);
+      if(asset&&asset.status<500)return previewSecure(asset,req);
+    }catch(assetErr){console.error('Vendor preview runtime asset fallback failed',assetErr)}
+  }
   const type=response.headers.get('content-type')||'';
   if(response.ok&&type.includes('text/html')&&(p==='/'||p==='/index.html')){
     const body=await response.text();
