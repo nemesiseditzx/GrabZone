@@ -95,6 +95,13 @@ return json({ok:true,global_shipping_fee:fee});
 }
 if(p==='/api/vendor/admin/categories'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+// Existing D1 databases may have an older marketplace_categories table. Ensure the
+// columns used by the current settings UI exist before reading/writing categories.
+await e.DB.prepare(`CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT UNIQUE NOT NULL,created_at TEXT,updated_at TEXT)`).run().catch(()=>{});
+for(const sql of [
+  `ALTER TABLE marketplace_categories ADD COLUMN created_at TEXT`,
+  `ALTER TABLE marketplace_categories ADD COLUMN updated_at TEXT`
+])await e.DB.prepare(sql).run().catch(()=>{});
 if(req.method==='GET'){
  try{
   const rows=(await q(e,"SELECT id,name,slug FROM marketplace_categories ORDER BY name COLLATE NOCASE",[])).results||[];
