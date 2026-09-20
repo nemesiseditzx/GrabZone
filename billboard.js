@@ -142,6 +142,18 @@ function renderBillboard(){
     `;
     track.appendChild(card);
 
+    const img = card.querySelector("img");
+    if(img){
+      img.addEventListener("error",()=>{
+        img.remove();
+        card.classList.add("gz-billboard-image-fallback");
+        const fallback=document.createElement("div");
+        fallback.className="gz-billboard-fallback";
+        fallback.innerHTML='<span>GRABZONE</span><strong>Grab what\'s trending.</strong><small>Fresh deals • Cash on Delivery</small>';
+        card.insertBefore(fallback, card.firstChild);
+      },{once:true});
+    }
+
     const dot=document.createElement("button");
     dot.type="button";
     dot.className="gz-billboard-dot";
