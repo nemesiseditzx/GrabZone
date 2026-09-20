@@ -73,6 +73,16 @@ const vs=(await q(e,'SELECT vo.*,v.brand_name,v.slug,v.logo_url FROM vendor_orde
 for(const v of vs){v.items=(await q(e,`SELECT voi.*,oi.product_name,oi.image_url,oi.variation_options,oi.variation_sku,p.name product_name_current,p.sku product_sku,pv.sku variation_sku,pv.image_url variation_image FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id LEFT JOIN products p ON p.id=voi.product_id LEFT JOIN product_variations pv ON pv.id=COALESCE(voi.variation_id,oi.variation_id) WHERE voi.vendor_order_id=? ORDER BY voi.rowid`,[v.id])).results||[];for(const x of v.items){try{x.variation_options=x.variation_options?JSON.parse(x.variation_options):{}}catch{x.variation_options={}}x.sku=x.variation_sku||x.variation_sku||x.product_sku||'';x.product_details={name:x.product_name_current||x.product_name||'Product',image_url:x.variation_image||x.image_url||null,sku:x.sku||null}}v.shipments=(await q(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[o.id,v.vendor_id])).results||[];}
 return json({order:o,vendors:vs});
 }
+if(p==='/api/vendor/admin/order-status'&&req.method==='PATCH'){
+const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
+const oid=clean(b.order_id||b.vendor_order_id,100),st=clean(b.status,40);
+const allowed=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];if(!allowed.includes(st))return json({error:'Invalid status'},400);
+const vo=await one(e,'SELECT id,order_id,vendor_id FROM vendor_orders WHERE id=? OR order_id=? LIMIT 1',[oid,oid]);if(!vo)return json({error:'Vendor order not found'},404);
+const t=now();
+await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE order_id=?').bind(st,t,vo.order_id).run();
+await e.DB.prepare('UPDATE orders SET status=?,updated_at=? WHERE id=?').bind(st,t,vo.order_id).run();
+return json({ok:true,order_id:vo.order_id,status:st});
+}
 if(p==='/api/vendor/admin/shipment'&&(req.method==='POST'||req.method==='PATCH')){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
 const vo=await one(e,'SELECT vo.*,ord.order_number FROM vendor_orders vo JOIN orders ord ON ord.id=vo.order_id WHERE vo.id=?',[clean(b.vendor_order_id,100)]);
