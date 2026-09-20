@@ -7,7 +7,7 @@ const d1=window.grabzoneD1||null;
 const CART_KEY='grabzone_cart_v2';
 const BUY_NOW_KEY='grabzone_buy_now_v2';
 const currency=C.currency||'৳';
-let marketplaceShipping=0,shippingBreakdown=[],marketplaceProductsLoaded=false;
+let marketplaceShipping=0,shippingBreakdown=[],marketplaceProductsLoaded=false,marketplaceShippingError='';
 async function loadMarketplaceShipping(){
   try{
     const ids=[...new Set(checkoutItems.map(i=>i.product_id).filter(Boolean).map(String))];
