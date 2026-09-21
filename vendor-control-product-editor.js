@@ -41,7 +41,7 @@ function renderVarTable(vs,activeNames=[],productImages=[]){
 async function saveVars(pid){
   for(const tr of document.querySelectorAll('#fpmVarTable tr[data-id]')){
     const v=k=>tr.querySelector('[data-v="'+k+'"]')?.value??'';
-    await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify({product_id:pid,sku:v('sku'),regular_price:Number(v('regular')||0),sale_price:null,old_price:v('old')===''?null:Number(v('old')),stock:Math.max(0,Math.floor(Number(v('stock')||0))),status:v('status'),image_url:v('image')})});
+    await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify({product_id:pid,sku:v('sku'),regular_price:Number(v('regular')||0),sale_price:null,old_price:v('old')===''?null:Number(v('old')),stock:Number(tr.dataset.stock||0),status:v('status'),image_url:v('image')})});
   }
 }
 
