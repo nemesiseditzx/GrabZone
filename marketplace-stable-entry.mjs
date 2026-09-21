@@ -27,9 +27,18 @@ async function publicVariations(req,e){
   if(!product)return json({error:'Product not found.'},404);
   if(Number(product.published??1)!==1)return json({error:'Product not found.'},404);
   try {
+   await e.DB.prepare('CREATE TABLE IF NOT EXISTS product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_main INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
    const imageRows=(await e.DB.prepare('SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order,id').bind(pid).all()).results||[];
-   product.image_urls=imageRows.map(x=>x.image_url).filter(Boolean);
-  } catch { product.image_urls=[]; }
+   const dbUrls=imageRows.map(x=>String(x.image_url||'').trim()).filter(Boolean);
+   let storedUrls=[];
+   const rawStored=product.image_urls;
+   if(Array.isArray(rawStored)) storedUrls=rawStored.map(x=>String(x||'').trim()).filter(Boolean);
+   else if(typeof rawStored==='string'){try{const parsed=JSON.parse(rawStored);if(Array.isArray(parsed))storedUrls=parsed.map(x=>String(x||'').trim()).filter(Boolean)}catch{}}
+   const all=[...dbUrls,...storedUrls,String(product.image_url||'').trim()].filter(Boolean);
+   product.image_urls=[...new Set(all)].slice(0,10);
+  } catch {
+   product.image_urls=String(product.image_url||'').trim()?[String(product.image_url).trim()]:[];
+  }
 
   const options=(await e.DB.prepare('SELECT * FROM product_options WHERE product_id=?').bind(pid).all()).results||[];
   options.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||String(a.id||'').localeCompare(String(b.id||'')));
