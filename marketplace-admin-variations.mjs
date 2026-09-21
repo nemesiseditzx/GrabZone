@@ -210,8 +210,8 @@ async function handle(req, e) {
       stock,
       clean(b.image_url ?? v.image_url, 2000),
       status,
-      hasStock ? 'tracked' : (v.stock_mode || 'untracked'),
-      hasStock ? 0 : Number(v.low_stock_threshold||0),
+      (status === 'Out of Stock' || (hasStock && stock > 0)) ? 'tracked' : 'untracked',
+      (status === 'Out of Stock' || (hasStock && stock > 0)) ? 0 : Number(v.low_stock_threshold||0),
       now(), id
     ).run();
     if (Array.isArray(b.images)) {
