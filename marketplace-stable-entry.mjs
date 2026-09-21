@@ -26,6 +26,10 @@ async function publicVariations(req,e){
   const product=await one(e,'SELECT * FROM products WHERE id=? LIMIT 1',[pid]);
   if(!product)return json({error:'Product not found.'},404);
   if(Number(product.published??1)!==1)return json({error:'Product not found.'},404);
+  try {
+   const imageRows=(await e.DB.prepare('SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order,id').bind(pid).all()).results||[];
+   product.image_urls=imageRows.map(x=>x.image_url).filter(Boolean);
+  } catch { product.image_urls=[]; }
 
   const options=(await e.DB.prepare('SELECT * FROM product_options WHERE product_id=?').bind(pid).all()).results||[];
   options.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||String(a.id||'').localeCompare(String(b.id||'')));
