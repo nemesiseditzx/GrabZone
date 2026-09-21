@@ -186,15 +186,21 @@ async function handle(req, e) {
     const v = await one(e, 'SELECT * FROM product_variations WHERE id=? AND product_id=?', [id, pid]);
     if (!v) return json({ error: 'Variation not found.' }, 404);
     const status = ['Available', 'Out of Stock', 'Disabled'].includes(b.status) ? b.status : v.status;
+    const hasStock=b.stock!==undefined&&b.stock!==null&&b.stock!=='';
+    const stock=hasStock?Math.max(0,Math.floor(Number(b.stock))):Number(v.stock||0);
     await e.DB.prepare(
-      'UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,image_url=?,status=?,stock_mode=\'untracked\',low_stock_threshold=0,min_qty=1,max_qty=NULL,updated_at=? WHERE id=?'
+      'UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,image_url=?,status=?,stock_mode=?,low_stock_threshold=?,min_qty=1,max_qty=NULL,updated_at=? WHERE id=?'
     ).bind(
       clean(b.sku ?? v.sku, 120),
       Math.max(0, Number(b.regular_price ?? v.regular_price)),
       b.sale_price === null || b.sale_price === '' ? null : Math.max(0, Number(b.sale_price)),
       b.old_price === null || b.old_price === '' ? null : Math.max(0, Number(b.old_price)),
+      stock,
       clean(b.image_url ?? v.image_url, 2000),
-      status, now(), id
+      status,
+      hasStock ? 'tracked' : (v.stock_mode || 'untracked'),
+      hasStock ? 0 : Number(v.low_stock_threshold||0),
+      now(), id
     ).run();
     if (Array.isArray(b.images)) {
       await e.DB.prepare('DELETE FROM variation_images WHERE variation_id=?').bind(id).run();
