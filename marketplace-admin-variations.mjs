@@ -178,7 +178,19 @@ async function handle(req, e) {
         "UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?"
       ).bind(t, x.id).run();
     }
-    return json({ ok: true, count: rows.length });
+    const generated = (await q(e,
+      "SELECT * FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at,id",
+      [pid])).results || [];
+    for (const v of generated) {
+      v.options = {};
+      for (const x of (await q(e,
+        'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',
+        [v.id])).results || []) v.options[x.name] = x.value;
+      v.images = (await q(e,
+        'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id',
+        [v.id])).results?.map(x => x.image_url) || [];
+    }
+    return json({ ok: true, count: rows.length, options: os, variations: generated });
   }
 
   if (req.method === 'PATCH') {
