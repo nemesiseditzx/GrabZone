@@ -29,7 +29,9 @@ async function publicVariations(req,e){
   try {
    await e.DB.prepare('CREATE TABLE IF NOT EXISTS product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_main INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
    const imageRows=(await e.DB.prepare('SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order,id').bind(pid).all()).results||[];
-   const dbUrls=imageRows.map(x=>String(x.image_url||'').trim()).filter(Boolean);
+   await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
+   const vendorImageRows=(await e.DB.prepare('SELECT image_url FROM vendor_product_images WHERE product_id=? ORDER BY sort_order,id').bind(pid).all()).results||[];
+   const dbUrls=[...imageRows,...vendorImageRows].map(x=>String(x.image_url||'').trim()).filter(Boolean);
    let storedUrls=[];
    const rawStored=product.image_urls;
    if(Array.isArray(rawStored)) storedUrls=rawStored.map(x=>String(x||'').trim()).filter(Boolean);
