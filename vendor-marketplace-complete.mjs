@@ -172,7 +172,10 @@ const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const u=new URL(req.url),vid=clean(u.searchParams.get('vendor_id'),100);
 if(req.method==='GET'){
  const rows=(await q(e,`SELECT p.*,v.brand_name vendor_name FROM products p LEFT JOIN vendors v ON v.id=p.vendor_id WHERE (?='' OR p.vendor_id=?) ORDER BY p.created_at DESC`,[vid||'',vid||''])).results||[];
- for(const p0 of rows){p0.variations=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at,id',[p0.id])).results||[];}
+ for(const p0 of rows){
+  p0.variations=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at,id',[p0.id])).results||[];
+  try{p0.image_urls=((await q(e,'SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order,id',[p0.id])).results||[]).map(x=>x.image_url).filter(Boolean)}catch{p0.image_urls=[]}
+ }
  return json({products:rows});
 }
 let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
@@ -182,6 +185,13 @@ if(req.method==='PATCH'){
  const p0=await one(e,'SELECT * FROM products WHERE id=?',[productId]);if(!p0)return json({error:'Product not found'},404);
  const fields=['name','category','price','sale_price','old_price','image_url','tag','description','published','vendor_id','stock','sku','low_stock_threshold','min_qty','max_qty','product_type'];
  const ss=[],pp=[];for(const k of fields)if(b[k]!==undefined){let v=b[k];if(['price','sale_price','old_price'].includes(k))v=v===null||v===''?null:Number(v);if(['stock','low_stock_threshold','min_qty','max_qty'].includes(k))v=v===null||v===''?null:Math.max(0,Math.floor(Number(v)));if(k==='published')v=b[k]?1:0;if(k==='product_type')v=v==='variable'?'variable':'simple';ss.push(k+'=?');pp.push(v)}if(ss.length){ss.push('updated_at=?');pp.push(now(),productId);await e.DB.prepare('UPDATE products SET '+ss.join(',')+' WHERE id=?').bind(...pp).run();}
+if(Array.isArray(b.image_urls)){
+  const imageUrls=b.image_urls.map(x=>clean(x,2000)).filter(Boolean).slice(0,10);
+  await e.DB.prepare('CREATE TABLE IF NOT EXISTS product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_main INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
+  await e.DB.prepare('DELETE FROM product_images WHERE product_id=?').bind(productId).run();
+  if(imageUrls.length) await e.DB.batch(imageUrls.map((url,i)=>e.DB.prepare('INSERT INTO product_images(id,product_id,image_url,sort_order,is_main,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),productId,url,i,i===0?1:0,now())));
+  if(imageUrls[0]) await e.DB.prepare('UPDATE products SET image_url=?,updated_at=? WHERE id=?').bind(imageUrls[0],now(),productId).run();
+}
 return json({ok:true,product:await one(e,'SELECT * FROM products WHERE id=?',[productId])});
 }
 const vId=clean(b.vendor_id||vid,100);if(!vId)return json({error:'Vendor ID required'},400);if(!(await one(e,'SELECT id FROM vendors WHERE id=?',[vId])))return json({error:'Vendor not found'},404);
