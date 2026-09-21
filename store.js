@@ -1429,6 +1429,19 @@ async function renderDetail() {
       .eq("product_id", productId)
       .order("sort_order");
 
+  // Also read the public marketplace API so the storefront gallery uses the
+  // same complete image set as the vendor/admin product editor.
+  let marketplaceImages = [];
+  try {
+    const mr = await fetch("/api/marketplace/variations?product_id=" + encodeURIComponent(productId), {
+      credentials: "include",
+      cache: "no-store"
+    });
+    const md = await mr.json().catch(() => ({}));
+    const apiUrls = Array.isArray(md?.product?.image_urls) ? md.product.image_urls : [];
+    marketplaceImages = apiUrls.filter(Boolean).map(image_url => ({ image_url }));
+  } catch {}
+
   /*
     Vendor editor stores the complete gallery in products.image_urls.
     Older products may not have product_images rows, so always use
@@ -1445,7 +1458,7 @@ async function renderDetail() {
     : [];
 
   const seenGallery = new Set();
-  const gallery = [...dbGallery, ...storedUrls.map((image_url, i) => ({
+  const gallery = [...dbGallery, ...marketplaceImages, ...storedUrls.map((image_url, i) => ({
     image_url,
     is_main: i === 0
   }))]
