@@ -65,7 +65,7 @@ async function repairVendorId(env,v){
 async function directAdminOverview(req,env,ctx){
   const u=new URL(req.url);if(u.pathname!=='/api/vendor/admin/overview'||req.method!=='GET')return null;
   const authReq=new Request(new URL('/api/admin-auth',req.url),{method:'GET',headers:new Headers(req.headers)});
-  const auth=await gateway.fetch(authReq,env,ctx);const body=await auth.clone().json().catch(()=>({}));
+  const auth=await legacyWorker.fetch(authReq,env,ctx);const body=await auth.clone().json().catch(()=>({}));
   if(!auth.ok||!body.authenticated)return json({error:'Unauthorized'},401);
   try{
     const vendors=await all(env,`SELECT v.*,
