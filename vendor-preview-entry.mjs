@@ -1,4 +1,5 @@
 import gateway from './marketplace-api-gateway.mjs';
+import legacyWorker from './worker.mjs';
 
 const MAX_BYTES=1024*1024;
 const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate'}});
@@ -13,7 +14,7 @@ function norm(v){return String(v??'').normalize('NFKC').toLowerCase().replace(/[
 async function categoriesV2(req,env,ctx){
   const u=new URL(req.url);
   if(u.pathname!=='/api/vendor/admin/categories-v2')return null;
-  const auth=await gateway.fetch(new Request(new URL('/api/admin-auth',req.url),{method:'GET',headers:new Headers(req.headers)}),env,ctx);
+  const auth=await legacyWorker.fetch(new Request(new URL('/api/admin-auth',req.url),{method:'GET',headers:new Headers(req.headers)}),env,ctx);
   const authBody=await auth.clone().json().catch(()=>({}));
   if(!auth.ok||!authBody.authenticated)return json({error:'Unauthorized'},401);
   if(req.method==='GET'){
@@ -82,7 +83,7 @@ async function directAdminOverview(req,env,ctx){
 async function directVendorData(req,env,ctx){
   const u=new URL(req.url);
   if(u.pathname!=='/api/vendor/admin/vendor-data'||req.method!=='GET')return null;
-  const auth=await gateway.fetch(new Request(new URL('/api/admin-auth',req.url),{method:'GET',headers:new Headers(req.headers)}),env,ctx);
+  const auth=await legacyWorker.fetch(new Request(new URL('/api/admin-auth',req.url),{method:'GET',headers:new Headers(req.headers)}),env,ctx);
   const authBody=await auth.clone().json().catch(()=>({}));
   if(!auth.ok||!authBody.authenticated)return json({error:'Unauthorized'},401);
   const raw=String(u.searchParams.get('vendor_id')||u.searchParams.get('vendor')||'').trim();
@@ -125,6 +126,7 @@ export default{fetch:async(req,env,ctx)=>{try{
     const file=form?.get('file');
     if(file instanceof File&&file.size>MAX_BYTES)return json({error:'Image must be 1 MB or smaller.'},413);
   }
+  if(p==='/api/admin-auth')return legacyWorker.fetch(req,env,ctx);
   const overviewResponse=await directAdminOverview(req,env,ctx);if(overviewResponse)return overviewResponse;
   const categoryResponse=await categoriesV2(req,env,ctx);
   if(categoryResponse)return categoryResponse;
