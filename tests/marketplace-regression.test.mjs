@@ -58,3 +58,11 @@ test('marketplace admin overview has a concrete preview-worker route',()=>{
   assert.match(gateway,/\/api\/vendor\/admin\/vendors/);
   assert.match(gateway,/marketplaceComplete\.fetch/);
 });
+
+
+test('preview worker owns admin auth before marketplace gateway routing',()=>{
+  const preview=read('vendor-preview-entry.mjs');
+  assert.match(preview,/import legacyWorker from ['"]\.\/worker\.mjs['"]/);
+  assert.match(preview,/if\(p==='\/api\/admin-auth'\)return legacyWorker\.fetch\(req,env,ctx\)/);
+  assert.doesNotMatch(preview,/const auth=await gateway\.fetch\(authReq,env,ctx\)/);
+});
