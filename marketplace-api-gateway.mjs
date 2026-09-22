@@ -52,7 +52,47 @@ function key(r){const u=new URL(r.url);let k=u.searchParams.get('vendor_id')||u.
 function normValue(v){return String(v??'').normalize('NFKC').toLowerCase().replace(/[^a-z0-9]+/g,'')}
 async function vendor(e,k){const raw=String(k||'').trim();if(!raw||raw==='null'||raw==='undefined')return null;if(OFFICIAL.has(raw.toLowerCase()))return one(e,"SELECT id,slug FROM vendors WHERE lower(trim(slug))='grabzone' LIMIT 1");const exact=await one(e,'SELECT id,slug FROM vendors WHERE id=? OR lower(trim(slug))=lower(trim(?)) LIMIT 1',[raw,raw]);if(exact)return exact;const normalized=normValue(raw);if(!normalized)return null;const rows=(await e.DB.prepare('SELECT id,slug,brand_name,business_name,email FROM vendors ORDER BY rowid DESC LIMIT 500').all()).results||[];const matches=rows.filter(v=>[v.id,v.slug,v.brand_name,v.business_name,v.email].some(x=>normValue(x)===normalized));if(matches.length===1)return matches[0];const base=normalized.replace(/\d+$/,'');if(base){const candidates=rows.filter(v=>[v.slug,v.brand_name,v.business_name].some(x=>{const n=normValue(x);return n===base||n.startsWith(base)}));if(candidates.length===1)return candidates[0]}return null}
 async function normalizeVendor(r,e){const p=new URL(r.url).pathname;if(!PATHS.has(p))return r;const v=await vendor(e,key(r));if(!v)return r;const u=new URL(r.url);u.searchParams.set('vendor_id',v.id);if(['GET','HEAD'].includes(r.method))return new Request(u,{method:r.method,headers:r.headers,redirect:'manual'});if((r.headers.get('content-type')||'').includes('application/json')){const b=await r.clone().json().catch(()=>null);if(b&&typeof b==='object'&&('vendor_id'in b)&&(!b.vendor_id||b.vendor_id==='null'||b.vendor_id==='undefined')){b.vendor_id=v.id;const h=new Headers(r.headers);h.delete('content-length');return new Request(u,{method:r.method,headers:h,body:JSON.stringify(b),redirect:'manual'})}}return new Request(u,{method:r.method,headers:r.headers,body:r.body,redirect:'manual'})}
-async function resetPassword(r,e){if(new URL(r.url).pathname!=='/api/vendor/admin/reset-password'||r.method!=='POST')return null;if(!cookie(r,'gz_admin_session'))return json({error:'Unauthorized'},401);const b=await r.json().catch(()=>null);if(!b)return json({error:'Invalid JSON'},400);const pass=String(b.password||'');if(pass.length<8)return json({error:'Password must be at least 8 characters.'},400);const v=await vendor(e,b.vendor_id);if(!v)return json({error:'Vendor not found'},404);const u=await one(e,'SELECT id FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[v.id]);if(!u)return json({error:'Vendor login account not found.'},404);const salt=crypto.randomUUID();await e.DB.prepare('UPDATE vendor_users SET password_hash=?,password_salt=?,updated_at=? WHERE id=?').bind(await pbkdf(pass,salt),salt,now(),u.id).run();await e.DB.prepare('DELETE FROM vendor_sessions WHERE vendor_user_id=?').bind(u.id).run().catch(()=>{});return json({ok:true})}
+async function resetPassword(r,e){
+ if(new URL(r.url).pathname!=='/api/vendor/admin/reset-password')return null;
+ if(!cookie(r,'gz_admin_session'))return json({error:'Unauthorized'},401);
+ if(r.method==='GET'){
+  const vid=String(new URL(r.url).searchParams.get('vendor_id')||'').trim();
+  if(!vid)return json({error:'Vendor ID required'},400);
+  const v=await vendor(e,vid);if(!v)return json({error:'Vendor not found'},404);
+  const u=await one(e,'SELECT id,email,status,role FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[v.id]);
+  return json({ok:true,exists:!!u,email:u?.email||v.email||'',status:u?.status||'Active',role:u?.role||'vendor_admin'});
+ }
+ if(r.method!=='POST')return json({error:'Method not allowed'},405);
+ const b=await r.json().catch(()=>null);if(!b)return json({error:'Invalid JSON'},400);
+ const vid=String(b.vendor_id||'').trim(),pass=String(b.password||''),email=String(b.email||'').trim().toLowerCase();
+ if(!vid)return json({error:'Vendor ID is required.'},400);
+ if(pass&&pass.length<8)return json({error:'Password must be at least 8 characters.'},400);
+ if(email&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return json({error:'Enter a valid login email.'},400);
+ const v=await vendor(e,vid);if(!v)return json({error:'Vendor not found'},404);
+ let u=await one(e,'SELECT id,email FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[v.id]);
+ if(!u){
+   const finalEmail=email||String(v.email||'').trim().toLowerCase();
+   if(!finalEmail)return json({error:'A login email is required because this vendor has no login account.'},400);
+   const clash=await one(e,'SELECT id FROM vendor_users WHERE lower(email)=lower(?) LIMIT 1',[finalEmail]);
+   if(clash)return json({error:'That email is already used by another vendor account.'},409);
+   const id=crypto.randomUUID(),salt=crypto.randomUUID(),hash=await pbkdf(pass,salt);
+   if(!pass)return json({error:'Set a password of at least 8 characters to create the vendor login.'},400);
+   await e.DB.prepare('INSERT INTO vendor_users(id,vendor_id,email,password_hash,password_salt,role,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(id,v.id,finalEmail,hash,salt,'vendor_admin','Active',now(),now()).run();
+   return json({ok:true,created:true,email:finalEmail});
+ }
+ if(email&&email!==String(u.email||'').toLowerCase()){
+   const clash=await one(e,'SELECT id FROM vendor_users WHERE lower(email)=lower(?) AND id<>? LIMIT 1',[email,u.id]);
+   if(clash)return json({error:'That email is already used by another vendor account.'},409);
+   await e.DB.prepare('UPDATE vendor_users SET email=?,updated_at=? WHERE id=?').bind(email,now(),u.id).run();
+ }
+ if(pass){
+   const salt=crypto.randomUUID(),hash=await pbkdf(pass,salt);
+   await e.DB.prepare('UPDATE vendor_users SET password_hash=?,password_salt=?,updated_at=? WHERE id=?').bind(hash,salt,now(),u.id).run();
+   await e.DB.prepare('DELETE FROM vendor_sessions WHERE vendor_user_id=?').bind(u.id).run().catch(()=>{});
+ }
+ const out=await one(e,'SELECT email FROM vendor_users WHERE id=?',[u.id]);
+ return json({ok:true,created:false,email:out?.email||email||u.email});
+}
 export default{async fetch(req,env,ctx){try{const rawPath=new URL(req.url).pathname;
   const a=await normalizeAdmin(req,env);
   if(rawPath==='/api/vendor/admin/categories'){
