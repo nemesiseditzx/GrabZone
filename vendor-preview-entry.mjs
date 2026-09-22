@@ -10,6 +10,38 @@ async function one(env,sql,p=[]){return (await env.DB.prepare(sql).bind(...p).al
 async function all(env,sql,p=[]){return (await env.DB.prepare(sql).bind(...p).all()).results||[]}
 function norm(v){return String(v??'').normalize('NFKC').toLowerCase().replace(/[^a-z0-9]+/g,'')}
 
+async function categoriesV2(req,env){
+  const u=new URL(req.url);
+  if(u.pathname!=='/api/vendor/admin/categories-v2')return null;
+  const raw=(req.headers.get('Cookie')||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('gz_admin_session='))||'';
+  const token=raw.slice('gz_admin_session='.length)||String(req.headers.get('X-GrabZone-Token')||'').trim();
+  if(!token)return json({error:'Unauthorized'},401);
+  const ok=await one(env,'SELECT id FROM admin_sessions WHERE token_hash=? AND expires_at>? LIMIT 1',[await sha(token),new Date().toISOString()]);
+  if(!ok)return json({error:'Unauthorized'},401);
+  if(req.method==='GET'){
+    try{
+      const exists=await one(env,"SELECT name FROM sqlite_master WHERE type='table' AND name='marketplace_categories' LIMIT 1");
+      if(!exists)return json({ok:true,categories:[]});
+      const rows=await all(env,'SELECT id,name,slug FROM marketplace_categories ORDER BY name COLLATE NOCASE');
+      return json({ok:true,categories:rows});
+    }catch(err){return json({error:'Categories could not be loaded.',detail:String(err?.message||err)},500)}
+  }
+  if(req.method==='POST'){
+    let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
+    const name=String(b.name||'').trim().slice(0,120);
+    const slug=name.toLowerCase().normalize('NFKC').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120);
+    if(!name||!slug)return json({error:'A valid category name is required'},400);
+    try{
+      await env.DB.prepare('CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT UNIQUE NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)').run();
+      const hit=await one(env,'SELECT id FROM marketplace_categories WHERE slug=? OR lower(name)=lower(?) LIMIT 1',[slug,name]);
+      if(hit)return json({error:'Category already exists'},409);
+      const id=crypto.randomUUID(),t=new Date().toISOString();
+      await env.DB.prepare('INSERT INTO marketplace_categories(id,name,slug,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id,name,slug,t,t).run();
+      return json({ok:true,category:{id,name,slug}},201);
+    }catch(err){return json({error:'Category could not be saved.',detail:String(err?.message||err)},500)}
+  }
+  return json({error:'Method not allowed'},405);
+}
 async function notices(req,env){
   const u=new URL(req.url);
   if(u.pathname!=='/api/marketplace/notices'||req.method!=='GET')return null;
@@ -77,7 +109,7 @@ export default{fetch:async(req,env,ctx)=>{try{
     const file=form?.get('file');
     if(file instanceof File&&file.size>MAX_BYTES)return json({error:'Image must be 1 MB or smaller.'},413);
   }
-  const noticeResponse=await notices(req,env);
+  const categoryResponse=await categoriesV2(req,env);\n  if(categoryResponse)return categoryResponse;\n  const noticeResponse=await notices(req,env);
   if(noticeResponse)return noticeResponse;
   const direct=await directVendorData(req,env,ctx);
   if(direct)return direct;
