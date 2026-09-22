@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - vendor-system-dev
+      - marketplace-fix-hardening
   pull_request:
     branches:
       - vendor-system-dev
@@ -20,7 +21,8 @@ jobs:
           node-version: 22
       - name: Check JavaScript syntax
         run: |
-          for f in *.js *.mjs; do
-            [ -f "$f" ] || continue
+          while IFS= read -r f; do
             node --check "$f"
-          done
+          done < <(find . -type f \( -name "*.js" -o -name "*.mjs" \) -not -path "./node_modules/*")
+      - name: Run marketplace regression tests
+        run: node --test tests/marketplace-regression.test.mjs
