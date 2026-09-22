@@ -1,34 +1,9 @@
-/* GRABZONE — ADVANCED SETTINGS LOADER */
+/* GRABZONE — ADVANCED SETTINGS LOADER
+   Animation settings are loaded from Cloudflare D1, not Supabase. */
 (function(){
-  const C=window.GRABZONE_CONFIG||{};
-  const defaults={
-    animations_enabled:true,page_load:true,scroll_reveal:true,product_hover:true,
-    button_effects:true,hero_animation:true,floating_effects:true,notice_animation:true,
-    animation_speed:"normal",magnetic_cursor:true,text_reveal:true,image_parallax:true,
-    scroll_velocity:true,product_stagger:true,marquee_motion:true,header_scroll:true,
-    premium_hover_glow:true,section_transitions:true,product_entrance:true,
-    product_3d_tilt:true,product_image_zoom:true,product_image_parallax:true,
-    product_cursor_spotlight:true,product_shine:true,product_hover_lift:true,
-    product_featured_glow:true
-  };
-  function loadNoticeSync(){
-    if(document.querySelector('script[data-grabzone-notice-sync]'))return;
-    const s=document.createElement('script');
-    s.src='/grabzone-notice-sync.js?v=20260916-home-notice1';
-    s.defer=true;
-    s.setAttribute('data-grabzone-notice-sync','true');
-    (document.head||document.documentElement).appendChild(s);
-  }
+  const defaults={animations_enabled:true,page_load:true,scroll_reveal:true,product_hover:true,button_effects:true,hero_animation:true,floating_effects:true,notice_animation:true,animation_speed:"normal",magnetic_cursor:true,text_reveal:true,image_parallax:true,scroll_velocity:true,product_stagger:true,marquee_motion:true,header_scroll:true,premium_hover_glow:true,section_transitions:true,product_entrance:true,product_3d_tilt:true,product_image_zoom:true,product_image_parallax:true,product_cursor_spotlight:true,product_shine:true,product_hover_lift:true,product_featured_glow:true,billboard_animation:true,rewards_auth_animation:true,rewards_redeem_animation:true,rewards_redeem_sound:true,mobile_nav_animation:true,store_page_animation:true,cart_animation:true,modal_animation:true,micro_interactions:true,global_transitions:true};
+  function loadNoticeSync(){if(document.querySelector('script[data-grabzone-notice-sync]'))return;const s=document.createElement('script');s.src='/grabzone-notice-sync.js?v=20260916-home-notice1';s.defer=true;s.setAttribute('data-grabzone-notice-sync','true');(document.head||document.documentElement).appendChild(s)}
+  async function start(){try{if(window.GZAnimationController){await window.GZAnimationController.load();return}const r=await fetch('/api/d1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'table',table:'site_settings',action:'select',columns:'*',filters:[{column:'id',op:'eq',value:1}],limit:1})});const j=await r.json();const s=Object.assign({},defaults,j?.data?.[0]||{});window.GRABZONE_ANIMATIONS=s;if(window.applyGrabZoneAnimations)window.applyGrabZoneAnimations(s)}catch(e){window.GRABZONE_ANIMATIONS=defaults;if(window.applyGrabZoneAnimations)window.applyGrabZoneAnimations(defaults)}}
   loadNoticeSync();
-  async function start(){
-    if(!window.supabase||!C.supabaseUrl||C.supabaseUrl.includes("PASTE_"))return;
-    try{
-      const sb=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
-      const {data}=await sb.from("site_settings").select("*").eq("id",1).maybeSingle();
-      const s=Object.assign({},defaults,data||{});
-      window.GRABZONE_ANIMATIONS=s;
-      if(window.applyGrabZoneAnimations)window.applyGrabZoneAnimations(s);
-    }catch(e){window.GRABZONE_ANIMATIONS=defaults}
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start);else start();
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
