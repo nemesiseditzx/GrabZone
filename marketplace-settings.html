@@ -54,7 +54,7 @@ $('#cat').onsubmit=async e=>{
   const btn=e.target.querySelector('button'),old=btn.textContent;
   btn.disabled=true;btn.textContent='Saving…';
   try{
-    await api('/api/vendor/admin/categories',{method:'POST',body:JSON.stringify({name:$('#catname').value})});
+    const d=await api('/api/vendor/admin/categories',{method:'POST',body:JSON.stringify({name:$('#catname').value})});if(!d?.ok)throw Error(d?.error||'Category could not be saved.');
     e.target.reset();
     await loadCategories();
   }catch(x){alert(errText(x))}
