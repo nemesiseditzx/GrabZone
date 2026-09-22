@@ -84,7 +84,7 @@ export default{async fetch(req,env,ctx){try{const rawPath=new URL(req.url).pathn
         const used=await one(env,"SELECT COUNT(*) n FROM products WHERE lower(trim(category))=lower(trim(?))",[category.name]);
         const affected=Number(used?.n||0);
         if(affected>0){
-          await env.DB.prepare("UPDATE products SET category='General',updated_at=? WHERE lower(trim(category))=lower(trim(?)").bind(now(),category.name).run();
+          await env.DB.prepare("UPDATE products SET category='General',updated_at=? WHERE lower(trim(category))=lower(trim(?))").bind(now(),category.name).run();
         }
         await env.DB.prepare("DELETE FROM marketplace_categories WHERE id=?").bind(id).run();
         return json({ok:true,deleted:{id:category.id,name:category.name},products_moved_to_general:affected});
