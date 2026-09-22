@@ -75,6 +75,20 @@ export default{async fetch(req,env,ctx){try{const rawPath=new URL(req.url).pathn
         await env.DB.prepare("INSERT INTO marketplace_categories(id,name,slug,created_at,updated_at) VALUES(?,?,?,?,?)").bind(id,name,slug,t,t).run();
         return json({ok:true,category:{id,name,slug}},201);
       }
+      if(a.method==='DELETE'){
+        let b={};try{b=await a.json()}catch{return json({error:'Invalid JSON'},400)}
+        const id=String(b.id||'').trim();
+        if(!id)return json({error:'Category id is required'},400);
+        const category=await one(env,"SELECT id,name FROM marketplace_categories WHERE id=? LIMIT 1",[id]);
+        if(!category)return json({error:'Category not found'},404);
+        const used=await one(env,"SELECT COUNT(*) n FROM products WHERE lower(trim(category))=lower(trim(?))",[category.name]);
+        const affected=Number(used?.n||0);
+        if(affected>0){
+          await env.DB.prepare("UPDATE products SET category='General',updated_at=? WHERE lower(trim(category))=lower(trim(?)").bind(now(),category.name).run();
+        }
+        await env.DB.prepare("DELETE FROM marketplace_categories WHERE id=?").bind(id).run();
+        return json({ok:true,deleted:{id:category.id,name:category.name},products_moved_to_general:affected});
+      }
       return json({error:'Method not allowed'},405);
     }catch(err){return json({error:'Categories request failed',detail:String(err?.message||err)},500)}
   }
