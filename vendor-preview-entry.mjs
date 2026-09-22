@@ -3,21 +3,19 @@ import gateway from './marketplace-api-gateway.mjs';
 const MAX_BYTES=1024*1024;
 const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate'}});
 const UPLOAD_AUTH_FIX=`<script data-gz-vendor-upload-auth-fix>(()=>{if(window.__gzVendorUploadAuthFix)return;window.__gzVendorUploadAuthFix=1;const originalFetch=window.fetch.bind(window);const getToken=()=>{try{return window.getToken?.()||localStorage.getItem('gz_d1_admin_token')||sessionStorage.getItem('gz_d1_admin_token')||''}catch{return''}};const authHeaders=()=>{const t=getToken(),h=new Headers();if(t){h.set('Authorization','Bearer '+t);h.set('X-GrabZone-Token',t)}return h};window.fetch=async(input,init={})=>{let path='';try{path=new URL(typeof input==='string'?input:input?.url||'',location.href).pathname}catch{}if(path!=='/api/vendor/upload')return originalFetch(input,init);try{const h=authHeaders();await originalFetch('/api/admin-auth',{method:'GET',headers:h,credentials:'include',cache:'no-store'}).catch(()=>{});const headers=new Headers(init.headers||(input instanceof Request?input.headers:undefined));const t=getToken();if(t){if(!headers.has('Authorization'))headers.set('Authorization','Bearer '+t);if(!headers.has('X-GrabZone-Token'))headers.set('X-GrabZone-Token',t)}return originalFetch(input,{...init,credentials:init.credentials||'include',headers})}catch{return originalFetch(input,{...init,credentials:init.credentials||'include'})}}})();</script>`;
-const VENDOR_PRODUCT_EDITOR='<script src="/vendor-control-product-editor.js?v=20260920-v11" data-gz-vendor-product-editor></script>';
+const VENDOR_PRODUCT_EDITOR='<script src="/vendor-control-product-editor.js?v=20260921-v18" data-gz-vendor-product-editor></script>';
 const NOTICE_SYNC=`<script data-gz-notice-sync-loader src="/grabzone-notice-sync.js?v=20260916-home3" defer></script>`;
 
 async function one(env,sql,p=[]){return (await env.DB.prepare(sql).bind(...p).all()).results?.[0]||null}
 async function all(env,sql,p=[]){return (await env.DB.prepare(sql).bind(...p).all()).results||[]}
 function norm(v){return String(v??'').normalize('NFKC').toLowerCase().replace(/[^a-z0-9]+/g,'')}
 
-async function categoriesV2(req,env){
+async function categoriesV2(req,env,ctx){
   const u=new URL(req.url);
   if(u.pathname!=='/api/vendor/admin/categories-v2')return null;
-  const raw=(req.headers.get('Cookie')||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('gz_admin_session='))||'';
-  const token=raw.slice('gz_admin_session='.length)||String(req.headers.get('X-GrabZone-Token')||'').trim();
-  if(!token)return json({error:'Unauthorized'},401);
-  const ok=await one(env,'SELECT id FROM admin_sessions WHERE token_hash=? AND expires_at>? LIMIT 1',[await sha(token),new Date().toISOString()]);
-  if(!ok)return json({error:'Unauthorized'},401);
+  const auth=await gateway.fetch(new Request(new URL('/api/admin-auth',req.url),{method:'GET',headers:new Headers(req.headers)}),env,ctx);
+  const authBody=await auth.clone().json().catch(()=>({}));
+  if(!auth.ok||!authBody.authenticated)return json({error:'Unauthorized'},401);
   if(req.method==='GET'){
     try{
       const exists=await one(env,"SELECT name FROM sqlite_master WHERE type='table' AND name='marketplace_categories' LIMIT 1");
@@ -109,7 +107,7 @@ export default{fetch:async(req,env,ctx)=>{try{
     const file=form?.get('file');
     if(file instanceof File&&file.size>MAX_BYTES)return json({error:'Image must be 1 MB or smaller.'},413);
   }
-  const categoryResponse=await categoriesV2(req,env);\n  if(categoryResponse)return categoryResponse;\n  const noticeResponse=await notices(req,env);
+  const categoryResponse=await categoriesV2(req,env,ctx);\n  if(categoryResponse)return categoryResponse;\n  const noticeResponse=await notices(req,env);
   if(noticeResponse)return noticeResponse;
   const direct=await directVendorData(req,env,ctx);
   if(direct)return direct;
