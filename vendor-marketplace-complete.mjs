@@ -205,7 +205,8 @@ if(Array.isArray(b.image_urls)){
   if(imageUrls.length) await e.DB.batch(imageUrls.map((url,i)=>e.DB.prepare('INSERT INTO product_images(id,product_id,image_url,sort_order,is_main,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),productId,url,i,i===0?1:0,now())));
   if(imageUrls[0]) await e.DB.prepare('UPDATE products SET image_url=?,updated_at=? WHERE id=?').bind(imageUrls[0],now(),productId).run();
 }
-return json({ok:true,product:await one(e,'SELECT * FROM products WHERE id=?',[productId])});
+if(Array.isArray(b.variations))await saveVariations(e,productId,b.variations);
+return json({ok:true,product:await one(e,'SELECT * FROM products WHERE id=?',[productId]),variations:(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at,id',[productId])).results||[]});
 }
 const vId=clean(b.vendor_id||vid,100);if(!vId)return json({error:'Vendor ID required'},400);if(!(await one(e,'SELECT id FROM vendors WHERE id=?',[vId])))return json({error:'Vendor not found'},404);
 const name=clean(b.name,300);const price=Number(b.price);if(!name||!Number.isFinite(price)||price<0)return json({error:'Product name and valid price are required.'},400);
