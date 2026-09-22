@@ -81,10 +81,10 @@ export default{async fetch(req,env,ctx){try{const rawPath=new URL(req.url).pathn
         if(!id)return json({error:'Category id is required'},400);
         const category=await one(env,"SELECT id,name FROM marketplace_categories WHERE id=? LIMIT 1",[id]);
         if(!category)return json({error:'Category not found'},404);
-        const used=await one(env,"SELECT COUNT(*) n FROM products WHERE lower(trim(category))=lower(trim(?))",[category.name]);
+        const used=await one(env,"SELECT COUNT(*) n FROM products WHERE category_id=? OR lower(trim(category))=lower(trim(?))",[category.id,category.name]);
         const affected=Number(used?.n||0);
         if(affected>0){
-          await env.DB.prepare("UPDATE products SET category='General',updated_at=? WHERE lower(trim(category))=lower(trim(?))").bind(now(),category.name).run();
+          await env.DB.prepare("UPDATE products SET category_id=NULL,category='General',updated_at=? WHERE category_id=? OR lower(trim(category))=lower(trim(?))").bind(now(),category.id,category.name).run();
         }
         await env.DB.prepare("DELETE FROM marketplace_categories WHERE id=?").bind(id).run();
         return json({ok:true,deleted:{id:category.id,name:category.name},products_moved_to_general:affected});
