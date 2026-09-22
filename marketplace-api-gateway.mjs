@@ -67,7 +67,7 @@ async function resetPassword(r,e){
  const vid=String(b.vendor_id||'').trim(),pass=String(b.password||''),email=String(b.email||'').trim().toLowerCase();
  if(!vid)return json({error:'Vendor ID is required.'},400);
  if(pass&&pass.length<8)return json({error:'Password must be at least 8 characters.'},400);
- if(email&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return json({error:'Enter a valid login email.'},400);
+ if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return json({error:'Enter a valid login email.'},400);
  const v=await vendor(e,vid);if(!v)return json({error:'Vendor not found'},404);
  let u=await one(e,'SELECT id,email FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[v.id]);
  if(!u){
