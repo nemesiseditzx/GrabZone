@@ -121,6 +121,24 @@ if(req.method==='POST'){
   return json({error:'Category could not be saved.'},500);
  }
 }
+if(req.method==='DELETE'){
+ let b={};try{b=await req.json().catch(()=>({}))}catch{}
+ const id=clean(new URL(req.url).searchParams.get('id')||b.id,100);
+ if(!id)return json({error:'Category ID is required'},400);
+ const cat=await one(e,'SELECT id,name FROM marketplace_categories WHERE id=?',[id]);
+ if(!cat)return json({error:'Category not found'},404);
+ const used=Number((await one(e,'SELECT COUNT(*) n FROM products WHERE category_id=?',[id]))?.n||0);
+ if(used>0 && b.reassign_category_id){
+  const target=clean(b.reassign_category_id,100);
+  if(target===id)return json({error:'Choose a different category.'},400);
+  if(!(await one(e,'SELECT id FROM marketplace_categories WHERE id=?',[target])))return json({error:'Replacement category not found.'},400);
+  await e.DB.prepare('UPDATE products SET category_id=?,category=(SELECT name FROM marketplace_categories WHERE id=?),updated_at=? WHERE category_id=?').bind(target,target,now(),id).run();
+ }else if(used>0){
+  await e.DB.prepare("UPDATE products SET category_id=NULL,category='General',updated_at=? WHERE category_id=?").bind(now(),id).run();
+ }
+ await e.DB.prepare('DELETE FROM marketplace_categories WHERE id=?').bind(id).run();
+ return json({ok:true,deleted_id:id,reassigned_products:used});
+}
 return json({error:'Method not allowed'},405);
 }
 if(p==='/api/vendor/admin/order-data'&&req.method==='GET'){
