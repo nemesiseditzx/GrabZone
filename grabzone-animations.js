@@ -93,6 +93,23 @@
         filter:none;
       }
 
+      /* Touch devices: keep product cards visible during momentum scrolling.
+         Mobile Safari/Chrome may defer IntersectionObserver callbacks while scrolling,
+         which otherwise leaves cards at opacity:0 until scrolling stops. */
+      @media (hover:none), (pointer:coarse){
+        .product-card.gz-reveal-target{
+          opacity:1;
+          filter:none;
+          transform:translate3d(0,14px,0) scale(.985);
+          transition:transform var(--gz-duration,.75s) cubic-bezier(.16,1,.3,1);
+        }
+        .product-card.gz-reveal-target.gz-visible{
+          opacity:1;
+          filter:none;
+          transform:none;
+        }
+      }
+
       .product-card.gz-reveal-target{
         transform:translate3d(0,55px,0) scale(.96);
       }
