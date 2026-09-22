@@ -17,33 +17,31 @@ const authSecret=e=>String(e.MARKETPLACE_AUTH_SECRET||e.D1_AUTH_SECRET||e.GRABZO
 async function normalizeAdmin(r,e){if(new URL(r.url).pathname==='/api/admin-auth'||cookie(r,'gz_admin_session'))return r;const t=bearer(r);if(!t)return r;const db=await adminForToken(e,t);let u=db;if(!u){const p=String(t).split('.');if(p.length===2&&authSecret(e)){try{const x=await hmac(authSecret(e),p[0]),y=ub64(p[1]);let d=x.length===y.length?0:1;for(let i=0;i<Math.min(x.length,y.length);i++)d|=x[i]^y[i];if(!d){const q=JSON.parse(new TextDecoder().decode(ub64(p[0])));if(Number(q.exp)>Date.now()/1000)u=await one(e,'SELECT id,email FROM admin_users WHERE id=? OR lower(email)=lower(?)',[q.sub,q.email||''])}}catch{}}}if(!u)return r;if(!db)await e.DB.prepare('INSERT OR REPLACE INTO admin_sessions(token_hash,admin_user_id,expires_at,created_at) VALUES(?,?,?,?)').bind(await sha(t),u.id,new Date(Date.now()+604800000).toISOString(),now()).run();const h=new Headers(r.headers);h.set('Cookie',`gz_admin_session=${encodeURIComponent(t)}`);return new Request(r.url,{method:r.method,headers:h,body:['GET','HEAD'].includes(r.method)?undefined:r.body,redirect:'manual'})}
 async function marketplaceCategories(r,e){
   const p=new URL(r.url).pathname;
-  if(p!=='/api/vendor/admin/categories')return null;
-  if(!cookie(r,'gz_admin_session'))return json({error:'Unauthorized'},401);
-  // The marketplace schema initializer already creates this table. Do not run DDL
-  // during a category request: D1 schema locks can make the UI appear to hang.
+  if(p!=='/api/vendor/admin/categories-v2')return null;
+  const token=bearer(r);
+  const isAdmin=!!cookie(r,'gz_admin_session')||!!(token&&await adminForToken(e,token));
+  if(!isAdmin)return json({error:'Unauthorized'},401);
+  const exists=async()=>{try{return !!(await e.DB.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='marketplace_categories' LIMIT 1").all()).results?.length}catch{return false}};
   if(r.method==='GET'){
     try{
+      if(!await exists())return json({categories:[]});
       const rows=(await e.DB.prepare('SELECT id,name,slug FROM marketplace_categories ORDER BY name COLLATE NOCASE').all()).results||[];
-      return json({categories:rows});
-    }catch(err){
-      return json({error:'Categories could not be loaded.',detail:String(err?.message||err)},500);
-    }
+      return json({ok:true,categories:rows});
+    }catch(err){return json({error:'Categories could not be loaded.',detail:String(err?.message||err)},500)}
   }
   if(r.method==='POST'){
     let b={};try{b=await r.json()}catch{return json({error:'Invalid JSON'},400)}
     const name=String(b.name||'').trim().slice(0,120);
-    const slug=String(name).toLowerCase().normalize('NFKC').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120);
-    if(!name)return json({error:'Category name is required'},400);
-    if(!slug)return json({error:'A valid category name is required'},400);
+    const slug=name.toLowerCase().normalize('NFKC').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120);
+    if(!name||!slug)return json({error:'A valid category name is required'},400);
     try{
-      const exists=await e.DB.prepare('SELECT id FROM marketplace_categories WHERE slug=? OR lower(name)=lower(?) LIMIT 1').bind(slug,name).all();
-      if(exists.results?.length)return json({error:'Category already exists'},409);
+      if(!await exists())await e.DB.prepare('CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT UNIQUE NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)').run();
+      const hit=await e.DB.prepare('SELECT id FROM marketplace_categories WHERE slug=? OR lower(name)=lower(?) LIMIT 1').bind(slug,name).all();
+      if(hit.results?.length)return json({error:'Category already exists'},409);
       const id=crypto.randomUUID(),t=now();
       await e.DB.prepare('INSERT INTO marketplace_categories(id,name,slug,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id,name,slug,t,t).run();
       return json({ok:true,category:{id,name,slug}},201);
-    }catch(err){
-      return json({error:'Category could not be saved.',detail:String(err?.message||err)},500);
-    }
+    }catch(err){return json({error:'Category could not be saved.',detail:String(err?.message||err)},500)}
   }
   return json({error:'Method not allowed'},405);
 }
