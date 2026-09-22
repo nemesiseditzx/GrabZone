@@ -72,13 +72,18 @@ async function resetPassword(r,e){
  let u=await one(e,'SELECT id,email FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[v.id]);
  if(!u){
    const finalEmail=email||String(v.email||'').trim().toLowerCase();
-   if(!finalEmail)return json({error:'A login email is required because this vendor has no login account.'},400);
-   const clash=await one(e,'SELECT id FROM vendor_users WHERE lower(email)=lower(?) LIMIT 1',[finalEmail]);
+   if(!finalEmail){
+     const source=await one(e,'SELECT email FROM vendors WHERE id=? LIMIT 1',[v.id]);
+     if(source?.email) v.email=source.email;
+   }
+   const finalLoginEmail=email||String(v.email||'').trim().toLowerCase();
+   if(!finalLoginEmail)return json({error:'A login email is required because this vendor has no login account.'},400);
+   const clash=await one(e,'SELECT id FROM vendor_users WHERE lower(email)=lower(?) LIMIT 1',[finalLoginEmail]);
    if(clash)return json({error:'That email is already used by another vendor account.'},409);
    const id=crypto.randomUUID(),salt=crypto.randomUUID(),hash=await pbkdf(pass,salt);
    if(!pass)return json({error:'Set a password of at least 8 characters to create the vendor login.'},400);
-   await e.DB.prepare('INSERT INTO vendor_users(id,vendor_id,email,password_hash,password_salt,role,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(id,v.id,finalEmail,hash,salt,'vendor_admin','Active',now(),now()).run();
-   return json({ok:true,created:true,email:finalEmail});
+   await e.DB.prepare('INSERT INTO vendor_users(id,vendor_id,email,password_hash,password_salt,role,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(id,v.id,finalLoginEmail,hash,salt,'vendor_admin','Active',now(),now()).run();
+   return json({ok:true,created:true,email:finalLoginEmail});
  }
  if(email&&email!==String(u.email||'').toLowerCase()){
    const clash=await one(e,'SELECT id FROM vendor_users WHERE lower(email)=lower(?) AND id<>? LIMIT 1',[email,u.id]);
