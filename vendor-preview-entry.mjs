@@ -61,6 +61,24 @@ async function repairVendorId(env,v){
   return await one(env,'SELECT * FROM vendors WHERE rowid=? LIMIT 1',[rowid])||v;
 }
 
+async function directAdminOverview(req,env,ctx){
+  const u=new URL(req.url);if(u.pathname!=='/api/vendor/admin/overview'||req.method!=='GET')return null;
+  const authReq=new Request(new URL('/api/admin-auth',req.url),{method:'GET',headers:new Headers(req.headers)});
+  const auth=await gateway.fetch(authReq,env,ctx);const body=await auth.clone().json().catch(()=>({}));
+  if(!auth.ok||!body.authenticated)return json({error:'Unauthorized'},401);
+  try{
+    const vendors=await all(env,`SELECT v.*,
+      (SELECT COUNT(*) FROM products p WHERE p.vendor_id=v.id) products,
+      (SELECT COUNT(*) FROM vendor_orders vo WHERE vo.vendor_id=v.id) orders,
+      (SELECT COALESCE(SUM(vo.subtotal),0) FROM vendor_orders vo WHERE vo.vendor_id=v.id) sales,
+      (SELECT COALESCE(SUM(vo.commission_amount),0) FROM vendor_orders vo WHERE vo.vendor_id=v.id) commission,
+      (SELECT COALESCE(SUM(vo.vendor_earnings),0) FROM vendor_orders vo WHERE vo.vendor_id=v.id) earnings
+      FROM vendors v ORDER BY COALESCE(v.brand_name,v.business_name,v.slug) COLLATE NOCASE`);
+    const totals=vendors.reduce((x,v)=>({sales:x.sales+Number(v.sales||0),orders:x.orders+Number(v.orders||0),commission:x.commission+Number(v.commission||0),earnings:x.earnings+Number(v.earnings||0)}),{sales:0,orders:0,commission:0,earnings:0});
+    return json({ok:true,totals,vendors});
+  }catch(err){return json({error:'Could not load marketplace overview: '+String(err?.message||err)},500)}
+}
+
 async function directVendorData(req,env,ctx){
   const u=new URL(req.url);
   if(u.pathname!=='/api/vendor/admin/vendor-data'||req.method!=='GET')return null;
@@ -107,6 +125,7 @@ export default{fetch:async(req,env,ctx)=>{try{
     const file=form?.get('file');
     if(file instanceof File&&file.size>MAX_BYTES)return json({error:'Image must be 1 MB or smaller.'},413);
   }
+  const overviewResponse=await directAdminOverview(req,env,ctx);if(overviewResponse)return overviewResponse;
   const categoryResponse=await categoriesV2(req,env,ctx);
   if(categoryResponse)return categoryResponse;
   const noticeResponse=await notices(req,env);
