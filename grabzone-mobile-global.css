@@ -190,3 +190,19 @@ button{cursor:pointer}
   .product-name{font-size:10px!important}
   .price{font-size:12px!important}
 }
+
+
+/* Mobile header/nav final polish */
+@media(max-width:640px){
+  .header{gap:6px!important;padding-left:10px!important;padding-right:8px!important;}
+  .header .brand{flex:1 1 auto!important;min-width:0!important;width:auto!important;max-width:none!important;gap:7px!important;white-space:nowrap!important;overflow:visible!important;}
+  .header .brand .brand-mark{flex:0 0 34px!important;}
+  .header .brand #storeName{display:block!important;flex:0 1 auto!important;min-width:max-content!important;white-space:nowrap!important;overflow:visible!important;font-size:13px!important;letter-spacing:-.03em!important;}
+  .header-actions{flex:0 0 auto!important;gap:2px!important;}
+  .mobile-menu-btn{flex:0 0 42px!important;}
+}
+@media(max-width:380px){
+  .header .brand #storeName{font-size:12px!important;letter-spacing:-.04em!important;}
+  .header .brand .brand-mark{width:32px!important;height:32px!important;min-width:32px!important;}
+  .mobile-menu-btn{width:40px!important;height:40px!important;}
+}
