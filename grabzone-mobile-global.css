@@ -144,3 +144,49 @@ button{cursor:pointer}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
+
+/* =========================================================
+   MOBILE APP-LIKE CUSTOMER EXPERIENCE
+========================================================= */
+@media(max-width:640px){
+  body{padding-bottom:76px}
+  .header{height:58px!important;padding:0 11px!important;gap:5px!important}
+  .header nav{display:none!important}
+  .header .brand{font-size:13px!important;gap:6px!important}
+  .header-actions{gap:2px!important}
+  .header-actions .btn{min-height:38px!important;padding:8px 10px!important;font-size:9px!important}
+  .notice-wrap{height:32px!important}
+  .hero{padding:30px 14px 24px!important;gap:20px!important}
+  .hero h1{font-size:40px!important;margin-bottom:14px!important}
+  .hero p{font-size:13px!important;line-height:1.5!important}
+  .hero-buttons{gap:8px!important;margin:18px 0!important}
+  .hero-buttons .btn{min-height:40px!important;padding:9px 13px!important}
+  .offer-strip{margin:10px 10px 0!important;padding:11px!important}
+  .shop-section,.how-section{padding:38px 10px!important}
+  .section-head{margin-bottom:18px!important;gap:10px!important}
+  .section-head h2,.how-section h2,.ref-section h2{font-size:29px!important}
+  .shop-tools{grid-template-columns:1fr!important;gap:8px!important}
+  .chips{overflow-x:auto!important;flex-wrap:nowrap!important}
+  .chip{padding:8px 10px!important;font-size:9px!important}
+  .product-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+  .product-card{border-radius:12px!important}
+  .product-info{padding:9px!important}
+  .product-name{font-size:11px!important;line-height:1.28!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;min-height:28px!important}
+  .product-cat{font-size:7px!important}
+  .price{font-size:13px!important}
+  .tag{font-size:7px!important;padding:4px 6px!important}
+  .detail{padding:28px 10px!important}
+  .detail-grid{gap:20px!important}
+  .detail h1{font-size:34px!important}
+  .detail-price{font-size:23px!important}
+  .detail-desc{font-size:12px!important}
+  .dm-box{padding:14px!important;border-radius:14px!important}
+  .ref-section{margin:28px 10px!important;padding:20px 15px!important;border-radius:18px!important}
+  footer{padding:22px 10px!important;font-size:8px!important}
+}
+@media(max-width:380px){
+  .header-actions .btn{padding:7px 8px!important;font-size:8px!important}
+  .hero h1{font-size:34px!important}
+  .product-name{font-size:10px!important}
+  .price{font-size:12px!important}
+}
