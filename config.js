@@ -8,9 +8,9 @@ window.GRABZONE_CONFIG = {
   shippingCharge: 130,
   dhakaShippingCharge: 70,
   outsideDhakaShippingCharge: 130,
-  whatsapp: "https://wa.me/8801XXXXXXXXX",
-  messenger: "https://m.me/yourpage",
-  instagram: "https://instagram.com/yourstore"
+  whatsapp: "",
+  messenger: "",
+  instagram: ""
 };
 
 /* Visual-only UI loader. Existing settings and application/business logic are untouched. */
@@ -26,6 +26,7 @@ window.GRABZONE_CONFIG = {
     var s=document.createElement('script'); s.src=src; s.defer=true; s.setAttribute(attr,'1');
     document.head.appendChild(s);
   }
+  addJs('grabzone-feedback.js','data-gz-feedback');
   addCss('grabzone-pro-commerce-ui.css','data-gz-pro-commerce-ui');
   addJs('grabzone-pro-commerce-ui.js','data-gz-pro-commerce-ui-js');
 })();
