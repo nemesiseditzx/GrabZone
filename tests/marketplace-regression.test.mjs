@@ -48,3 +48,13 @@ test('mobile storefront typography is not undersized',()=>{
   assert.doesNotMatch(css,/\.product-name\{font-size:10\.5px/);
   assert.match(css,/\.product-name\{font-size:13px/);
 });
+
+
+test('marketplace admin overview has a concrete preview-worker route',()=>{
+  const preview=read('vendor-preview-entry.mjs');
+  assert.match(preview,/directAdminOverview/);
+  assert.match(preview,/\/api\/vendor\/admin\/overview/);
+  const gateway=read('marketplace-api-gateway.mjs');
+  assert.match(gateway,/\/api\/vendor\/admin\/vendors/);
+  assert.match(gateway,/marketplaceComplete\.fetch/);
+});
