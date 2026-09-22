@@ -140,7 +140,32 @@ async function api(req,env){const p=new URL(req.url).pathname;await ensureSchema
  if(p==='/api/vendor/admin/vendors'&&req.method==='POST')return vendorCreate(req,env);
  if(p.startsWith('/api/vendor/admin/vendors/')&&req.method==='PATCH'){req.params={id:p.split('/').pop()};return vendorUpdate(req,env)}
  if(p==='/api/vendor/admin/overview')return adminOverview(req,env);
- if(p==='/api/vendor/products')return vendorProducts(req,env);
+ if(p==='/api/vendor/profile'){
+  const u=await vendorUser(req,env),a=await admin(req,env);if(!u&&!a)return json({error:'Unauthorized.'},401);
+  const vid=u?.vendor_id||clean(new URL(req.url).searchParams.get('vendor_id'),100);if(!vid)return json({error:'Vendor is required.'},400);
+  const v=await one(env,'SELECT * FROM vendors WHERE id=?',[vid]);if(!v)return json({error:'Vendor not found.'},404);
+  if(req.method==='GET')return json({vendor:v});
+  if(req.method!=='PATCH')return json({error:'Method not allowed.'},405);
+  let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON.'},400)}
+  const allowed=['business_name','brand_name','email','phone','logo_url','banner_url','description','tagline','accent_color','status','shipping_fee','commission_type','commission_value','homepage_visible','featured','announcement'];
+  const sets=[],ps=[];
+  for(const k of allowed)if(b[k]!==undefined){let val=b[k];if(k==='email'){val=clean(val,200).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val))return json({error:'Valid email required.'},400);const clash=await one(env,'SELECT id FROM vendor_users WHERE lower(email)=lower(?) AND vendor_id<>? LIMIT 1',[val,vid]);if(clash)return json({error:'This email is already used by another vendor.'},409)}else if(['shipping_fee','commission_value'].includes(k))val=Math.max(0,Number(val||0));else if(['homepage_visible','featured'].includes(k))val=val?1:0;else if(k==='status'&&!['Active','Pending','Suspended'].includes(String(val)))return json({error:'Invalid vendor status.'},400);else val=clean(val,10000);sets.push(k+'=?');ps.push(val)}
+  if(b.social_links!==undefined){sets.push('social_links=?');ps.push(JSON.stringify(b.social_links||{}))}
+  if(b.contact_info!==undefined){sets.push('contact_info=?');ps.push(JSON.stringify(b.contact_info||{}))}
+  sets.push('updated_at=?');ps.push(now(),vid);
+  await env.DB.prepare('UPDATE vendors SET '+sets.join(',')+' WHERE id=?').bind(...ps).run();
+  if(b.email!==undefined)await env.DB.prepare('UPDATE vendor_users SET email=?,updated_at=? WHERE vendor_id=?').bind(clean(b.email,200).toLowerCase(),now(),vid).run();
+  return json({ok:true,vendor:await one(env,'SELECT * FROM vendors WHERE id=?',[vid])});
+ }
+ if(p==='/api/vendor/sections'){
+  const u=await vendorUser(req,env);if(!u)return json({error:'Unauthorized.'},401);
+  if(req.method==='GET')return json({sections:await all(env,'SELECT * FROM vendor_store_sections WHERE vendor_id=? ORDER BY sort_order,id',[u.vendor_id])});
+  let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON.'},400)}
+  if(req.method==='POST'){const id=crypto.randomUUID(),t=now();await env.DB.prepare('INSERT INTO vendor_store_sections(id,vendor_id,section_type,title,body,sort_order,enabled,data_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(id,u.vendor_id,clean(b.section_type,50)||'custom',clean(b.title,300),clean(b.body,10000),Number(b.sort_order||0),b.enabled===false?0:1,JSON.stringify(b.data_json||{}),t,t).run();return json({ok:true,id})}
+  if(req.method==='PATCH'){const id=clean(b.id,100);await env.DB.prepare('UPDATE vendor_store_sections SET section_type=?,title=?,body=?,sort_order=?,enabled=?,data_json=?,updated_at=? WHERE id=? AND vendor_id=?').bind(clean(b.section_type,50)||'custom',clean(b.title,300),clean(b.body,10000),Number(b.sort_order||0),b.enabled?1:0,JSON.stringify(b.data_json||{}),now(),id,u.vendor_id).run();return json({ok:true})}
+  if(req.method==='DELETE'){await env.DB.prepare('DELETE FROM vendor_store_sections WHERE id=? AND vendor_id=?').bind(clean(b.id,100),u.vendor_id).run();return json({ok:true})}
+  return json({error:'Method not allowed.'},405);
+ } if(p==='/api/vendor/products')return vendorProducts(req,env);
  if(p==='/api/vendor/dashboard')return dashboard(req,env);
  if(p==='/api/vendor/orders')return orders(req,env);
  if(p==='/api/vendor/shipments')return shipment(req,env);
