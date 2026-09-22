@@ -28,12 +28,25 @@ async function loadCategories(){
   box.textContent='Loading…';
   try{
     const d=await api('/api/vendor/admin/categories');
-    box.innerHTML=(d.categories||[]).map(x=>'<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee"><b>'+String(x.name||'')+'</b><span style="color:#777">'+String(x.slug||'')+'</span></div>').join('')||'<span style="color:#777">No categories yet.</span>';
+    box.innerHTML=(d.categories||[]).map(x=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #eee"><div style="min-width:0"><b>'+escHtml(x.name)+'</b><div style="color:#777;font-size:12px;margin-top:2px">'+escHtml(x.slug)+'</div></div><button type="button" class="gz-btn light gz-cat-delete" data-id="'+escHtml(x.id)+'" data-name="'+escHtml(x.name)+'" style="color:#a11;border-color:#e5caca">Delete</button></div>').join('')||'<span style="color:#777">No categories yet.</span>';
   }catch(e){
     box.innerHTML='<span style="color:#a11">'+escError(e)+'</span>';
   }
 }
-function escError(e){return String(errText(e)).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function escHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function escError(e){return escHtml(errText(e))}
+$('#cats').addEventListener('click',async e=>{
+  const btn=e.target.closest('.gz-cat-delete');
+  if(!btn)return;
+  const id=btn.dataset.id,name=btn.dataset.name||'this category';
+  if(!id)return;
+  if(!confirm('Delete category "'+name+'"? Products using it will be moved to General.'))return;
+  const old=btn.textContent;btn.disabled=true;btn.textContent='Deleting…';
+  try{
+    await api('/api/vendor/admin/categories',{method:'DELETE',body:JSON.stringify({id})});
+    await loadCategories();
+  }catch(x){alert(errText(x));btn.disabled=false;btn.textContent=old}
+});
 $('#f').onsubmit=async e=>{
   e.preventDefault();
   const b=e.target.querySelector('button'),old=b.textContent;
