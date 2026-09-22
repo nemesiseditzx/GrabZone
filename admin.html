@@ -478,6 +478,18 @@ body.gz-gallery-dragging-active{
       </button>
       <button
         class="side-link"
+        data-tab="marketplace"
+        type="button"
+      >
+        🏪
+        <span>
+          Marketplace
+        </span>
+      </button>
+
+
+      <button
+        class="side-link"
         data-tab="growth"
         type="button"
       >
@@ -867,6 +879,63 @@ body.gz-gallery-dragging-active{
 
         </div>
 
+      </section>
+
+
+      <!-- =================================================
+           MARKETPLACE CONTROL
+      ================================================== -->
+      <section id="tab-marketplace" class="tab">
+        <div class="page-title">
+          <div>
+            <div class="eyebrow">MULTI-VENDOR MARKETPLACE</div>
+            <h1>Marketplace Control</h1>
+            <p>Control marketplace status, shipping, brands, vendors and marketplace categories.</p>
+          </div>
+          <a class="primary" href="marketplace.html" target="_blank" rel="noopener">View Marketplace ↗</a>
+        </div>
+
+        <div id="gzMarketplaceMessage" class="save-message"></div>
+
+        <div class="panel">
+          <h2>Marketplace settings</h2>
+          <p class="muted">These settings control the customer-facing marketplace.</p>
+          <div class="form-grid">
+            <label>Marketplace
+              <select id="gzMpEnabled"><option value="true">Enabled</option><option value="false">Disabled</option></select>
+            </label>
+            <label>Default shipping fee
+              <input id="gzMpShipping" type="number" min="0" step="1" value="130">
+            </label>
+            <label>Show brands
+              <select id="gzMpShowBrands"><option value="true">Show</option><option value="false">Hide</option></select>
+            </label>
+            <label>Show vendor badges
+              <select id="gzMpShowBadges"><option value="true">Show</option><option value="false">Hide</option></select>
+            </label>
+          </div>
+          <div style="margin-top:14px">
+            <button class="primary" type="button" id="gzMpSaveSettings">Save Marketplace Settings</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="page-title" style="margin-bottom:14px">
+            <div><h2>Vendors / Stores</h2><p>Manage vendor status, homepage visibility, featured stores, commission and shipping.</p></div>
+            <button class="ghost" type="button" id="gzMpRefreshVendors">↻ Refresh</button>
+          </div>
+          <div id="gzMpVendors" style="display:grid;gap:10px"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Marketplace Categories</h2>
+          <p class="muted">Create categories used by marketplace products.</p>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px">
+            <input id="gzMpCategoryName" placeholder="Category name">
+            <button class="primary" type="button" id="gzMpAddCategory">＋ Add Category</button>
+          </div>
+          <div id="gzMpCategories" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"></div>
+        </div>
       </section>
 
 
@@ -3031,6 +3100,7 @@ document.addEventListener("keydown",event=>{
 </script>
 
 <script src="admin-animations.js"></script>
+<script src="marketplace-admin.js?v=20260922marketplace1"></script>
 <script src="payment-admin.js?v=20260902authfix4"></script>
 <script src="orders-admin.js?v=20260902authfix4"></script>
 <script src="tracking-admin.js?v=20260902authfix5"></script>
