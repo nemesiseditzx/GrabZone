@@ -107,7 +107,9 @@ export default{fetch:async(req,env,ctx)=>{try{
     const file=form?.get('file');
     if(file instanceof File&&file.size>MAX_BYTES)return json({error:'Image must be 1 MB or smaller.'},413);
   }
-  const categoryResponse=await categoriesV2(req,env,ctx);\n  if(categoryResponse)return categoryResponse;\n  const noticeResponse=await notices(req,env);
+  const categoryResponse=await categoriesV2(req,env,ctx);
+  if(categoryResponse)return categoryResponse;
+  const noticeResponse=await notices(req,env);
   if(noticeResponse)return noticeResponse;
   const direct=await directVendorData(req,env,ctx);
   if(direct)return direct;
