@@ -146,7 +146,7 @@ const openVendorPanel=async id=>{
   <div id="gzmp-vpane-profile"></div><div id="gzmp-vpane-products" class="gzmp-hidden"></div><div id="gzmp-vpane-orders" class="gzmp-hidden"></div><div id="gzmp-vpane-sections" class="gzmp-hidden"></div><div id="gzmp-vpane-security" class="gzmp-hidden"></div>`);
   $('gzmpModalBody').querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal);
   document.querySelectorAll('[data-vsub]').forEach(b=>b.onclick=()=>showVendorSub(b.dataset.vsub));
-  renderVendorProfile(v);renderVendorProducts(d.products||[]);renderVendorOrders(d.orders||[]);await renderVendorSections();
+  renderVendorProfile(v);renderVendorProducts(d.products||[]);renderVendorOrders(d.orders||[]);await renderVendorSections();ensureSecurity();
   showVendorSub('profile');
  }catch(e){openModal(`<div class="gzmp-dialog-head"><h2>Error</h2>${closeButton}</div><div class="gzmp-empty">${val(e.message)}</div>`);$('gzmpModalBody').querySelector('[data-close]').onclick=closeModal}
 };
@@ -169,7 +169,7 @@ const collectVariations=()=>Array.from(document.querySelectorAll('[data-variatio
 const openProductEditor=(p={},isNew=true)=>{
  openModal(`<div class="gzmp-dialog-head"><div><div class="eyebrow">${isNew?'PRODUCT CREATOR':'PRODUCT EDITOR'}</div><h2 style="margin:3px 0">${isNew?'Add marketplace product':val(p.name)}</h2><p class="gzmp-section-sub">Manage pricing, stock, gallery, publishing and variations.</p></div>${closeButton}</div>${productForm(p,isNew)}`);
  $('gzmpModalBody').querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal);variationRows(p.variations||[]);
- $('gzmpAddVariation').onclick=()=>{const rows=Array.from(document.querySelectorAll('[data-variation-row')).map(()=>({}));rows.push({});variationRows(rows)};
+ $('gzmpAddVariation').onclick=()=>{const rows=Array.from(document.querySelectorAll('[data-variation-row]')).map(()=>({}));rows.push({});variationRows(rows)};
  $('gzmpProductForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),b=Object.fromEntries(f.entries());b.vendor_id=activeVendor;b.price=Number(b.price||0);b.sale_price=b.sale_price===''?null:Number(b.sale_price);b.old_price=b.old_price===''?null:Number(b.old_price);b.stock=Number(b.stock||0);b.low_stock_threshold=Number(b.low_stock_threshold||0);b.min_qty=Number(b.min_qty||1);b.max_qty=b.max_qty===''?null:Number(b.max_qty);b.published=b.published==='true';b.category_id=b.category_id||null;b.image_urls=String(b.image_urls||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean).slice(0,10);b.variations=collectVariations();try{const endpoint='/api/vendor/admin/products'+(isNew?'':'');const method=isNew?'POST':'PATCH';if(!isNew)b.id=p.id;await api(endpoint,{method,body:JSON.stringify(b)});msg(isNew?'✓ Product created.':'✓ Product saved.');closeModal();await openVendorPanel(activeVendor)}catch(err){$('gzmpProductMsg').textContent='⚠ '+err.message;$('gzmpProductMsg').style.color='#a00'}};
 };
 const renderVendorProducts=products=>{
