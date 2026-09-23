@@ -165,7 +165,7 @@ const renderVendorProfile=v=>{
  $('gzmp-vpane-profile').innerHTML=`<form id="gzmpVendorProfileForm" class="gzmp-form"><label>Business name<input name="business_name" value="${val(v.business_name)}"></label><label>Brand / store name<input name="brand_name" value="${val(v.brand_name)}"></label><label>Store / contact email<input name="email" type="email" value="${val(v.email)}"></label><label>Vendor login email<input value="${val(v.login_email||'Not configured')}" disabled></label><label>Phone<input name="phone" value="${val(v.phone)}"></label><label>Shipping fee<input name="shipping_fee" type="number" min="0" value="${Number(v.shipping_fee||0)}"></label><label>Commission type<select name="commission_type"><option value="percentage" ${v.commission_type==='percentage'?'selected':''}>Percentage</option><option value="fixed" ${v.commission_type==='fixed'?'selected':''}>Fixed</option></select></label><label>Commission value<input name="commission_value" type="number" min="0" step="0.01" value="${Number(v.commission_value||0)}"></label><label>Status<select name="status"><option ${v.status==='Active'?'selected':''}>Active</option><option ${v.status==='Inactive'?'selected':''}>Inactive</option><option ${v.status==='Suspended'?'selected':''}>Suspended</option></select></label><label>Homepage visibility<select name="homepage_visible"><option value="true" ${Number(v.homepage_visible)!==0?'selected':''}>Visible</option><option value="false" ${Number(v.homepage_visible)===0?'selected':''}>Hidden</option></select></label><label>Featured<select name="featured"><option value="true" ${Number(v.featured)!==0?'selected':''}>Featured</option><option value="false" ${Number(v.featured)===0?'selected':''}>Standard</option></select></label><label class="full">Logo URL<input name="logo_url" value="${val(v.logo_url)}"><small class="gzmp-muted">Upload from PC · max 1 MB</small><input name="logo_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label><label class="full">Banner URL<input name="banner_url" value="${val(v.banner_url)}"><small class="gzmp-muted">Upload from PC · max 1 MB</small><input name="banner_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label><label class="full">Tagline<input name="tagline" value="${val(v.tagline)}"></label><label class="full">Announcement<input name="announcement" value="${val(v.announcement)}"></label><label class="full">Description<textarea name="description">${val(v.description)}</textarea></label><label>Accent color<input name="accent_color" type="color" value="${/^#[0-9a-f]{6}$/i.test(v.accent_color||'')?v.accent_color:'#ff6b00'}"></label><label class="full">Social links JSON<textarea name="social_links">${val(typeof v.social_links==='string'?v.social_links:JSON.stringify(v.social_links||{},null,2))}</textarea></label><label class="full">Contact info JSON<textarea name="contact_info">${val(typeof v.contact_info==='string'?v.contact_info:JSON.stringify(v.contact_info||{},null,2))}</textarea></label><div class="full gzmp-actions"><button class="gzmp-btn primary" type="submit">Save store settings</button><a class="gzmp-btn" href="marketplace-store.html?slug=${encodeURIComponent(v.slug)}" target="_blank">Open store ↗</a></div><div id="gzmpProfileMsg" class="full gzmp-muted"></div></form>`;
  $('gzmpVendorProfileForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,f=new FormData(form),b=Object.fromEntries(f.entries());const logoFile=form.querySelector('[name="logo_file"]')?.files?.[0],bannerFile=form.querySelector('[name="banner_file"]')?.files?.[0];delete b.logo_file;delete b.banner_file;b.shipping_fee=Number(b.shipping_fee||0);b.commission_value=Number(b.commission_value||0);b.homepage_visible=b.homepage_visible==='true';b.featured=b.featured==='true';for(const k of ['social_links','contact_info']){try{b[k]=JSON.parse(b[k]||'{}')}catch{$('gzmpProfileMsg').textContent='⚠ '+k+' must be valid JSON.';return}}try{if(logoFile)b.logo_url=await uploadAdminImage(logoFile,'vendor-logo',activeVendor);if(bannerFile)b.banner_url=await uploadAdminImage(bannerFile,'vendor-banner',activeVendor);await api('/api/vendor/admin/vendors/'+encodeURIComponent(activeVendor),{method:'PATCH',body:JSON.stringify(b)});msg('✓ Vendor settings saved.');$('gzmpProfileMsg').textContent='Saved successfully.';$('gzmpProfileMsg').style.color='#176b2c'}catch(err){$('gzmpProfileMsg').textContent='⚠ '+err.message;$('gzmpProfileMsg').style.color='#a00'}};
 };
-let adminMediaState={files:[],mainIndex:0,existing:[]};
+const GZMP_SIZES=['XS','S','M','L','XL','XXL','3XL']; const GZMP_COLORS=['Black','White','Grey','Brown','Beige','Tan','Cream','Khaki','Off White','Charcoal Black','Light Grey','Camel','Charcoal Grey','Dark Grey','Bronze','Mauve Brown','Mustard Grey','Pale Grey','Peach Beige','Rust Brown','Red','Maroon','Deep Red','Crimson','Rust','Wine','Wine Maroon','Pink','Magenta','Rose','Peach','Light Pink','Mauve Pink','Coral Pink','Dusty Pink','Dusty Rose','Magenta Pink','Raspberry Pink','Purple','Lavender','Mauve','Plum','Deep Purple','Light Purple','Violet','Blue','Sky Blue','Navy Blue','Navy','Light Blue','Denim','Royal Blue','Steel Blue','Dark Navy','Light Blue Denim','Dark Blue Denim','Teal Blue','Cornflower Blue','Dark Teal Blue','Denim Blue','Light Denim Blue','Pale Blue','Slate Blue','Teal','Aqua','Mint Aqua','Teal Green','Aqua Green','Green','Olive','Olive Green','Sage Green','Dark Green','Mint','Mint Green','Sea Green','Light Green','Pale Sage','Lime Green','Pale Mint','Sage','Mint Pista','Yellow','Orange','Mustard','Gold','Mustard Yellow','Pale Yellow','Multi']; let adminMediaState={files:[],mainIndex:0,existing:[]};
 const productForm=(p={},isNew=false)=>{
  const existing=(p.image_urls||[]).filter(Boolean);
  adminMediaState={files:[],mainIndex:0,existing};
@@ -192,11 +192,11 @@ const productForm=(p={},isNew=false)=>{
    <input type="hidden" name="image_urls" id="gzmpImageUrls" value="">
   </div>
   <div class="gzmp-card" id="gzmpVariationPanel" ${variable?'':'hidden'}>
-   <div class="gzmp-var-head"><div><span class="gzmp-kicker">VARIABLE PRODUCT</span><h3 class="gzmp-section-title" style="margin-top:7px">Options & variations</h3><p class="gzmp-section-sub">Example: Color → Black, White · Size → S, M, L. Generate every exact combination, then set price, SKU and stock.</p></div><button type="button" class="gzmp-btn" id="gzmpAddOption">＋ Add option</button></div>
-   <div id="gzmpOptionRows"></div>
+   <div class="gzmp-var-head"><div><span class="gzmp-kicker">VARIABLE PRODUCT</span><h3 class="gzmp-section-title" style="margin-top:7px">Options & variations</h3><p class="gzmp-section-sub">Example: Color → Black, White · Size → S, M, L. Generate every exact combination, then set regular price, old price, status and image.</p></div><button type="button" class="gzmp-btn" id="gzmpAddOption">＋ Add option</button></div>
+   <div class="gzmp-easy-setup"><b>Easy setup</b><div><span>① Select Size values.</span><span>② Select common Colors or add another option.</span><span>③ Generate variations.</span></div></div><div id="gzmpPresetOptions"></div><div id="gzmpOptionRows"></div>
    <div class="gzmp-var-actions"><button type="button" class="gzmp-btn primary" id="gzmpGenerateVariations">Generate / Update Variations</button><input id="gzmpBulkPrice" type="number" min="0" step="0.01" placeholder="Apply regular price"><button type="button" class="gzmp-btn" id="gzmpApplyPrice">Apply price to all</button></div>
    <div id="gzmpVariationMsg" class="gzmp-note"></div>
-   <div class="gzmp-variation-table-wrap"><table class="gzmp-variation-table"><thead><tr><th>Combination</th><th>SKU</th><th>Regular</th><th>Status</th><th>Image URL</th></tr></thead><tbody id="gzmpVariationRows"></tbody></table></div>
+   <div class="gzmp-variation-table-wrap"><table class="gzmp-variation-table"><thead><tr><th>Variation</th><th>SKU</th><th>Regular</th><th>Old</th><th>Status</th><th>Product Image</th></tr></thead><tbody id="gzmpVariationRows"></tbody></table></div>
    <input type="hidden" id="gzmpVariationsJson">
   </div>
   <div class="gzmp-actions"><button type="button" class="gzmp-btn" data-close>Cancel</button><button type="submit" class="gzmp-btn primary">${isNew?'Create product':'Save product'}</button></div>
@@ -204,59 +204,46 @@ const productForm=(p={},isNew=false)=>{
  </form>`;
 };
 const adminOptionState=[];
-const adminVariationState=[];
-const adminParseOptionRows=()=>{
- const rows=[...document.querySelectorAll('#gzmpOptionRows .gzmp-option-row')];
- return rows.map(r=>({name:r.querySelector('.gzmp-option-name')?.value.trim()||'',values:(r.querySelector('.gzmp-option-values')?.value||'').split(',').map(x=>x.trim()).filter(Boolean)})).filter(x=>x.name&&x.values.length);
-};
-const adminAddOption=(o={name:'',values:[]})=>{
- const box=$('gzmpOptionRows');if(!box)return;
- const row=document.createElement('div');row.className='gzmp-option-row';
- row.innerHTML=`<input class="gzmp-option-name" placeholder="Option name (e.g. Color)" value="${val(o.name)}"><input class="gzmp-option-values" placeholder="Values separated by commas (e.g. Black, White)" value="${val((o.values||[]).join(', '))}"><button type="button" class="gzmp-btn danger small">Remove</button>`;
- row.querySelector('button').onclick=()=>{row.remove();};
- box.appendChild(row);
-};
+const adminValues=(name)=>{const x=adminOptionState.find(o=>o.name.toLowerCase()===name.toLowerCase());return x?.values||[]};
+const adminSetOption=(name,values)=>{const clean=[...new Set(values.map(String).map(x=>x.trim()).filter(Boolean))];for(let i=adminOptionState.length-1;i>=0;i--)if(adminOptionState[i].name.toLowerCase()===name.toLowerCase())adminOptionState.splice(i,1);if(clean.length)adminOptionState.push({name,values:clean});renderAdminOptionUI()};
+const adminToggle=(name,value,checked)=>{const cur=adminValues(name);adminSetOption(name,checked?cur.concat(value):cur.filter(x=>x!==value))};
+function renderAdminOptionUI(){
+ const box=document.getElementById('gzmpPresetOptions');if(!box)return;
+ const card=(name,values)=>'<div class="gzmp-preset-card"><div class="gzmp-preset-head"><b>'+esc(name)+'</b><span>'+values.length+(name==='Color'?' colors':' values')+'</span></div>'+(name==='Color'?'<input class="gzmp-color-search" placeholder="Search color...">':'')+'<div class="gzmp-chip-grid">'+values.map(v=>'<label class="gzmp-chip"><input type="checkbox" data-gzmp-opt="'+esc(name)+'" value="'+esc(v)+'" '+(adminValues(name).includes(v)?'checked':'')+'><span>'+esc(v)+'</span></label>').join('')+'</div>'+(name==='Size'?'<button type="button" class="gzmp-btn" id="gzmpCustomSize">＋ Custom Size</button>':'')+'</div>';
+ box.innerHTML=card('Size',GZMP_SIZES)+card('Color',GZMP_COLORS);
+ box.querySelectorAll('[data-gzmp-opt]').forEach(x=>x.onchange=()=>adminToggle(x.dataset.gzmpOpt,x.value,x.checked));
+ box.querySelectorAll('.gzmp-color-search').forEach(x=>x.oninput=()=>{const q=x.value.toLowerCase();x.closest('.gzmp-preset-card').querySelectorAll('.gzmp-chip').forEach(ch=>ch.style.display=ch.textContent.toLowerCase().includes(q)?'inline-flex':'none')});
+ box.querySelector('#gzmpCustomSize')?.addEventListener('click',()=>{const w=document.createElement('div');w.className='gzmp-custom-inline';w.innerHTML='<input placeholder="e.g. 28"><button type="button" class="gzmp-btn">Add</button>';box.querySelector('#gzmpCustomSize').after(w);w.querySelector('button').onclick=()=>{const v=w.querySelector('input').value.trim();if(v)adminSetOption('Size',adminValues('Size').concat(v))}});
+}
 const adminCartesian=(options)=>{
  let out=[{}];
  for(const o of options){const next=[];for(const base of out)for(const value of o.values)next.push({...base,[o.name]:value});out=next}
  return out;
 };
 const adminRenderVariations=()=>{
- const body=$('gzmpVariationRows');if(!body)return;
- const rows=adminVariationState;
- if(!rows.length){body.innerHTML='<tr><td colspan="7" class="gzmp-var-empty">No variations yet. Add options and click Generate / Update Variations.</td></tr>';return}
- body.innerHTML=rows.map((v,i)=>{const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(', ');return `<tr data-admin-var="${i}"><td><b>${val(labels||'Variation')}</b></td><td><input data-v="sku" value="${val(v.sku||'')}" placeholder="SKU"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="${v.price??v.regular_price??''}"></td><td><select data-v="status"><option ${v.status==='Available'||!v.status?'selected':''}>Available</option><option ${v.status==='Out of Stock'?'selected':''}>Out of Stock</option><option ${v.status==='Disabled'?'selected':''}>Disabled</option></select></td><td><input data-v="image" value="${val(v.image_url||'')}" placeholder="Optional image URL"></td></tr>`}).join('');
+ const body=document.getElementById('gzmpVariationRows');if(!body)return;
+ if(!adminVariationState.length){body.innerHTML='<tr><td colspan="7" class="gzmp-var-empty">No variations generated yet.</td></tr>';return}
+ body.innerHTML=adminVariationState.map((v,i)=>{const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(', ');return '<tr data-admin-var="'+i+'"><td><b>'+esc(labels||'Variation')+'</b></td><td><input data-v="sku" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" type="number" value="'+(v.price??v.regular_price??'')+'"></td><td><input data-v="old" type="number" value="'+(v.old_price??'')+'"></td><td><select data-v="status"><option '+(v.status==='Available'||!v.status?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><div class="gzmp-var-image"><img src="'+esc(v.image_url||'')+'" alt="" '+(v.image_url?'':'style="display:none"')+'><input data-v="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></div></td><td></td></tr>'}).join('');
 };
-const adminCollectVariationInputs=()=>{
- document.querySelectorAll('#gzmpVariationRows tr[data-admin-var]').forEach((row,i)=>{
-  const get=k=>row.querySelector('[data-v="'+k+'"]')?.value??'';
-  const v=adminVariationState[i];if(!v)return;
-  v.sku=get('sku');v.price=get('regular')===''?null:Number(get('regular'));v.status=get('status')||'Available';v.image_url=get('image');
- });
-};
+const adminCollectVariationInputs=()=>{document.querySelectorAll('#gzmpVariationRows tr[data-admin-var]').forEach((row,i)=>{const get=k=>row.querySelector('[data-v="'+k+'"]')?.value??'';const v=adminVariationState[i];if(!v)return;v.sku=get('sku');v.price=get('regular')===''?null:Number(get('regular'));v.old_price=get('old')===''?null:Number(get('old'));v.status=get('status')||'Available';});};
 const adminLoadVariationOptions=(p)=>{
  const opts=new Map();
  (p.variations||[]).forEach(v=>{const o=v.options||{};for(const [k,x] of Object.entries(o)){if(!opts.has(k))opts.set(k,[]);if(!opts.get(k).includes(x))opts.get(k).push(x)}});
  return [...opts.entries()].map(([name,values])=>({name,values}));
 };
 const adminGenerateVariations=()=>{
- const options=adminParseOptionRows();if(!options.length)return alert('Add at least one option with values.');
- let count=1;for(const o of options)count*=o.values.length;
- if(count>200)return alert(`This will create ${count} variations. Maximum is 200.`);
- adminCollectVariationInputs();
- const old=new Map(adminVariationState.map(v=>[Object.entries(v.options||{}).sort().map(([k,x])=>k+'='+x).join('|'),v]));
- adminVariationState.splice(0,adminVariationState.length,...adminCartesian(options).map(o=>{
-  const key=Object.entries(o).sort().map(([k,x])=>k+'='+x).join('|');const prev=old.get(key)||{};
-  return {...prev,options:o,sku:prev.sku||'',price:prev.price??null,sale_price:prev.sale_price??null,stock:prev.stock??0,status:prev.status||'Available',image_url:prev.image_url||''};
- }));
- adminRenderVariations();$('gzmpVariationMsg').textContent=`✓ ${adminVariationState.length} variations generated.`;
+ const options=adminOptionState.filter(o=>o.name&&o.values.length);if(!options.length)return alert('Select at least one Size, Color or custom option.');
+ let count=1;for(const o of options)count*=o.values.length;if(count>200)return alert('Maximum 200 variations.');
+ adminCollectVariationInputs();const old=new Map(adminVariationState.map(v=>[Object.entries(v.options||{}).sort().map(([k,x])=>k+'='+x).join('|'),v]));
+ adminVariationState.splice(0,adminVariationState.length,...adminCartesian(options).map(o=>{const key=Object.entries(o).sort().map(([k,x])=>k+'='+x).join('|');const prev=old.get(key)||{};return {...prev,options:o,sku:prev.sku||'',price:prev.price??null,old_price:prev.old_price??null,status:prev.status||'Available',image_url:prev.image_url||''}}));
+ adminRenderVariations();document.getElementById('gzmpVariationMsg').textContent='✓ '+adminVariationState.length+' variations generated.';
 };
 const openProductEditor=async(p={},isNew=true)=>{
  openModal('<div class="gzmp-empty">Loading product editor…</div>');
  const variations=Array.isArray(p.variations)?p.variations:[];
  openModal(`<div class="gzmp-dialog-head"><div><div class="eyebrow">${isNew?'PRODUCT CREATOR':'PRODUCT EDITOR'}</div><h2 style="margin:3px 0">${isNew?'Add marketplace product':val(p.name)}</h2><p class="gzmp-section-sub">Manage pricing, stock, gallery, publishing and variations.</p></div>${closeButton}</div>${productForm(p,isNew)}`);
  $('gzmpModalBody').querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal);
- adminVariationState.splice(0,adminVariationState.length,...variations.map(v=>({...v,price:v.price??v.regular_price??null})));
+ adminVariationState.splice(0,adminVariationState.length,...variations.map(v=>({...v,price:v.price??v.regular_price??null}))); adminOptionState.splice(0,adminOptionState.length,...adminLoadVariationOptions(p)); renderAdminOptionUI();
  const opts=adminLoadVariationOptions(p);
  $('gzmpOptionRows').innerHTML='';
  (opts.length?opts:[]).forEach(adminAddOption);
