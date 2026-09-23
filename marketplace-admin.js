@@ -135,7 +135,7 @@ const openVendorEditor=(v={})=>{
  openModal(`<div class="gzmp-dialog-head"><div><div class="eyebrow">VENDOR SETUP</div><h2 style="margin:3px 0">Add vendor</h2><p class="gzmp-section-sub">Create the vendor account and store in one step.</p></div>${closeButton}</div>
  <form id="gzmpVendorCreate" class="gzmp-form"><label>Business name<input name="business_name" required value="${val(v.business_name)}"></label><label>Brand / store name<input name="brand_name" required value="${val(v.brand_name)}"></label><label>Store / contact email<input name="email" type="email" required value="${val(v.email)}"></label><label>Vendor login email<input name="login_email" type="email" required value="${val(v.login_email||v.email)}"></label><label>Initial password<input name="password" type="password" minlength="8" required placeholder="At least 8 characters"></label><label>Phone<input name="phone" value="${val(v.phone)}"></label><label>Shipping fee<input name="shipping_fee" type="number" min="0" value="${Number(v.shipping_fee||130)}"></label><label>Commission type<select name="commission_type"><option value="percentage">Percentage</option><option value="fixed">Fixed</option></select></label><label>Commission value<input name="commission_value" type="number" min="0" step="0.01" value="${Number(v.commission_value||10)}"></label><label>Homepage visibility<select name="homepage_visible"><option value="true">Visible</option><option value="false">Hidden</option></select></label><label>Featured store<select name="featured"><option value="false">No</option><option value="true">Yes</option></select></label><label class="full">Logo URL<input name="logo_url" value="${val(v.logo_url)}"></label><label class="full">Banner URL<input name="banner_url" value="${val(v.banner_url)}"></label><label class="full">Tagline<input name="tagline" value="${val(v.tagline)}"></label><label class="full">Description<textarea name="description">${val(v.description)}</textarea></label><div class="full gzmp-actions"><button type="button" class="gzmp-btn" data-close>Cancel</button><button class="gzmp-btn primary" type="submit">Create vendor</button></div><div id="gzmpVendorCreateMsg" class="full gzmp-muted"></div></form>`);
  $('gzmpModalBody').querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal);
- $('gzmpVendorCreate').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),b=Object.fromEntries(f.entries());b.shipping_fee=Number(b.shipping_fee||0);b.commission_value=Number(b.commission_value||0);b.homepage_visible=b.homepage_visible==='true';b.featured=b.featured==='true';try{const d=await api('/api/vendor/admin/vendors',{method:'POST',body:JSON.stringify(b)});msg('✓ Vendor created.');closeModal();renderVendors();openVendorPanel(d.vendor.id)}catch(err){$('gzmpVendorCreateMsg').textContent='⚠ '+err.message;$('gzmpVendorCreateMsg').style.color='#a00'}};
+ $('gzmpVendorCreate').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),b=Object.fromEntries(f.entries());b.shipping_fee=Number(b.shipping_fee||0);b.commission_value=Number(b.commission_value||0);b.homepage_visible=b.homepage_visible==='true';b.featured=b.featured==='true';if(!b.login_email){$('gzmpSecurityProfileMsg').textContent='⚠ Login email is required.';return}if(b.new_password==='')delete b.new_password;try{const d=await api('/api/vendor/admin/vendors',{method:'POST',body:JSON.stringify(b)});msg('✓ Vendor created.');closeModal();renderVendors();openVendorPanel(d.vendor.id)}catch(err){$('gzmpVendorCreateMsg').textContent='⚠ '+err.message;$('gzmpVendorCreateMsg').style.color='#a00'}};
 };
 const openVendorPanel=async id=>{
  activeVendor=id;openModal('<div class="gzmp-empty">Loading vendor control panel…</div>');
@@ -220,7 +220,9 @@ const ensureSecurity=()=>{
   <label class="full">Password<input value="••••••••  (not retrievable)" readonly></label>
  </div></div>
  <div class="gzmp-card"><div class="gzmp-toolbar"><div><h3 class="gzmp-section-title">Vendor / store information</h3><p class="gzmp-section-sub">Edit the vendor's real store profile and contact information.</p></div><button class="gzmp-btn primary" id="gzmpSaveSecurityProfile">Save vendor info</button></div>
- <form id="gzmpSecurityProfile" class="gzmp-form" style="margin-top:12px">
+ <form id="gzmpSecurityProfile" class="gzmp-form" style="margin-top:12px"> 
+  <label>Vendor login email<input name="login_email" type="email" value="${val(v.login_email||'')}" placeholder="vendor-login@example.com"></label>
+  <label>New login password <span class="gzmp-muted">(required only when creating a login)</span><input name="new_password" type="password" minlength="8" placeholder="${v.login_exists?'Leave blank to keep current password':'At least 8 characters'}"></label>
   <label>Business name<input name="business_name" value="${val(v.business_name)}"></label>
   <label>Brand / store name<input name="brand_name" value="${val(v.brand_name)}"></label>
   <label>Store / contact email<input name="email" type="email" value="${val(v.email)}"></label>
@@ -240,39 +242,3 @@ const ensureSecurity=()=>{
   <label class="full">Contact info JSON<textarea name="contact_info">${val(contact)}</textarea></label>
   <label class="full">Social links JSON<textarea name="social_links">${val(social)}</textarea></label>
   <div id="gzmpSecurityProfileMsg" class="full gzmp-muted"></div>
- </form></div>
- <div class="gzmp-card"><h3 class="gzmp-section-title">Change login password</h3><p class="gzmp-section-sub">You cannot recover the existing password. Set a new one instead.</p><form id="gzmpResetPass" class="gzmp-form" style="margin-top:12px"><label>Login email<input value="${val(v.login_email||'Not configured')}" readonly></label><label>New password<input name="password" type="password" minlength="8" required placeholder="At least 8 characters"></label><label>Confirm password<input name="confirm" type="password" minlength="8" required></label><div class="full gzmp-actions"><button class="gzmp-btn primary">Set new password</button></div><div id="gzmpResetMsg" class="full gzmp-muted"></div></form></div>
- </div>`;
- const profileForm=$('gzmpSecurityProfile');$('gzmpSaveSecurityProfile').onclick=async()=>{const f=new FormData(profileForm),b=Object.fromEntries(f.entries());b.shipping_fee=Number(b.shipping_fee||0);b.commission_value=Number(b.commission_value||0);b.homepage_visible=b.homepage_visible==='true';b.featured=b.featured==='true';try{try{b.contact_info=JSON.parse(b.contact_info||'{}');b.social_links=JSON.parse(b.social_links||'{}')}catch{throw Error('Contact info / social links must be valid JSON.')}await api('/api/vendor/admin/vendors/'+encodeURIComponent(activeVendor),{method:'PATCH',body:JSON.stringify(b)});msg('✓ Vendor information saved.');const d=await api('/api/vendor/admin/vendor-data?vendor_id='+encodeURIComponent(activeVendor));vendorData=d;ensureSecurity()}catch(err){$('gzmpSecurityProfileMsg').textContent='⚠ '+err.message;$('gzmpSecurityProfileMsg').style.color='#a00'}};
- $('gzmpResetPass').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;const f=new FormData(form),p=f.get('password'),c=f.get('confirm');if(p!==c){$('gzmpResetMsg').textContent='Passwords do not match.';return}try{await api('/api/vendor/admin/reset-password',{method:'POST',body:JSON.stringify({vendor_id:activeVendor,password:p})});$('gzmpResetMsg').textContent='✓ New password saved successfully.';$('gzmpResetMsg').style.color='#176b2c';form.reset()}catch(err){$('gzmpResetMsg').textContent='⚠ '+err.message;$('gzmpResetMsg').style.color='#a00'}};
-};
-const loadAllProducts=async()=>{
- const pane=$('gzmp-pane-products');pane.innerHTML='<div class="gzmp-empty">Loading products…</div>';
- try{
-  const d=await api('/api/vendor/admin/products');const rows=d.products||[];
-  pane.innerHTML=`<div class="gzmp-toolbar"><div><h2 class="gzmp-section-title">All marketplace products</h2><p class="gzmp-section-sub">${rows.length} products across all vendors.</p></div><button class="gzmp-btn" id="gzmpProductReload">↻ Refresh</button></div><div class="gzmp-table-wrap" style="margin-top:12px"><table class="gzmp-table"><thead><tr><th>Product</th><th>Vendor</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead><tbody>${rows.map(p=>`<tr><td><div class="gzmp-product"><img src="${val(p.image_url)}" onerror="this.style.visibility='hidden'"><div><b>${val(p.name)}</b><div class="gzmp-muted">${val(p.sku||'')}</div></div></div></td><td>${val(p.vendor_name)}</td><td>${val(p.category_name||p.category||'General')}</td><td>৳${Number(p.price||0).toLocaleString()}</td><td>${Number(p.stock||0)}</td><td><span class="gzmp-pill ${Number(p.published)!==0?'on':'off'}">${Number(p.published)!==0?'Published':'Draft'}</span></td><td><button class="gzmp-btn small" data-open-product-vendor="${val(p.vendor_id)}">Open vendor</button></td></tr>`).join('')}</tbody></table></div>`;
-  $('gzmpProductReload').onclick=loadAllProducts;pane.querySelectorAll('[data-open-product-vendor]').forEach(b=>b.onclick=()=>openVendorPanel(b.dataset.openProductVendor));
- }catch(e){pane.innerHTML='<div class="gzmp-empty">⚠ '+val(e.message)+'</div>'}
-};
-const loadAllOrders=async()=>{
- const pane=$('gzmp-pane-orders');pane.innerHTML='<div class="gzmp-empty">Select a vendor to manage its orders from the Vendors tab.</div><div class="gzmp-actions" style="margin-top:10px"><button class="gzmp-btn primary" id="gzmpOrdersVendors">Open Vendors</button></div>';
- $('gzmpOrdersVendors').onclick=()=>showMpTab('vendors');
-};
-const renderCategories=async()=>{
- await loadCategories();const pane=$('gzmp-pane-categories');
- pane.innerHTML=`<div class="gzmp-card"><div class="gzmp-toolbar"><div><h2 class="gzmp-section-title">Marketplace categories</h2><p class="gzmp-section-sub">Create or remove product categories. Deleting a category moves its products to General unless you reassign them first.</p></div></div><form id="gzmpCategoryForm" class="gzmp-actions" style="margin-top:12px"><input name="name" required placeholder="Category name" style="flex:1;min-width:220px;padding:10px 11px;border:1px solid #ddd;border-radius:10px"><button class="gzmp-btn primary">＋ Add category</button></form><div class="gzmp-list" style="margin-top:14px">${categories.map(c=>`<div class="gzmp-card" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><b>${val(c.name)}</b><div class="gzmp-muted">${val(c.slug)}</div></div><button class="gzmp-btn danger small" data-delete-category="${val(c.id)}">Delete</button></div>`).join('')||'<div class="gzmp-empty">No categories yet.</div>'}</div></div>`;
- $('gzmpCategoryForm').onsubmit=async e=>{e.preventDefault();const name=new FormData(e.currentTarget).get('name').trim();try{await api('/api/vendor/admin/categories',{method:'POST',body:JSON.stringify({name})});msg('✓ Category added.');renderCategories()}catch(err){msg('⚠ '+err.message,false)}};
- pane.querySelectorAll('[data-delete-category]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this category? Products using it will be moved to General.'))return;try{await api('/api/vendor/admin/categories?id='+encodeURIComponent(b.dataset.deleteCategory),{method:'DELETE',body:JSON.stringify({id:b.dataset.deleteCategory})});msg('✓ Category deleted.');renderCategories()}catch(e){msg('⚠ '+e.message,false)}});
-};
-const loadAll=async()=>{try{await renderOverview();if(activeVendor){/* keep vendor selection available */}}catch(e){msg('⚠ '+e.message,false)}};
-const init=async()=>{
- const tab=$('tab-marketplace');if(!tab)return;
- injectStyles();
- if(!$('gzmp-pane-overview'))shell();
- ensureSecurity();
- await loadAll();
-};
-window.gzInitMarketplaceAdmin=init;
-document.addEventListener('DOMContentLoaded',init);
-document.addEventListener('click',e=>{const b=e.target.closest('[data-tab="marketplace"],[data-tab-target="marketplace"]');if(b)setTimeout(init,50)});
-})();
