@@ -64,7 +64,7 @@ async function resetPassword(r,e){
  }
  if(r.method!=='POST')return json({error:'Method not allowed'},405);
  const b=await r.json().catch(()=>null);if(!b)return json({error:'Invalid JSON'},400);
- const vid=String(b.vendor_id||'').trim(),pass=String(b.password||''),email=String(b.email||'').trim().toLowerCase();
+ const vid=String(b.vendor_id||'').trim(),pass=String(b.password||''),email=String(b.login_email||b.email||'').trim().toLowerCase();
  if(!vid)return json({error:'Vendor ID is required.'},400);
  if(pass&&pass.length<8)return json({error:'Password must be at least 8 characters.'},400);
  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return json({error:'Enter a valid login email.'},400);
