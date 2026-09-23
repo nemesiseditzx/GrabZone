@@ -302,7 +302,7 @@ const renderAdminMedia=()=>{
  if(!urls.length){preview.textContent='No images selected';note.textContent='Maximum 10 images · Maximum 1 MB per image.';return}
  note.textContent=adminMediaState.files.length?adminMediaState.files.map((f,i)=>`${i===adminMediaState.mainIndex?'★ ':''}${f.name} (${Math.ceil(f.size/1024)} KB)`).join(' · '):`${urls.length} existing image${urls.length>1?'s':''}. Choose new files above to replace them.`;
  preview.innerHTML=`<img src="${esc(urls[adminMediaState.mainIndex]||urls[0])}" alt=""><span class="gzmp-main-label">MAIN IMAGE</span>`;
- urls.forEach((url,i)=>{const b=document.createElement('button');b.type='button';b.className='gzmp-media-thumb '+(i===adminMediaState.mainIndex?'main':'');b.title='Click to make main image';b.innerHTML=`<img src="${esc(url)}" alt="">`;b.onclick=()=>{adminMediaState.mainIndex=i;renderAdminMedia()};gallery.appendChild(b)});
+ urls.forEach((url,i)=>{const b=document.createElement('button');b.type='button';b.className='gzmp-media-thumb '+(i===adminMediaState.mainIndex?'main':'');b.title='Click to make main image';b.innerHTML=`<img src="${esc(url)}" alt="">`;b.onclick=()=>{adminMediaState.mainIndex=i;renderAdminMedia()};gallery.appendChild(b)});adminRenderVariations();
 };
 const renderVendorProducts=products=>{
  const pane=$('gzmp-vpane-products');if(!pane)return;
