@@ -45,3 +45,4 @@
  .vp-var-image-choice{width:40px;height:40px}
 }
 .vp-var-image-choice.saved{box-shadow:0 0 0 2px rgba(35,140,75,.22);}
+.vp-field select{width:100%;box-sizing:border-box;border:1px solid #dfe3e7;border-radius:8px;padding:10px 11px;background:#fff;color:#111;font:inherit;min-height:38px;cursor:pointer}.vp-field select:focus{outline:2px solid rgba(255,107,0,.16);border-color:#ff6b00}
