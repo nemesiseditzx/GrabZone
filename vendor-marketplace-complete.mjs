@@ -294,6 +294,11 @@ if(req.method==='GET'){
  for(const p0 of rows){if(!p0.category_name&&p0.category) {const cc=await one(e,'SELECT id,name,slug FROM marketplace_categories WHERE lower(trim(name))=lower(trim(?)) LIMIT 1',[p0.category]);if(cc){p0.category_id=cc.id;p0.category_name=cc.name;p0.category_slug=cc.slug}}}
  for(const p0 of rows){
   p0.variations=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at,id',[p0.id])).results||[];
+  for(const v of p0.variations){
+   v.price=v.regular_price;
+   v.options={};
+   try{const vr=(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[v.id])).results||[];for(const x of vr)v.options[x.name]=x.value}catch{}
+  }
   try{await e.DB.prepare('CREATE TABLE IF NOT EXISTS product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_main INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});const a=(await q(e,'SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order,id',[p0.id])).results||[];const b=(await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? ORDER BY sort_order,id',[p0.id])).results||[];let legacy=[];try{legacy=Array.isArray(p0.image_urls)?p0.image_urls:(typeof p0.image_urls==='string'?JSON.parse(p0.image_urls||'[]'):[])}catch{};p0.image_urls=[...new Set([...a,...b].map(x=>x.image_url).concat(legacy,p0.image_url||[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10)}catch{p0.image_urls=p0.image_url?[p0.image_url]:[]}
  }
  return json({products:rows});
