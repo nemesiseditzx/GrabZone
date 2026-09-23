@@ -197,6 +197,95 @@ const uid=crypto.randomUUID(),t=now();
 await e.DB.prepare('INSERT INTO vendor_users(id,vendor_id,email,password_hash,password_salt,status,role,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(uid,v.id,loginEmail,hash,salt,'Active','vendor_admin',t,t).run();
 return json({ok:true,login_email:loginEmail,login_created:true});
 }
+
+if(p==='/api/vendor/variations'){
+ const u=await vu(req,e); if(!u)return json({error:'Unauthorized'},401);
+ const url=new URL(req.url),pid=clean(url.searchParams.get('product_id')||'',120);
+ if(!pid)return json({error:'product_id is required.'},400);
+ const owner=await one(e,'SELECT id,name,price,product_type FROM products WHERE id=? AND vendor_id=?',[pid,u.vendor_id]);
+ if(!owner)return json({error:'Product not found.'},404);
+ for(const sql of [
+  'CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))',
+  'CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT "untracked",low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT "Available",min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL DEFAULT "",created_at TEXT NOT NULL,updated_at TEXT NOT NULL)'
+ ]) await e.DB.prepare(sql).run().catch(()=>{});
+ for(const sql of [
+  'ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0',
+  'ALTER TABLE product_variations ADD COLUMN sale_price REAL',
+  'ALTER TABLE product_variations ADD COLUMN old_price REAL',
+  'ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT "untracked"',
+  'ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1',
+  'ALTER TABLE product_variations ADD COLUMN max_qty INTEGER',
+  'ALTER TABLE product_variations ADD COLUMN options_key TEXT NOT NULL DEFAULT ""'
+ ]) await e.DB.prepare(sql).run().catch(()=>{});
+ if(req.method==='GET'){
+  const options=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[pid])).results||[];
+  for(const o of options)o.values=(await q(e,'SELECT * FROM option_values WHERE option_id=? ORDER BY sort_order,id',[o.id])).results||[];
+  const variations=(await q(e,"SELECT * FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at,id",[pid])).results||[];
+  for(const v of variations){
+   v.options={};
+   for(const x of (await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[v.id])).results||[])v.options[x.name]=x.value;
+   v.images=(await q(e,'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id',[v.id])).results?.map(x=>x.image_url)||[];
+  }
+  return json({product:owner,enabled:options.length>0||variations.length>0,options,variations});
+ }
+ let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)};
+ if(req.method==='POST'){
+  const os=(Array.isArray(b.options)?b.options:[]).map((o,i)=>({name:clean(o?.name,80),values:[...new Set((Array.isArray(o?.values)?o.values:[]).map(v=>clean(v,120)).filter(Boolean))],sort_order:i})).filter(o=>o.name&&o.values.length);
+  const seen=new Set();for(const o of os)if(seen.has(o.name.toLowerCase()))return json({error:'Option names must be unique.'},400);else seen.add(o.name.toLowerCase());
+  if(!os.length)return json({error:'Add at least one option with values.'},400);
+  let combos=[{}];for(const o of os){const next=[];for(const base of combos)for(const value of o.values)next.push({...base,[o.name]:value});combos=next}
+  if(combos.length>200)return json({error:'Maximum 200 generated variations per product.'},400);
+  const existing=(await q(e,'SELECT id,options_key FROM product_variations WHERE product_id=?',[pid])).results||[];
+  const oldBy=new Map(existing.map(x=>[x.options_key,x])),t=now();
+  const oldOpts=(await q(e,'SELECT id FROM product_options WHERE product_id=?',[pid])).results||[];
+  const oldIds=oldOpts.map(x=>x.id);
+  if(oldIds.length){
+   const ph=oldIds.map(()=>'?').join(',');
+   const oldVals=(await q(e,'SELECT id FROM option_values WHERE option_id IN ('+ph+')',oldIds)).results||[];
+   const valIds=oldVals.map(x=>x.id);
+   const oldVars=(await q(e,'SELECT id FROM product_variations WHERE product_id=?',[pid])).results||[];
+   for(const v of oldVars)await e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(v.id).run().catch(()=>{});
+   if(valIds.length)await e.DB.prepare('DELETE FROM option_values WHERE id IN ('+valIds.map(()=>'?').join(',')+')').bind(...valIds).run().catch(()=>{});
+   await e.DB.prepare('DELETE FROM product_options WHERE id IN ('+ph+')').bind(...oldIds).run().catch(()=>{});
+  }
+  const optionIds=new Map();
+  for(const o of os){
+   const oid=crypto.randomUUID();optionIds.set(o.name,oid);
+   await e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid,pid,o.name,o.sort_order,t,t).run();
+   for(let i=0;i<o.values.length;i++)await e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),oid,o.values[i],i,t,t).run();
+  }
+  const optionRows=(await q(e,'SELECT po.id,po.name,ov.id value_id,ov.value FROM product_options po JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? ORDER BY po.sort_order,ov.sort_order',[pid])).results||[];
+  const map=new Map(optionRows.map(x=>[x.name+'\u0000'+x.value,{option_id:x.id,value_id:x.value_id}]));
+  const keep=new Set();
+  for(const selected of combos){
+   const key=Object.entries(selected).sort((a,b)=>a[0].localeCompare(b[0])).map(([a,v])=>a+'='+v).join('|').slice(0,1000);keep.add(key);
+   const old=oldBy.get(key),id=old?.id||crypto.randomUUID();
+   if(old)await e.DB.prepare('UPDATE product_variations SET status=CASE WHEN status="Disabled" THEN "Available" ELSE status END,updated_at=? WHERE id=?').bind(t,id).run();
+   else await e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,pid,'',Number(owner.price||0),null,null,0,'untracked',5,'','Available',1,null,key,t,t).run();
+   for(const o of os){const m=map.get(o.name+'\u0000'+selected[o.name]);if(m)await e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(id,m.option_id,m.value_id).run();}
+  }
+  for(const x of existing)if(!keep.has(x.options_key))await e.DB.prepare('UPDATE product_variations SET status="Disabled",updated_at=? WHERE id=?').bind(t,x.id).run();
+  const rows=(await q(e,"SELECT * FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at,id",[pid])).results||[];
+  return json({ok:true,count:combos.length,options:os,variations:rows});
+ }
+ if(req.method==='PATCH'){
+  const id=clean(url.pathname.split('/').pop(),120),v=await one(e,'SELECT * FROM product_variations WHERE id=? AND product_id=?',[id,pid]);if(!v)return json({error:'Variation not found.'},404);
+  const status=['Available','Out of Stock','Disabled'].includes(b.status)?b.status:v.status;
+  const hasStock=b.stock!==undefined&&b.stock!==null&&b.stock!=='',stock=hasStock?Math.max(0,Math.floor(Number(b.stock))):Number(v.stock||0);
+  const regular=b.regular_price===undefined?Number(v.regular_price||0):Math.max(0,Number(b.regular_price));
+  const sale=b.sale_price===null||b.sale_price===''?null:(b.sale_price===undefined?v.sale_price:Math.max(0,Number(b.sale_price)));
+  const old=b.old_price===null||b.old_price===''?null:(b.old_price===undefined?v.old_price:Math.max(0,Number(b.old_price)));
+  await e.DB.prepare('UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,image_url=?,status=?,stock_mode=?,low_stock_threshold=?,updated_at=? WHERE id=?').bind(clean(b.sku??v.sku,120),regular, sale, old, stock, clean(b.image_url??v.image_url,2000),status,(status==='Out of Stock'||stock>0)?'tracked':'untracked',Math.max(0,Math.floor(Number(b.low_stock_threshold??v.low_stock_threshold??0))),now(),id).run();
+  if(Array.isArray(b.images)){await e.DB.prepare('DELETE FROM variation_images WHERE variation_id=?').bind(id).run();for(let i=0;i<Math.min(10,b.images.length);i++)await e.DB.prepare('INSERT INTO variation_images(id,variation_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),id,clean(b.images[i],2000),i,now()).run();}
+  return json({ok:true});
+ }
+ if(req.method==='DELETE'){const id=clean(url.pathname.split('/').pop(),120);await e.DB.prepare('UPDATE product_variations SET status="Disabled",updated_at=? WHERE id=? AND product_id=?').bind(now(),id,pid).run();return json({ok:true});}
+ return json({error:'Method not allowed'},405);
+}
 if(p==='/api/vendor/admin/products'&&(req.method==='GET'||req.method==='POST'||req.method==='PATCH'||req.method==='DELETE')){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const u=new URL(req.url),vid=clean(u.searchParams.get('vendor_id'),100);
