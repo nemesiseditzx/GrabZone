@@ -177,12 +177,7 @@ const productForm=(p={},isNew=false)=>{
    <label>Product type<select name="product_type" id="gzmpProductType"><option value="simple" ${!variable?'selected':''}>Simple product</option><option value="variable" ${variable?'selected':''}>Variable product</option></select></label>
    <label>SKU<input name="sku" placeholder="Optional SKU" value="${val(p.sku)}"></label>
    <label>Regular price<input name="price" type="number" min="0" step="0.01" required value="${Number(p.price||0)}"></label>
-   <label>Sale price<input name="sale_price" type="number" min="0" step="0.01" value="${p.sale_price??''}"></label>
    <label>Old price<input name="old_price" type="number" min="0" step="0.01" value="${p.old_price??''}"></label>
-   <label>Stock<input name="stock" type="number" min="0" step="1" value="${Number(p.stock||0)}"></label>
-   <label>Low stock alert<input name="low_stock_threshold" type="number" min="0" value="${Number(p.low_stock_threshold??5)}"></label>
-   <label>Minimum quantity<input name="min_qty" type="number" min="1" value="${Number(p.min_qty??1)}"></label>
-   <label>Maximum quantity<input name="max_qty" type="number" min="1" placeholder="No limit" value="${p.max_qty??''}"></label>
    <label>Published<select name="published"><option value="true" ${Number(p.published)!==0?'selected':''}>Published</option><option value="false" ${Number(p.published)===0?'selected':''}>Draft</option></select></label>
    <label class="full">Short tag<input name="tag" value="${val(p.tag)}"></label>
    <label class="full">Description<textarea name="description" style="min-height:150px">${val(p.description)}</textarea></label>
@@ -201,7 +196,7 @@ const productForm=(p={},isNew=false)=>{
    <div id="gzmpOptionRows"></div>
    <div class="gzmp-var-actions"><button type="button" class="gzmp-btn primary" id="gzmpGenerateVariations">Generate / Update Variations</button><input id="gzmpBulkPrice" type="number" min="0" step="0.01" placeholder="Apply regular price"><button type="button" class="gzmp-btn" id="gzmpApplyPrice">Apply price to all</button></div>
    <div id="gzmpVariationMsg" class="gzmp-note"></div>
-   <div class="gzmp-variation-table-wrap"><table class="gzmp-variation-table"><thead><tr><th>Combination</th><th>SKU</th><th>Regular</th><th>Sale</th><th>Stock</th><th>Status</th><th>Image URL</th></tr></thead><tbody id="gzmpVariationRows"></tbody></table></div>
+   <div class="gzmp-variation-table-wrap"><table class="gzmp-variation-table"><thead><tr><th>Combination</th><th>SKU</th><th>Regular</th><th>Status</th><th>Image URL</th></tr></thead><tbody id="gzmpVariationRows"></tbody></table></div>
    <input type="hidden" id="gzmpVariationsJson">
   </div>
   <div class="gzmp-actions"><button type="button" class="gzmp-btn" data-close>Cancel</button><button type="submit" class="gzmp-btn primary">${isNew?'Create product':'Save product'}</button></div>
@@ -230,13 +225,13 @@ const adminRenderVariations=()=>{
  const body=$('gzmpVariationRows');if(!body)return;
  const rows=adminVariationState;
  if(!rows.length){body.innerHTML='<tr><td colspan="7" class="gzmp-var-empty">No variations yet. Add options and click Generate / Update Variations.</td></tr>';return}
- body.innerHTML=rows.map((v,i)=>{const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(', ');return `<tr data-admin-var="${i}"><td><b>${val(labels||'Variation')}</b></td><td><input data-v="sku" value="${val(v.sku||'')}" placeholder="SKU"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="${v.price??v.regular_price??''}"></td><td><input data-v="sale" type="number" min="0" step="0.01" value="${v.sale_price??''}"></td><td><input data-v="stock" type="number" min="0" step="1" value="${Number(v.stock||0)}"></td><td><select data-v="status"><option ${v.status==='Available'||!v.status?'selected':''}>Available</option><option ${v.status==='Out of Stock'?'selected':''}>Out of Stock</option><option ${v.status==='Disabled'?'selected':''}>Disabled</option></select></td><td><input data-v="image" value="${val(v.image_url||'')}" placeholder="Optional image URL"></td></tr>`}).join('');
+ body.innerHTML=rows.map((v,i)=>{const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(', ');return `<tr data-admin-var="${i}"><td><b>${val(labels||'Variation')}</b></td><td><input data-v="sku" value="${val(v.sku||'')}" placeholder="SKU"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="${v.price??v.regular_price??''}"></td><td><select data-v="status"><option ${v.status==='Available'||!v.status?'selected':''}>Available</option><option ${v.status==='Out of Stock'?'selected':''}>Out of Stock</option><option ${v.status==='Disabled'?'selected':''}>Disabled</option></select></td><td><input data-v="image" value="${val(v.image_url||'')}" placeholder="Optional image URL"></td></tr>`}).join('');
 };
 const adminCollectVariationInputs=()=>{
  document.querySelectorAll('#gzmpVariationRows tr[data-admin-var]').forEach((row,i)=>{
   const get=k=>row.querySelector('[data-v="'+k+'"]')?.value??'';
   const v=adminVariationState[i];if(!v)return;
-  v.sku=get('sku');v.price=get('regular')===''?null:Number(get('regular'));v.sale_price=get('sale')===''?null:Number(get('sale'));v.stock=Math.max(0,Number(get('stock')||0));v.status=get('status')||'Available';v.image_url=get('image');
+  v.sku=get('sku');v.price=get('regular')===''?null:Number(get('regular'));v.status=get('status')||'Available';v.image_url=get('image');
  });
 };
 const adminLoadVariationOptions=(p)=>{
@@ -284,7 +279,8 @@ const openProductEditor=async(p={},isNew=true)=>{
    const files=adminMediaState.files;
    if(files.length){const uploaded=[];for(const file of files)uploaded.push(await uploadAdminImage(file,'product-image',activeVendor));adminMediaState.existing=uploaded;b.image_urls=uploaded;b.image_url=uploaded[adminMediaState.mainIndex]||uploaded[0]}
    else{b.image_urls=adminMediaState.existing.slice(0,10);b.image_url=b.image_url||adminMediaState.existing[0]||''}
-   b.price=Number(b.price||0);b.sale_price=b.sale_price===''?null:Number(b.sale_price);b.old_price=b.old_price===''?null:Number(b.old_price);b.stock=Number(b.stock||0);b.low_stock_threshold=Number(b.low_stock_threshold||0);b.min_qty=Number(b.min_qty||1);b.max_qty=b.max_qty===''?null:Number(b.max_qty);b.published=b.published==='true';b.category_id=b.category_id||null;
+   b.price=Number(b.price||0);b.old_price=b.old_price===''?null:Number(b.old_price);b.published=b.published==='true';b.category_id=b.category_id||null;
+   delete b.sale_price;delete b.stock;delete b.low_stock_threshold;delete b.min_qty;delete b.max_qty;
    if(b.product_type==='variable'){if(!adminVariationState.length)throw Error('Variable product needs generated variations. Add options and click Generate / Update Variations.');b.variations=adminVariationState}else b.variations=[];
    if(!isNew)b.id=p.id;
    const d=await api('/api/vendor/admin/products',{method:isNew?'POST':'PATCH',body:JSON.stringify(b)});
