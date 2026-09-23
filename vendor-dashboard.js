@@ -8,12 +8,91 @@ async function loadDash(){try{const d=await api('/api/vendor/dashboard');$('#ven
 async function loadProducts(){try{const d=await api('/api/vendor/products');state.products=d.products||[];renderProducts()}catch(e){$('#productList').innerHTML='<div style="padding:18px;color:#a11;font-weight:800">'+esc(e.message)+'</div>'}}
 function renderProducts(){const q=($('#productSearch')?.value||'').trim().toLowerCase(),f=$('#productFilter')?.value||'all';let rows=state.products.filter(p=>{const text=[p.name,p.sku,p.category,p.tag].join(' ').toLowerCase();if(q&&!text.includes(q))return false;if(f==='published'&&!p.published)return false;if(f==='hidden'&&p.published)return false;if(f==='low'&&Number(p.stock||0)>5)return false;return true});$('#productList').innerHTML=rows.map(p=>`<div class="gz-product-card"><img src="${esc(p.image_url||'')}" alt=""><div><b>${esc(p.name)}</b><div class="gz-product-meta">${esc(p.category||'No category')} · SKU ${esc(p.sku||'—')}<br>Price <b>${money(p.price)}</b> · Stock <b>${Number(p.stock||0)}</b> · ${p.published?'Published':'Hidden'}${p.tag?' · '+esc(p.tag):''}</div></div><button class="gz-btn light" onclick="editProduct('${esc(p.id)}')">Edit Product</button></div>`).join('')||'<div class="gz-empty" style="padding:18px">No products match your search.</div>'}
 async function loadOrders(){try{const d=await api('/api/vendor/orders');state.orders=d.orders||[];renderOrders()}catch(e){$('#orderList').innerHTML='<div class="gz-card" style="color:#a11;font-weight:800">'+esc(e.message)+'</div>'}}
-function renderOrders(){const q=($('#orderSearch')?.value||'').trim().toLowerCase(),f=$('#orderFilter')?.value||'all';let rows=state.orders.filter(o=>{const text=[o.order_number,o.customer_name,o.phone,o.email,o.status].join(' ').toLowerCase();return(!q||text.includes(q))&&(f==='all'||o.status===f)});$('#orderList').innerHTML=rows.map(o=>`<div class="gz-order-card"><div class="gz-order-head"><div><div style="font-size:11px;color:#777;font-weight:900;letter-spacing:.08em">ORDER</div><h3 style="margin:3px 0">${esc(o.order_number)}</h3><div style="font-size:13px;color:#777">${esc(o.customer_name||'Customer')} · ${esc(o.phone||'')}</div></div><div style="text-align:right"><div class="gz-order-total">${money(o.subtotal)}</div><span class="gz-status">${esc(o.status||'Processing')}</span></div></div><div class="gz-detail"><div style="font-size:12px;color:#777">${(o.items||[]).length} item group(s) · ${(o.shipments||[]).length} shipment(s)</div><div style="margin-top:8px">${(o.items||[]).slice(0,3).map(i=>`<div class="gz-item-row"><span>${esc(i.product_name)} × ${i.quantity}</span><b>${money(i.line_total)}</b></div>`).join('')}</div><div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid #eee;font-size:12px"><span>Customer delivery</span><b>${money(o.delivery_charge??o.shipping_charge??0)}</b></div></div><div class="gz-order-actions"><button class="gz-btn primary" onclick="viewOrder('${esc(o.id)}')">View / Manage Order</button></div></div>`).join('')||'<div class="gz-card"><div class="gz-empty">No orders match your search.</div></div>'}
+function customerCollection(o){
+  const subtotal=Number(o?.subtotal||o?.order_subtotal||0);
+  const delivery=Number(o?.delivery_charge??o?.shipping_charge??0);
+  const fallback=subtotal+delivery;
+  return Number.isFinite(Number(o?.total))?Number(o.total):fallback;
+}
+function renderOrders(){
+  const q=($('#orderSearch')?.value||'').trim().toLowerCase(),f=$('#orderFilter')?.value||'all';
+  let rows=state.orders.filter(o=>{
+    const text=[o.order_number,o.customer_name,o.phone,o.email,o.status].join(' ').toLowerCase();
+    return(!q||text.includes(q))&&(f==='all'||o.status===f)
+  });
+  $('#orderList').innerHTML=rows.map(o=>{
+    const collect=customerCollection(o),delivery=Number(o.delivery_charge??o.shipping_charge??0);
+    return `<div class="gz-order-card">
+      <div class="gz-order-head">
+        <div>
+          <div class="gz-order-kicker">ORDER</div>
+          <h3 style="margin:4px 0">${esc(o.order_number)}</h3>
+          <div class="gz-customer-line">${esc(o.customer_name||'Customer')} · ${esc(o.phone||'')}</div>
+        </div>
+        <div class="gz-collect-mini">
+          <span>Customer to collect</span>
+          <strong>${money(collect)}</strong>
+          <span class="gz-status">${esc(o.status||'Processing')}</span>
+        </div>
+      </div>
+      <div class="gz-detail">
+        <div class="gz-order-summary-row"><span>Products subtotal</span><b>${money(o.subtotal)}</b></div>
+        <div class="gz-order-summary-row"><span>Delivery charge</span><b>+${money(delivery)}</b></div>
+        <div class="gz-order-summary-total"><span>Collect from customer</span><strong>${money(collect)}</strong></div>
+      </div>
+      <div class="gz-detail">
+        <div class="gz-order-meta">${(o.items||[]).length} item group(s) · ${(o.shipments||[]).length} shipment(s)</div>
+        <div style="margin-top:8px">${(o.items||[]).slice(0,3).map(i=>`<div class="gz-item-row"><span>${esc(i.product_name)} × ${i.quantity}</span><b>${money(i.line_total)}</b></div>`).join('')}</div>
+      </div>
+      <div class="gz-order-actions"><button class="gz-btn primary" onclick="viewOrder('${esc(o.id)}')">View / Manage Order</button></div>
+    </div>`
+  }).join('')||'<div class="gz-card"><div class="gz-empty">No orders match your search.</div></div>'
+}
 function openModal(){ $('#modal').classList.add('show') }function closeModal(){ $('#modal').classList.remove('show');$('#productForm').style.display='block';$('#orderBody').innerHTML='' }
 function newProduct(){ $('#modalTitle').textContent='Add Product';$('#productForm').reset();$('#pid').value='';$('#p_published').checked=true;$('#p_image_urls').value='';if($('#productPreview'))$('#productPreview').innerHTML='';$('#orderBody').innerHTML='';openModal() }
 function editProduct(id){const p=state.products.find(x=>x.id===id);if(!p)return;$('#modalTitle').textContent='Edit Product';$('#pid').value=p.id;for(const k of ['name','category','price','old_price','tag','description','sku'])$('#p_'+k).value=p[k]??'';$('#p_stock').value=p.stock??0;$('#p_published').checked=!!p.published;$('#p_image_url').value=p.image_url||'';$('#p_image_urls').value=(p.image_urls||[p.image_url||'']).filter(Boolean).join('\\n');if($('#p_image_files'))$('#p_image_files').value='';previewExisting('productPreview',p.image_url);openModal()}
 $('#productForm').addEventListener('submit',async e=>{e.preventDefault();const id=$('#pid').value;try{const files=[...($('#p_image_files')?.files||[])];if(files.length>10)throw Error('Maximum 10 images per product.');let urls=[];for(const f of files)urls.push(await uploadVendorImage(f,'product'));const existing=($('#p_image_urls').value||'').split('\\n').map(x=>x.trim()).filter(Boolean);urls=[...new Set([...existing,...urls])].slice(0,10);const b={id,name:$('#p_name').value,category:$('#p_category').value,price:$('#p_price').value,old_price:$('#p_old_price').value,stock:$('#p_stock').value,sku:$('#p_sku').value,image_url:urls[0]||$('#p_image_url').value, image_urls:urls,tag:$('#p_tag').value,description:$('#p_description').value,published:$('#p_published').checked};if(!b.image_url)throw Error('Upload at least one product image.');await api('/api/vendor/products',{method:id?'PATCH':'POST',body:JSON.stringify(b)});closeModal();await loadProducts();await loadDash()}catch(x){alert(x.message)}});
-function viewOrder(id){const o=state.orders.find(x=>x.id===id);if(!o)return;$('#modalTitle').textContent=o.order_number+' · Order';$('#productForm').style.display='none';$('#orderBody').innerHTML=`<div class="gz-order"><div class="gz-editor-section"><h3>Customer details</h3><b>${esc(o.customer_name||'Customer')}</b><br><span style="color:#777">Phone: ${esc(o.phone||'—')}</span><br><span style="color:#777">Email: ${esc(o.email||'—')}</span><br><span style="color:#777">Address: ${esc(o.address||'—')}</span><br><span style="color:#777">Area: ${esc(o.upazila||'—')}, ${esc(o.district||'—')}, ${esc(o.division||'—')}</span><div style="margin-top:12px;padding:10px;border-radius:10px;background:#fafaf8"><b>Delivery charge</b><span style="float:right">${money(o.delivery_charge??o.shipping_charge??0)}</span></div></div><div class="gz-editor-section"><h3>Your products in this order</h3>${(o.items||[]).map(i=>`<div class="gz-item-row"><span>${esc(i.product_name)} × ${i.quantity}${i.sku?' · SKU '+esc(i.sku):''}</span><b>${money(i.line_total)}</b></div>`).join('')||'<p style="color:#888">No items found.</p>'}<div style="display:flex;justify-content:space-between;margin-top:12px;font-weight:900"><span>Vendor subtotal</span><span>${money(o.subtotal)}</span></div></div><div class="gz-editor-section"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h3 style="margin:0">Shipments</h3><span class="gz-status">${esc(o.status||'Processing')}</span></div>${(o.shipments||[]).map(s=>`<div style="padding:12px 0;border-bottom:1px solid #eee"><b>${esc(s.courier||'Courier')}</b> · ${esc(s.tracking_id||'Tracking pending')}<br><span class="gz-status">${esc(s.status||'Processing')}</span>${s.tracking_url?' · <a href="'+esc(s.tracking_url)+'" target="_blank" rel="noopener">Track</a>':''}${(s.items||[]).length?'<div style="font-size:12px;color:#666;margin-top:6px">Products: '+s.items.map(i=>esc(i.product_name)+' × '+i.quantity).join(', ')+'</div>':''}</div>`).join('')||'<p style="color:#888">No shipment added yet.</p>'}</div><div class="gz-order-actions"><button class="gz-btn primary" onclick="addShipment('${esc(o.id)}')">+ Add Shipment</button><button class="gz-btn light" onclick="closeModal()">Close</button></div></div>`;openModal()}
+function viewOrder(id){
+  const o=state.orders.find(x=>x.id===id);if(!o)return;
+  const subtotal=Number(o.subtotal||0),delivery=Number(o.delivery_charge??o.shipping_charge??0),collect=customerCollection(o);
+  const difference=collect-(subtotal+delivery);
+  const adjustment=difference<0?'<div class="gz-collect-adjustment">Discounts / adjustments <b>'+money(difference)+'</b></div>':(difference>0?'<div class="gz-collect-adjustment">Additional order charges <b>+'+money(difference)+'</b></div>':'');
+  $('#modalTitle').textContent=o.order_number+' · Order';
+  $('#productForm').style.display='none';
+  $('#orderBody').innerHTML=`
+    <div class="gz-order">
+      <div class="gz-collection-hero">
+        <div><span>AMOUNT TO COLLECT FROM CUSTOMER</span><strong>${money(collect)}</strong><small>Products + delivery, after any order-level adjustments</small></div>
+        <span class="gz-status">${esc(o.status||'Processing')}</span>
+      </div>
+      <div class="gz-editor-section">
+        <div class="gz-section-title"><h3>Customer details</h3><span class="gz-info-badge">COD</span></div>
+        <div class="gz-customer-card">
+          <div class="gz-customer-avatar">${esc((o.customer_name||'C').trim().charAt(0).toUpperCase())}</div>
+          <div><b>${esc(o.customer_name||'Customer')}</b><div>Phone: ${esc(o.phone||'—')}</div><div>Email: ${esc(o.email||'—')}</div><div>Address: ${esc(o.address||'—')}</div><div>Area: ${esc(o.upazila||'—')}, ${esc(o.district||'—')}, ${esc(o.division||'—')}</div></div>
+        </div>
+      </div>
+      <div class="gz-editor-section">
+        <div class="gz-section-title"><h3>Payment collection</h3><span class="gz-status gz-status-money">COD</span></div>
+        <div class="gz-money-lines">
+          <div><span>Products subtotal</span><b>${money(subtotal)}</b></div>
+          <div><span>Delivery charge</span><b>+${money(delivery)}</b></div>
+          ${adjustment}
+          <div class="grand"><span>Customer must pay</span><strong>${money(collect)}</strong></div>
+        </div>
+      </div>
+      <div class="gz-editor-section">
+        <div class="gz-section-title"><h3>Your products in this order</h3><span class="gz-info-badge">${(o.items||[]).length} item group(s)</span></div>
+        ${(o.items||[]).map(i=>`<div class="gz-item-row"><span>${esc(i.product_name)} × ${i.quantity}${i.sku?' · SKU '+esc(i.sku):''}</span><b>${money(i.line_total)}</b></div>`).join('')||'<p style="color:#888">No items found.</p>'}
+      </div>
+      <div class="gz-editor-section">
+        <div class="gz-section-title"><h3>Shipments</h3><span class="gz-status">${esc(o.status||'Processing')}</span></div>
+        ${(o.shipments||[]).map(s=>`<div class="gz-shipment-row"><div><b>${esc(s.courier||'Courier')}</b> · ${esc(s.tracking_id||'Tracking pending')}<br><span class="gz-status">${esc(s.status||'Processing')}</span>${s.tracking_url?' · <a href="'+esc(s.tracking_url)+'" target="_blank" rel="noopener">Track shipment ↗</a>':''}</div></div>`).join('')||'<p class="gz-muted">No shipment added yet.</p>'}
+      </div>
+      <div class="gz-order-actions"><button class="gz-btn primary" onclick="addShipment('${esc(o.id)}')">+ Add Shipment</button><button class="gz-btn light" onclick="closeModal()">Close</button></div>
+    </div>`;
+  openModal()
+}
 function addShipment(voId){const o=state.orders.find(x=>x.id===voId);if(!o)return;$('#productForm').style.display='none';$('#orderBody').innerHTML=`<form id="shipForm" class="gz-form"><div class="gz-editor-section"><h3>Shipment details</h3><div class="gz-two"><div class="gz-field"><label>Courier</label><input id="s_courier" required placeholder="Steadfast"></div><div class="gz-field"><label>Tracking ID</label><input id="s_tracking" required placeholder="STF123456"></div></div><div class="gz-two"><div class="gz-field"><label>Status</label><select id="s_status"><option>Processing</option><option>Picked Up</option><option>In Transit</option><option>Out for Delivery</option><option>Delivered</option><option>Failed</option><option>Returned</option><option>Cancelled</option></select></div><div class="gz-field"><label>Tracking URL</label><input id="s_url" placeholder="https://..."></div></div></div><div class="gz-editor-section"><h3>Products in this shipment</h3><div style="display:grid;gap:8px">${(o.items||[]).map(i=>`<label style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="ship-item" value="${esc(i.order_item_id)}" data-max="${Number(i.quantity||1)}" checked> ${esc(i.product_name)} × ${i.quantity}</label>`).join('')||'<span style="color:#888">No items available.</span>'}</div></div><div class="gz-editor-section"><div class="gz-field"><label>Note</label><textarea id="s_note" rows="3" placeholder="Optional delivery note"></textarea></div></div><div class="gz-order-actions"><button class="gz-btn primary">Save shipment & notify customer</button><button type="button" class="gz-btn light" onclick="viewOrder('${esc(voId)}')">Cancel</button></div></form>`;$('#shipForm').addEventListener('submit',async e=>{e.preventDefault();try{const items=[...document.querySelectorAll('.ship-item:checked')].map(x=>({order_item_id:x.value,quantity:Number(x.dataset.max||1)}));if(!items.length)throw Error('Select at least one product for this shipment.');await api('/api/vendor/shipments',{method:'POST',body:JSON.stringify({vendor_order_id:voId,courier:$('#s_courier').value,tracking_id:$('#s_tracking').value,status:$('#s_status').value,tracking_url:$('#s_url').value,note:$('#s_note').value,items})});closeModal();await loadOrders();await loadDash();alert('Shipment saved and customer notification requested.')}catch(x){alert(x.message)}})}
 async function loadProfile(){try{const d=await api('/api/vendor/profile');const v=d.vendor||{};for(const k of ['business_name','brand_name','phone','accent_color','tagline','description','announcement'])if($('#v_'+k))$('#v_'+k).value=v[k]||'';if($('#v_logo_url'))$('#v_logo_url').value=v.logo_url||'';if($('#v_banner_url'))$('#v_banner_url').value=v.banner_url||'';if($('#v_contact_info'))$('#v_contact_info').value=typeof v.contact_info==='string'?v.contact_info:JSON.stringify(v.contact_info||{},null,2);if($('#v_social_links'))$('#v_social_links').value=typeof v.social_links==='string'?v.social_links:JSON.stringify(v.social_links||{},null,2);previewExisting('logoPreview',v.logo_url);previewExisting('bannerPreview',v.banner_url);await loadSections();await loadVendorSettings()}catch(e){console.error(e)}}
 async function loadSections(){
