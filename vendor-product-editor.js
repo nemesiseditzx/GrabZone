@@ -1,6 +1,8 @@
 (()=>{
 'use strict';
-const MB=1024*1024,MAX=10,MAX_VARIATIONS=200;
+const MB=1024*1024,MAX=10,MAX_VARIATIONS=200;const VP_SIZES=['XS','S','M','L','XL','XXL','3XL'];
+const VP_COLORS=['Black','White','Grey','Brown','Beige','Tan','Cream','Khaki','Off White','Charcoal Black','Light Grey','Camel','Charcoal Grey','Dark Grey','Bronze','Mauve Brown','Mustard Grey','Pale Grey','Peach Beige','Rust Brown','Red','Maroon','Deep Red','Crimson','Rust','Wine','Wine Maroon','Pink','Magenta','Rose','Peach','Light Pink','Mauve Pink','Coral Pink','Dusty Pink','Dusty Rose','Magenta Pink','Raspberry Pink','Purple','Lavender','Mauve','Plum','Deep Purple','Light Purple','Violet','Blue','Sky Blue','Navy Blue','Navy','Light Blue','Denim','Royal Blue','Steel Blue','Dark Navy','Light Blue Denim','Dark Blue Denim','Teal Blue','Cornflower Blue','Dark Teal Blue','Denim Blue','Light Denim Blue','Pale Blue','Slate Blue','Teal','Aqua','Mint Aqua','Teal Green','Aqua Green','Green','Olive','Olive Green','Sage Green','Dark Green','Mint','Mint Green','Sea Green','Light Green','Pale Sage','Lime Green','Pale Mint','Sage','Mint Pista','Yellow','Orange','Mustard','Gold','Mustard Yellow','Pale Yellow','Multi'];
+
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=n=>'৳'+Number(n||0).toLocaleString('en-BD',{maximumFractionDigits:2});
@@ -38,11 +40,11 @@ function build(){
      <div class="vp-gallery" id="vpGallery"></div>
     </div>
     <section id="vpVariationPanel" class="vp-variation-panel" hidden>
-     <div class="vp-var-head"><div><span class="vp-kicker"><i></i> VARIABLE PRODUCT</span><h3>Options & variations</h3><p>Example: Color → Black, White · Size → S, M, L. Generate every exact combination, then set its price, SKU and stock.</p></div><button type="button" class="gz-btn light" id="vpAddOption">＋ Add option</button></div>
-     <div id="vpOptions"></div>
+     <div class="vp-var-head"><div><span class="vp-kicker"><i></i> VARIABLE PRODUCT</span><h3>Options & variations</h3><p>Select Size, Color or custom options, then generate every exact combination.</p></div><button type="button" class="gz-btn light" id="vpAddOption">＋ Add option</button></div>
+     <div class="vp-easy-setup"><b>Easy setup</b><div class="vp-setup-steps"><span>① Select Size values.</span><span>② Select common Colors or add another option.</span><span>③ Generate variations.</span></div></div><div id="vpPresetOptions"></div><div id="vpOptions"></div>
      <div class="vp-var-actions"><button type="button" class="gz-btn primary" id="vpGenerateVariations">Generate / Update Variations</button><input id="vpBulkPrice" type="number" min="0" step="0.01" placeholder="Apply regular price to all"><button type="button" class="gz-btn light" id="vpApplyBulk">Apply price to all</button></div>
      <div id="vpVariationMsg" class="vp-var-msg"></div>
-     <div class="vp-variation-table-wrap"><table class="vp-variation-table"><thead><tr><th>Combination</th><th>SKU</th><th>Regular</th><th>Sale</th><th>Stock</th><th>Status</th><th>Image URL</th><th></th></tr></thead><tbody id="vpVariationRows"></tbody></table></div>
+     <div class="vp-variation-table-wrap"><table class="vp-variation-table"><thead><tr><th>Variation</th><th>SKU</th><th>Regular</th><th>Old</th><th>Status</th><th>Product Image</th><th></th></tr></thead><tbody id="vpVariationRows"></tbody></table></div>
     </section>
     <div class="vp-actions"><button class="gz-btn primary" id="vpSubmit" type="submit">Upload &amp; Save Product</button><button type="button" class="gz-btn light" onclick="resetProductEditor()">Reset</button></div>
    </form>
@@ -68,13 +70,25 @@ function renderMedia(){const preview=$('#vpPreview'),gallery=$('#vpGallery'),not
  const existing=(state.editing?.image_urls||[]).filter(Boolean);if(existing.length){note.textContent='Existing images. Choose new files above to replace the gallery.';existing.forEach((url,i)=>{const item=document.createElement('button');item.type='button';item.className='vp-thumb '+(i===0?'main':'');item.title=i===0?'Current main image':'Current gallery image';const img=document.createElement('img');img.alt='';img.src=url;item.appendChild(img);gallery.appendChild(item)});preview.innerHTML=`<img alt="" src="${esc(existing[0])}"><span class="vp-main-label">MAIN IMAGE</span>`}else{note.textContent='Maximum 10 images · Maximum 1 MB per image.';preview.textContent='No images selected'}}
 async function upload(file){if(file.size>MB)throw Error(`${file.name} is larger than 1 MB.`);const fd=new FormData();fd.append('file',file,file.name);fd.append('scope','products');const r=await fetch('/api/vendor/upload',{method:'POST',credentials:'include',body:fd});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Image upload failed');return d.url}
 function toggleVariationPanel(){const on=$('#vpProductType')?.value==='variable';const panel=$('#vpVariationPanel');if(panel)panel.hidden=!on}
-function addOptionRow(o={name:'',values:[]}){
- const box=$('#vpOptions');if(!box)return;
- const row=document.createElement('div');row.className='vp-option-row';row.innerHTML=`<input class="vp-option-name" placeholder="Option name (e.g. Color)" value="${esc(o.name||'')}"><input class="vp-option-values" placeholder="Values separated by commas (e.g. Black, White)" value="${esc((o.values||[]).join(', '))}"><button type="button" class="gz-btn light vp-remove-option">Remove</button>`;
- row.querySelector('.vp-remove-option').onclick=()=>{row.remove();collectOptionRows()};box.appendChild(row)
+function vpValues(name){return (state.variationOptions.find(x=>x.name.toLowerCase()===name.toLowerCase())||{}).values||[]}
+function vpSet(name,values){const clean=[...new Set(values.map(String).map(x=>x.trim()).filter(Boolean))];state.variationOptions=state.variationOptions.filter(x=>x.name.toLowerCase()!==name.toLowerCase());if(clean.length)state.variationOptions.push({name,values:clean});renderOptionRows()}
+function vpToggle(name,value,checked){const cur=vpValues(name);vpSet(name,checked?cur.concat(value):cur.filter(x=>x!==value))}
+function vpPreset(name,values){
+ const active=new Set(vpValues(name));
+ const chips=values.map(v=>'<label class="vp-chip"><input type="checkbox" data-vp-opt="'+esc(name)+'" value="'+esc(v)+'" '+(active.has(v)?'checked':'')+'><span>'+esc(v)+'</span></label>').join('');
+ return '<div class="vp-preset-card"><div class="vp-preset-head"><b>'+esc(name)+'</b><span>'+values.length+(name==='Color'?' colors':' values')+'</span></div>'+(name==='Color'?'<input class="vp-color-search" placeholder="Search color...">':'')+'<div class="vp-chip-grid">'+chips+'</div>'+(name==='Size'?'<button type="button" class="gz-btn light vp-custom-size">＋ Custom Size</button>':'')+'</div>';
 }
-function collectOptionRows(){state.variationOptions=[...document.querySelectorAll('#vpOptions .vp-option-row')].map(r=>({name:r.querySelector('.vp-option-name')?.value.trim()||'',values:(r.querySelector('.vp-option-values')?.value||'').split(',').map(x=>x.trim()).filter(Boolean)})).filter(x=>x.name&&x.values.length)}
-function renderOptionRows(){const box=$('#vpOptions');if(!box)return;box.innerHTML='';(state.variationOptions.length?state.variationOptions:[]).forEach(addOptionRow)}
+function addOptionRow(o={name:'',values:[]}){const n=o.name.trim();if(!n)return;vpSet(n,o.values||[])}
+function renderOptionRows(){
+ const box=$('#vpPresetOptions');if(!box)return;
+ const custom=state.variationOptions.filter(x=>!['size','color'].includes(x.name.toLowerCase()));
+ box.innerHTML=vpPreset('Size',VP_SIZES)+vpPreset('Color',VP_COLORS)+custom.map(o=>'<div class="vp-preset-card"><div class="vp-preset-head"><b>'+esc(o.name)+'</b></div><div class="vp-chip-grid">'+o.values.map(v=>'<label class="vp-chip"><input type="checkbox" data-vp-opt="'+esc(o.name)+'" value="'+esc(v)+'" checked><span>'+esc(v)+'</span></label>').join('')+'</div></div>').join('');
+ box.querySelectorAll('[data-vp-opt]').forEach(i=>i.onchange=()=>vpToggle(i.dataset.vpOpt,i.value,i.checked));
+ box.querySelectorAll('.vp-color-search').forEach(input=>input.oninput=()=>{const card=input.closest('.vp-preset-card'),q=input.value.toLowerCase();card.querySelectorAll('.vp-chip').forEach(x=>x.style.display=x.textContent.toLowerCase().includes(q)?'inline-flex':'none')});
+ box.querySelectorAll('.vp-custom-size').forEach(btn=>btn.onclick=()=>{const wrap=document.createElement('div');wrap.className='vp-custom-inline';wrap.innerHTML='<input placeholder="e.g. 28"><button type="button" class="gz-btn light">Add</button>';btn.after(wrap);wrap.querySelector('button').onclick=()=>{const v=wrap.querySelector('input').value.trim();if(v)vpSet('Size',vpValues('Size').concat(v))}});
+ const oldAdd=box.querySelector('.vp-add-another');if(!oldAdd){const btn=document.createElement('button');btn.type='button';btn.className='gz-btn light vp-add-another';btn.textContent='＋ Add Another Option';btn.onclick=()=>{const wrap=document.createElement('div');wrap.className='vp-custom-inline';wrap.innerHTML='<input placeholder="Option name"><input placeholder="Values separated by commas"><button type="button" class="gz-btn light">Add</button>';box.appendChild(wrap);wrap.querySelector('button').onclick=()=>{const ins=wrap.querySelectorAll('input'),n=ins[0].value.trim(),vs=ins[1].value.split(',').map(x=>x.trim()).filter(Boolean);if(n&&vs.length)vpSet(n,vs)}};box.appendChild(btn)}
+}
+function collectOptionRows(){}
 async function loadVariations(pid){
  const msg=$('#vpVariationMsg');if(msg)msg.textContent='Loading variations…';
  try{const d=await api('/api/vendor/variations?product_id='+encodeURIComponent(pid));state.variationOptions=(d.options||[]).map(o=>({name:o.name,values:(o.values||[]).map(v=>v.value)}));state.variations=d.variations||[];renderOptionRows();renderVariationRows();if(msg)msg.textContent=state.variations.length?`${state.variations.length} variations loaded.`:'No variations yet. Add options and generate combinations.'}
@@ -89,15 +103,13 @@ async function generateVariations(){
 }
 function renderVariationRows(){
  const body=$('#vpVariationRows');if(!body)return;
- if(!state.variations.length){body.innerHTML='<tr><td colspan="8" class="vp-var-empty">No variations yet. Save the product, add options and click Generate / Update Variations.</td></tr>';return}
- body.innerHTML=state.variations.map(v=>{const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(' · ');return `<tr data-variation-id="${esc(v.id)}"><td><b>${esc(labels||'Variation')}</b></td><td><input data-v="sku" value="${esc(v.sku||'')}"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="${Number(v.regular_price??0)}"></td><td><input data-v="sale" type="number" min="0" step="0.01" value="${v.sale_price==null?'':Number(v.sale_price)}"></td><td><input data-v="stock" type="number" min="0" step="1" value="${Number(v.stock||0)}"></td><td><select data-v="status"><option ${v.status==='Available'?'selected':''}>Available</option><option ${v.status==='Out of Stock'?'selected':''}>Out of Stock</option><option ${v.status==='Disabled'?'selected':''}>Disabled</option></select></td><td><input data-v="image" value="${esc(v.image_url||'')}" placeholder="/api/vendor/media/..."></td><td><button type="button" class="gz-btn light vp-save-variation">Save</button></td></tr>`}).join('');
+ if(!state.variations.length){body.innerHTML='<tr><td colspan="7" class="vp-var-empty">No variations generated yet.</td></tr>';return}
+ body.innerHTML=state.variations.map(v=>{const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(' · ');return '<tr data-variation-id="'+esc(v.id)+'"><td><b>'+esc(labels||'Variation')+'</b></td><td><input data-v="sku" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="'+Number(v.regular_price??0)+'"></td><td><input data-v="old" type="number" min="0" step="0.01" value="'+(v.old_price??'')+'"></td><td><select data-v="status"><option '+(v.status==='Available'||!v.status?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><div class="vp-var-image-cell">'+(v.image_url?'<img src="'+esc(v.image_url)+'" alt="">':'<span>No image</span>')+'<input data-v="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></div></td><td><button type="button" class="gz-btn light vp-save-variation">Save</button></td></tr>'}).join('');
  body.querySelectorAll('.vp-save-variation').forEach(btn=>btn.onclick=saveVariation)
 }
 async function saveVariation(e){
- const row=e.currentTarget.closest('tr'),id=row?.dataset.variationId;if(!id)return;
- const val=k=>row.querySelector('[data-v="'+k+'"]')?.value??'',btn=e.currentTarget;
- btn.disabled=true;
- try{await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({sku:val('sku'),regular_price:Number(val('regular')||0),sale_price:val('sale')===''?null:Number(val('sale')),stock:Number(val('stock')||0),status:val('status'),image_url:val('image')})});btn.textContent='Saved ✓';setTimeout(()=>btn.textContent='Save',900)}catch(err){alert(err.message)}finally{btn.disabled=false}
+ const row=e.currentTarget.closest('tr'),id=row?.dataset.variationId;if(!id)return;const val=k=>row.querySelector('[data-v="'+k+'"]')?.value??'',btn=e.currentTarget;btn.disabled=true;
+ try{let image=state.variations.find(v=>v.id===id)?.image_url||'';const file=row.querySelector('[data-v="file"]')?.files?.[0];if(file)image=await upload(file);await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({sku:val('sku'),regular_price:Number(val('regular')||0),old_price:val('old')===''?null:Number(val('old')),status:val('status'),image_url:image})});const v=state.variations.find(x=>x.id===id);if(v){v.sku=val('sku');v.regular_price=Number(val('regular')||0);v.old_price=val('old')===''?null:Number(val('old'));v.status=val('status');v.image_url=image}renderVariationRows();}catch(err){alert(err.message)}finally{btn.disabled=false}
 }
 async function applyBulkPrice(){
  const price=$('#vpBulkPrice').value;if(price==='')return alert('Enter a regular price first.');
