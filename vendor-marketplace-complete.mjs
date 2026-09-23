@@ -56,7 +56,7 @@ if(p==='/api/vendor/admin/vendor-data'&&req.method==='GET'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const vid=clean(new URL(req.url).searchParams.get('vendor_id'),100);if(!vid)return json({error:'Vendor ID required'},400);
 const v=await one(e,'SELECT * FROM vendors WHERE id=?',[vid]);if(!v)return json({error:'Vendor not found'},404);
-const login=await one(e,'SELECT email,status,role FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[v.id]);v.login_email=login?.email||'';v.login_status=login?.status||'';v.login_exists=!!login;
+const login=await one(e,'SELECT email,status,role FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[v.id]);v.login_email=login?.email||'';v.login_status=login?.status||'';v.login_role=login?.role||'vendor_admin';v.login_exists=!!login;
 const products=(await q(e,'SELECT p.*,v.brand_name vendor_name FROM products p LEFT JOIN vendors v ON v.id=p.vendor_id WHERE p.vendor_id=? ORDER BY p.created_at DESC',[vid])).results||[];
 const orders=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.division,o.district,o.upazila,o.address,o.payment_method,o.subtotal order_subtotal,o.shipping_charge,o.total,o.status order_status,o.created_at order_created_at,v.brand_name FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id JOIN vendors v ON v.id=vo.vendor_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC`,[vid])).results||[];
 for(const o of orders){
