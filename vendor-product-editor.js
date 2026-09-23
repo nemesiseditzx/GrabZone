@@ -112,9 +112,19 @@ function renderVariationRows(){
    const thumbs=productImages.length?productImages.map((url,i)=>'<button type="button" class="vp-var-image-choice '+(selected===url?'selected':'')+'" data-image-url="'+esc(url)+'" title="Use image '+(i+1)+'"><img src="'+esc(url)+'" alt="Product image '+(i+1)+'"><span>'+(i+1)+'</span></button>').join(''):'<span class="vp-no-images">No product images available</span>';
    return '<tr data-variation-id="'+esc(v.id)+'"><td class="vp-var-name"><b>'+esc(labels||'Variation')+'</b></td><td><input data-v="sku" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="'+Number(v.regular_price??0)+'"></td><td><input data-v="old" type="number" min="0" step="0.01" value="'+(v.old_price??'')+'"></td><td><select data-v="status"><option '+(v.status==='Available'||!v.status?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><div class="vp-var-image-picker"><div class="vp-var-image-grid">'+thumbs+'</div><small>Select one of the product images for this variation.</small></div></td><td><button type="button" class="gz-btn light vp-save-variation">Save</button></td></tr>';
  }).join('');
- body.querySelectorAll('.vp-var-image-choice').forEach(btn=>btn.onclick=()=>{
+ body.querySelectorAll('.vp-var-image-choice').forEach(btn=>btn.onclick=async()=>{
    const row=btn.closest('tr'),id=row?.dataset.variationId,url=btn.dataset.imageUrl,v=state.variations.find(x=>String(x.id)===String(id));
-   if(!v)return;v.image_url=url;row.querySelectorAll('.vp-var-image-choice').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');
+   if(!v)return;
+   v.image_url=url;
+   row.querySelectorAll('.vp-var-image-choice').forEach(x=>x.classList.remove('selected'));
+   btn.classList.add('selected');
+   btn.disabled=true;
+   try{
+     await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({image_url:url})});
+     btn.classList.add('saved');
+   }catch(err){
+     btn.classList.remove('selected');alert(err.message);
+   }finally{btn.disabled=false}
  });
  body.querySelectorAll('.vp-save-variation').forEach(btn=>btn.onclick=saveVariation);
 }
