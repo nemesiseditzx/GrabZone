@@ -23,12 +23,7 @@ function build(){
      <div class="vp-field"><label>Product type *</label><select id="vpProductType"><option value="simple">Simple product</option><option value="variable">Variable product</option></select></div>
      <div class="vp-field"><label>SKU</label><input id="vpSku" placeholder="Optional SKU"></div>
      <div class="vp-field"><label>Regular price *</label><input id="vpPrice" type="number" min="0" step="0.01" required placeholder="500"></div>
-     <div class="vp-field"><label>Sale price</label><input id="vpSalePrice" type="number" min="0" step="0.01" placeholder="450"></div>
      <div class="vp-field"><label>Old price</label><input id="vpOldPrice" type="number" min="0" step="0.01" placeholder="700"></div>
-     <div class="vp-field"><label>Stock</label><input id="vpStock" type="number" min="0" step="1" value="0"></div>
-     <div class="vp-field"><label>Low stock alert</label><input id="vpLowStock" type="number" min="0" step="1" value="5"></div>
-     <div class="vp-field"><label>Minimum quantity</label><input id="vpMinQty" type="number" min="1" step="1" value="1"></div>
-     <div class="vp-field"><label>Maximum quantity</label><input id="vpMaxQty" type="number" min="1" step="1" placeholder="No limit"></div>
      <div class="vp-field vp-full"><label>Tag</label><input id="vpTag" placeholder="New / Hot Deal"></div>
      <div class="vp-field vp-full"><label>Description</label><textarea id="vpDescription" rows="4" placeholder="Tell customers what this product does..."></textarea></div>
      <div class="vp-field vp-full vp-publish"><label><input id="vpPublished" type="checkbox" checked> Publish this product on the GrabZone marketplace</label></div>
@@ -54,13 +49,13 @@ function build(){
  $('#vpNewTop').onclick=()=>newProduct();$('#vpCancel').onclick=resetForm;$('#vpRefresh').onclick=loadProducts;$('#vpSearch').oninput=renderProducts;$('#vpFilter').onchange=renderProducts;$('#vpFiles').onchange=handleFiles;$('#vpProductType').onchange=toggleVariationPanel;$('#vpAddOption').onclick=()=>addOptionRow();$('#vpGenerateVariations').onclick=generateVariations;$('#vpApplyBulk').onclick=applyBulkPrice;$('#vpForm').onsubmit=saveProduct;
  resetForm();loadProducts();
 }
-function resetForm(){state.editing=null;state.files=[];state.mainIndex=0;state.variationOptions=[];state.variations=[];$('#vpForm').reset();$('#vpId').value='';$('#vpPublished').checked=true;$('#vpProductType').value='simple';$('#vpLowStock').value=5;$('#vpMinQty').value=1;$('#vpMaxQty').value='';$('#vpFormTitle').textContent='＋ Add new product';$('#vpSubmit').textContent='Upload & Save Product';$('#vpCancel').hidden=true;$('#vpFiles').value='';renderMedia();renderOptionRows();renderVariationRows();toggleVariationPanel();message('')}
+function resetForm(){state.editing=null;state.files=[];state.mainIndex=0;state.variationOptions=[];state.variations=[];$('#vpForm').reset();$('#vpId').value='';$('#vpPublished').checked=true;$('#vpProductType').value='simple';$('#vpFormTitle').textContent='＋ Add new product';$('#vpSubmit').textContent='Upload & Save Product';$('#vpCancel').hidden=true;$('#vpFiles').value='';renderMedia();renderOptionRows();renderVariationRows();toggleVariationPanel();message('')}
 function resetProductEditor(){resetForm();window.scrollTo({top:document.querySelector('#products')?.getBoundingClientRect().top+window.scrollY-20||0,behavior:'smooth'})}
 async function newProduct(){if(!$('#vpForm'))return;resetForm();$('#vpName').focus()}
 async function editProduct(id){
  const p=state.products.find(x=>String(x.id)===String(id));if(!p)return;
  state.editing=p;state.files=[];state.mainIndex=0;
- $('#vpId').value=p.id;$('#vpName').value=p.name||'';$('#vpCategory').value=p.category||'';$('#vpProductType').value=p.product_type==='variable'?'variable':'simple';$('#vpPrice').value=p.price??'';$('#vpSalePrice').value=p.sale_price??'';$('#vpOldPrice').value=p.old_price??'';$('#vpSku').value=p.sku||'';$('#vpStock').value=p.stock??0;$('#vpLowStock').value=p.low_stock_threshold??5;$('#vpMinQty').value=p.min_qty??1;$('#vpMaxQty').value=p.max_qty??'';$('#vpTag').value=p.tag||'';$('#vpDescription').value=p.description||'';$('#vpPublished').checked=!!p.published;
+ $('#vpId').value=p.id;$('#vpName').value=p.name||'';$('#vpCategory').value=p.category||'';$('#vpProductType').value=p.product_type==='variable'?'variable':'simple';$('#vpPrice').value=p.price??'';$('#vpOldPrice').value=p.old_price??'';$('#vpSku').value=p.sku||'';$('#vpTag').value=p.tag||'';$('#vpDescription').value=p.description||'';$('#vpPublished').checked=!!p.published;
  $('#vpFormTitle').textContent='✎ Edit product';$('#vpSubmit').textContent='Save Product Changes';$('#vpCancel').hidden=false;renderMedia();toggleVariationPanel();
  if(p.product_type==='variable'){await loadVariations(p.id)}else{state.variationOptions=[];state.variations=[];renderOptionRows();renderVariationRows()}
  window.scrollTo({top:$('#products').getBoundingClientRect().top+window.scrollY-20,behavior:'smooth'});
@@ -123,7 +118,7 @@ async function saveProduct(e){
   if(state.files.length){if(state.files.length>MAX)throw Error('Maximum 10 images per product.');const uploaded=[];for(const f of state.files)uploaded.push(await upload(f));urls=uploaded;mainUrl=uploaded[state.mainIndex]||uploaded[0]}
   else if(state.editing){urls=(state.editing.image_urls||[]).filter(Boolean);mainUrl=urls[0]||state.editing.image_url||''}
   else throw Error('Please choose at least one product image.');
-  const body={name:$('#vpName').value.trim(),category:$('#vpCategory').value.trim(),price:Number($('#vpPrice').value),sale_price:$('#vpSalePrice').value===''?null:Number($('#vpSalePrice').value),old_price:$('#vpOldPrice').value===''?null:Number($('#vpOldPrice').value),low_stock_threshold:Number($('#vpLowStock').value||0),min_qty:Number($('#vpMinQty').value||1),max_qty:$('#vpMaxQty').value===''?null:Number($('#vpMaxQty').value),product_type:$('#vpProductType').value,sku:$('#vpSku').value.trim(),stock:Number($('#vpStock').value||0),tag:$('#vpTag').value.trim(),description:$('#vpDescription').value,published:$('#vpPublished').checked,image_url:mainUrl,image_urls:urls};
+  const body={name:$('#vpName').value.trim(),category:$('#vpCategory').value.trim(),price:Number($('#vpPrice').value),old_price:$('#vpOldPrice').value===''?null:Number($('#vpOldPrice').value),product_type:$('#vpProductType').value,sku:$('#vpSku').value.trim(),tag:$('#vpTag').value.trim(),description:$('#vpDescription').value,published:$('#vpPublished').checked,image_url:mainUrl,image_urls:urls};
   if(id)body.id=id;
   const d=await api('/api/vendor/products',{method:id?'PATCH':'POST',body:JSON.stringify(body)});
   const productId=id||d.id||d.product?.id;
