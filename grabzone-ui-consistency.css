@@ -1,0 +1,30 @@
+/* GrabZone UI Consistency Layer — visual only. No behavior or layout logic is changed. */
+:root{--gz-orange:#ff6500;--gz-ink:#15181c;--gz-border:#dfe3e8;--gz-muted:#68717b;--gz-soft:#f6f7f9;--gz-radius:10px}
+button:not(.side-link):not(.tab),input,select,textarea{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+button:not(.side-link):not(.tab){
+  appearance:none;-webkit-appearance:none;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:40px;padding:9px 14px;border:1px solid var(--gz-border);border-radius:10px;background:#fff;color:var(--gz-ink);
+  font-size:12px;font-weight:800;line-height:1.1;cursor:pointer;transition:all .16s ease
+}
+button:not(.side-link):not(.tab):hover{border-color:#bfc5cc;background:#f7f8f9;transform:translateY(-1px)}
+button:not(.side-link):not(.tab):focus-visible{outline:3px solid rgba(255,101,0,.14);outline-offset:2px}
+button.primary,button.gz-btn.primary,.primary{background:#11151a;color:#fff;border-color:#11151a;box-shadow:0 4px 12px rgba(17,21,26,.10)}
+button.primary:hover,button.gz-btn.primary:hover,.primary:hover{background:#292e34;border-color:#292e34;color:#fff}
+button.ghost,button.gz-btn.light,.ghost{background:#fff;color:#25282c;border-color:#d8dde2}
+button.danger,.danger{background:#fff1f1;color:#a11;border-color:#efcccc}
+input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea{
+  box-sizing:border-box;width:100%;min-height:40px;padding:9px 11px;border:1px solid var(--gz-border);border-radius:10px;
+  background:#fff;color:var(--gz-ink);font-size:13px;outline:none;transition:border-color .15s,box-shadow .15s
+}
+input:not([type=checkbox]):not([type=radio]):not([type=file]):hover,select:hover,textarea:hover{border-color:#c5cbd2}
+input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,select:focus,textarea:focus{border-color:var(--gz-orange);box-shadow:0 0 0 3px rgba(255,101,0,.09)}
+input[type=checkbox],input[type=radio]{accent-color:var(--gz-orange)}
+input[type=file]{box-sizing:border-box;min-height:40px;padding:7px 9px;border:1px dashed #cfd5dc;border-radius:10px;background:#fafbfc}
+label{color:#454c54}
+table{border-collapse:separate;border-spacing:0}
+th{font-weight:850}
+a:not(.side-link):not(.primary):not(.ghost):not(.gz-btn){text-underline-offset:3px}
+@media(max-width:700px){
+ button:not(.side-link):not(.tab){min-height:42px;padding:10px 12px}
+ input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea{min-height:42px;font-size:14px}
+}
