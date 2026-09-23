@@ -44,3 +44,4 @@
  .vp-var-image-grid{max-width:205px}
  .vp-var-image-choice{width:40px;height:40px}
 }
+.vp-var-image-choice.saved{box-shadow:0 0 0 2px rgba(35,140,75,.22);}
