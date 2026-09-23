@@ -24,7 +24,9 @@ async function api(path,opt={}){const method=(opt.method||'GET').toUpperCase();c
       const products=[];
       for(const p of (data||[])){
         const {data:imgs}=await sb.from('product_images').select('*').eq('product_id',p.id).order('sort_order');
-        products.push({...p,image_urls:(imgs||[]).map(x=>x.image_url).filter(Boolean)});
+        let productType='simple';
+        try{const {data:vars}=await sb.from('product_variations').select('id').eq('product_id',p.id);if((vars||[]).length)productType='variable'}catch{}
+        products.push({...p,product_type:productType,image_urls:(imgs||[]).map(x=>x.image_url).filter(Boolean)});
       }
       return {products};
     }
