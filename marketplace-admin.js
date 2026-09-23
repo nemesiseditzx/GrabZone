@@ -262,6 +262,7 @@ const openProductEditor=async(p={},isNew=true)=>{
   const form=e.currentTarget,btn=form.querySelector('button[type="submit"]');btn.disabled=true;
   try{
    adminCollectVariationInputs();
+   for(const [i,row] of [...document.querySelectorAll('#gzmpVariationRows tr[data-admin-var]')].entries()){const file=row.querySelector('[data-v="file"]')?.files?.[0];if(file)adminVariationState[i].image_url=await uploadAdminImage(file,'product-image',activeVendor);}
    const f=new FormData(form),b=Object.fromEntries(f.entries());delete b.image_url;delete b.image_urls;
    b.vendor_id=activeVendor;
    const files=adminMediaState.files;
