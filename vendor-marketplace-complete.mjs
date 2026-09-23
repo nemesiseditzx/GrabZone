@@ -57,7 +57,7 @@ if(p==='/api/vendor/account/password'){const r=await vendorAccount(req,e);if(r)r
 if(p==='/api/vendor/admin/vendor-data'&&req.method==='GET'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const vid=clean(new URL(req.url).searchParams.get('vendor_id'),100);if(!vid)return json({error:'Vendor ID required'},400);
-const v=await one(e,'SELECT * FROM vendors WHERE id=?',[vid]);if(!v)return json({error:'Vendor not found'},404);
+const v=await one(e,'SELECT * FROM vendors WHERE id=?',[vid]);if(!v)return json({error:'Vendor not found'},404);await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_settings(vendor_id TEXT PRIMARY KEY,show_phone INTEGER NOT NULL DEFAULT 1,show_announcement INTEGER NOT NULL DEFAULT 1,show_contact INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL)').run().catch(()=>{});const vs=await one(e,'SELECT * FROM vendor_settings WHERE vendor_id=?',[v.id]);v.vendor_settings=vs||{vendor_id:v.id,show_phone:1,show_announcement:1,show_contact:1};
 const login=await one(e,'SELECT email,status,role FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[v.id]);v.login_email=login?.email||'';v.login_status=login?.status||'';v.login_role=login?.role||'vendor_admin';v.login_exists=!!login;
 const products=(await q(e,'SELECT p.*,v.brand_name vendor_name FROM products p LEFT JOIN vendors v ON v.id=p.vendor_id WHERE p.vendor_id=? ORDER BY p.created_at DESC',[vid])).results||[];
 const orders=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.division,o.district,o.upazila,o.address,o.payment_method,o.subtotal order_subtotal,o.shipping_charge,o.total,o.status order_status,o.created_at order_created_at,v.brand_name FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id JOIN vendors v ON v.id=vo.vendor_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC`,[vid])).results||[];
@@ -69,6 +69,15 @@ for(const x of items){try{x.variation_options=x.options_json?JSON.parse(x.option
 o.items=items;o.item_count=items.reduce((n,x)=>n+Number(x.quantity||1),0);o.status=o.order_status||o.status;o.shipments=(await q(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[o.order_id,vid])).results||[];for(const sh of o.shipments)sh.status=o.status;
 }
 return json({vendor:v,products,orders});
+}
+if(p==='/api/vendor/admin/vendor-settings'){
+const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+const vid=clean(new URL(req.url).searchParams.get('vendor_id'),100);if(!vid)return json({error:'Vendor ID required'},400);
+if(!(await one(e,'SELECT id FROM vendors WHERE id=?',[vid])))return json({error:'Vendor not found'},404);
+await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_settings(vendor_id TEXT PRIMARY KEY,show_phone INTEGER NOT NULL DEFAULT 1,show_announcement INTEGER NOT NULL DEFAULT 1,show_contact INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL)').run();
+if(req.method==='GET'){const s=await one(e,'SELECT * FROM vendor_settings WHERE vendor_id=?',[vid]);return json({settings:s||{vendor_id:vid,show_phone:1,show_announcement:1,show_contact:1}})}
+if(req.method!=='PATCH')return json({error:'Method not allowed'},405);
+const b=await req.json().catch(()=>({}));await e.DB.prepare('INSERT INTO vendor_settings(vendor_id,show_phone,show_announcement,show_contact,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(vendor_id) DO UPDATE SET show_phone=excluded.show_phone,show_announcement=excluded.show_announcement,show_contact=excluded.show_contact,updated_at=excluded.updated_at').bind(vid,b.show_phone?1:0,b.show_announcement?1:0,b.show_contact?1:0,now()).run();return json({ok:true,settings:await one(e,'SELECT * FROM vendor_settings WHERE vendor_id=?',[vid])});
 }
 if(p==='/api/vendor/admin/settings'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
