@@ -242,8 +242,8 @@ const ensureSecurity=()=>{
   <label>Commission value<input name="commission_value" type="number" min="0" step="0.01" value="${Number(v.commission_value||0)}"></label>
   <label>Homepage visibility<select name="homepage_visible"><option value="true" ${Number(v.homepage_visible)!==0?'selected':''}>Visible</option><option value="false" ${Number(v.homepage_visible)===0?'selected':''}>Hidden</option></select></label>
   <label>Featured<select name="featured"><option value="true" ${Number(v.featured)!==0?'selected':''}>Yes</option><option value="false" ${Number(v.featured)===0?'selected':''}>No</option></select></label>
-  <label class="full">Logo URL<input name="logo_url" value="${val(v.logo_url)}"></label>
-  <label class="full">Banner URL<input name="banner_url" value="${val(v.banner_url)}"></label>
+  <label class="full">Logo URL<input name="logo_url" value="${val(v.logo_url)}"><small class="gzmp-muted">Upload from PC · max 1 MB</small><input name="logo_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label>
+  <label class="full">Banner URL<input name="banner_url" value="${val(v.banner_url)}"><small class="gzmp-muted">Upload from PC · max 1 MB</small><input name="banner_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label>
   <label>Tagline<input name="tagline" value="${val(v.tagline)}"></label>
   <label>Accent color<input name="accent_color" value="${val(v.accent_color)}"></label>
   <label class="full">Description<textarea name="description">${val(v.description)}</textarea></label>
@@ -256,11 +256,12 @@ const ensureSecurity=()=>{
  </div>`;
  const profileForm=$('gzmpSecurityProfile');
  $('gzmpSaveSecurityProfile').onclick=async()=>{
-  const f=new FormData(profileForm),b=Object.fromEntries(f.entries());
+  const f=new FormData(profileForm),b=Object.fromEntries(f.entries());const logoFile=profileForm.querySelector('[name="logo_file"]')?.files?.[0],bannerFile=profileForm.querySelector('[name="banner_file"]')?.files?.[0];delete b.logo_file;delete b.banner_file;
   b.shipping_fee=Number(b.shipping_fee||0);b.commission_value=Number(b.commission_value||0);b.homepage_visible=b.homepage_visible==='true';b.featured=b.featured==='true';
   const loginEmail=b.login_email,newPassword=b.new_password;delete b.login_email;delete b.new_password;
   if(!loginEmail){$('gzmpSecurityProfileMsg').textContent='⚠ Login email is required.';return}
   try{
+   if(logoFile)b.logo_url=await uploadAdminImage(logoFile,'vendor-logo',activeVendor);if(bannerFile)b.banner_url=await uploadAdminImage(bannerFile,'vendor-banner',activeVendor);
    b.contact_info=JSON.parse(b.contact_info||'{}');b.social_links=JSON.parse(b.social_links||'{}');
    await api('/api/vendor/admin/vendors/'+encodeURIComponent(activeVendor),{method:'PATCH',body:JSON.stringify(b)});
    if(!v.login_exists||newPassword){
