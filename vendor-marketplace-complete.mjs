@@ -177,7 +177,23 @@ const id=clean(b.id,100);if(req.method==='PATCH'){await e.DB.prepare('UPDATE ven
 await e.DB.prepare('DELETE FROM vendor_store_sections WHERE id=? AND vendor_id=?').bind(id,vid).run();return json({ok:true});
 }
 if(p==='/api/vendor/admin/reset-password'&&req.method==='POST'){
-const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}const vid=clean(b.vendor_id,100),pass=String(b.password||'');if(!vid||pass.length<8)return json({error:'Vendor ID and password of 8+ characters required.'},400);const u=await one(e,'SELECT id FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[vid]);if(!u)return json({error:'Vendor user not found'},404);const salt=crypto.randomUUID(),hash=await pbkdf(pass,salt);await e.DB.prepare('UPDATE vendor_users SET password_hash=?,password_salt=?,updated_at=? WHERE id=?').bind(hash,salt,now(),u.id).run();return json({ok:true});
+const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
+const vid=clean(b.vendor_id,100),pass=String(b.password||''),loginEmail=clean(b.login_email||b.email,200).toLowerCase();
+if(!vid||pass.length<8)return json({error:'Vendor ID and password of 8+ characters required.'},400);
+if(loginEmail&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(loginEmail))return json({error:'Valid login email is required.'},400);
+const v=await one(e,'SELECT id FROM vendors WHERE id=? OR slug=? LIMIT 1',[vid,vid]);if(!v)return json({error:'Vendor not found'},404);
+const clash=loginEmail?await one(e,'SELECT id,vendor_id FROM vendor_users WHERE lower(email)=lower(?) AND vendor_id<>? LIMIT 1',[loginEmail,v.id]):null;
+if(clash)return json({error:'That login email is already used by another vendor account.'},409);
+const u=await one(e,'SELECT id,email FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[v.id]);
+const salt=crypto.randomUUID(),hash=await pbkdf(pass,salt);
+if(u){
+ await e.DB.prepare('UPDATE vendor_users SET email=?,password_hash=?,password_salt=?,status=\'Active\',updated_at=? WHERE id=?').bind(loginEmail||u.email,hash,salt,now(),u.id).run();
+ return json({ok:true,login_email:loginEmail||u.email,login_created:false});
+}
+if(!loginEmail)return json({error:'Login email is required to create a vendor login.'},400);
+const uid=crypto.randomUUID(),t=now();
+await e.DB.prepare('INSERT INTO vendor_users(id,vendor_id,email,password_hash,password_salt,status,role,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(uid,v.id,loginEmail,hash,salt,'Active','vendor_admin',t,t).run();
+return json({ok:true,login_email:loginEmail,login_created:true});
 }
 if(p==='/api/vendor/admin/products'&&(req.method==='GET'||req.method==='POST'||req.method==='PATCH'||req.method==='DELETE')){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
