@@ -54,6 +54,7 @@ function resetProductEditor(){resetForm();window.scrollTo({top:document.querySel
 async function newProduct(){if(!$('#vpForm'))return;resetForm();$('#vpName').focus()}
 async function editProduct(id){
  const p=state.products.find(x=>String(x.id)===String(id));if(!p)return;
+ if(!state.categories.length)await loadCategories();
  state.editing=p;state.files=[];state.mainIndex=0;
  $('#vpId').value=p.id;$('#vpName').value=p.name||'';$('#vpCategory').value=p.category||'';$('#vpProductType').value=p.product_type==='variable'?'variable':'simple';$('#vpPrice').value=p.price??'';$('#vpOldPrice').value=p.old_price??'';$('#vpSku').value=p.sku||'';$('#vpTag').value=p.tag||'';$('#vpDescription').value=p.description||'';$('#vpPublished').checked=!!p.published;
  $('#vpFormTitle').textContent='✎ Edit product';$('#vpSubmit').textContent='Save Product Changes';$('#vpCancel').hidden=false;renderMedia();toggleVariationPanel();
