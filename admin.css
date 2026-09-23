@@ -130,3 +130,119 @@ input[type=checkbox],input[type=radio]{appearance:auto;width:auto;min-height:aut
 #tab-products .vp-var-image-choice.selected{border-color:#ff650b}
 @media(max-width:950px){.content{padding:28px 24px 50px}}
 @media(max-width:700px){.topbar{height:60px;padding:0 12px}.sidebar{display:none}.content{padding:16px 13px 45px}.page-title h1{font-size:26px}.page-title{align-items:stretch}.panel{padding:15px}}
+
+
+
+/* =========================================================
+   ADMIN PRODUCT EDITOR — BUTTON / CONTROL NORMALIZATION
+   The vendor mirror uses the shared .gz-btn classes. Define
+   them explicitly here so legacy admin CSS cannot fall back
+   to browser-native button rendering.
+========================================================= */
+.gz-btn{
+  box-sizing:border-box !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:7px !important;
+  min-height:40px !important;
+  padding:10px 15px !important;
+  margin:0 !important;
+  border:1px solid transparent !important;
+  border-radius:10px !important;
+  background:#fff !important;
+  color:#17181c !important;
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif !important;
+  font-size:12px !important;
+  font-weight:850 !important;
+  line-height:1 !important;
+  text-decoration:none !important;
+  white-space:nowrap !important;
+  cursor:pointer !important;
+  appearance:none !important;
+  -webkit-appearance:none !important;
+  box-shadow:none !important;
+  transition:background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease !important;
+}
+.gz-btn:hover{transform:translateY(-1px) !important}
+.gz-btn:disabled{opacity:.55 !important;cursor:not-allowed !important;transform:none !important}
+.gz-btn.primary{
+  background:linear-gradient(135deg,#11151a,#292d33) !important;
+  color:#fff !important;
+  border-color:#11151a !important;
+  box-shadow:0 5px 14px rgba(17,21,26,.12) !important;
+}
+.gz-btn.primary:hover{background:#11151a !important;box-shadow:0 7px 18px rgba(17,21,26,.18) !important}
+.gz-btn.light{
+  background:#fff !important;
+  color:#25272b !important;
+  border-color:#d7dbe0 !important;
+  box-shadow:0 2px 5px rgba(17,21,26,.035) !important;
+}
+.gz-btn.light:hover{background:#f6f7f8 !important;border-color:#bcc2c9 !important}
+.gz-btn.danger{
+  background:#fff1f1 !important;
+  color:#a11 !important;
+  border-color:#efcccc !important;
+}
+.gz-btn.wide{width:100% !important}
+
+#tab-products .vp-top .gz-btn,
+#tab-products .vp-title .gz-btn,
+#tab-products .vp-var-head .gz-btn,
+#tab-products .vp-var-actions .gz-btn,
+#tab-products .vp-actions .gz-btn,
+#tab-products .vp-product-card .gz-btn{
+  min-height:40px !important;
+  padding:10px 15px !important;
+}
+
+#tab-products .vp-actions{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:9px !important;
+  flex-wrap:wrap !important;
+  margin-top:16px !important;
+  padding-top:14px !important;
+  border-top:1px solid #edf0f2 !important;
+}
+#tab-products .vp-actions .gz-btn.primary{min-width:165px !important}
+#tab-products .vp-actions .gz-btn.light{min-width:82px !important}
+
+#tab-products .vp-var-actions{
+  display:flex !important;
+  align-items:center !important;
+  gap:8px !important;
+  flex-wrap:wrap !important;
+}
+#tab-products .vp-var-actions input{
+  min-height:40px !important;
+  border-radius:10px !important;
+}
+
+#tab-products .vp-file-button{
+  box-sizing:border-box !important;
+  min-height:40px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border-radius:10px !important;
+  font-weight:850 !important;
+}
+
+#tab-products .vp-custom-inline{
+  align-items:center !important;
+}
+#tab-products .vp-custom-inline .gz-btn{
+  min-height:38px !important;
+  padding:9px 13px !important;
+}
+
+@media(max-width:700px){
+  .gz-btn{min-height:42px !important;padding:11px 13px !important;font-size:12px !important}
+  #tab-products .vp-actions{justify-content:stretch !important}
+  #tab-products .vp-actions .gz-btn{flex:1 1 auto !important}
+  #tab-products .vp-var-actions .gz-btn{width:100% !important}
+  #tab-products .vp-var-actions input{width:100% !important}
+}
