@@ -48,7 +48,7 @@ async function chooseVariant(p,qty=1,mode='add'){
     area.innerHTML=names.map(n=>'<div class="gz-vp-row"><label>'+esc(n)+'</label><div class="gz-vp-values">'+vals(n).map(v=>'<button type="button" data-n="'+esc(n)+'" data-v="'+esc(v)+'">'+esc(v)+'</button>').join('')+'</div></div>').join('');
     area.querySelectorAll('button[data-n]').forEach(b=>b.onclick=()=>{selected[b.dataset.n]=b.dataset.v;refresh()});
     const close=()=>modal.remove();modal.querySelector('.gz-vp-close').onclick=close;modal.querySelector('.gz-vp-cancel').onclick=close;modal.querySelector('.gz-vp-backdrop').onclick=close;
-    go.onclick=()=>{if(!current)return;const n=Math.max(1,Number(qty||1));if(!isAvailable(current)){alert('This variation is unavailable.');return}const price=Number(current.regular_price||0);const item={product_id:p.id,variation_id:current.id,variation_options:current.options||{},name:p.name||'Product',image_url:current.image_url||p.image_url||'',price,unit_price:price,sku:current.sku||'',quantity:n};close();mode==='buy'?checkout([item]):add(item,n)};
+    go.onclick=()=>{if(!current)return;const n=Math.max(1,Number(qty||1));if(!isAvailable(current)){alert('This variation is unavailable.');return}const price=Number(current.sale_price??current.regular_price??0);const item={product_id:p.id,variation_id:current.id,variation_options:current.options||{},name:p.name||'Product',image_url:current.image_url||p.image_url||'',price,unit_price:price,sku:current.sku||'',quantity:n};close();mode==='buy'?checkout([item]):add(item,n)};
     refresh();return true;
   }catch(e){console.warn('GrabZone variation picker:',e);return false}
 }
