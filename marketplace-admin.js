@@ -207,8 +207,44 @@ const openSectionEditor=(s={})=>{
 const renderVendorSecurity=()=>{};
 const ensureSecurity=()=>{
  const pane=$('gzmp-vpane-security');if(!pane)return;
- pane.innerHTML=`<div class="gzmp-card"><h3 class="gzmp-section-title">Vendor login security</h3><p class="gzmp-section-sub">Reset the vendor's login password without needing the current password.</p><form id="gzmpResetPass" class="gzmp-form" style="margin-top:12px"><label>Vendor login email<input name="email" type="email" value="${val(vendorData?.vendor?.login_email||'')}" required><small class="gzmp-muted">This is the email the vendor uses to sign in. Leave blank if no login exists yet; when creating a login, it must be unique.</small></label><label>New password<input name="password" type="password" minlength="8" required placeholder="At least 8 characters"></label><label>Confirm password<input name="confirm" type="password" minlength="8" required></label><div class="full gzmp-actions"><button class="gzmp-btn primary">Reset password</button></div><div id="gzmpResetMsg" class="full gzmp-muted"></div></form></div>`;
- $('gzmpResetPass').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;const f=new FormData(form),p=f.get('password'),c=f.get('confirm');if(p!==c){$('gzmpResetMsg').textContent='Passwords do not match.';return}try{await api('/api/vendor/admin/reset-password',{method:'POST',body:JSON.stringify({vendor_id:activeVendor,email:f.get('email'),password:p})});$('gzmpResetMsg').textContent='Password reset successfully.';$('gzmpResetMsg').style.color='#176b2c';form.reset();const email=form.querySelector('[name="email"]');if(email)email.value=vendorData?.vendor?.login_email||''}catch(err){$('gzmpResetMsg').textContent='⚠ '+err.message;$('gzmpResetMsg').style.color='#a00'}};
+ const v=vendorData?.vendor||{};
+ let social='';try{social=typeof v.social_links==='string'?v.social_links:JSON.stringify(v.social_links||{},null,2)}catch{social='{}'}
+ let contact='';try{contact=typeof v.contact_info==='string'?v.contact_info:JSON.stringify(v.contact_info||{},null,2)}catch{contact='{}'}
+ pane.innerHTML=`<div class="gzmp-list">
+ <div class="gzmp-card"><div class="gzmp-toolbar"><div><h3 class="gzmp-section-title">Login details</h3><p class="gzmp-section-sub">Real backend values for this vendor. Passwords are never stored or displayed in plaintext.</p></div><span class="gzmp-pill ${v.login_exists?'on':'off'}">${v.login_exists?'Login configured':'No login'}</span></div>
+ <div class="gzmp-form" style="margin-top:12px">
+  <label>Vendor ID<input value="${val(v.id)}" readonly></label>
+  <label>Login email<input value="${val(v.login_email||'Not configured')}" readonly></label>
+  <label>Login status<input value="${val(v.login_status||'Not configured')}" readonly></label>
+  <label>Role<input value="${val(v.login_role||'vendor_admin')}" readonly></label>
+  <label class="full">Password<input value="••••••••  (not retrievable)" readonly></label>
+ </div></div>
+ <div class="gzmp-card"><div class="gzmp-toolbar"><div><h3 class="gzmp-section-title">Vendor / store information</h3><p class="gzmp-section-sub">Edit the vendor's real store profile and contact information.</p></div><button class="gzmp-btn primary" id="gzmpSaveSecurityProfile">Save vendor info</button></div>
+ <form id="gzmpSecurityProfile" class="gzmp-form" style="margin-top:12px">
+  <label>Business name<input name="business_name" value="${val(v.business_name)}"></label>
+  <label>Brand / store name<input name="brand_name" value="${val(v.brand_name)}"></label>
+  <label>Store / contact email<input name="email" type="email" value="${val(v.email)}"></label>
+  <label>Phone<input name="phone" value="${val(v.phone)}"></label>
+  <label>Status<select name="status"><option ${v.status==='Active'?'selected':''}>Active</option><option ${v.status==='Suspended'?'selected':''}>Suspended</option></select></label>
+  <label>Shipping fee<input name="shipping_fee" type="number" min="0" value="${Number(v.shipping_fee||0)}"></label>
+  <label>Commission type<select name="commission_type"><option value="percentage" ${v.commission_type==='percentage'?'selected':''}>Percentage</option><option value="fixed" ${v.commission_type==='fixed'?'selected':''}>Fixed</option></select></label>
+  <label>Commission value<input name="commission_value" type="number" min="0" step="0.01" value="${Number(v.commission_value||0)}"></label>
+  <label>Homepage visibility<select name="homepage_visible"><option value="true" ${Number(v.homepage_visible)!==0?'selected':''}>Visible</option><option value="false" ${Number(v.homepage_visible)===0?'selected':''}>Hidden</option></select></label>
+  <label>Featured<select name="featured"><option value="true" ${Number(v.featured)!==0?'selected':''}>Yes</option><option value="false" ${Number(v.featured)===0?'selected':''}>No</option></select></label>
+  <label class="full">Logo URL<input name="logo_url" value="${val(v.logo_url)}"></label>
+  <label class="full">Banner URL<input name="banner_url" value="${val(v.banner_url)}"></label>
+  <label>Tagline<input name="tagline" value="${val(v.tagline)}"></label>
+  <label>Accent color<input name="accent_color" value="${val(v.accent_color)}"></label>
+  <label class="full">Description<textarea name="description">${val(v.description)}</textarea></label>
+  <label class="full">Announcement<textarea name="announcement">${val(v.announcement)}</textarea></label>
+  <label class="full">Contact info JSON<textarea name="contact_info">${val(contact)}</textarea></label>
+  <label class="full">Social links JSON<textarea name="social_links">${val(social)}</textarea></label>
+  <div id="gzmpSecurityProfileMsg" class="full gzmp-muted"></div>
+ </form></div>
+ <div class="gzmp-card"><h3 class="gzmp-section-title">Change login password</h3><p class="gzmp-section-sub">You cannot recover the existing password. Set a new one instead.</p><form id="gzmpResetPass" class="gzmp-form" style="margin-top:12px"><label>Login email<input value="${val(v.login_email||'Not configured')}" readonly></label><label>New password<input name="password" type="password" minlength="8" required placeholder="At least 8 characters"></label><label>Confirm password<input name="confirm" type="password" minlength="8" required></label><div class="full gzmp-actions"><button class="gzmp-btn primary">Set new password</button></div><div id="gzmpResetMsg" class="full gzmp-muted"></div></form></div>
+ </div>`;
+ const profileForm=$('gzmpSecurityProfile');$('gzmpSaveSecurityProfile').onclick=async()=>{const f=new FormData(profileForm),b=Object.fromEntries(f.entries());b.shipping_fee=Number(b.shipping_fee||0);b.commission_value=Number(b.commission_value||0);b.homepage_visible=b.homepage_visible==='true';b.featured=b.featured==='true';try{try{b.contact_info=JSON.parse(b.contact_info||'{}');b.social_links=JSON.parse(b.social_links||'{}')}catch{throw Error('Contact info / social links must be valid JSON.')}await api('/api/vendor/admin/vendors/'+encodeURIComponent(activeVendor),{method:'PATCH',body:JSON.stringify(b)});msg('✓ Vendor information saved.');const d=await api('/api/vendor/admin/vendor-data?vendor_id='+encodeURIComponent(activeVendor));vendorData=d;ensureSecurity()}catch(err){$('gzmpSecurityProfileMsg').textContent='⚠ '+err.message;$('gzmpSecurityProfileMsg').style.color='#a00'}};
+ $('gzmpResetPass').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;const f=new FormData(form),p=f.get('password'),c=f.get('confirm');if(p!==c){$('gzmpResetMsg').textContent='Passwords do not match.';return}try{await api('/api/vendor/admin/reset-password',{method:'POST',body:JSON.stringify({vendor_id:activeVendor,password:p})});$('gzmpResetMsg').textContent='✓ New password saved successfully.';$('gzmpResetMsg').style.color='#176b2c';form.reset()}catch(err){$('gzmpResetMsg').textContent='⚠ '+err.message;$('gzmpResetMsg').style.color='#a00'}};
 };
 const loadAllProducts=async()=>{
  const pane=$('gzmp-pane-products');pane.innerHTML='<div class="gzmp-empty">Loading products…</div>';
