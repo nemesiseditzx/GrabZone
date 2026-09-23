@@ -6,7 +6,7 @@ const VP_COLORS=['Black','White','Grey','Brown','Beige','Tan','Cream','Khaki','O
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=n=>'৳'+Number(n||0).toLocaleString('en-BD',{maximumFractionDigits:2});
-const state={products:[],editing:null,files:[],mainIndex:0,variationOptions:[],variations:[],variationLoading:false};
+const state={products:[],editing:null,files:[],mainIndex:0,variationOptions:[],variations:[],variationLoading:false,categories:[]};
 async function api(path,opt={}){const r=await fetch(path,{credentials:'include',cache:'no-store',...opt,headers:{'Content-Type':'application/json',...(opt.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||`Request failed (${r.status})`);return d}
 function message(text,ok=false){const el=$('#vpMsg');if(!el)return;el.textContent=text||'';el.className='vp-message '+(ok?'ok':'err')}
 function build(){
@@ -19,7 +19,7 @@ function build(){
     <input id="vpId" type="hidden">
     <div class="vp-fields">
      <div class="vp-field"><label>Product name *</label><input id="vpName" required placeholder="Portable Electric Kettle"></div>
-     <div class="vp-field"><label>Category *</label><input id="vpCategory" required placeholder="Smart Gadgets"></div>
+     <div class="vp-field"><label>Category *</label><select id="vpCategory" required><option value="">Select a category</option></select></div>
      <div class="vp-field"><label>Product type *</label><select id="vpProductType"><option value="simple">Simple product</option><option value="variable">Variable product</option></select></div>
      <div class="vp-field"><label>SKU</label><input id="vpSku" placeholder="Optional SKU"></div>
      <div class="vp-field"><label>Regular price *</label><input id="vpPrice" type="number" min="0" step="0.01" required placeholder="500"></div>
@@ -47,7 +47,7 @@ function build(){
   </div>
   <div class="vp-panel"><div class="vp-title"><div><h2>Your products</h2><p>Manage only products belonging to this vendor.</p></div><button class="gz-btn light" id="vpRefresh" type="button">↻ Refresh</button></div><div class="vp-toolbar"><input id="vpSearch" placeholder="Search your products…"><select id="vpFilter"><option value="all">All products</option><option value="published">Published</option><option value="hidden">Hidden</option><option value="low">Low stock</option></select></div><div id="vpProductList" class="vp-product-list"></div></div>`;
  $('#vpNewTop').onclick=()=>newProduct();$('#vpCancel').onclick=resetForm;$('#vpRefresh').onclick=loadProducts;$('#vpSearch').oninput=renderProducts;$('#vpFilter').onchange=renderProducts;$('#vpFiles').onchange=handleFiles;$('#vpProductType').onchange=toggleVariationPanel;$('#vpAddOption').onclick=()=>addOptionRow();$('#vpGenerateVariations').onclick=generateVariations;$('#vpApplyBulk').onclick=applyBulkPrice;$('#vpForm').onsubmit=saveProduct;
- resetForm();loadProducts();
+ resetForm();loadCategories();loadProducts();
 }
 function resetForm(){state.editing=null;state.files=[];state.mainIndex=0;state.variationOptions=[];state.variations=[];$('#vpForm').reset();$('#vpId').value='';$('#vpPublished').checked=true;$('#vpProductType').value='simple';$('#vpFormTitle').textContent='＋ Add new product';$('#vpSubmit').textContent='Upload & Save Product';$('#vpCancel').hidden=true;$('#vpFiles').value='';renderMedia();renderOptionRows();renderVariationRows();toggleVariationPanel();message('')}
 function resetProductEditor(){resetForm();window.scrollTo({top:document.querySelector('#products')?.getBoundingClientRect().top+window.scrollY-20||0,behavior:'smooth'})}
@@ -151,7 +151,7 @@ async function saveProduct(e){
   if(state.files.length){if(state.files.length>MAX)throw Error('Maximum 10 images per product.');const uploaded=[];for(const f of state.files)uploaded.push(await upload(f));urls=uploaded;mainUrl=uploaded[state.mainIndex]||uploaded[0]}
   else if(state.editing){urls=(state.editing.image_urls||[]).filter(Boolean);mainUrl=urls[0]||state.editing.image_url||''}
   else throw Error('Please choose at least one product image.');
-  const body={name:$('#vpName').value.trim(),category:$('#vpCategory').value.trim(),price:Number($('#vpPrice').value),old_price:$('#vpOldPrice').value===''?null:Number($('#vpOldPrice').value),product_type:$('#vpProductType').value,sku:$('#vpSku').value.trim(),tag:$('#vpTag').value.trim(),description:$('#vpDescription').value,published:$('#vpPublished').checked,image_url:mainUrl,image_urls:urls};
+  const body={name:$('#vpName').value.trim(),category:$('#vpCategory').value.trim(),price:Number($('#vpPrice').value),old_price:$('#vpOldPrice').value===''?null:Number($('#vpOldPrice').value),product_type:$('#vpProductType').value,category_id:$('#vpCategory option:checked').dataset.categoryId||'',sku:$('#vpSku').value.trim(),tag:$('#vpTag').value.trim(),description:$('#vpDescription').value,published:$('#vpPublished').checked,image_url:mainUrl,image_urls:urls};
   if(id)body.id=id;
   const d=await api('/api/vendor/products',{method:id?'PATCH':'POST',body:JSON.stringify(body)});
   const productId=id||d.id||d.product?.id;
@@ -169,6 +169,20 @@ async function saveProduct(e){
   }
   await loadProducts();if(typeof window.loadDash==='function')window.loadDash();if(!id){state.editing=d.product||{id:productId,image_urls:urls||[]};$('#vpId').value=productId;$('#vpFormTitle').textContent='✎ Edit product';$('#vpSubmit').textContent='Save Product Changes';$('#vpCancel').hidden=false}
  }catch(err){message(err.message||'Could not save product.')}finally{btn.disabled=false}
+}
+async function loadCategories(){
+ try{
+   const d=await api('/api/vendor/categories');
+   state.categories=Array.isArray(d.categories)?d.categories:[];
+   const sel=$('#vpCategory');if(!sel)return;
+   const current=sel.value;
+   sel.innerHTML='<option value="">Select a category</option>'+state.categories.map(c=>'<option value="'+esc(c.name)+'" data-category-id="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');
+   if(current)sel.value=current;
+   if(!state.categories.length)sel.innerHTML='<option value="">No categories available — ask Admin to add one</option>';
+ }catch(err){
+   const sel=$('#vpCategory');if(sel)sel.innerHTML='<option value="">Could not load categories</option>';
+   console.error('Vendor categories:',err);
+ }
 }
 async function loadProducts(){try{const d=await api('/api/vendor/products');state.products=Array.isArray(d.products)?d.products:[];renderProducts()}catch(err){const list=$('#vpProductList');if(list)list.innerHTML=`<div class="vp-error">${esc(err.message)}</div>`}}
 function renderProducts(){const q=($('#vpSearch')?.value||'').trim().toLowerCase(),f=$('#vpFilter')?.value||'all';const rows=state.products.filter(p=>{const text=[p.name,p.sku,p.category,p.tag].join(' ').toLowerCase();if(q&&!text.includes(q))return false;if(f==='published'&&!p.published)return false;if(f==='hidden'&&p.published)return false;if(f==='low'&&Number(p.stock||0)>5)return false;return true});const list=$('#vpProductList');if(!list)return;list.innerHTML=rows.map(p=>{const imgs=(p.image_urls||[]).filter(Boolean),src=imgs[0]||p.image_url||'';return `<article class="vp-product-card"><div class="vp-card-image">${src?`<img src="${esc(src)}" alt="">`:'<span>No image</span>'}</div><div class="vp-card-info"><h3>${esc(p.name)}</h3><div class="vp-meta">${esc(p.category||'No category')} · SKU ${esc(p.sku||'—')}</div><div class="vp-meta">${p.product_type==='variable'?'Variable':'Simple'} · Price <b>${money(p.price)}</b> · Stock <b>${Number(p.stock||0)}</b> · ${p.published?'Published':'Hidden'}</div><div class="vp-meta">${imgs.length||p.image_url?'📷 '+(imgs.length||1)+' image'+((imgs.length||1)>1?'s':''):'No image'}${p.tag?' · '+esc(p.tag):''}</div></div><button class="gz-btn light vp-edit" type="button" data-id="${esc(p.id)}">Edit Product</button></article>`}).join('')||'<div class="vp-empty">No products match your search.</div>';list.querySelectorAll('.vp-edit').forEach(b=>b.onclick=()=>editProduct(b.dataset.id))}
