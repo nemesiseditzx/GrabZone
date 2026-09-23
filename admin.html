@@ -1864,7 +1864,7 @@ body.gz-gallery-dragging-active{
           <button
             class="primary"
             type="button"
-            onclick="gzOpenProductEditor()"
+            onclick="gzAdminOpenVendorEditor()"
           >
             ✎ Edit Products
           </button>
@@ -3103,6 +3103,11 @@ document.addEventListener("keydown",event=>{
 <script src="admin-animations.js"></script>
 <script src="marketplace-admin.js?v=20260923vendormirror1"></script>
 <script src="admin-product-editor-mirror.js?v=20260923mirror1"></script>
+<script>
+/* Admin Products must use the exact vendor product/variation editor. */
+window.gzOpenProductEditor = function(){ if(window.gzAdminOpenVendorEditor) window.gzAdminOpenVendorEditor(); };
+window.gzSelectProduct = function(id){ if(window.gzAdminOpenVendorEdit && id) window.gzAdminOpenVendorEdit(id); };
+</script>
 <script src="payment-admin.js?v=20260902authfix4"></script>
 <script src="orders-admin.js?v=20260902authfix4"></script>
 <script src="tracking-admin.js?v=20260902authfix5"></script>
