@@ -223,8 +223,19 @@ const adminCartesian=(options)=>{
 };
 const adminRenderVariations=()=>{
  const body=document.getElementById('gzmpVariationRows');if(!body)return;
- if(!adminVariationState.length){body.innerHTML='<tr><td colspan="7" class="gzmp-var-empty">No variations generated yet.</td></tr>';return}
- body.innerHTML=adminVariationState.map((v,i)=>{const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(', ');return '<tr data-admin-var="'+i+'"><td><b>'+esc(labels||'Variation')+'</b></td><td><input data-v="sku" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" type="number" value="'+(v.price??v.regular_price??'')+'"></td><td><input data-v="old" type="number" value="'+(v.old_price??'')+'"></td><td><select data-v="status"><option '+(v.status==='Available'||!v.status?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><div class="gzmp-var-image"><img src="'+esc(v.image_url||'')+'" alt="" '+(v.image_url?'':'style="display:none"')+'><input data-v="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></div></td><td></td></tr>'}).join('');
+ if(!adminVariationState.length){body.innerHTML='<tr><td colspan="6" class="gzmp-var-empty">No variations generated yet.</td></tr>';return}
+ const images=(adminMediaState.files.length?adminMediaState.files.map(f=>URL.createObjectURL(f)):adminMediaState.existing).filter(Boolean);
+ body.innerHTML=adminVariationState.map((v,i)=>{
+  const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(', ');
+  const selected=v.image_url||'';
+  const thumbs=images.length?images.map((url,j)=>'<button type="button" class="gzmp-var-image-choice '+(selected===url?'selected':'')+'" data-admin-var-image="'+i+'" data-image-url="'+esc(url)+'" title="Use product image '+(j+1)+'"><img src="'+esc(url)+'" alt=""><span>'+(j+1)+'</span></button>').join(''):'<span class="gzmp-note">Add product images above first.</span>';
+  return '<tr data-admin-var="'+i+'"><td><b>'+esc(labels||'Variation')+'</b></td><td><input data-v="sku" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="'+(v.price??v.regular_price??'')+'"></td><td><input data-v="old" type="number" min="0" step="0.01" value="'+(v.old_price??'')+'"></td><td><select data-v="status"><option '+(v.status==='Available'||!v.status?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><div class="gzmp-var-image-picker"><div class="gzmp-var-image-grid">'+thumbs+'</div><small>Select one existing product image.</small></div></td></tr>';
+ }).join('');
+ body.querySelectorAll('[data-admin-var-image]').forEach(btn=>btn.onclick=()=>{
+  const i=Number(btn.dataset.adminVarImage),v=adminVariationState[i];if(!v)return;
+  v.image_url=btn.dataset.imageUrl;
+  const row=btn.closest('tr');row?.querySelectorAll('[data-admin-var-image]').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');
+ });
 };
 const adminCollectVariationInputs=()=>{document.querySelectorAll('#gzmpVariationRows tr[data-admin-var]').forEach((row,i)=>{const get=k=>row.querySelector('[data-v="'+k+'"]')?.value??'';const v=adminVariationState[i];if(!v)return;v.sku=get('sku');v.price=get('regular')===''?null:Number(get('regular'));v.old_price=get('old')===''?null:Number(get('old'));v.status=get('status')||'Available';});};
 const adminLoadVariationOptions=(p)=>{
