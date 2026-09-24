@@ -340,7 +340,7 @@ async function openEditor(id){
  const base=orders.find(x=>x.id===id);if(!base)return;
  const {data:items,error}=await sb.from('order_items').select('*').eq('order_id',id).order('id');
  if(error){gzUiToast(error.message,'error');return}
- const enrichedItems=Array.isArray(items)?items.map(x=>({...x})):[];
+ const enrichedItems=Array.isArray(items)?items.map(x=>{const item={...x};if(typeof item.variation_options==='string'){try{item.variation_options=JSON.parse(item.variation_options||'{}')}catch{item.variation_options={}}}if(!item.variation_options||typeof item.variation_options!=='object'||Array.isArray(item.variation_options))item.variation_options={};return item}):[];
  const pids=[...new Set(enrichedItems.map(x=>String(x.product_id||'').trim()).filter(Boolean))];
  if(pids.length){
    const pr=await sb.from('products').select('id,vendor_id').in('id',pids);
@@ -383,8 +383,8 @@ async function openEditor(id){
  $('gzOrderEditorMsg').textContent=''; $('gzOrderModal').classList.add('open');document.body.style.overflow='hidden';
 }
 
-function itemRow(it,i){var vo=it.variation_options&&typeof it.variation_options==='object'?Object.entries(it.variation_options).map(([k,v])=>k+': '+v).join(' · '):'';var vendor=it.vendor_name||'GrabZone / Unassigned';return`<div class="gz-item-edit" data-item-index="${i}">
- <div class="gz-item-product"><div class="gz-item-product-name"><input class="it-name" placeholder="Product name" value="${esc(it.product_name)}"></div><span class="gz-vendor-badge">🏪 ${esc(vendor)}</span><small>${vo?esc(vo):'No variation selected'}${it.variation_sku||it.sku?' · SKU: '+esc(it.variation_sku||it.sku):''}</small></div>
+function itemRow(it,i){var vo=it.variation_options&&typeof it.variation_options==='object'?Object.entries(it.variation_options).map(([k,v])=>k+': '+v).join(' · '):'';var vendor=it.vendor_name||'GrabZone (Platform)';var variationText=vo||it.variation_id?'Variation: '+(vo||'Selected'):'No variation';return`<div class="gz-item-edit" data-item-index="${i}">
+ <div class="gz-item-product"><div class="gz-item-product-name"><input class="it-name" placeholder="Product name" value="${esc(it.product_name)}"></div><span class="gz-vendor-badge">🏪 ${esc(vendor)}</span><small>${esc(variationText)}${it.variation_sku||it.sku?' · SKU: '+esc(it.variation_sku||it.sku):''}</small></div>
  <input class="it-qty" type="number" min="1" value="${Math.max(1,Number(it.quantity||1))}">
  <input class="it-price" type="number" step="1" min="0" value="${Number(it.unit_price||0)}">
  <div class="gz-item-line-total">${money(Number(it.quantity||1)*Number(it.unit_price||0))}</div>
