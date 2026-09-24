@@ -19,7 +19,7 @@ function formatBdDateTime(value){
 async function loadOrderVendorContext(){
   orderVendorMap=new Map(); productVendorMap=new Map(); vendorNameMap=new Map(); vendorShippingMap=new Map(); orderFinancialMap=new Map(); globalShippingFee=130;
   try{
-    const itemRes=await sb.from('order_items').select('order_id,product_id,product_name,vendor_id,quantity,unit_price,line_total');
+    const itemRes=await sb.from('order_items').select('id,order_id,product_id,product_name,vendor_id,quantity,unit_price,line_total');
     if(itemRes.error)throw itemRes.error;
     const itemRows=Array.isArray(itemRes.data)?itemRes.data:[];
     const productIds=[...new Set(itemRows.map(x=>String(x.product_id||'').trim()).filter(Boolean))];
@@ -40,14 +40,16 @@ async function loadOrderVendorContext(){
       ...itemRows.map(x=>String(x.vendor_id||productVendorMap.get(String(x.product_id||''))||'').trim()),
       ...vendorOrderRows.map(x=>String(x.vendor_id||'').trim())
     ].filter(Boolean))];
-    if(vendorIds.length){
-      const vr=await sb.from('vendors').select('id,brand_name,business_name,slug,shipping_fee').in('id',vendorIds);
-      if(!vr.error)for(const v of (Array.isArray(vr.data)?vr.data:[])){
-        const vid=String(v.id);
-        vendorNameMap.set(vid,String(v.brand_name||v.business_name||v.slug||'Vendor'));
-        const fee=Number(v.shipping_fee);
-        vendorShippingMap.set(vid,Number.isFinite(fee)&&fee>=0?fee:130);
-      }
+    // Load the vendor directory once instead of filtering it with an IN query.
+    // This keeps historical vendor orders resolvable and guarantees we can show
+    // the real shop/brand name stored on the vendor record.
+    const vr=await sb.from('vendors').select('*');
+    if(!vr.error)for(const v of (Array.isArray(vr.data)?vr.data:[])){
+      const vid=String(v.id||'').trim(); if(!vid)continue;
+      const shopName=String(v.brand_name||v.business_name||v.store_name||v.shop_name||v.name||v.slug||'').trim();
+      vendorNameMap.set(vid,shopName||('Vendor '+vid.slice(0,8)));
+      const fee=Number(v.shipping_fee);
+      vendorShippingMap.set(vid,Number.isFinite(fee)&&fee>=0?fee:130);
     }
     const vendorOrderById=new Map(vendorOrderRows.map(x=>[String(x.id),x]));
     const itemVendorMap=new Map();
@@ -77,12 +79,17 @@ async function loadOrderVendorContext(){
         const seen=new Set();
         for(const row of routed){
           const vid=String(row.vendor_id||''); if(seen.has(vid))continue; seen.add(vid);
-          const fee=Number(row.shipping_fee??row.delivery_charge??0);
-          breakdown.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||'Vendor',shipping:Number.isFinite(fee)&&fee>=0?fee:0});
+          // Never recalculate a placed order from today's vendor settings.
+          // The vendor_order shipping value is the charge captured for that
+          // vendor when the customer invoice/order was created.
+          const savedShipping=Number(row.shipping_fee);
+          const savedDelivery=Number(row.delivery_charge);
+          const fee=Number.isFinite(savedShipping)&&savedShipping>=0?savedShipping:(Number.isFinite(savedDelivery)&&savedDelivery>=0?savedDelivery:0);
+          breakdown.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||('Vendor '+vid.slice(0,8)),shipping:fee});
         }
       }else{
         const vids=[...new Set(rows.map(x=>String(x.vendor_id||productVendorMap.get(String(x.product_id||''))||'').trim()).filter(Boolean))];
-        for(const vid of vids)breakdown.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||'Vendor',shipping:Number(vendorShippingMap.get(vid)??130)});
+        for(const vid of vids)breakdown.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||('Vendor '+vid.slice(0,8)),shipping:Number(vendorShippingMap.get(vid)??130)});
         if(!vids.length)breakdown.push({vendor_id:'',vendor_name:'GrabZone (Platform)',shipping:globalShippingFee});
       }
       const shipping=breakdown.reduce((n,x)=>n+Number(x.shipping||0),0);
