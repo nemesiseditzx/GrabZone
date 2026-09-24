@@ -88,9 +88,9 @@ async function loadOrderVendorContext(){
           breakdown.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||('Vendor '+vid.slice(0,8)),shipping:fee});
         }
       }else{
-        const vids=[...new Set(rows.map(x=>String(x.vendor_id||productVendorMap.get(String(x.product_id||''))||'').trim()).filter(Boolean))];
-        for(const vid of vids)breakdown.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||('Vendor '+vid.slice(0,8)),shipping:Number(vendorShippingMap.get(vid)??130)});
-        if(!vids.length)breakdown.push({vendor_id:'',vendor_name:'GrabZone (Platform)',shipping:globalShippingFee});
+        const storedOrder=orders.find(x=>String(x.id)===oid);
+        const storedShipping=Number(storedOrder?.shipping_charge);
+        if(Number.isFinite(storedShipping)&&storedShipping>=0)breakdown.push({vendor_id:'',vendor_name:'Customer invoice delivery charge',shipping:storedShipping});
       }
       const shipping=breakdown.reduce((n,x)=>n+Number(x.shipping||0),0);
       orderFinancialMap.set(oid,{shipping,breakdown});
@@ -428,7 +428,7 @@ async function openEditor(id){
  <label>Email Address<input id="oeEmail" type="email" value="${esc(current.email)}"></label><label>Status<select id="oeStatus">${statuses.map(s=>`<option ${s===current.status?'selected':''}>${s}</option>`).join('')}</select></label>
  <label>Division<input id="oeDivision" value="${esc(current.division)}"></label><label>District<input id="oeDistrict" value="${esc(current.district)}"></label>
  <label>Thana<input id="oeUpazila" value="${esc(current.upazila||'')}"></label><label>Referral Code<input id="oeReferral" value="${esc(current.referral_code||'')}"></label>
- <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label><div class="gz-order-full" style="padding:13px 14px;border:1px solid #e4e4df;border-radius:12px;background:#fafaf8"><div style="font-size:10px;font-weight:900;letter-spacing:.08em;color:#777">CUSTOMER ORDER HISTORY</div><div style="margin-top:6px;font-size:12px;font-weight:800">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).length} order(s) linked to this phone number</div><div style="margin-top:7px;color:#666;font-size:11px;line-height:1.8">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).slice(0,8).map(x=>{const f=orderFinancialMap.get(String(x.id));const total=Math.max(0,Number(x.subtotal||0)+Number(f?.shipping??x.shipping_charge??0)-Number(x.referral_discount||0)-Number(x.rewards_voucher_discount||0)-Number(x.mystery_discount||0));return esc(x.order_number)+' · '+esc(x.status)+' · '+money(total)}).join('<br>')||'No other orders found.'}</div></div>
+ <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label><div class="gz-order-full" style="padding:13px 14px;border:1px solid #e4e4df;border-radius:12px;background:#fafaf8"><div style="font-size:10px;font-weight:900;letter-spacing:.08em;color:#777">CUSTOMER ORDER HISTORY</div><div style="margin-top:6px;font-size:12px;font-weight:800">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).length} order(s) linked to this phone number</div><div style="margin-top:7px;color:#666;font-size:11px;line-height:1.8">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).slice(0,8).map(x=>{const total=Number(x.total||0);return esc(x.order_number)+' · '+esc(x.status)+' · '+money(total)}).join('<br>')||'No other orders found.'}</div></div>
  <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" min="0" value="${Number(current.shipping_charge??0)}" readonly></label>
  <div class="gz-order-full gz-shipping-breakdown"><div class="gz-shipping-title">DELIVERY CHARGE BY FULFILLMENT SOURCE</div><div id="oeShippingBreakdown"></div><small>Each vendor is charged separately. The order shipping total is the sum of these delivery charges.</small></div>
  <label>Referral Discount<input id="oeDiscount" type="number" step="0.01" min="0" value="${Number(current.referral_discount||0)}"></label>
