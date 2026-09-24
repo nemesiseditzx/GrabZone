@@ -73,25 +73,69 @@ async function loadOrderVendorContext(){
       const arr=vendorOrderByOrder.get(oid)||[]; arr.push(row); vendorOrderByOrder.set(oid,arr);
     }
     for(const [oid,rows] of itemByOrder){
-      const breakdown=[];
+      const storedOrder=orders.find(x=>String(x.id)===oid)||{};
+      const storedShipping=Number(storedOrder.shipping_charge);
       const routed=vendorOrderByOrder.get(oid)||[];
-      if(routed.length){
-        const seen=new Set();
-        for(const row of routed){
-          const vid=String(row.vendor_id||''); if(seen.has(vid))continue; seen.add(vid);
-          // Never recalculate a placed order from today's vendor settings.
-          // The vendor_order shipping value is the charge captured for that
-          // vendor when the customer invoice/order was created.
-          const savedShipping=Number(row.shipping_fee);
-          const savedDelivery=Number(row.delivery_charge);
-          const fee=Number.isFinite(savedShipping)&&savedShipping>=0?savedShipping:(Number.isFinite(savedDelivery)&&savedDelivery>=0?savedDelivery:0);
-          breakdown.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||('Vendor '+vid.slice(0,8)),shipping:fee});
-        }
-      }else{
-        const storedOrder=orders.find(x=>String(x.id)===oid);
-        const storedShipping=Number(storedOrder?.shipping_charge);
-        if(Number.isFinite(storedShipping)&&storedShipping>=0)breakdown.push({vendor_id:'',vendor_name:'Customer invoice delivery charge',shipping:storedShipping});
+      const vendorIds=[...new Set([
+        ...routed.map(x=>String(x.vendor_id||'').trim()),
+        ...rows.map(x=>String(x.vendor_id||productVendorMap.get(String(x.product_id||''))||'').trim())
+      ].filter(Boolean))];
+
+      // A placed order must display the same delivery amount the customer was
+      // charged. Use the vendor-order snapshot when it exactly matches that
+      // invoice amount. If an older routed order has lost its per-vendor
+      // shipping snapshot (for example both vendor rows are 0), reconstruct
+      // the vendor lines from the vendor fees while keeping one authoritative
+      // order-level shipping total.
+      const snapshot=[];
+      const seen=new Set();
+      for(const row of routed){
+        const vid=String(row.vendor_id||''); if(seen.has(vid))continue; seen.add(vid);
+        const fee=Number(row.shipping_fee);
+        const delivery=Number(row.delivery_charge);
+        const value=Number.isFinite(fee)&&fee>=0?fee:(Number.isFinite(delivery)&&delivery>=0?delivery:0);
+        snapshot.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||('Vendor '+vid.slice(0,8)),shipping:value});
       }
+      const snapshotTotal=snapshot.reduce((n,x)=>n+Number(x.shipping||0),0);
+
+      if(snapshot.length && snapshotTotal>0 && Number.isFinite(storedShipping) && storedShipping>=0 && Math.abs(snapshotTotal-storedShipping)<=0.009){
+        orderFinancialMap.set(oid,{shipping:storedShipping,breakdown:snapshot});
+        continue;
+      }
+
+      const currentFees=vendorIds.map(vid=>({
+        vendor_id:vid,
+        vendor_name:vendorNameMap.get(vid)||('Vendor '+vid.slice(0,8)),
+        shipping:Math.max(0,Number(vendorShippingMap.get(vid)??130))
+      }));
+      const currentFeeTotal=currentFees.reduce((n,x)=>n+Number(x.shipping||0),0);
+
+      let invoiceShipping=Number.isFinite(storedShipping)&&storedShipping>0?storedShipping:0;
+      if(invoiceShipping<=0 && currentFeeTotal>0 && vendorIds.length) invoiceShipping=currentFeeTotal;
+
+      let breakdown=[];
+      if(vendorIds.length && invoiceShipping>0){
+        const weights=currentFees.reduce((n,x)=>n+Number(x.shipping||0),0);
+        let allocated=0;
+        breakdown=currentFees.map((x,index)=>{
+          let value;
+          if(index===currentFees.length-1){
+            value=Math.max(0,invoiceShipping-allocated);
+          }else{
+            value=weights>0
+              ?Math.round((invoiceShipping*(Number(x.shipping||0)/weights))*100)/100
+              :Math.round((invoiceShipping/currentFees.length)*100)/100;
+            value=Math.max(0,value);
+          }
+          allocated+=value;
+          return {...x,shipping:value};
+        });
+      }else if(invoiceShipping>0){
+        breakdown=[{vendor_id:'',vendor_name:'Customer invoice',shipping:invoiceShipping}];
+      }else{
+        breakdown=[];
+      }
+
       const shipping=breakdown.reduce((n,x)=>n+Number(x.shipping||0),0);
       orderFinancialMap.set(oid,{shipping,breakdown});
     }
