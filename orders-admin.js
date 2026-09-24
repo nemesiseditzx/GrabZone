@@ -224,13 +224,21 @@ async function loadOrders(){
    }
    orders=Array.isArray(data)?data:[];
    await loadOrderVendorContext();
-   // Customer invoice values are authoritative. Do not recalculate or
-   // rewrite shipping/total from current vendor settings when the admin only
-   // opens the Orders page.
+   // Recalculate every order from its product subtotal + one delivery charge per vendor.
+   // vendor_orders is authoritative after routing; otherwise use the current vendor shipping settings.
    for(const order of orders){
-     const ship=Number(order.shipping_charge||0);
-     const safeShip=Number.isFinite(ship)&&ship>=0?ship:0;
-     orderFinancialMap.set(String(order.id),{shipping:safeShip,breakdown:[{vendor_id:'',vendor_name:'Customer invoice',shipping:safeShip}]});
+     const sub=Number(order.subtotal||0);
+     const f=orderFinancialMap.get(String(order.id));
+     const ship=Number(f?.shipping??order.shipping_charge??globalShippingFee);
+     const referral=Number(order.referral_discount||0), gp=Number(order.rewards_voucher_discount||0), mystery=Number(order.mystery_discount||0);
+     const correctDiscount=Math.max(0,referral+gp+mystery);
+     const correctTotal=Math.max(0,sub+ship-correctDiscount);
+     const shippingChanged=Math.abs(Number(order.shipping_charge??0)-ship)>0.009;
+     const totalChanged=Math.abs(Number(order.total||0)-correctTotal)>0.009;
+     if(shippingChanged||Math.abs(Number(order.discount_amount||0)-correctDiscount)>0.009||totalChanged){
+       order.shipping_charge=ship; order.discount_amount=correctDiscount; order.total=correctTotal;
+       try{await sb.from('orders').update({shipping_charge:ship,discount_amount:correctDiscount,total:correctTotal,updated_at:new Date().toISOString()}).eq('id',order.id);}catch(e){console.warn('Order financial normalization:',e)}
+     }
    }
    // Backfill private customer-facing tracking IDs for older orders.
    for(const order of orders){
@@ -408,8 +416,8 @@ async function openEditor(id){
    item.vendor_name=vendorNameMap.get(item.vendor_id)||'Vendor';
  }
  const financial=orderFinancialMap.get(String(id));
- current={...base,items:enrichedItems,shipping_charge:Number(financial?.shipping??base.shipping_charge??0)};
- current.total=Number(base.total||0);
+ current={...base,items:enrichedItems,shipping_charge:Number(financial?.shipping??base.shipping_charge??globalShippingFee)};
+ current.total=Math.max(0,Number(current.subtotal||0)+Number(current.shipping_charge||0)-Number(current.referral_discount||0)-Number(current.rewards_voucher_discount||0)-Number(current.mystery_discount||0));
  $('gzOrderEditorTitle').textContent=current.order_number;
  $('gzOrderSendBk').disabled=current.status!=='Confirmed'||!!current.business_koro_sent_at;
  $('gzOrderEditorSub').textContent=`Placed ${current.created_at?formatBdDateTime(current.created_at):'—'} · Last updated ${current.updated_at?formatBdDateTime(current.updated_at):'—'}`;
@@ -436,7 +444,7 @@ async function openEditor(id){
  const renderShippingBreakdown=()=>{
    const box=$('oeShippingBreakdown'); if(!box)return;
    const f=orderFinancialMap.get(String(current.id)),rows=f?.breakdown||[];
-   box.innerHTML=rows.length?rows.map(x=>'<div class="gz-shipping-row"><span>'+esc(x.vendor_name||'Customer invoice')+'</span><b>'+money(x.shipping)+'</b></div>').join(''):'<div class="gz-shipping-row"><span>Customer invoice</span><b>'+money(current.shipping_charge||0)+'</b></div>';
+   box.innerHTML=rows.length?rows.map(x=>'<div class="gz-shipping-row"><span>'+esc(x.vendor_name||'Vendor')+'</span><b>'+money(x.shipping)+'</b></div>').join(''):'<div class="gz-shipping-row"><span>Delivery charge</span><b>'+money(current.shipping_charge||0)+'</b></div>';
  };
  $('oeAddItem').onclick=()=>{current.items.push({id:null,product_id:null,product_name:'',image_url:'',quantity:1,unit_price:0});renderItemEditor();updatePreview()};
  renderShippingBreakdown();
@@ -485,7 +493,7 @@ async function saveEditor(){
  payload.phone=payload.phone.replace(/\D/g,'');
  payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);
  const financial=orderFinancialMap.get(String(current.id));
- payload.shipping_charge=Number(current.shipping_charge||0);
+ payload.shipping_charge=Number(financial?.shipping??$('oeShipping').value??current.shipping_charge??globalShippingFee);
   const preservedVoucherDiscount=Number(current.rewards_voucher_discount||0),preservedMysteryDiscount=Number(current.mystery_discount||0);
   payload.discount_amount=Math.max(0,payload.referral_discount+preservedVoucherDiscount+preservedMysteryDiscount);
   payload.total=Math.max(0,payload.subtotal+payload.shipping_charge-payload.discount_amount);payload.updated_at=new Date().toISOString();
