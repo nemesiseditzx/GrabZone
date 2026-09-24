@@ -115,7 +115,7 @@ if(table==="orders"&&inputValues.status!==undefined){
 if(table==="orders"){
   const ids=(await q(env,"SELECT id FROM orders"+w,fps)).results||[];
   for(const row of ids){
-    const agg=(await q(env,"SELECT COUNT(*) n,COALESCE(SUM(shipping_fee),0) shipping FROM vendor_orders WHERE order_id=?",[row.id])).results?.[0];
+    const agg=(await q(env,"SELECT COUNT(*) n,COALESCE(SUM(COALESCE(NULLIF(shipping_fee,0),delivery_charge,0)),0) shipping FROM vendor_orders WHERE order_id=?",[row.id])).results?.[0];
     if(Number(agg?.n||0)>0){
       const fresh=(await q(env,"SELECT subtotal,referral_discount,grabpoints_discount,mystery_discount,rewards_voucher_discount FROM orders WHERE id=?",[row.id])).results?.[0]||{};
       const ship=Math.max(0,Number(agg.shipping||0));
