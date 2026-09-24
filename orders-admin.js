@@ -3,7 +3,7 @@
 const C=window.GRABZONE_CONFIG||{};
 const sb=window.grabzoneD1||null;
 const currency=C.currency||'৳';
-let orders=[], current=null, orderVendorMap=new Map(), productVendorMap=new Map(), vendorNameMap=new Map();
+let orders=[], current=null, orderVendorMap=new Map(), productVendorMap=new Map(), vendorNameMap=new Map(), vendorShippingMap=new Map(), orderFinancialMap=new Map(), globalShippingFee=130;
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const $=id=>document.getElementById(id);
@@ -17,9 +17,9 @@ function formatBdDateTime(value){
 }
 
 async function loadOrderVendorContext(){
-  orderVendorMap=new Map(); productVendorMap=new Map(); vendorNameMap=new Map();
+  orderVendorMap=new Map(); productVendorMap=new Map(); vendorNameMap=new Map(); vendorShippingMap=new Map(); orderFinancialMap=new Map(); globalShippingFee=130;
   try{
-    const itemRes=await sb.from('order_items').select('order_id,product_id,product_name,vendor_id');
+    const itemRes=await sb.from('order_items').select('order_id,product_id,product_name,vendor_id,quantity,unit_price,line_total');
     if(itemRes.error)throw itemRes.error;
     const itemRows=Array.isArray(itemRes.data)?itemRes.data:[];
     const productIds=[...new Set(itemRows.map(x=>String(x.product_id||'').trim()).filter(Boolean))];
@@ -27,20 +27,57 @@ async function loadOrderVendorContext(){
       const pr=await sb.from('products').select('id,vendor_id').in('id',productIds);
       if(!pr.error)for(const p of (Array.isArray(pr.data)?pr.data:[]))productVendorMap.set(String(p.id),String(p.vendor_id||''));
     }
+    const settingRes=await sb.from('site_settings').select('global_shipping_fee').eq('id',1).maybeSingle();
+    if(!settingRes.error){
+      const fee=Number(settingRes.data?.global_shipping_fee);
+      if(Number.isFinite(fee)&&fee>=0)globalShippingFee=fee;
+    }
     const vendorIds=[...new Set(itemRows.map(x=>String(x.vendor_id||productVendorMap.get(String(x.product_id||''))||'').trim()).filter(Boolean))];
     if(vendorIds.length){
-      const vr=await sb.from('vendors').select('id,brand_name,business_name,slug').in('id',vendorIds);
-      if(!vr.error)for(const v of (Array.isArray(vr.data)?vr.data:[]))vendorNameMap.set(String(v.id),String(v.brand_name||v.business_name||v.slug||'Vendor'));
+      const vr=await sb.from('vendors').select('id,brand_name,business_name,slug,shipping_fee').in('id',vendorIds);
+      if(!vr.error)for(const v of (Array.isArray(vr.data)?vr.data:[])){
+        const vid=String(v.id);
+        vendorNameMap.set(vid,String(v.brand_name||v.business_name||v.slug||'Vendor'));
+        const fee=Number(v.shipping_fee);
+        vendorShippingMap.set(vid,Number.isFinite(fee)&&fee>=0?fee:130);
+      }
     }
+    const voRes=await sb.from('vendor_orders').select('order_id,vendor_id,shipping_fee,delivery_charge');
+    const vendorOrderRows=!voRes.error&&Array.isArray(voRes.data)?voRes.data:[];
+    const itemByOrder=new Map();
     for(const row of itemRows){
       const oid=String(row.order_id||''); if(!oid)continue;
+      const arr=itemByOrder.get(oid)||[]; arr.push(row); itemByOrder.set(oid,arr);
       const vid=String(row.vendor_id||productVendorMap.get(String(row.product_id||''))||'');
-      const name=vendorNameMap.get(vid)||'GrabZone / Unassigned';
+      const name=vid?(vendorNameMap.get(vid)||'Vendor'):'GrabZone (Platform)';
       const bucket=orderVendorMap.get(oid)||[];
       if(!bucket.some(x=>x.vendor_id===vid&&x.product_id===String(row.product_id||'')))bucket.push({vendor_id:vid,product_id:String(row.product_id||''),product_name:String(row.product_name||'Product'),vendor_name:name});
       orderVendorMap.set(oid,bucket);
     }
-  }catch(e){console.warn('Order vendor context:',e)}
+    const vendorOrderByOrder=new Map();
+    for(const row of vendorOrderRows){
+      const oid=String(row.order_id||''); if(!oid)continue;
+      const arr=vendorOrderByOrder.get(oid)||[]; arr.push(row); vendorOrderByOrder.set(oid,arr);
+    }
+    for(const [oid,rows] of itemByOrder){
+      const breakdown=[];
+      const routed=vendorOrderByOrder.get(oid)||[];
+      if(routed.length){
+        const seen=new Set();
+        for(const row of routed){
+          const vid=String(row.vendor_id||''); if(seen.has(vid))continue; seen.add(vid);
+          const fee=Number(row.shipping_fee??row.delivery_charge??0);
+          breakdown.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||'Vendor',shipping:Number.isFinite(fee)&&fee>=0?fee:0});
+        }
+      }else{
+        const vids=[...new Set(rows.map(x=>String(x.vendor_id||productVendorMap.get(String(x.product_id||''))||'').trim()).filter(Boolean))];
+        for(const vid of vids)breakdown.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||'Vendor',shipping:Number(vendorShippingMap.get(vid)??130)});
+        if(!vids.length)breakdown.push({vendor_id:'',vendor_name:'GrabZone (Platform)',shipping:globalShippingFee});
+      }
+      const shipping=breakdown.reduce((n,x)=>n+Number(x.shipping||0),0);
+      orderFinancialMap.set(oid,{shipping,breakdown});
+    }
+  }catch(e){console.warn('Order vendor/financial context:',e)}
 }
 function vendorSummaryHtml(order){
   const rows=orderVendorMap.get(String(order.id))||[];
@@ -127,7 +164,7 @@ function inject(){
  const style=document.createElement('style'); style.id='gzOrdersStyle'; style.textContent=`
  .gz-order-filters{display:grid;grid-template-columns:1fr 180px;gap:10px}.gz-order-filters input,.gz-order-filters select{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ddd;border-radius:11px;background:#fff;font:inherit}
  .gz-orders-wrap{overflow:auto}.gz-orders-table{width:100%;border-collapse:collapse;min-width:1120px}.gz-orders-table th,.gz-orders-table td{padding:12px 9px;border-bottom:1px solid #eee;text-align:left;font-size:12px;vertical-align:middle}.gz-orders-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#777}.gz-order-link{border:0;background:none;padding:0;font:inherit;font-weight:900;cursor:pointer}.gz-public-track-id{margin-top:4px;font-size:9px;color:#666;letter-spacing:.04em;word-break:break-all}.gz-order-email{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gz-discount-box{display:flex;flex-direction:column;gap:3px;min-width:135px;padding:7px 8px;border:1px solid #e7e7e4;border-radius:9px;background:#fafaf8}.gz-discount-box b{font-size:9px;text-transform:uppercase;letter-spacing:.04em}.gz-discount-box span{font-size:11px;font-weight:800;word-break:break-all}.gz-discount-box small{font-size:10px;color:#666}.gz-discount-box.referral{background:#faf8f2;border-color:#eee5cf}.gz-discount-box.grabpoints{background:#f5fbf8;border-color:#d8eee5}.gz-status-select{border:1px solid #ddd;border-radius:999px;padding:6px 9px;background:#fff;font:inherit;font-size:10px;font-weight:800;cursor:pointer}.gz-order-actions-cell{display:flex;gap:6px;white-space:nowrap}.gz-order-action{border:1px solid #ddd;background:#fff;border-radius:8px;padding:7px 9px;font:inherit;font-size:10px;font-weight:850;cursor:pointer}.gz-order-action.edit{background:#111;color:#fff;border-color:#111}.gz-order-action.delete{color:#a00000}.gz-order-action.bk{background:#f5f5f5;border-color:#111}.gz-empty-orders{text-align:center;padding:30px;color:#777}
- .gz-order-modal{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:15px;background:rgba(0,0,0,.58);backdrop-filter:blur(5px)}.gz-order-modal.open{display:flex}.gz-order-editor{position:relative;width:min(1050px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:22px;padding:24px}.gz-order-close{position:absolute;right:14px;top:14px;border:0;border-radius:50%;width:38px;height:38px;background:#f0f0ed;font-size:22px;cursor:pointer}.gz-order-editor h2{margin:0 50px 4px}.gz-order-editor .muted{margin-bottom:18px}.gz-order-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.gz-order-grid label{display:grid;gap:6px;font-size:11px;font-weight:800;color:#555}.gz-order-grid input,.gz-order-grid textarea,.gz-order-grid select{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:11px;background:#fff;font:inherit;color:#111}.gz-order-grid textarea{min-height:90px;resize:vertical}.gz-order-full{grid-column:1/-1}.gz-items-editor{margin-top:18px;border-top:1px solid #eee;padding-top:18px}.gz-item-edit{display:grid;grid-template-columns:minmax(260px,1.8fr) 70px 105px 105px minmax(190px,1.2fr) 36px;gap:8px;align-items:center;margin-bottom:10px;padding:10px;border:1px solid #e9e9e4;border-radius:13px;background:#fcfcfa}.gz-item-edit input{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:9px;padding:9px}.gz-item-edit button{border:0;background:#f3f3f1;border-radius:9px;height:36px;cursor:pointer}.gz-item-product{min-width:0}.gz-item-product-name input{font-weight:800}.gz-item-product small{display:block;color:#777;margin-top:5px;font-size:10px}.gz-vendor-badge{display:inline-flex;margin-top:6px;padding:4px 8px;border-radius:999px;background:#f0f5ff;border:1px solid #dbe6ff;color:#315a9b;font-size:10px;font-weight:900}.gz-item-line-total{text-align:right;font-weight:900}.gz-vendor-cell{min-width:170px}.gz-vendor-summary{display:flex;flex-direction:column;gap:2px;margin:2px 0}.gz-vendor-summary b{font-size:11px}.gz-vendor-summary span{font-size:10px;color:#666;line-height:1.35}.gz-vendor-empty{font-size:10px;color:#999}.gz-section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.gz-section-heading h3{margin:3px 0}.gz-section-heading p{margin:0;color:#777;font-size:11px}.gz-section-kicker{font-size:9px;font-weight:900;letter-spacing:.12em;color:#888}.gz-order-summary-card{display:grid;grid-template-columns:repeat(4,1fr) 1.2fr;gap:1px;margin-top:14px;border:1px solid #e5e5df;border-radius:14px;overflow:hidden;background:#e5e5df}.gz-order-summary-card>div{padding:12px;background:#fafaf8;display:flex;flex-direction:column;gap:5px}.gz-order-summary-card span{font-size:10px;color:#777}.gz-order-summary-card b{font-size:13px}.gz-order-summary-card .total{background:#111;color:#fff}.gz-order-summary-card .total span{color:#bbb}.gz-order-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px;flex-wrap:wrap}.gz-order-message{min-height:20px;font-size:12px;font-weight:800;margin-top:8px}.gz-order-total-preview{margin-top:10px;text-align:right;font-weight:900}
+ .gz-order-modal{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:15px;background:rgba(0,0,0,.58);backdrop-filter:blur(5px)}.gz-order-modal.open{display:flex}.gz-order-editor{position:relative;width:min(1050px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:22px;padding:24px}.gz-order-close{position:absolute;right:14px;top:14px;border:0;border-radius:50%;width:38px;height:38px;background:#f0f0ed;font-size:22px;cursor:pointer}.gz-order-editor h2{margin:0 50px 4px}.gz-order-editor .muted{margin-bottom:18px}.gz-order-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.gz-order-grid label{display:grid;gap:6px;font-size:11px;font-weight:800;color:#555}.gz-order-grid input,.gz-order-grid textarea,.gz-order-grid select{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:11px;background:#fff;font:inherit;color:#111}.gz-order-grid textarea{min-height:90px;resize:vertical}.gz-order-full{grid-column:1/-1}.gz-items-editor{margin-top:18px;border-top:1px solid #eee;padding-top:18px}.gz-item-edit{display:grid;grid-template-columns:minmax(260px,1.8fr) 70px 105px 105px minmax(190px,1.2fr) 36px;gap:8px;align-items:center;margin-bottom:10px;padding:10px;border:1px solid #e9e9e4;border-radius:13px;background:#fcfcfa}.gz-item-edit input{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:9px;padding:9px}.gz-item-edit button{border:0;background:#f3f3f1;border-radius:9px;height:36px;cursor:pointer}.gz-item-product{min-width:0}.gz-item-product-name input{font-weight:800}.gz-item-product small{display:block;color:#777;margin-top:5px;font-size:10px}.gz-vendor-badge{display:inline-flex;margin-top:6px;padding:4px 8px;border-radius:999px;background:#f0f5ff;border:1px solid #dbe6ff;color:#315a9b;font-size:10px;font-weight:900}.gz-item-line-total{text-align:right;font-weight:900}.gz-vendor-cell{min-width:170px}.gz-vendor-summary{display:flex;flex-direction:column;gap:2px;margin:2px 0}.gz-vendor-summary b{font-size:11px}.gz-vendor-summary span{font-size:10px;color:#666;line-height:1.35}.gz-vendor-empty{font-size:10px;color:#999}.gz-section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.gz-section-heading h3{margin:3px 0}.gz-section-heading p{margin:0;color:#777;font-size:11px}.gz-section-kicker{font-size:9px;font-weight:900;letter-spacing:.12em;color:#888}.gz-order-summary-card{display:grid;grid-template-columns:repeat(4,1fr) 1.2fr;gap:1px;margin-top:14px;border:1px solid #e5e5df;border-radius:14px;overflow:hidden;background:#e5e5df}.gz-order-summary-card>div{padding:12px;background:#fafaf8;display:flex;flex-direction:column;gap:5px}.gz-order-summary-card span{font-size:10px;color:#777}.gz-order-summary-card b{font-size:13px}.gz-order-summary-card .total{background:#111;color:#fff}.gz-order-summary-card .total span{color:#bbb}.gz-order-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px;flex-wrap:wrap}.gz-order-message{min-height:20px;font-size:12px;font-weight:800;margin-top:8px}.gz-order-total-preview{margin-top:10px;text-align:right;font-weight:900}.gz-shipping-breakdown{padding:12px 14px;border:1px solid #e5e5df;border-radius:12px;background:#fafaf8}.gz-shipping-title{font-size:9px;font-weight:900;letter-spacing:.1em;color:#777;margin-bottom:7px}.gz-shipping-row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:11px;border-bottom:1px dashed #e5e5df}.gz-shipping-row:last-child{border-bottom:0}.gz-shipping-row b{font-size:11px}.gz-shipping-breakdown small{display:block;margin-top:7px;color:#777;font-size:10px}
  @media(max-width:760px){.gz-order-filters,.gz-order-grid{grid-template-columns:1fr}.gz-order-full{grid-column:auto}.gz-order-editor{padding:18px}.gz-item-edit{grid-template-columns:1fr 70px 95px 90px 1fr 36px}.gz-order-summary-card{grid-template-columns:1fr 1fr}.gz-order-summary-card .total{grid-column:1/-1}}
  `; document.head.appendChild(style);
 
@@ -169,15 +206,20 @@ async function loadOrders(){
    }
    orders=Array.isArray(data)?data:[];
    await loadOrderVendorContext();
-   // Normalize legacy order totals from the two primary customer discount fields.
+   // Recalculate every order from its product subtotal + one delivery charge per vendor.
+   // vendor_orders is authoritative after routing; otherwise use the current vendor shipping settings.
    for(const order of orders){
-     const sub=Number(order.subtotal||0), ship=Number(order.shipping_charge??0);
+     const sub=Number(order.subtotal||0);
+     const f=orderFinancialMap.get(String(order.id));
+     const ship=Number(f?.shipping??order.shipping_charge??globalShippingFee);
      const referral=Number(order.referral_discount||0), gp=Number(order.rewards_voucher_discount||0), mystery=Number(order.mystery_discount||0);
      const correctDiscount=Math.max(0,referral+gp+mystery);
-     const storedTotal=Number(order.total); const correctTotal=Number.isFinite(storedTotal)&&storedTotal>0?storedTotal:Math.max(0,sub+ship-correctDiscount);
-     if(Math.abs(Number(order.discount_amount||0)-correctDiscount)>0.009||Math.abs(Number(order.total||0)-correctTotal)>0.009){
-       order.discount_amount=correctDiscount; order.total=correctTotal;
-       try{await sb.from('orders').update({discount_amount:correctDiscount,total:correctTotal,updated_at:new Date().toISOString()}).eq('id',order.id);}catch(e){console.warn('Order total normalization:',e)}
+     const correctTotal=Math.max(0,sub+ship-correctDiscount);
+     const shippingChanged=Math.abs(Number(order.shipping_charge??0)-ship)>0.009;
+     const totalChanged=Math.abs(Number(order.total||0)-correctTotal)>0.009;
+     if(shippingChanged||Math.abs(Number(order.discount_amount||0)-correctDiscount)>0.009||totalChanged){
+       order.shipping_charge=ship; order.discount_amount=correctDiscount; order.total=correctTotal;
+       try{await sb.from('orders').update({shipping_charge:ship,discount_amount:correctDiscount,total:correctTotal,updated_at:new Date().toISOString()}).eq('id',order.id);}catch(e){console.warn('Order financial normalization:',e)}
      }
    }
    // Backfill private customer-facing tracking IDs for older orders.
@@ -355,7 +397,9 @@ async function openEditor(id){
    item.vendor_id=String(item.vendor_id||productVendorMap.get(String(item.product_id||''))||'');
    item.vendor_name=vendorNameMap.get(item.vendor_id)||'GrabZone / Unassigned';
  }
- current={...base,items:enrichedItems};
+ const financial=orderFinancialMap.get(String(id));
+ current={...base,items:enrichedItems,shipping_charge:Number(financial?.shipping??base.shipping_charge??globalShippingFee)};
+ current.total=Math.max(0,Number(current.subtotal||0)+Number(current.shipping_charge||0)-Number(current.referral_discount||0)-Number(current.rewards_voucher_discount||0)-Number(current.mystery_discount||0));
  $('gzOrderEditorTitle').textContent=current.order_number;
  $('gzOrderSendBk').disabled=current.status!=='Confirmed'||!!current.business_koro_sent_at;
  $('gzOrderEditorSub').textContent=`Placed ${current.created_at?formatBdDateTime(current.created_at):'—'} · Last updated ${current.updated_at?formatBdDateTime(current.updated_at):'—'}`;
@@ -366,8 +410,9 @@ async function openEditor(id){
  <label>Email Address<input id="oeEmail" type="email" value="${esc(current.email)}"></label><label>Status<select id="oeStatus">${statuses.map(s=>`<option ${s===current.status?'selected':''}>${s}</option>`).join('')}</select></label>
  <label>Division<input id="oeDivision" value="${esc(current.division)}"></label><label>District<input id="oeDistrict" value="${esc(current.district)}"></label>
  <label>Thana<input id="oeUpazila" value="${esc(current.upazila||'')}"></label><label>Referral Code<input id="oeReferral" value="${esc(current.referral_code||'')}"></label>
- <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label><div class="gz-order-full" style="padding:13px 14px;border:1px solid #e4e4df;border-radius:12px;background:#fafaf8"><div style="font-size:10px;font-weight:900;letter-spacing:.08em;color:#777">CUSTOMER ORDER HISTORY</div><div style="margin-top:6px;font-size:12px;font-weight:800">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).length} order(s) linked to this phone number</div><div style="margin-top:7px;color:#666;font-size:11px;line-height:1.6">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).slice(0,8).map(x=>esc(x.order_number)+' · '+esc(x.status)+' · '+money(x.total)).join('<br>')||'No other orders found.'}</div></div>
+ <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label><div class="gz-order-full" style="padding:13px 14px;border:1px solid #e4e4df;border-radius:12px;background:#fafaf8"><div style="font-size:10px;font-weight:900;letter-spacing:.08em;color:#777">CUSTOMER ORDER HISTORY</div><div style="margin-top:6px;font-size:12px;font-weight:800">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).length} order(s) linked to this phone number</div><div style="margin-top:7px;color:#666;font-size:11px;line-height:1.8">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).slice(0,8).map(x=>{const f=orderFinancialMap.get(String(x.id));const total=Math.max(0,Number(x.subtotal||0)+Number(f?.shipping??x.shipping_charge??0)-Number(x.referral_discount||0)-Number(x.rewards_voucher_discount||0)-Number(x.mystery_discount||0));return esc(x.order_number)+' · '+esc(x.status)+' · '+money(total)}).join('<br>')||'No other orders found.'}</div></div>
  <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" min="0" value="${Number(current.shipping_charge??0)}" readonly></label>
+ <div class="gz-order-full gz-shipping-breakdown"><div class="gz-shipping-title">DELIVERY CHARGE BY FULFILLMENT SOURCE</div><div id="oeShippingBreakdown"></div><small>Each vendor is charged separately. The order shipping total is the sum of these delivery charges.</small></div>
  <label>Referral Discount<input id="oeDiscount" type="number" step="0.01" min="0" value="${Number(current.referral_discount||0)}"></label>
  <label>GrabPoints Discount<input id="oeGpDiscount" type="number" step="0.01" min="0" value="${Number(current.rewards_voucher_discount||0)}" readonly></label>
  <div class="gz-order-full" style="font-size:12px;color:#666;padding:10px 12px;background:#f7f7f5;border-radius:10px">Final discount = Referral Discount + GrabPoints Discount${Number(current.mystery_discount||0)>0?' + Mystery Deal':''}. Total is recalculated automatically.</div>
@@ -378,7 +423,13 @@ async function openEditor(id){
  <button type="button" class="ghost" id="oeAddItem">＋ Add item</button>
  <div class="gz-order-summary-card"><div><span>Subtotal</span><b id="oeSubtotal">৳0</b></div><div><span>Shipping charge</span><b id="oeShippingSummary">৳0</b></div><div><span>Referral discount</span><b id="oeReferralSummary">-৳0</b></div><div><span>GrabPoints discount</span><b id="oeGpSummary">-৳0</b></div><div class="total"><span>Total</span><b id="oeTotalSummary">৳0</b></div></div>
  <div id="oePreview" class="gz-order-total-preview"></div></div>`;
+ const renderShippingBreakdown=()=>{
+   const box=$('oeShippingBreakdown'); if(!box)return;
+   const f=orderFinancialMap.get(String(current.id)),rows=f?.breakdown||[];
+   box.innerHTML=rows.length?rows.map(x=>'<div class="gz-shipping-row"><span>'+esc(x.vendor_name||'Vendor')+'</span><b>'+money(x.shipping)+'</b></div>').join(''):'<div class="gz-shipping-row"><span>Delivery charge</span><b>'+money(current.shipping_charge||0)+'</b></div>';
+ };
  $('oeAddItem').onclick=()=>{current.items.push({id:null,product_id:null,product_name:'',image_url:'',quantity:1,unit_price:0});renderItemEditor();updatePreview()};
+ renderShippingBreakdown();
  current.items.forEach((_,i)=>bindItemRow(i)); updatePreview(); $('oeShipping').oninput=updatePreview;
  $('gzOrderEditorMsg').textContent=''; $('gzOrderModal').classList.add('open');document.body.style.overflow='hidden';
 }
@@ -408,17 +459,23 @@ async function saveEditor(){
   tracking_number:$('oeTrackingNumber').value.trim()||null,
   tracking_url:$('oeTrackingUrl').value.trim()||null
  };
- const items=[...document.querySelectorAll('.gz-item-edit')].map((row,i)=>({
-  product_id:current.items[i]?.product_id||null,product_name:row.querySelector('.it-name').value.trim(),
-  quantity:Math.max(1,Number(row.querySelector('.it-qty').value||1)),unit_price:Math.max(0,Number(row.querySelector('.it-price').value||0)),
-  image_url:row.querySelector('.it-image').value.trim()
- })).filter(x=>x.product_name);
+ const items=[...document.querySelectorAll('.gz-item-edit')].map((row,i)=>{
+  const source=current.items[i]||{};
+  return {
+   product_id:source.product_id||null,product_name:row.querySelector('.it-name').value.trim(),
+   quantity:Math.max(1,Number(row.querySelector('.it-qty').value||1)),unit_price:Math.max(0,Number(row.querySelector('.it-price').value||0)),
+   image_url:row.querySelector('.it-image').value.trim(),vendor_id:source.vendor_id||null,
+   variation_id:source.variation_id||null,variation_options:source.variation_options||{},variation_sku:source.variation_sku||source.sku||null,sku:source.sku||source.variation_sku||null
+  }
+ }).filter(x=>x.product_name);
  if(!payload.customer_name||!payload.phone||!payload.email||!payload.division||!payload.district||!payload.address){$('gzOrderEditorMsg').textContent='⚠ Please complete the required customer fields.';return}
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)){$('gzOrderEditorMsg').textContent='⚠ Please enter a valid email address.';return}
  if(!/^01[3-9]\d{8}$/.test(payload.phone.replace(/\D/g,''))){$('gzOrderEditorMsg').textContent='⚠ Mobile number must be a valid 11-digit Bangladesh number (01XXXXXXXXX).';return}
  if(!items.length){$('gzOrderEditorMsg').textContent='⚠ Add at least one product.';return}
  payload.phone=payload.phone.replace(/\D/g,'');
- payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);payload.shipping_charge=Number($('oeShipping').value||current.shipping_charge||130);
+ payload.subtotal=items.reduce((s,it)=>s+it.quantity*it.unit_price,0);
+ const financial=orderFinancialMap.get(String(current.id));
+ payload.shipping_charge=Number(financial?.shipping??$('oeShipping').value??current.shipping_charge??globalShippingFee);
   const preservedVoucherDiscount=Number(current.rewards_voucher_discount||0),preservedMysteryDiscount=Number(current.mystery_discount||0);
   payload.discount_amount=Math.max(0,payload.referral_discount+preservedVoucherDiscount+preservedMysteryDiscount);
   payload.total=Math.max(0,payload.subtotal+payload.shipping_charge-payload.discount_amount);payload.updated_at=new Date().toISOString();
@@ -433,8 +490,8 @@ async function saveEditor(){
   }
   await syncOrderToSheet(current.id);
   $('gzOrderEditorMsg').textContent=statusEmailSent
-    ?'✓ Order updated successfully.'
-    :'✓ Order updated, but the customer email could not be sent. Check email settings.';
+    ?'✓ Order updated successfully. Delivery charges and total were recalculated.'
+    :'✓ Order updated, but the customer email could not be sent. Delivery charges and total were recalculated.';
   await loadOrders();
   document.dispatchEvent(new CustomEvent('grabzone:orders-updated'));
   setTimeout(closeEditor,500);
