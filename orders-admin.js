@@ -3,7 +3,7 @@
 const C=window.GRABZONE_CONFIG||{};
 const sb=window.grabzoneD1||null;
 const currency=C.currency||'৳';
-let orders=[], current=null, orderVendorMap=new Map(), productVendorMap=new Map(), vendorNameMap=new Map(), vendorShippingMap=new Map(), orderFinancialMap=new Map(), globalShippingFee=130;
+let orders=[], current=null, orderVendorMap=new Map(), productVendorMap=new Map(), vendorNameMap=new Map(), vendorShippingMap=new Map(), orderFinancialMap=new Map(), itemVendorIdMap=new Map(), globalShippingFee=130;
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=n=>currency+Number(n||0).toLocaleString('en-BD');
 const $=id=>document.getElementById(id);
@@ -17,7 +17,7 @@ function formatBdDateTime(value){
 }
 
 async function loadOrderVendorContext(){
-  orderVendorMap=new Map(); productVendorMap=new Map(); vendorNameMap=new Map(); vendorShippingMap=new Map(); orderFinancialMap=new Map(); globalShippingFee=130;
+  orderVendorMap=new Map(); productVendorMap=new Map(); vendorNameMap=new Map(); vendorShippingMap=new Map(); orderFinancialMap=new Map(); itemVendorIdMap=new Map(); globalShippingFee=130;
   try{
     const itemRes=await sb.from('order_items').select('id,order_id,product_id,product_name,vendor_id,quantity,unit_price,line_total');
     if(itemRes.error)throw itemRes.error;
@@ -55,7 +55,7 @@ async function loadOrderVendorContext(){
     const itemVendorMap=new Map();
     for(const x of vendorOrderItemRows){
       const vo=vendorOrderById.get(String(x.vendor_order_id));
-      if(vo&&x.order_item_id)itemVendorMap.set(String(x.order_item_id),String(vo.vendor_id||''));
+      if(vo&&x.order_item_id){const vid=String(vo.vendor_id||'');itemVendorMap.set(String(x.order_item_id),vid);itemVendorIdMap.set(String(x.order_item_id),vid)}
     }
     const itemByOrder=new Map();
     for(const row of itemRows){
@@ -412,8 +412,8 @@ async function openEditor(id){
    if(!vr.error)for(const v of (Array.isArray(vr.data)?vr.data:[]))vendorNameMap.set(String(v.id),String(v.brand_name||v.business_name||v.slug||'Vendor'));
  }
  for(const item of enrichedItems){
-   item.vendor_id=String(item.vendor_id||productVendorMap.get(String(item.product_id||''))||'');
-   item.vendor_name=vendorNameMap.get(item.vendor_id)||'GrabZone / Unassigned';
+   item.vendor_id=String(itemVendorIdMap.get(String(item.id||''))||item.vendor_id||productVendorMap.get(String(item.product_id||''))||'');
+   item.vendor_name=vendorNameMap.get(item.vendor_id)||'Vendor';
  }
  const financial=orderFinancialMap.get(String(id));
  current={...base,items:enrichedItems,shipping_charge:Number(financial?.shipping??base.shipping_charge??globalShippingFee)};
