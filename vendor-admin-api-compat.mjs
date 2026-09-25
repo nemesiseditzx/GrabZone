@@ -87,7 +87,27 @@ async function overview(req,e){
   return json({error:'Could not load marketplace overview: '+String(err?.message||err)},500);
  }
 }
-async function ensureShipmentTable(e){await e.DB.prepare(`CREATE TABLE IF NOT EXISTS shipments(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,courier TEXT,tracking_id TEXT,tracking_url TEXT,status TEXT NOT NULL DEFAULT 'Pending',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});await e.DB.prepare("ALTER TABLE shipments ADD COLUMN tracking_url TEXT").run().catch(()=>{});}
+async function ensureShipmentTable(e){
+  await e.DB.prepare(`CREATE TABLE IF NOT EXISTS shipments(
+    id TEXT PRIMARY KEY,
+    order_id TEXT NOT NULL,
+    vendor_order_id TEXT,
+    vendor_id TEXT NOT NULL,
+    shipment_tracking_id TEXT,
+    courier_name TEXT,
+    courier_tracking_number TEXT,
+    courier_tracking_url TEXT,
+    courier TEXT,
+    tracking_id TEXT,
+    tracking_url TEXT,
+    status TEXT NOT NULL DEFAULT 'Processing',
+    note TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`).run().catch(()=>{});
+  const cols=['vendor_order_id TEXT','shipment_tracking_id TEXT','courier_name TEXT','courier_tracking_number TEXT','courier_tracking_url TEXT','courier TEXT','tracking_id TEXT','tracking_url TEXT','note TEXT'];
+  for(const col of cols) await e.DB.prepare(`ALTER TABLE shipments ADD COLUMN ${col}`).run().catch(()=>{});
+}
 async function orderData(req,e){
  if(new URL(req.url).pathname!=='/api/vendor/admin/order-data'||req.method!=='GET')return null;
  const a=await admin(req,e),vu=a?null:await vendorUser(req,e);if(!a&&!vu)return json({error:'Unauthorized'},401);
@@ -112,6 +132,65 @@ async function orderData(req,e){
 }
 
 async function orderStatus(req,e){if(new URL(req.url).pathname!=='/api/vendor/admin/order-status'||req.method!=='PATCH')return null;const a=await admin(req,e),vu=a?null:await vendorUser(req,e);if(!a&&!vu)return json({error:'Unauthorized'},401);const b=await req.json().catch(()=>({})),id=clean(b.vendor_order_id,120),status=clean(b.status,40),allowed=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];if(!allowed.includes(status))return json({error:'Invalid status.'},400);const vo=await one(e,'SELECT vo.id,vo.vendor_id,vo.order_id,o.order_number FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.id=?',[id]);if(!vo)return json({error:'Vendor order not found.'},404);if(vu&&String(vu.vendor_id)!==String(vo.vendor_id))return json({error:'Unauthorized'},403);await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(status,now(),id).run();const rows=await all(e,'SELECT status FROM vendor_orders WHERE order_id=?',[vo.order_id]),ss=rows.map(x=>String(x.status||''));let parent='New';if(!ss.length)parent='New';else if(ss.every(x=>x==='Delivered'))parent='Delivered';else if(ss.every(x=>x==='Cancelled'))parent='Cancelled';else if(ss.every(x=>x==='Shipped'))parent='Shipped';else if(ss.every(x=>x==='Processing'))parent='Processing';else if(ss.every(x=>x==='Confirmed'))parent='Confirmed';else if(ss.every(x=>x==='Contacting'))parent='Contacting';else if(ss.some(x=>x==='Shipped'))parent='Shipped';else if(ss.some(x=>x==='Processing'))parent='Processing';else if(ss.some(x=>x==='Confirmed'))parent='Confirmed';else if(ss.some(x=>x==='Contacting'))parent='Contacting';await e.DB.prepare('UPDATE orders SET status=?,updated_at=? WHERE id=?').bind(parent,now(),vo.order_id).run();return json({ok:true,status,parent_status:parent});}
-async function shipmentControl(req,e){if(new URL(req.url).pathname!=='/api/vendor/admin/shipment'||!['GET','POST','PATCH'].includes(req.method))return null;const a=await admin(req,e),vu=a?null:await vendorUser(req,e);if(!a&&!vu)return json({error:'Unauthorized'},401);await ensureShipmentTable(e);const u=new URL(req.url),b=req.method==='GET'?{}:await req.json().catch(()=>({})),vendorOrderId=clean(b.vendor_order_id||u.searchParams.get('vendor_order_id'),120),vo=await one(e,'SELECT id,order_id,vendor_id FROM vendor_orders WHERE id=?',[vendorOrderId]);if(!vo)return json({error:'Vendor order not found.'},404);if(vu&&String(vu.vendor_id)!==String(vo.vendor_id))return json({error:'Unauthorized'},403);if(req.method==='GET')return json({shipments:await all(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[vo.order_id,vo.vendor_id])});const courier=clean(b.courier||b.courier_name,120),tracking=clean(b.tracking_id||b.tracking_number,160),trackingUrl=clean(b.tracking_url,1000),st=clean(b.status||'Processing',50);const allowedShipmentStatus=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];if(!allowedShipmentStatus.includes(st))return json({error:'Invalid shipment status.'},400);if(req.method==='POST'){const id=crypto.randomUUID(),t=now();await e.DB.prepare('INSERT INTO shipments(id,order_id,vendor_id,courier,tracking_id,tracking_url,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(id,vo.order_id,vo.vendor_id,courier,tracking,trackingUrl,st,t,t).run();await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(st,t,vo.id).run();const allStatuses=(await all(e,'SELECT status FROM vendor_orders WHERE order_id=?',[vo.order_id])).map(x=>String(x.status||''));const parent=allStatuses.length&&allStatuses.every(x=>x==='Delivered')?'Delivered':(allStatuses.length&&allStatuses.every(x=>x==='Cancelled')?'Cancelled':(allStatuses.some(x=>['Shipped','Picked Up','In Transit','Out for Delivery'].includes(x))?'Shipped':(allStatuses.some(x=>x==='Processing')?'Processing':allStatuses[0]||'Processing')));await e.DB.prepare('UPDATE orders SET status=?,tracking_provider=?,tracking_number=?,tracking_url=?,updated_at=? WHERE id=?').bind(parent,courier||null,tracking||null,trackingUrl||null,t,vo.order_id).run();return json({ok:true,shipment:await one(e,'SELECT * FROM shipments WHERE id=?',[id]),order_status:parent},201)}const sid=clean(b.shipment_id,120);if(!sid)return json({error:'Shipment id is required.'},400);const t=now();await e.DB.prepare('UPDATE shipments SET courier=?,tracking_id=?,tracking_url=?,status=?,updated_at=? WHERE id=? AND order_id=? AND vendor_id=?').bind(courier,tracking,trackingUrl,st,t,sid,vo.order_id,vo.vendor_id).run();await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(st,t,vo.id).run();const allStatuses=(await all(e,'SELECT status FROM vendor_orders WHERE order_id=?',[vo.order_id])).map(x=>String(x.status||''));const parent=allStatuses.length&&allStatuses.every(x=>x==='Delivered')?'Delivered':(allStatuses.length&&allStatuses.every(x=>x==='Cancelled')?'Cancelled':(allStatuses.some(x=>['Shipped','Picked Up','In Transit','Out for Delivery'].includes(x))?'Shipped':(allStatuses.some(x=>x==='Processing')?'Processing':allStatuses[0]||'Processing')));await e.DB.prepare('UPDATE orders SET status=?,tracking_provider=?,tracking_number=?,tracking_url=?,updated_at=? WHERE id=?').bind(parent,courier||null,tracking||null,trackingUrl||null,t,vo.order_id).run();return json({ok:true,shipment:await one(e,'SELECT * FROM shipments WHERE id=?',[sid]),order_status:parent});}
+async function syncParentOrder(e,orderId,courier,tracking,trackingUrl,t){
+  const statuses=(await all(e,'SELECT status FROM vendor_orders WHERE order_id=?',[orderId])).map(x=>String(x.status||''));
+  const parent=statuses.length&&statuses.every(x=>x==='Delivered')?'Delivered':(statuses.length&&statuses.every(x=>x==='Cancelled')?'Cancelled':(statuses.some(x=>['Shipped','Picked Up','In Transit','Out for Delivery'].includes(x))?'Shipped':(statuses.some(x=>x==='Processing')?'Processing':statuses[0]||'Processing')));
+  await e.DB.prepare('UPDATE orders SET status=?,tracking_provider=?,tracking_number=?,tracking_url=?,updated_at=? WHERE id=?').bind(parent,courier||null,tracking||null,trackingUrl||null,t,orderId).run();
+}
+async function shipmentRow(e,id){
+  return await one(e,`SELECT *,COALESCE(courier_name,courier) courier,COALESCE(courier_tracking_number,tracking_id,shipment_tracking_id) tracking_id,COALESCE(courier_tracking_url,tracking_url) tracking_url FROM shipments WHERE id=?`,[id]);
+}
+async function shipmentControl(req,e){
+  if(new URL(req.url).pathname!=='/api/vendor/admin/shipment'||!['GET','POST','PATCH'].includes(req.method))return null;
+  const a=await admin(req,e),vu=a?null:await vendorUser(req,e);
+  if(!a&&!vu)return json({error:'Unauthorized'},401);
+  await ensureShipmentTable(e);
+  const u=new URL(req.url),b=req.method==='GET'?{}:await req.json().catch(()=>({}));
+  const vendorOrderId=clean(b.vendor_order_id||u.searchParams.get('vendor_order_id'),120);
+  const vo=await one(e,'SELECT id,order_id,vendor_id FROM vendor_orders WHERE id=?',[vendorOrderId]);
+  if(!vo)return json({error:'Vendor order not found.'},404);
+  if(vu&&String(vu.vendor_id)!==String(vo.vendor_id))return json({error:'Unauthorized'},403);
+
+  if(req.method==='GET'){
+    const rows=await all(e,`SELECT *,COALESCE(courier_name,courier) courier,COALESCE(courier_tracking_number,tracking_id,shipment_tracking_id) tracking_id,COALESCE(courier_tracking_url,tracking_url) tracking_url FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC`,[vo.order_id,vo.vendor_id]);
+    return json({shipments:rows});
+  }
+
+  const courier=clean(b.courier||b.courier_name,120);
+  const tracking=clean(b.tracking_id||b.tracking_number||b.courier_tracking_number,160);
+  const trackingUrl=clean(b.tracking_url||b.courier_tracking_url,1000);
+  const note=clean(b.note,1000);
+  const st=clean(b.status||'Processing',50);
+  const allowed=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
+  if(!allowed.includes(st))return json({error:'Invalid shipment status.'},400);
+  const t=now();
+
+  if(req.method==='POST'){
+    const id=crypto.randomUUID();
+    await e.DB.prepare(`INSERT INTO shipments(
+      id,order_id,vendor_order_id,vendor_id,shipment_tracking_id,
+      courier_name,courier_tracking_number,courier_tracking_url,
+      courier,tracking_id,tracking_url,status,note,created_at,updated_at
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+      id,vo.order_id,vo.id,vo.vendor_id,tracking,
+      courier,tracking,trackingUrl,courier,tracking,trackingUrl,st,note,t,t
+    ).run();
+
+    await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(st,t,vo.id).run();
+    await syncParentOrder(e,vo.order_id,courier,tracking,trackingUrl,t);
+    return json({ok:true,shipment:await shipmentRow(e,id),order_status:(await one(e,'SELECT status FROM orders WHERE id=?',[vo.order_id]))?.status||st},201);
+  }
+
+  const sid=clean(b.shipment_id,120);
+  if(!sid)return json({error:'Shipment id is required.'},400);
+  const existing=await one(e,'SELECT id FROM shipments WHERE id=? AND order_id=? AND vendor_id=?',[sid,vo.order_id,vo.vendor_id]);
+  if(!existing)return json({error:'Shipment not found.'},404);
+  await e.DB.prepare(`UPDATE shipments SET courier_name=?,courier_tracking_number=?,courier_tracking_url=?,courier=?,tracking_id=?,tracking_url=?,shipment_tracking_id=?,status=?,note=?,updated_at=? WHERE id=?`).bind(
+    courier,tracking,trackingUrl,courier,tracking,trackingUrl,tracking,st,note,t,sid
+  ).run();
+  await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(st,t,vo.id).run();
+  await syncParentOrder(e,vo.order_id,courier,tracking,trackingUrl,t);
+  return json({ok:true,shipment:await shipmentRow(e,sid),order_status:(await one(e,'SELECT status FROM orders WHERE id=?',[vo.order_id]))?.status||st});
+}
 
 export async function handleVendorAdminApi(req,e){try{return await orderData(req,e)||await shipmentControl(req,e)||await overview(req,e)||await orderStatus(req,e)||await products(req,e)||await categories(req,e)||await sections(req,e)}catch(err){return json({error:err?.message||'Vendor admin API failed'},500)}}
