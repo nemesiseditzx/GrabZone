@@ -756,7 +756,7 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
 .track-page .gz-invoice-social-link span{font-size:12px!important;font-weight:700!important}
 /* PDF staging copy: remove viewport scrolling constraints so every invoice section is captured. */
 .gz-invoice-pdf-root .gz-invoice-pdf-copy{
-  width:1020px!important;max-width:none!important;height:auto!important;max-height:none!important;
+  width:720px!important;max-width:720px!important;min-width:0!important;box-sizing:border-box!important;height:auto!important;max-height:none!important;
   overflow:visible!important;position:static!important;transform:none!important;clip-path:none!important;
   margin:0!important;box-shadow:none!important;border-radius:0!important;background:#fff!important;
 }
@@ -792,8 +792,8 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
 .track-page .gz-invoice-thanks{background:linear-gradient(90deg,#fff8f0,#f8faff);border-radius:12px}.track-page .gz-invoice-bangla b{color:#d9540a!important}
 .track-page .gz-invoice-grabpoints{background:linear-gradient(130deg,#eafaf1,#f2f7ff)!important;border-color:#a8e3c0!important;box-shadow:0 8px 22px #078f4b12}
 .track-page .gz-invoice-gp-qr strong{background:linear-gradient(90deg,#078f4b,#0b7f82)!important}.track-page .gz-invoice-footer{border-top:2px solid #e7edf7;margin-top:15px}
-.gz-invoice-pdf-root{width:740px!important;box-sizing:border-box!important}
-.gz-invoice-pdf-root .gz-invoice-pdf-copy{width:740px!important;max-width:740px!important;min-width:0!important;box-sizing:border-box!important;padding:24px 26px!important;overflow:visible!important}
+.gz-invoice-pdf-root{width:720px!important;max-width:720px!important;box-sizing:border-box!important;overflow:visible!important}
+.gz-invoice-pdf-root .gz-invoice-pdf-copy{width:720px!important;max-width:720px!important;min-width:0!important;box-sizing:border-box!important;padding:24px 22px!important;overflow:visible!important}
 .gz-invoice-pdf-root .gz-invoice-brandhead,.gz-invoice-pdf-root .gz-invoice-order-meta,.gz-invoice-pdf-root .gz-invoice-parties,.gz-invoice-pdf-root .gz-invoice-barcodes{grid-template-columns:1fr 1fr!important}
 .gz-invoice-pdf-root .gz-invoice-thanks{grid-template-columns:1fr 1.3fr!important}
 .gz-invoice-pdf-root .gz-invoice-grabpoints{grid-template-columns:minmax(0,1fr) 230px!important;padding:16px!important;gap:14px!important}
