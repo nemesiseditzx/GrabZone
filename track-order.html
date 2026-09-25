@@ -419,34 +419,41 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
 }
 
 
-/* Final pass: use the REAL invoice as the paper feeding from the printer */
+/* Smooth, size-safe invoice feed: the real invoice unfolds upward from the printer slot */
 .track-page .invoice-modal.printing .receipt-paper{display:none!important}
 .track-page .invoice-modal.printing .invoice-sheet{
- position:absolute!important;left:50%!important;top:auto!important;bottom:calc(50% + 31px)!important;
- width:min(330px,calc(100% - 32px))!important;max-height:88vh!important;height:auto!important;
- overflow:hidden!important;box-sizing:border-box!important;z-index:10!important;
- opacity:1!important;visibility:visible!important;pointer-events:none!important;
- transform:translateX(-50%) scaleY(.012)!important;
- transform-origin:50% 100%!important;border-radius:3px!important;
+ position:absolute!important;left:50%!important;top:auto!important;bottom:calc(50% + 38px)!important;
+ width:min(340px,calc(100% - 32px))!important;max-width:calc(100vw - 32px)!important;
+ max-height:78vh!important;height:auto!important;overflow:hidden!important;box-sizing:border-box!important;
+ z-index:10!important;opacity:1!important;visibility:visible!important;pointer-events:none!important;
+ transform:translateX(-50%)!important;transform-origin:50% 100%!important;
+ clip-path:inset(0 0 99.5% 0)!important;border-radius:3px!important;
  box-shadow:0 12px 34px rgba(0,0,0,.45)!important;
- transition:transform 3.5s cubic-bezier(.18,.62,.25,1),width .9s cubic-bezier(.16,.78,.2,1),opacity .45s ease!important;
- will-change:transform,width,opacity;
+ transition:clip-path 3.6s cubic-bezier(.22,.68,.18,1),bottom 1.25s cubic-bezier(.22,.72,.18,1),width 1.25s cubic-bezier(.22,.72,.18,1),border-radius .7s ease,box-shadow .7s ease!important;
+ will-change:clip-path,bottom,width;
 }
 .track-page .invoice-modal.printing.paper-feeding .invoice-sheet{
- transform:translateX(-50%) scaleY(1)!important;
+ clip-path:inset(0 0 0 0)!important;
 }
 .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
- bottom:calc(50% - 220px)!important;width:min(760px,calc(100% - 32px))!important;max-height:88vh!important;overflow:auto!important;
- opacity:1!important;transform:translateX(-50%) scaleY(1)!important;
- pointer-events:auto!important;border-radius:10px!important;
+ bottom:calc(50% - 205px)!important;width:min(760px,calc(100% - 32px))!important;
+ max-height:88vh!important;overflow:auto!important;clip-path:inset(0 0 0 0)!important;
+ pointer-events:auto!important;border-radius:12px!important;
+ box-shadow:0 28px 90px rgba(0,0,0,.48)!important;
 }
 .track-page .invoice-modal.printing.invoice-reveal .receipt-paper{display:none!important}
 @media(max-width:600px){
- .track-page .invoice-modal.printing .invoice-sheet{width:min(300px,calc(100% - 24px))!important;max-height:86vh!important}
- .track-page .invoice-modal.printing.paper-feeding .invoice-sheet{transform:translateX(-50%) scaleY(1)!important}
- .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{bottom:calc(50% - 170px)!important;width:calc(100% - 20px)!important;max-height:88vh!important}
+ .track-page .invoice-modal.printing .invoice-sheet{
+  width:min(300px,calc(100% - 24px))!important;max-width:calc(100vw - 24px)!important;max-height:76vh!important;
+  bottom:calc(50% + 30px)!important;padding:18px!important;
+ }
+ .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+  bottom:calc(50% - 170px)!important;width:calc(100% - 20px)!important;max-height:88vh!important;padding:18px!important;
+ }
 }
-
+@media(prefers-reduced-motion:reduce){
+ .track-page .invoice-modal.printing .invoice-sheet{transition:none!important}
+}
 </style>
 </head>
 <body class="track-page">
