@@ -132,7 +132,7 @@
          margin:[4,4,6,4],
          filename:'GrabZone-Invoice-'+orderNo.replace(/[^a-z0-9_-]/gi,'-')+'.pdf',
          image:{type:'jpeg',quality:.98},
-         html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:760,windowHeight:Math.max(1200,pdfHeight+80),width:720},
+         html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:1200,windowHeight:Math.max(1600,pdfHeight+120),width:720},
          jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
          pagebreak:{mode:['css','legacy'],avoid:['.gz-invoice-grabpoints','.gz-invoice-barcodes','.gz-invoice-thanks','.gz-invoice-footer','.gz-inv-product']}
        };
