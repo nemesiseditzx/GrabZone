@@ -91,6 +91,156 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
   .track-page .help-grid{grid-template-columns:1fr}
   .track-page .invoice-sheet{padding:18px;border-radius:16px}
 }
+
+/* FUTURISTIC TRACKING EXPERIENCE */
+.track-page{
+  min-height:100vh!important;
+  background:
+    radial-gradient(circle at 15% 10%,rgba(255,101,0,.12),transparent 28%),
+    radial-gradient(circle at 85% 80%,rgba(59,130,246,.08),transparent 30%),
+    linear-gradient(135deg,#f8fafc 0%,#eef1f5 48%,#f7f8fa 100%)!important;
+  position:relative;
+}
+.track-page::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.32;
+  background-image:linear-gradient(rgba(17,24,39,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(17,24,39,.035) 1px,transparent 1px);
+  background-size:32px 32px;
+  mask-image:linear-gradient(to bottom,black,transparent 85%);
+}
+.track-page .track-wrap{position:relative;z-index:1;animation:gzTrackEnter .7s cubic-bezier(.2,.8,.2,1) both}
+.track-page .track-card{
+  position:relative;overflow:hidden;
+  border:1px solid rgba(255,255,255,.9)!important;
+  background:rgba(255,255,255,.88)!important;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  box-shadow:0 30px 80px rgba(15,23,42,.12),0 2px 0 rgba(255,255,255,.8) inset!important;
+}
+.track-page .track-card::before{
+  content:'';position:absolute;left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,#ff6500,#ff9d4d,#111827,#ff6500);
+  background-size:240% 100%;animation:gzTrackGradient 5s linear infinite;
+}
+.track-page .eyebrow{
+  padding:7px 10px!important;border:1px solid #e6e9ee;border-radius:999px;
+  background:rgba(255,255,255,.8);box-shadow:0 5px 18px rgba(15,23,42,.05);
+}
+.track-page .eyebrow::before{box-shadow:0 0 0 4px rgba(255,101,0,.12),0 0 16px rgba(255,101,0,.7);animation:gzPulse 1.8s ease-in-out infinite}
+.track-page h1{font-weight:950!important;text-shadow:0 2px 20px rgba(17,24,39,.06)}
+.track-page .intro{max-width:650px}
+.track-page .track-form{padding:6px;background:rgba(247,248,250,.85);border:1px solid #e4e7eb;border-radius:17px;box-shadow:0 10px 28px rgba(15,23,42,.06)}
+.track-page .track-form input{
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  min-height:48px!important;padding-left:12px!important;font-weight:750;letter-spacing:.02em;
+}
+.track-page .track-form button{
+  position:relative;overflow:hidden;min-width:145px!important;border-radius:12px!important;
+  box-shadow:0 8px 22px rgba(17,21,26,.18)!important;
+  transition:transform .2s ease,box-shadow .2s ease,background .2s ease!important;
+}
+.track-page .track-form button::after,.track-page .invoice-btn::after,.track-page .tracking-link::after,.track-page .back-store::after{
+  content:'';position:absolute;top:-40%;left:-80%;width:45%;height:180%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent);
+  transform:skewX(-20deg);transition:left .55s ease;
+}
+.track-page .track-form button:hover,.track-page .invoice-btn:hover,.track-page .tracking-link:hover,.track-page .back-store:hover{
+  transform:translateY(-2px);box-shadow:0 12px 28px rgba(15,23,42,.16)!important;
+}
+.track-page .track-form button:hover::after,.track-page .invoice-btn:hover::after,.track-page .tracking-link:hover::after,.track-page .back-store:hover::after{left:135%}
+.track-page .track-msg{padding-left:4px;min-height:18px}
+.track-page .result{animation:gzResultIn .5s cubic-bezier(.2,.8,.2,1) both}
+.track-page .current-status{
+  position:relative;overflow:hidden;
+  background:linear-gradient(110deg,#11151a,#242a31 55%,#11151a)!important;
+  background-size:200% 100%;animation:gzStatusShift 5s ease infinite;
+  box-shadow:0 14px 30px rgba(17,21,26,.16)!important;
+}
+.track-page .current-status::after{
+  content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.08) 50%,transparent 75%);
+  transform:translateX(-100%);animation:gzSweep 4s ease-in-out infinite;
+}
+.track-page .track-status-line{margin:22px 0}
+.track-page .track-status-line::before{background:linear-gradient(90deg,#a8d4b1,#d8dde3,#d8dde3)!important}
+.track-page .track-status-step{
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease!important;
+  box-shadow:0 5px 14px rgba(15,23,42,.04);
+}
+.track-page .track-status-step:hover{transform:translateY(-4px);box-shadow:0 12px 25px rgba(15,23,42,.1)}
+.track-page .track-status-step.completed{box-shadow:0 7px 20px rgba(22,163,74,.09)}
+.track-page .track-status-step.current{
+  box-shadow:0 12px 30px rgba(17,21,26,.24)!important;
+  animation:gzCurrentFloat 2.6s ease-in-out infinite;
+}
+.track-page .track-status-icon{transition:transform .25s ease,box-shadow .25s ease!important}
+.track-page .track-status-step:hover .track-status-icon{transform:scale(1.08)}
+.track-page .invoice-btn,.track-page .tracking-link,.track-page .back-store{
+  position:relative;overflow:hidden;
+  border:1px solid #11151a!important;
+  box-shadow:0 7px 18px rgba(17,21,26,.1);
+  transition:transform .2s ease,box-shadow .2s ease,background .2s ease!important;
+}
+.track-page .invoice-btn{
+  margin-top:12px!important;background:#11151a!important;color:#fff!important;
+  padding:12px 17px!important;border-radius:12px!important;
+}
+.track-page .invoice-btn::before{content:'↗';margin-right:8px;font-size:15px}
+.track-page .tracking-box{
+  position:relative;overflow:hidden;
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease!important;
+}
+.track-page .tracking-box:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(15,23,42,.08);border-color:#cbd2da!important}
+.track-page .tracking-box::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(#ff6500,#ffb06e);opacity:.9;
+}
+.track-page .tracking-link{background:#11151a!important}
+.track-page .help{border-top-color:#d9dee5}
+.track-page .help-grid a{
+  position:relative;overflow:hidden;
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease!important;
+}
+.track-page .help-grid a:hover{transform:translateY(-3px)!important;box-shadow:0 12px 25px rgba(15,23,42,.09)!important;border-color:#c5ccd5!important}
+.track-page .back-store{background:linear-gradient(110deg,#11151a,#292e34)!important}
+.track-page .invoice-modal{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:gzModalBg .25s ease both}
+.track-page .invoice-sheet{
+  border:1px solid rgba(255,255,255,.9)!important;
+  box-shadow:0 35px 100px rgba(0,0,0,.3)!important;
+  animation:gzModalIn .35s cubic-bezier(.2,.8,.2,1) both;
+}
+.track-page .invoice-head{border-bottom-color:#e4e7eb}
+.track-page .invoice-close{
+  transition:transform .2s ease,background .2s ease,box-shadow .2s ease!important;
+}
+.track-page .invoice-close:hover{transform:rotate(2deg) scale(1.03);box-shadow:0 7px 18px rgba(15,23,42,.1)}
+.track-page .invoice-vendor{
+  transition:transform .2s ease,box-shadow .2s ease!important;
+}
+.track-page .invoice-vendor:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(15,23,42,.06)}
+.track-page .product-card{transition:background .2s ease!important}
+.track-page .product-card:hover{background:#f8fafc!important}
+.track-page .product-thumb{transition:transform .25s ease,box-shadow .25s ease!important}
+.track-page .product-card:hover .product-thumb{transform:scale(1.035);box-shadow:0 7px 18px rgba(15,23,42,.1)}
+.track-page .invoice-total{
+  background:linear-gradient(90deg,#f7f8fa,#fff);border-radius:10px;padding:12px 10px!important;
+}
+@keyframes gzTrackEnter{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes gzResultIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes gzTrackGradient{to{background-position:240% 0}}
+@keyframes gzPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.82);opacity:.65}}
+@keyframes gzStatusShift{0%,100%{background-position:0 0}50%{background-position:100% 0}}
+@keyframes gzSweep{0%,65%{transform:translateX(-100%)}100%{transform:translateX(130%)}}
+@keyframes gzCurrentFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@keyframes gzModalBg{from{opacity:0}to{opacity:1}}
+@keyframes gzModalIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+@media(max-width:600px){
+  .track-page .track-card{padding:18px!important}
+  .track-page .track-form{padding:5px}
+  .track-page .track-form button{min-width:0!important;width:100%!important}
+  .track-page .track-status-step{min-height:110px}
+  .track-page .invoice-btn{width:100%!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .track-page *, .track-page *::before,.track-page *::after{animation:none!important;transition:none!important}
+}
 </style>
 </head>
 <body class="track-page">
