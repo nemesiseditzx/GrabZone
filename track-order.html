@@ -565,6 +565,19 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
  .track-page .gz-invoice-grabpoints,.track-page .gz-invoice-barcodes,.track-page .gz-invoice-items{break-inside:avoid}
 }
 
+
+/* Final sizing override: full invoice expands after the receipt-print animation. */
+.track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+ width:min(1020px,calc(100% - 32px))!important;max-width:calc(100vw - 24px)!important;
+}
+.track-page .invoice-modal.printed .invoice-sheet{
+ width:min(1020px,100%)!important;max-width:calc(100vw - 24px)!important;
+ max-height:92vh!important;padding:28px 32px!important;border-radius:14px!important;
+}
+@media(max-width:700px){
+ .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet,
+ .track-page .invoice-modal.printed .invoice-sheet{width:calc(100% - 20px)!important;max-width:calc(100vw - 20px)!important;padding:20px 16px!important}
+}
 </style>
 </head>
 <body class="track-page">
