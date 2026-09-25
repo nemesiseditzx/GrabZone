@@ -320,6 +320,34 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
  .track-page .tracking-actions{display:grid;grid-template-columns:1fr 1fr}
  .track-page .gz-action{width:100%}
 }
+
+/* Receipt printer animation */
+.track-page .invoice-modal{perspective:1200px}
+.track-page .invoice-printer-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:3;pointer-events:none;opacity:0;visibility:hidden}
+.track-page .invoice-modal.printing .invoice-printer-stage{opacity:1;visibility:visible}
+.track-page .invoice-modal.printed .invoice-printer-stage{opacity:0;visibility:hidden;transition:opacity .22s ease}
+.track-page .receipt-printer{width:min(360px,82vw);position:relative;filter:drop-shadow(0 24px 38px rgba(0,0,0,.28));transform:translateY(20px) scale(.92)}
+.track-page .invoice-modal.printing .receipt-printer{animation:gzPrinterEnter .42s cubic-bezier(.2,.8,.2,1) forwards}
+.track-page .printer-top{height:46px;background:linear-gradient(145deg,#35383d,#17191c);border-radius:18px 18px 8px 8px;border:1px solid #4b4f55;position:relative}
+.track-page .printer-top::before{content:'';position:absolute;left:18px;right:18px;top:11px;height:7px;border-radius:99px;background:#0b0d0f;box-shadow:inset 0 1px 2px #000}
+.track-page .printer-body{height:165px;background:linear-gradient(145deg,#292c31,#111317);border:1px solid #454950;border-top:0;border-radius:7px 7px 18px 18px;padding:22px 22px 0;box-sizing:border-box;position:relative}
+.track-page .printer-slot{height:13px;border-radius:8px;background:#070809;border:1px solid #44474b;box-shadow:inset 0 2px 5px #000;position:relative;z-index:2}
+.track-page .printer-led{position:absolute;right:24px;top:26px;width:8px;height:8px;border-radius:50%;background:#ff6500;box-shadow:0 0 0 4px rgba(255,101,0,.12),0 0 18px rgba(255,101,0,.9);animation:gzPrintLed .7s ease-in-out infinite alternate}
+.track-page .printer-brand{color:#fff;font-size:11px;font-weight:950;letter-spacing:.18em;margin:15px 0 0 2px}
+.track-page .receipt-paper{position:absolute;z-index:1;left:38px;right:38px;top:18px;height:230px;background:#fff;border-radius:3px 3px 8px 8px;box-shadow:0 8px 18px rgba(0,0,0,.22);transform:translateY(0);overflow:hidden}
+.track-page .invoice-modal.printing .receipt-paper{animation:gzReceiptPrint 1.05s cubic-bezier(.22,.8,.22,1) .18s forwards}
+.track-page .receipt-paper::before{content:'GRABZONE  •  RECEIPT';display:block;font-size:9px;font-weight:950;letter-spacing:.12em;color:#222;text-align:center;padding:18px 8px 8px;border-bottom:1px dashed #bbb}
+.track-page .receipt-lines{padding:12px 15px}
+.track-page .receipt-lines i{display:block;height:5px;background:#d8d8d8;margin:7px 0;border-radius:4px}
+.track-page .receipt-lines i:nth-child(1){width:80%}.track-page .receipt-lines i:nth-child(2){width:60%}.track-page .receipt-lines i:nth-child(3){width:92%}.track-page .receipt-lines i:nth-child(4){width:55%}.track-page .receipt-lines i:nth-child(5){width:72%}
+.track-page .printer-printing-label{position:absolute;bottom:17px;left:0;right:0;text-align:center;color:#bfc3c8;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.track-page .invoice-modal.printed .invoice-sheet{animation:gzInvoiceReveal .48s cubic-bezier(.2,.8,.2,1) both}
+.track-page .invoice-modal.printing .invoice-sheet{opacity:0;transform:translateY(18px) scale(.98);pointer-events:none}
+@keyframes gzPrinterEnter{from{opacity:0;transform:translateY(35px) scale(.86)}to{opacity:1;transform:none}}
+@keyframes gzReceiptPrint{0%{transform:translateY(0)}100%{transform:translateY(205px)}}
+@keyframes gzPrintLed{from{opacity:.45}to{opacity:1}}
+@keyframes gzInvoiceReveal{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
+@media(max-width:600px){.track-page .receipt-printer{width:310px}.track-page .receipt-paper{left:30px;right:30px}}
 </style>
 </head>
 <body class="track-page">
@@ -338,6 +366,18 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
     <div id="result" class="result" hidden></div>
 
     <div id="invoiceModal" class="invoice-modal" role="dialog" aria-modal="true" aria-labelledby="invoiceTitle">
+      <div class="invoice-printer-stage" aria-hidden="true">
+        <div class="receipt-printer">
+          <div class="receipt-paper"><div class="receipt-lines"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="printer-top"></div>
+          <div class="printer-body">
+            <div class="printer-led"></div>
+            <div class="printer-slot"></div>
+            <div class="printer-brand">GRABZONE</div>
+            <div class="printer-printing-label">Printing receipt…</div>
+          </div>
+        </div>
+      </div>
       <div class="invoice-sheet">
         <div class="invoice-head">
           <div>
