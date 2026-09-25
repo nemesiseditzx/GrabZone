@@ -58,34 +58,26 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
 
  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
  function render(o){
-   const idx=statuses.indexOf(o.status);
-   const safeIdx=idx<0?0:idx;
-   const descriptions={
-     New:'Order received',
-     Contacting:'We are contacting you to confirm the order',
-     Confirmed:'Order confirmed successfully',
-     Processing:'Your order is being prepared',
-     Shipped:'Your package is on the way',
-     Delivered:'Order delivered',
-     Cancelled:'This order has been cancelled'
-   };
+   const idx=statuses.indexOf(o.status),safeIdx=idx<0?0:idx;
+   const descriptions={New:'Order received',Contacting:'We are contacting you to confirm the order',Confirmed:'Order confirmed successfully',Processing:'Your order is being prepared',Shipped:'Your package is on the way',Delivered:'Order delivered',Cancelled:'This order has been cancelled'};
    $('result').hidden=false;
    const currentLabel=descriptions[o.status]||'Your order status has been updated';
    const district=String(o.district||'').toLowerCase(),division=String(o.division||'').toLowerCase();
    const eta=(district.includes('dhaka')||division==='dhaka')?'1–2 days':(district.includes('chattogram')||district.includes('chittagong')||division.includes('chattogram')||division.includes('chittagong'))?'2–4 days':(division?'2–5 days':'');
-   const statusMarkup=statuses.map((s,i)=>{
-     const isCancelled=s==='Cancelled';
-     const cls=o.status==='Cancelled'?(isCancelled?'cancelled current':''):(i<safeIdx?'completed':i===safeIdx?'current':'');
-     return '<div class="track-status-step '+cls+'"><span class="track-status-icon">'+statusIcons[s]+'</span><span>'+esc(s)+'</span></div>';
-   }).join('');
+   const statusMarkup=statuses.map((s,i)=>{const isCancelled=s==='Cancelled';const cls=o.status==='Cancelled'?(isCancelled?'cancelled current':''):(i<safeIdx?'completed':i===safeIdx?'current':'');return '<div class="track-status-step '+cls+'"><span class="track-status-icon">'+statusIcons[s]+'</span><span>'+esc(s)+'</span></div>';}).join('');
+   const vendors=Array.isArray(o.vendors)?o.vendors:[];
+   const shipmentMarkup=vendors.length?vendors.map(v=>{
+     const products=(v.items||[]).map(i=>esc(i.product_name||'Product')+' × '+Number(i.quantity||1)).join(' · ')||'Product';
+     const shipments=Array.isArray(v.shipments)?v.shipments:[];
+     return '<section class="tracking-box"><div style="font-size:12px;color:#777;font-weight:800;text-transform:uppercase;letter-spacing:.06em">SHOP</div><div style="font-size:18px;font-weight:900;margin-top:3px">'+esc(v.brand_name||v.vendor_name||'Vendor')+'</div><div style="margin-top:5px;font-size:13px;color:#555"><b>Product:</b> '+products+'</div>'+
+       (shipments.length?shipments.map(s=>'<div style="margin-top:12px;padding-top:12px;border-top:1px solid #ddd"><div style="font-size:11px;font-weight:900;color:#777;text-transform:uppercase">SHIPMENT</div><div style="margin-top:5px"><b>'+esc(s.status||v.status||'Processing')+'</b></div><div style="margin-top:4px;color:#555">'+esc(s.courier||'Courier pending')+(s.tracking_id?' · '+esc(s.tracking_id):' · Tracking pending')+'</div>'+(s.tracking_url?'<a class="tracking-link" href="'+esc(s.tracking_url)+'" target="_blank" rel="noopener">Track Package →</a>':'')+'</div>').join(''):'<div style="margin-top:10px;color:#777">Shipment not added yet.</div>')+
+     '</section>';
+   }).join(''):'<div class="tracking-box">Shipment details will appear here once your vendor ships the order.</div>';
    $('result').innerHTML='<b>Order #'+esc(o.orderNumber)+'</b>'+
    '<div class="current-status">Current Status: '+esc(o.status||'Unknown')+'<small>'+esc(currentLabel)+'</small></div>'+
    (eta?'<div class="tracking-box"><b>📦 Estimated Arrival</b><div>'+esc(eta)+'</div></div>':'')+
    '<div class="track-status-line" aria-label="Order status progress">'+statusMarkup+'</div>'+
-   (o.tracking?.number||o.tracking?.courier||o.tracking?.url?
-     '<div class="tracking-box"><b>Package Tracking</b><div>'+esc(o.tracking.courier||'Courier')+(o.tracking.number?' · '+esc(o.tracking.number):'')+'</div>'+
-     (o.tracking.url?'<a class="tracking-link" href="'+esc(o.tracking.url)+'" target="_blank" rel="noopener">Track Package →</a>':'')+'</div>':
-     '<div class="tracking-box">Courier tracking details will appear here once your package is shipped.</div>')+
+   '<div style="margin-top:18px"><b style="font-size:16px">Shipment Tracking</b>'+shipmentMarkup+'</div>'+
    (o.items?.length?'<div class="items"><b>Order Items</b>'+o.items.map(i=>'<div class="item"><span>'+esc(i.name)+' × '+i.quantity+'</span><span>৳'+Number(i.price*i.quantity).toLocaleString('en-BD')+'</span></div>').join('')+'</div>':'');
  }
 
