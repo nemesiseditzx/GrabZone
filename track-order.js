@@ -105,17 +105,17 @@
        if(!window.html2pdf)throw new Error('PDF generator did not load. Refresh the page and try again.');
        pdfRoot=document.createElement('div');
        pdfRoot.className='gz-invoice-pdf-root';
-       pdfRoot.style.cssText='position:fixed;left:-12000px;top:0;width:740px;background:#fff;color:#171923;z-index:-1;pointer-events:none;';
+       pdfRoot.style.cssText='position:fixed;left:-12000px;top:0;width:720px;box-sizing:border-box;background:#fff;color:#171923;z-index:-1;pointer-events:none;';
        const clone=sheet.cloneNode(true);
        clone.classList.add('gz-invoice-pdf-copy');
        clone.style.setProperty('position','static','important');
-       clone.style.setProperty('width','740px','important');
+       clone.style.setProperty('width','720px','important');
        clone.style.setProperty('max-width','none','important');
        clone.style.setProperty('height','auto','important');
        clone.style.setProperty('max-height','none','important');
        clone.style.setProperty('overflow','visible','important');
        clone.style.setProperty('margin','0','important');
-       clone.style.setProperty('padding','28px 32px','important');
+       clone.style.setProperty('padding','24px 22px','important');
        clone.style.setProperty('transform','none','important');
        clone.style.setProperty('clip-path','none','important');
        clone.style.setProperty('box-shadow','none','important');
@@ -129,10 +129,10 @@
        await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true})})));
        const pdfHeight=Math.max(clone.scrollHeight,clone.getBoundingClientRect().height);
        const opt={
-         margin:[5,5,7,5],
+         margin:[4,4,6,4],
          filename:'GrabZone-Invoice-'+orderNo.replace(/[^a-z0-9_-]/gi,'-')+'.pdf',
          image:{type:'jpeg',quality:.98},
-         html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:800,windowHeight:Math.max(1200,pdfHeight+80),width:740},
+         html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:760,windowHeight:Math.max(1200,pdfHeight+80),width:720},
          jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
          pagebreak:{mode:['css','legacy'],avoid:['.gz-invoice-grabpoints','.gz-invoice-barcodes','.gz-invoice-thanks','.gz-invoice-footer','.gz-inv-product']}
        };
