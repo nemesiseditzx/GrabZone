@@ -476,7 +476,7 @@ async function openEditor(id){
    const productsByVo=new Map();
    for(const x of maps){const a=productsByVo.get(String(x.vendor_order_id))||[];const n=itemNameMap.get(String(x.order_item_id));if(n&&!a.includes(n))a.push(n);productsByVo.set(String(x.vendor_order_id),a)}
    const voVendor=new Map(routedForOrder.map(x=>[String(x.id),String(x.vendor_id||'')]));
-   shipmentRows=shipments.map(s=>{const void=String(s.vendor_order_id||'');const vid=String(s.vendor_id||voVendor.get(void)||'');return {...s,vendor_id:vid,vendor_name:vendorMap.get(vid)||'Vendor',product_names:productsByVo.get(void)||[]};});
+   shipmentRows=shipments.map(s=>{const voKey=String(s.vendor_order_id||'');const vid=String(s.vendor_id||voVendor.get(voKey)||'');return {...s,vendor_id:vid,vendor_name:vendorMap.get(vid)||'Vendor',product_names:productsByVo.get(voKey)||[]};});
  }
  current={...base,items:enrichedItems,shipments:shipmentRows,shipping_charge:Number(financial?.shipping??base.shipping_charge??globalShippingFee)};
  current.total=Math.max(0,Number(current.subtotal||0)+Number(current.shipping_charge||0)-Number(current.referral_discount||0)-Number(current.rewards_voucher_discount||0)-Number(current.mystery_discount||0));
