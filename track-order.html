@@ -1,29 +1,143 @@
-<!doc;
-   const invBtn=$('viewInvoiceBtn'); if(invBtn)invBtn.onclick=()=>openInvoice(o); const invClose=$('invoiceClose'); if(invClose)invClose.onclick=()=>$('invoiceModal').classList.remove('open'); const invModal=$('invoiceModal'); if(invModal)invModal.onclick=e=>{if(e.target===invModal)invModal.classList.remove('open')};
- type html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff">
 <title>Track Your Order | GrabZone</title>
-<link rel="icon" href="favicon.png"><link rel="stylesheet" href="styles.css">
-<style>
-body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20px}.track-card{background:#fff;border:1px solid #e5e5e1;border-radius:24px;padding:28px;box-shadow:0 10px 35px rgba(0,0,0,.06)}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.12em;color:#777}.track-card h1{margin:8px 0 8px;font-size:34px}.track-card p{color:#666}.track-form{display:flex;gap:10px;margin-top:22px}.track-form input{flex:1;border:1px solid #ddd;border-radius:12px;padding:14px;font:inherit;text-transform:uppercase}.track-form button{border:0;background:#111;color:#fff;border-radius:12px;padding:0 20px;font-weight:800;cursor:pointer}.track-msg{margin-top:12px;font-size:13px;font-weight:700}.result{margin-top:24px}.track-status-line{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:18px 0;position:relative}.track-status-line::before{content:'';position:absolute;left:5%;right:5%;top:46px;height:2px;background:#ddd;z-index:0}.track-status-step{position:relative;z-index:1;min-height:112px;padding:13px 8px 10px;border:1px solid #e1e1dd;border-radius:14px;background:#f5f5f2;color:#777;font-size:12px;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;box-sizing:border-box;gap:7px}.track-status-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#888;background:#fff;border:1px solid #ddd}.track-status-icon svg{width:19px;height:19px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.track-status-step.completed{background:#eef7ef;border-color:#b9d8bd;color:#176b2c}.track-status-step.completed .track-status-icon{color:#176b2c;border-color:#b9d8bd}.track-status-step.current{background:#111;color:#fff;border-color:#111;box-shadow:0 7px 18px rgba(0,0,0,.12)}.track-status-step.current .track-status-icon{background:#fff;color:#111;border-color:#fff}.track-status-step.cancelled{background:#fff0f0;color:#a11;border-color:#efc4c4}.track-status-step.cancelled .track-status-icon{color:#c33;border-color:#efc4c4}.help{margin-top:24px;padding-top:22px;border-top:1px solid #eee}.help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.help-grid a{display:flex;align-items:center;justify-content:center;gap:9px;padding:12px;border:1px solid #ddd;border-radius:12px;text-decoration:none;color:#111;text-align:center;font-weight:800;background:#fff;transition:.15s ease}.help-grid a:hover{background:#f6f6f3;transform:translateY(-1px)}.help-icon{width:24px;height:24px;display:grid;place-items:center;border-radius:7px;color:#fff;flex:0 0 24px}.help-icon svg{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.help-icon.instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d 52%,#fcb045)}.help-icon.facebook{background:#1877f2}.help-icon.whatsapp{background:#25d366}.back-store{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:12px;padding:13px 16px;border-radius:12px;background:#111;color:#fff;text-decoration:none;font-weight:800;transition:.15s ease}.back-store:hover{transform:translateY(-1px);background:#222}.back-store svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.current-status{margin:4px 0 16px;padding:13px 15px;border-radius:13px;background:#111;color:#fff;font-size:14px;font-weight:800}.current-status small{display:block;margin-top:4px;color:#cfcfcf;font-size:12px;font-weight:600}.tracking-box{margin-top:18px;padding:18px;background:#f5f5f2;border-radius:16px}.invoice-btn{display:inline-flex;align-items:center;justify-content:center;margin-top:10px;padding:11px 15px;background:#fff;color:#111;border:1px solid #ddd;border-radius:10px;text-decoration:none;font-weight:800;cursor:pointer}.product-card{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid #eee}.product-thumb{width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid #ddd;background:#fff}.product-info{min-width:0;flex:1}.product-info a{color:#111;text-decoration:none}.product-info a:hover{text-decoration:underline}.invoice-modal{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.6)}.invoice-modal.open{display:flex}.invoice-sheet{width:min(760px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:20px;padding:26px;box-sizing:border-box}.invoice-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;border-bottom:1px solid #eee;padding-bottom:15px}.invoice-close{border:1px solid #ddd;background:#fff;border-radius:9px;padding:8px 12px;cursor:pointer;font-weight:800}.invoice-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0}.invoice-total{font-size:18px;font-weight:900;border-top:1px solid #ddd;margin-top:8px;padding-top:12px}.invoice-vendor{margin-top:16px;border:1px solid #e5e5e1;border-radius:14px;padding:13px}.invoice-vendor h4{margin:0 0 8px}.invoice-modal table{width:100%;border-collapse:collapse}.invoice-modal td{padding:8px 4px;border-bottom:1px solid #eee;vertical-align:top}.tracking-link{display:inline-block;margin-top:10px;padding:11px 15px;background:#111;color:#fff;border-radius:10px;text-decoration:none;font-weight:800}.help{margin-top:24px;padding-top:22px;border-top:1px solid #eee}.help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.help-grid a{display:flex;align-items:center;justify-content:center;gap:9px;padding:12px;border:1px solid #ddd;border-radius:12px;text-decoration:none;color:#111;text-align:center;font-weight:800;background:#fff;transition:.15s ease}.items{margin-top:18px;border-top:1px solid #eee;padding-top:15px}.item{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}@media(max-width:760px){.track-status-line{grid-template-columns:repeat(4,minmax(0,1fr))}.track-status-line::before{display:none}}@media(max-width:600px){.track-wrap{margin:25px auto}.track-card{padding:20px}.track-card h1{font-size:28px}.track-form{flex-direction:column}.track-form button{height:48px}.track-status-line{grid-template-columns:repeat(2,minmax(0,1fr))}.help-grid{grid-template-columns:1fr}}
-</style>
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="grabzone-mobile-global.css?v=20260922mobileglobal2">
-<script src="/grabzone-animation-controller.js?v=20260922full-animation1"></script>
-  <link rel="stylesheet" href="grabzone-ui-consistency.css?v=20260923ui">
+<link rel="stylesheet" href="grabzone-ui-consistency.css?v=20260923ui">
+<style>
+/* Tracking page — explicit overrides keep the page readable even when global UI styles load later. */
+body.track-page{background:#f4f5f7!important;color:#15181c!important}
+.track-page .track-wrap{width:min(820px,calc(100% - 32px));margin:48px auto;padding:16px}
+.track-page .track-card{background:#fff!important;color:#15181c!important;border:1px solid #dfe3e8!important;border-radius:24px!important;padding:30px!important;box-shadow:0 16px 45px rgba(15,23,42,.08)!important}
+.track-page .eyebrow{display:inline-flex;align-items:center;gap:7px;color:#5b6470!important;font-size:11px;font-weight:900;letter-spacing:.12em}
+.track-page .eyebrow::before{content:'';width:7px;height:7px;border-radius:50%;background:#ff6500;display:inline-block}
+.track-page h1{color:#111827!important;margin:10px 0 8px;font-size:38px;line-height:1.05;letter-spacing:-.04em}
+.track-page .intro{color:#59636f!important;margin:0;line-height:1.6}
+.track-page .track-form{display:flex;gap:10px;margin-top:22px}
+.track-page .track-form input{flex:1;width:auto!important;min-width:0;border:1px solid #cfd5dc!important;border-radius:12px!important;background:#fff!important;color:#111827!important;padding:13px 14px!important;text-transform:uppercase}
+.track-page .track-form input::placeholder{color:#8a929c!important}
+.track-page .track-form button{flex:0 0 auto;background:#11151a!important;color:#fff!important;border:1px solid #11151a!important;border-radius:12px!important;padding:0 20px!important;min-height:48px!important;font-weight:850!important}
+.track-page .track-form button:hover{background:#292e34!important;color:#fff!important}
+.track-page .track-msg{margin-top:12px;color:#20262d!important;font-size:13px;font-weight:750}
+.track-page .result{margin-top:24px;color:#15181c!important}
+.track-page .result>b{display:block;font-size:17px;color:#111827!important;margin-bottom:10px}
+.track-page .current-status{margin:0 0 16px!important;padding:15px 16px!important;border-radius:14px!important;background:#11151a!important;color:#fff!important;font-size:14px;font-weight:850}
+.track-page .current-status small{display:block;margin-top:5px;color:#d9dee5!important;font-size:12px;font-weight:600}
+.track-page .track-status-line{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:18px 0;position:relative}
+.track-page .track-status-line::before{content:'';position:absolute;left:5%;right:5%;top:48px;height:2px;background:#d8dde3;z-index:0}
+.track-page .track-status-step{position:relative;z-index:1;min-height:116px;padding:13px 8px 10px;border:1px solid #d8dde3!important;border-radius:14px!important;background:#f0f2f4!important;color:#4f5964!important;font-size:12px;font-weight:850;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;box-sizing:border-box;gap:7px}
+.track-page .track-status-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:#5d6772!important;background:#fff!important;border:1px solid #cfd5dc!important}
+.track-page .track-status-icon svg{width:19px;height:19px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.track-page .track-status-step.completed{background:#eaf7ed!important;border-color:#a8d4b1!important;color:#176b2c!important}
+.track-page .track-status-step.completed .track-status-icon{color:#176b2c!important;border-color:#a8d4b1!important}
+.track-page .track-status-step.current{background:#11151a!important;border-color:#11151a!important;color:#fff!important;box-shadow:0 8px 20px rgba(17,21,26,.16)}
+.track-page .track-status-step.current .track-status-icon{background:#fff!important;color:#11151a!important;border-color:#fff!important}
+.track-page .track-status-step.cancelled{background:#fff0f0!important;border-color:#efbcbc!important;color:#a11!important}
+.track-page .invoice-btn{display:inline-flex!important;align-items:center;justify-content:center;margin-top:10px;padding:11px 15px!important;background:#fff!important;color:#111827!important;border:1px solid #cfd5dc!important;border-radius:10px!important;font-weight:850!important;cursor:pointer}
+.track-page .invoice-btn:hover{background:#f6f7f9!important;color:#111827!important}
+.track-page .section-title{display:block;margin:22px 0 10px;color:#111827!important;font-size:17px;font-weight:900}
+.track-page .tracking-box{margin-top:12px;padding:18px!important;background:#f8fafb!important;color:#20262d!important;border:1px solid #dfe3e8!important;border-radius:16px!important}
+.track-page .tracking-box .shop-label{font-size:11px;color:#68717b!important;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.track-page .tracking-box .shop-name{margin-top:3px;color:#111827!important;font-size:18px;font-weight:900}
+.track-page .tracking-box .product-line{margin-top:7px;color:#3f4852!important;font-size:13px;line-height:1.5}
+.track-page .tracking-box a{color:#1d4ed8!important;text-decoration:underline;text-underline-offset:3px}
+.track-page .tracking-link{display:inline-block;margin-top:10px;padding:10px 13px!important;background:#11151a!important;color:#fff!important;border-radius:10px!important;text-decoration:none!important;font-weight:850}
+.track-page .tracking-link:hover{background:#292e34!important;color:#fff!important}
+.track-page .items{margin-top:18px;border-top:1px solid #e1e5e9;padding-top:15px}
+.track-page .item{display:flex;justify-content:space-between;gap:12px;padding:9px 0;color:#20262d!important;font-size:13px}
+.track-page .help{margin-top:28px;padding-top:22px;border-top:1px solid #e1e5e9}
+.track-page .help-title{color:#111827!important;font-weight:850}
+.track-page .help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+.track-page .help-grid a{display:flex;align-items:center;justify-content:center;gap:9px;padding:12px;border:1px solid #d8dde3!important;border-radius:12px;text-decoration:none;color:#111827!important;text-align:center;font-weight:800;background:#fff!important}
+.track-page .help-grid a:hover{background:#f6f7f9!important;color:#111827!important}
+.track-page .help-icon{width:24px;height:24px;display:grid;place-items:center;border-radius:7px;color:#fff!important;flex:0 0 24px}
+.track-page .help-icon svg{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.track-page .help-icon.instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d 52%,#fcb045)!important}
+.track-page .help-icon.facebook{background:#1877f2!important}
+.track-page .help-icon.whatsapp{background:#25d366!important}
+.track-page .back-store{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:12px;padding:13px 16px;background:#11151a!important;color:#fff!important;border-radius:12px;text-decoration:none;font-weight:850}
+.track-page .back-store:hover{background:#292e34!important;color:#fff!important}
+.track-page .back-store svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.track-page .invoice-modal{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(8,12,18,.68)!important}
+.track-page .invoice-modal.open{display:flex}
+.track-page .invoice-sheet{width:min(760px,100%);max-height:92vh;overflow:auto;background:#fff!important;color:#15181c!important;border-radius:20px;padding:26px;box-sizing:border-box;box-shadow:0 25px 80px rgba(0,0,0,.24)}
+.track-page .invoice-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;border-bottom:1px solid #e1e5e9;padding-bottom:15px}
+.track-page .invoice-head h2{color:#111827!important}
+.track-page .invoice-close{border:1px solid #cfd5dc!important;background:#fff!important;color:#111827!important;border-radius:9px;padding:8px 12px;cursor:pointer;font-weight:850}
+.track-page .invoice-close:hover{background:#f6f7f9!important}
+.track-page .product-card{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-top:1px solid #e5e7eb!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}
+.track-page .product-thumb{width:76px;height:76px;flex:0 0 76px;object-fit:cover;border-radius:10px;border:1px solid #d8dde3!important;background:#fff!important}
+.track-page .product-info{min-width:0;flex:1}
+.track-page .product-info a{color:#111827!important;text-decoration:none}
+.track-page .product-info a:hover{text-decoration:underline}
+.track-page .invoice-vendor{margin-top:16px;border:1px solid #dfe3e8!important;border-radius:14px;padding:13px;background:#fafbfc!important}
+.track-page .invoice-vendor h4{margin:0 0 8px;color:#111827!important}
+.track-page .invoice-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;color:#303840!important}
+.track-page .invoice-total{font-size:18px;font-weight:900;border-top:1px solid #cfd5dc;margin-top:8px;padding-top:12px;color:#111827!important}
+@media(max-width:900px){.track-page .track-status-line{grid-template-columns:repeat(4,minmax(0,1fr))}.track-page .track-status-line::before{display:none}}
+@media(max-width:600px){
+  .track-page .track-wrap{width:calc(100% - 20px);margin:20px auto;padding:0}
+  .track-page .track-card{padding:20px!important;border-radius:18px!important}
+  .track-page h1{font-size:30px}
+  .track-page .track-form{flex-direction:column}
+  .track-page .track-form input,.track-page .track-form button{width:100%!important}
+  .track-page .track-status-line{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .track-page .track-status-step{min-height:105px}
+  .track-page .help-grid{grid-template-columns:1fr}
+  .track-page .invoice-sheet{padding:18px;border-radius:16px}
+}
+</style>
 </head>
-<body>
-<div class="track-wrap"><div class="track-card">
-<div class="eyebrow">GRABZONE ORDER TRACKING</div><h1>Track Your Order</h1>
-<p>Enter your Order Tracking ID to see the latest status of your order.</p>
-<form class="track-form" id="trackForm"><input id="orderId" placeholder="GZ-XXXXXXXXXXXXXXX" autocomplete="off" required><button>Track Order</button></form>
-<div id="msg" class="track-msg"></div><div id="result" class="result" hidden></div>
-<div id="invoiceModal" class="invoice-modal" role="dialog" aria-modal="true"><div class="invoice-sheet"><div class="invoice-head"><div><div class="eyebrow">GRABZONE RECEIPT</div><h2 style="margin:5px 0">Order Invoice</h2><div id="invoiceMeta" style="color:#666;font-size:12px"></div></div><button id="invoiceClose" class="invoice-close" type="button">Close</button></div><div id="invoiceBody" style="margin-top:15px"></div></div></div><div class="help"><b>Need help with your order?</b><div class="help-grid">
-<a id="ig" target="_blank" rel="noopener"><span class="help-icon instagram"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.3" cy="6.8" r="1" fill="currentColor" stroke="none"/></svg></span><span>Instagram</span></a>
-<a id="fb" target="_blank" rel="noopener"><span class="help-icon facebook"><svg viewBox="0 0 24 24"><path d="M14 8h3V4.5h-3c-3 0-5 2-5 5V12H6v3.5h3V21h3.5v-5.5H16l.7-3.5h-4.2V9.7c0-1.1.5-1.7 1.5-1.7Z" fill="currentColor" stroke="none"/></svg></span><span>Facebook</span></a>
-<a id="wa" target="_blank" rel="noopener"><span class="help-icon whatsapp"><svg viewBox="0 0 24 24"><path d="M7 20l1.2-3A7.8 7.8 0 1 1 17 18.3L14 19.5 7 20Z"/><path d="M9.5 9.3c.2 1.4 2 3.4 3.3 4.1.5.3 1 .3 1.5-.1l.7-.6"/></svg></span><span>WhatsApp</span></a>
-</div><a class="back-store" href="index.html"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg><span>Back to Store</span></a></div>
-</div></div>
+<body class="track-page">
+<main class="track-wrap">
+  <section class="track-card">
+    <div class="eyebrow">GRABZONE ORDER TRACKING</div>
+    <h1>Track Your Order</h1>
+    <p class="intro">Enter your Order Tracking ID to see the latest status of your order.</p>
+
+    <form class="track-form" id="trackForm">
+      <input id="orderId" placeholder="GZ-XXXXXXXXXXXXXXX" autocomplete="off" required>
+      <button type="submit">Track Order</button>
+    </form>
+
+    <div id="msg" class="track-msg" aria-live="polite"></div>
+    <div id="result" class="result" hidden></div>
+
+    <div id="invoiceModal" class="invoice-modal" role="dialog" aria-modal="true" aria-labelledby="invoiceTitle">
+      <div class="invoice-sheet">
+        <div class="invoice-head">
+          <div>
+            <div class="eyebrow">GRABZONE RECEIPT</div>
+            <h2 id="invoiceTitle" style="margin:5px 0">Order Invoice</h2>
+            <div id="invoiceMeta" style="color:#68717b;font-size:12px"></div>
+          </div>
+          <button id="invoiceClose" class="invoice-close" type="button">Close</button>
+        </div>
+        <div id="invoiceBody" style="margin-top:15px"></div>
+      </div>
+    </div>
+
+    <div class="help">
+      <div class="help-title">Need help with your order?</div>
+      <div class="help-grid">
+        <a id="ig" target="_blank" rel="noopener"><span class="help-icon instagram"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.3" cy="6.8" r="1" fill="currentColor" stroke="none"/></svg></span><span>Instagram</span></a>
+        <a id="fb" target="_blank" rel="noopener"><span class="help-icon facebook"><svg viewBox="0 0 24 24"><path d="M14 8h3V4.5h-3c-3 0-5 2-5 5V12H6v3.5h3V21h3.5v-5.5H16l.7-3.5h-4.2V9.7c0-1.1.5-1.7 1.5-1.7Z" fill="currentColor" stroke="none"/></svg></span><span>Facebook</span></a>
+        <a id="wa" target="_blank" rel="noopener"><span class="help-icon whatsapp"><svg viewBox="0 0 24 24"><path d="M7 20l1.2-3A7.8 7.8 0 1 1 17 18.3L14 19.5 7 20Z"/><path d="M9.5 9.3c.2 1.4 2 3.4 3.3 4.1.5.3 1 .3 1.5-.1l.7-.6"/></svg></span><span>WhatsApp</span></a>
+      </div>
+      <a class="back-store" href="index.html"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg><span>Back to Store</span></a>
+    </div>
+  </section>
+</main>
+
 <script src="config.js"></script>
-<script src="d1-client.js?v=20260902cloudflarefix1"></script><script src="track-order.js?v=20260924invoice3"></script><script src="grabzone-mobile-app-shell.js?v=20260922mobileapp1"></script></body></html>
+<script src="d1-client.js?v=20260902cloudflarefix1"></script>
+<script src="track-order.js?v=20260924invoice4"></script>
+<script src="grabzone-animation-controller.js?v=20260922full-animation1"></script>
+<script src="grabzone-mobile-app-shell.js?v=20260922mobileapp1"></script>
+</body>
+</html>
