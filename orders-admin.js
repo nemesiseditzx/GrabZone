@@ -463,7 +463,8 @@ async function openEditor(id){
    item.vendor_name=vendorNameMap.get(item.vendor_id)||'Vendor';
  }
  const financial=orderFinancialMap.get(String(id));
- const routedForOrder=vendorOrderRows.filter(x=>String(x.order_id||'')===String(id));
+ const routedRes=await sb.from('vendor_orders').select('id,order_id,vendor_id,shipping_fee,delivery_charge').eq('order_id',id);
+ const routedForOrder=(!routedRes.error&&Array.isArray(routedRes.data))?routedRes.data:[];
  const voIds=routedForOrder.map(x=>String(x.id||'')).filter(Boolean);
  let shipmentRows=[];
  if(voIds.length){
