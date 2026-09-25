@@ -49,6 +49,8 @@
    await socialSettingsReady;
    const modal=$('invoiceModal'),body=$('invoiceBody'),meta=$('invoiceMeta');
    if(!modal||!body)return;
+   (window.__gzInvoicePrintTimers||[]).forEach(clearTimeout);window.__gzInvoicePrintTimers=[];
+   modal.classList.remove('open','printing','printed','paper-feeding','invoice-reveal','printer-phase');modal.scrollTop=0;
    const orderNo=String(o.orderNumber||o.order_number||o.order_id||'—');
    const tracking=String(o.tracking_id||o.trackingId||'—');
    const orderDate=o.created_at||o.createdAt||o.order_date||o.orderDate||'';
@@ -103,11 +105,11 @@
        if(!window.html2pdf)throw new Error('PDF generator did not load. Refresh the page and try again.');
        pdfRoot=document.createElement('div');
        pdfRoot.className='gz-invoice-pdf-root';
-       pdfRoot.style.cssText='position:absolute;left:-12000px;top:0;width:1020px;background:#fff;color:#171923;z-index:-1;pointer-events:none;';
+       pdfRoot.style.cssText='position:fixed;left:-12000px;top:0;width:740px;background:#fff;color:#171923;z-index:-1;pointer-events:none;';
        const clone=sheet.cloneNode(true);
        clone.classList.add('gz-invoice-pdf-copy');
        clone.style.setProperty('position','static','important');
-       clone.style.setProperty('width','1020px','important');
+       clone.style.setProperty('width','740px','important');
        clone.style.setProperty('max-width','none','important');
        clone.style.setProperty('height','auto','important');
        clone.style.setProperty('max-height','none','important');
@@ -127,10 +129,10 @@
        await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true})})));
        const pdfHeight=Math.max(clone.scrollHeight,clone.getBoundingClientRect().height);
        const opt={
-         margin:[8,8,10,8],
+         margin:[5,5,7,5],
          filename:'GrabZone-Invoice-'+orderNo.replace(/[^a-z0-9_-]/gi,'-')+'.pdf',
          image:{type:'jpeg',quality:.98},
-         html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:1100,windowHeight:pdfHeight+40},
+         html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:800,windowHeight:Math.max(1200,pdfHeight+80),width:740},
          jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
          pagebreak:{mode:['css','legacy'],avoid:['.gz-invoice-grabpoints','.gz-invoice-barcodes','.gz-invoice-thanks','.gz-invoice-footer','.gz-inv-product']}
        };
@@ -138,12 +140,10 @@
      }catch(err){console.error('Invoice PDF download failed:',err);alert('Invoice PDF তৈরি করা যায়নি। পেজটি রিফ্রেশ করে আবার চেষ্টা করুন।');}
      finally{if(pdfRoot)pdfRoot.remove();downloadBtn.disabled=false;downloadBtn.innerHTML=old;}
    };
-   modal.classList.remove('printed','paper-feeding','invoice-reveal','printer-phase');
-   (window.__gzInvoicePrintTimers||[]).forEach(clearTimeout);window.__gzInvoicePrintTimers=[];
    modal.classList.add('open','printing','printer-phase');
-   window.__gzInvoicePrintTimers.push(setTimeout(()=>modal.classList.add('paper-feeding'),350));
-   window.__gzInvoicePrintTimers.push(setTimeout(()=>modal.classList.add('invoice-reveal'),3150));
-   window.__gzInvoicePrintTimers.push(setTimeout(()=>{modal.classList.remove('printing','printer-phase','paper-feeding','invoice-reveal');modal.classList.add('printed')},4250));
+   window.__gzInvoicePrintTimers.push(setTimeout(()=>modal.classList.add('paper-feeding'),250));
+   window.__gzInvoicePrintTimers.push(setTimeout(()=>modal.classList.add('invoice-reveal'),3000));
+   window.__gzInvoicePrintTimers.push(setTimeout(()=>{modal.classList.remove('printing','printer-phase','paper-feeding','invoice-reveal');modal.classList.add('printed')},4300));
  }
  const shipmentMarkup=vendors.length?vendors.map(v=>{
      const products=(v.items||[]).map(i=>esc(i.product_name||'Product')+' × '+Number(i.quantity||1)).join(' · ')||'Product';
