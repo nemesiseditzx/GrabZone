@@ -84,6 +84,7 @@ body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20p
    '<div class="track-status-line" aria-label="Order status progress">'+statusMarkup+'</div>'+
    '<button type="button" class="invoice-btn" id="viewInvoiceBtn">View Invoice / Receipt</button><div style="margin-top:18px"><b style="font-size:16px">Shipment Tracking</b>'+shipmentMarkup+'</div>'+
    (o.items?.length?'<div class="items"><b>Order Items</b>'+o.items.map(i=>'<div class="item"><span>'+esc(i.name)+' × '+i.quantity+'</span><span>৳'+Number(i.price*i.quantity).toLocaleString('en-BD')+'</span></div>').join('')+'</div>':'');
+   const invBtn=$('viewInvoiceBtn');if(invBtn)invBtn.onclick=()=>openInvoice(o);const invClose=$('invoiceClose');if(invClose)invClose.onclick=()=>$('invoiceModal').classList.remove('open');const invModal=$('invoiceModal');if(invModal)invModal.onclick=e=>{if(e.target===invModal)invModal.classList.remove('open')};
  }
 
  async function getOrder(id){
