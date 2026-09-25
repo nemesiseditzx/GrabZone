@@ -47,24 +47,51 @@
    if(!modal||!body)return;
    const orderNo=String(o.orderNumber||o.order_number||o.order_id||'—');
    const tracking=String(o.tracking_id||o.trackingId||'—');
-   const barcodeValue=tracking!=='—'?tracking:orderNo;
+   const orderDate=o.created_at||o.createdAt||o.order_date||o.orderDate||'';
+   const dateText=orderDate?new Date(orderDate).toLocaleString('en-BD',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+   const payment=String(o.payment_method||o.paymentMethod||'Cash on Delivery');
+   const status=String(o.status||'Processing');
+   const customer=String(o.customer_name||o.customerName||'—');
+   const phone=String(o.phone||o.customer_phone||'—');
+   const email=String(o.email||o.customer_email||'');
+   const address=[o.address,o.upazila,o.district,o.division].filter(Boolean).join(', ')||'—';
    const pointsUrl=new URL('grabpoints.html',location.href).href;
-   const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=132x132&margin=5&data='+encodeURIComponent(pointsUrl);
-   if(meta)meta.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:8px"><span><b>Order No:</b> '+esc(orderNo)+'</span><span><b>Tracking ID:</b> '+esc(tracking)+'</span></div>';
+   const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6&data='+encodeURIComponent(pointsUrl);
+   const sum=Number(o.subtotal||0),shipping=Number(o.shipping_charge||0);
+   const discount=Number(o.referral_discount||0)+Number(o.rewards_voucher_discount||0)+Number(o.mystery_discount||0);
+   const total=Number(o.total||0);
+   const money=n=>'৳'+Number(n||0).toLocaleString('en-BD');
+   const bar=(id,value)=>'<div class="gz-invoice-barcode"><svg id="'+id+'" role="img" aria-label="Barcode '+esc(value)+'"></svg><small>'+esc(value)+'</small></div>';
+   const vendors=Array.isArray(o.vendors)?o.vendors:[];
+   const flatItems=vendors.flatMap(v=>(v.items||[]).map(i=>({vendor:v.brand_name||v.vendor_name||'GrabZone',item:i})));
+   const items=flatItems.length?flatItems.map(({vendor:v,item:i})=>'<tr><td class="gz-inv-item"><div class="gz-inv-product">'+(i.image_url?'<img src="'+esc(productImage(i))+'" alt="">':'')+'<div><b>'+esc(i.product_name||i.name||'Product')+'</b><small>'+esc(v)+' · SKU: '+esc(i.variation_sku||i.sku||'—')+(variationText(i)?'<br>'+variationText(i):'')+'</small></div></div></td><td>'+money(i.unit_price||0)+'</td><td>'+Number(i.quantity||1)+'</td><td><b>'+money(i.line_total||Number(i.unit_price||0)*Number(i.quantity||1))+'</b></td></tr>').join(''):
+     (Array.isArray(o.items)?o.items:[]).map(i=>'<tr><td class="gz-inv-item"><div class="gz-inv-product">'+(i.image_url?'<img src="'+esc(productImage(i))+'" alt="">':'')+'<div><b>'+esc(i.product_name||i.name||'Product')+'</b><small>SKU: '+esc(i.sku||'—')+'</small></div></div></td><td>'+money(i.unit_price||i.price||0)+'</td><td>'+Number(i.quantity||1)+'</td><td><b>'+money(i.line_total||Number(i.price||i.unit_price||0)*Number(i.quantity||1))+'</b></td></tr>').join('');
    body.innerHTML=
-     '<section class="invoice-id-panel"><div class="invoice-id-grid"><div><span>GRABZONE ORDER NUMBER</span><b>'+esc(orderNo)+'</b></div><div><span>TRACKING ID</span><b>'+esc(tracking)+'</b></div></div><div class="invoice-barcode-wrap"><svg id="gzInvoiceBarcode" role="img" aria-label="Order tracking barcode"></svg><small>'+esc(barcodeValue)+'</small></div></section>'+
-     '<div class="invoice-customer-grid"><div><b>Customer</b><br>'+esc(o.customer_name||'—')+'</div><div><b>Phone</b><br>'+esc(o.phone||'—')+'</div><div><b>Address</b><br>'+esc([o.address,o.upazila,o.district,o.division].filter(Boolean).join(', ')||'—')+'</div><div><b>Payment</b><br>'+esc(o.payment_method||'Cash on Delivery')+'</div></div>'+
-     '<div style="margin-top:18px"><b>Products</b></div>'+
-     vendors.map(v=>'<div class="invoice-vendor"><h4>'+esc(v.brand_name||v.vendor_name||'Vendor')+'</h4>'+(v.items||[]).map(i=>'<div class="product-card"><a href="product.html?id='+encodeURIComponent(i.product_id||'')+'" target="_blank" rel="noopener"><img class="product-thumb" src="'+esc(productImage(i))+'" alt="'+esc(i.product_name||i.name||'Product')+'"></a><div class="product-info"><a href="product.html?id='+encodeURIComponent(i.product_id||'')+'" target="_blank" rel="noopener"><b>'+esc(i.product_name||i.name||'Product')+'</b></a><div style="font-size:12px;color:#666;margin-top:4px">SKU: '+esc(i.variation_sku||i.sku||'—')+' · Qty: '+Number(i.quantity||1)+'</div>'+(variationText(i)?'<div style="font-size:12px;color:#666;margin-top:3px">'+variationText(i)+'</div>':'')+'<div style="font-weight:800;margin-top:5px">৳'+Number(i.line_total||Number(i.unit_price||0)*Number(i.quantity||1)).toLocaleString('en-BD')+'</div></div></div>').join('')+'</div>').join('')+
-     '<div style="margin-top:15px"><div class="invoice-row"><span>Subtotal</span><b>৳'+Number(o.subtotal||0).toLocaleString('en-BD')+'</b></div><div class="invoice-row"><span>Shipping</span><b>৳'+Number(o.shipping_charge||0).toLocaleString('en-BD')+'</b></div>'+
-     ((Number(o.referral_discount||0)+Number(o.rewards_voucher_discount||0)+Number(o.mystery_discount||0))?'<div class="invoice-row"><span>Discount</span><b>-৳'+(Number(o.referral_discount||0)+Number(o.rewards_voucher_discount||0)+Number(o.mystery_discount||0)).toLocaleString('en-BD')+'</b></div>':'')+
-     '<div class="invoice-row invoice-total"><span>Total</span><b>৳'+Number(o.total||0).toLocaleString('en-BD')+'</b></div></div>'+
-     '<section class="invoice-grabpoints"><div class="invoice-grabpoints-copy"><span class="invoice-promo-kicker">GRABZONE REWARDS</span><h3>প্রতিটি কেনাকাটায় GrabPoints সংগ্রহ করুন!</h3><p>GrabPoints দিয়ে পরের কেনাকাটায় পান বিশেষ সুবিধা ও রিওয়ার্ড। আপনার পয়েন্ট দেখতে বা সদস্য হতে QR কোডটি স্ক্যান করুন।</p><a href="'+esc(pointsUrl)+'" class="invoice-points-link">GrabPoints দেখুন ↗</a></div><a class="invoice-qr-link" href="'+esc(pointsUrl)+'" target="_blank" rel="noopener" aria-label="Open GrabPoints"><img class="invoice-points-qr" src="'+esc(qrUrl)+'" alt="GrabPoints পেজের QR কোড"><small>SCAN ME</small></a></section>'+
-     '<div class="invoice-thanks">GRABZONE থেকে কেনাকাটা করার জন্য ধন্যবাদ ❤️<br><small>আপনার সন্তুষ্টিই আমাদের অগ্রাধিকার।</small></div>';
-   if(window.JsBarcode&&barcodeValue&&barcodeValue!=='—'){
-     try{window.JsBarcode('#gzInvoiceBarcode',barcodeValue,{format:'CODE128',displayValue:false,lineColor:'#171717',background:'#fff',width:1.65,height:48,margin:4});}
-     catch(err){console.warn('Invoice barcode could not be rendered:',err);}
+     '<div class="gz-invoice-toolbar"><span class="gz-invoice-chip">● GRABZONE RECEIPT</span><div class="gz-invoice-actions"><button type="button" id="invoiceDownload" class="gz-invoice-download">↓ Download Invoice</button></div></div>'+
+     '<div class="gz-invoice-brandhead"><div class="gz-invoice-brand"><img src="favicon.png" alt="GrabZone logo"><div><strong>Grab<span>Zone</span></strong><small>GADGETS&nbsp; • &nbsp;FASHION&nbsp; • &nbsp;MORE FOR YOU</small></div></div><div class="gz-invoice-title"><h2>ORDER INVOICE</h2><p>Thank you for shopping with GrabZone!</p></div></div>'+
+     '<section class="gz-invoice-order-meta"><div class="gz-invoice-identifiers"><div><span>GrabZone Order No.</span><b>'+esc(orderNo)+'</b></div><div><span>Tracking ID</span><b>'+esc(tracking)+'</b></div></div><div class="gz-invoice-orderfacts"><div><span>Order Date</span><b>'+esc(dateText)+'</b></div><div><span>Payment Method</span><b>'+esc(payment)+'</b></div><div><span>Order Status</span><b><i class="gz-invoice-status-dot"></i>'+esc(status)+'</b></div></div></section>'+
+     '<section class="gz-invoice-parties"><div><h3>♟ Customer Information</h3><b>'+esc(customer)+'</b><p>Phone: '+esc(phone)+(email?'<br>Email: '+esc(email):'')+'</p></div><div><h3>📍 Shipping Address</h3><p>'+esc(address)+'</p></div></section>'+
+     '<section class="gz-invoice-items"><table><thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead><tbody>'+items+'</tbody></table></section>'+
+     '<section class="gz-invoice-totals"><div><span>Subtotal</span><b>'+money(sum)+'</b></div><div><span>Shipping</span><b>'+money(shipping)+'</b></div>'+(discount?'<div><span>Discount</span><b>−'+money(discount)+'</b></div>':'')+'<div class="gz-invoice-grandtotal"><span>Total Paid ('+esc(payment)+')</span><b>'+money(total)+'</b></div></section>'+
+     '<section class="gz-invoice-barcodes"><div><h3>GrabZone Order Barcode</h3>'+bar('gzInvoiceOrderBarcode',orderNo)+'</div><div><h3>Tracking ID Barcode</h3>'+bar('gzInvoiceTrackingBarcode',tracking)+'</div></section>'+
+     '<section class="gz-invoice-thanks"><div class="gz-invoice-signoff"><strong>Thank You <span>♡</span></strong><em>for shopping with GrabZone!</em></div><div class="gz-invoice-bangla"><b>আপনার অর্ডারের জন্য ধন্যবাদ!</b><p>আপনার সমর্থন আমাদের আরও ভালো পণ্য এবং সেবা দেওয়ার অনুপ্রেরণা দেয়।</p></div></section>'+
+     '<section class="gz-invoice-grabpoints"><div class="gz-invoice-gp-brand"><div class="gz-invoice-gp-icon">GP</div><div><strong>Grab<span>Points</span></strong><h3>কেনাকাটায় আরও বেশি সুবিধা পান!</h3><p>প্রতিটি অর্ডারে GrabPoints সংগ্রহ করুন এবং ভবিষ্যতে ব্যবহার করে ডিসকাউন্ট পান।</p></div></div><div class="gz-invoice-gp-rewards"><span>🛒 অর্ডার করুন<br>সুবিধা নিন</span><span>🎁 পয়েন্ট দিয়ে<br>ডিসকাউন্ট পান</span><span>☆ বিশেষ অফার<br>ও রিওয়ার্ড পান</span></div><a class="gz-invoice-gp-qr" href="'+esc(pointsUrl)+'" target="_blank" rel="noopener"><img src="'+esc(qrUrl)+'" alt="GrabPoints QR code"><b>এখানে GrabPoints দেখুন</b><small>স্ক্যান করুন অথবা ভিজিট করুন</small><strong>grabzone.store/grabpoints</strong></a></section>'+
+     '<footer class="gz-invoice-footer"><div><b>Need Help?</b><span>support@grabzone.store</span></div><div><b>Visit Our Store</b><span>www.grabzone.store</span></div><div><b>Follow @GrabZone</b><span>Facebook · Instagram</span></div><small>© '+new Date().getFullYear()+' GrabZone. All rights reserved.</small></footer>';
+   if(window.JsBarcode){
+     [[ '#gzInvoiceOrderBarcode',orderNo ],[ '#gzInvoiceTrackingBarcode',tracking ]].forEach(([selector,value])=>{if(value&&value!=='—'){try{window.JsBarcode(selector,value,{format:'CODE128',displayValue:false,lineColor:'#171717',background:'#fff',width:1.5,height:48,margin:3});}catch(err){console.warn('Invoice barcode error:',err)}}});
    }
+   const downloadBtn=$('invoiceDownload');
+   if(downloadBtn)downloadBtn.onclick=async()=>{
+     const sheet=modal.querySelector('.invoice-sheet');
+     const old=downloadBtn.innerHTML;downloadBtn.disabled=true;downloadBtn.textContent='Preparing PDF…';
+     try{
+       if(window.html2pdf){
+         const opt={margin:[8,8,8,8],filename:'GrabZone-Invoice-'+orderNo.replace(/[^a-z0-9_-]/gi,'-')+'.pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}};
+         await window.html2pdf().set(opt).from(sheet).save();
+       }else{window.print();}
+     }catch(err){console.error('Invoice PDF download failed:',err);window.print();}
+     finally{downloadBtn.disabled=false;downloadBtn.innerHTML=old;}
+   };
    modal.classList.remove('printed','paper-feeding','invoice-reveal','printer-phase');
    (window.__gzInvoicePrintTimers||[]).forEach(clearTimeout);window.__gzInvoicePrintTimers=[];
    modal.classList.add('open','printing','printer-phase');
