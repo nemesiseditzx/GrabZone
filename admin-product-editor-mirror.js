@@ -14,7 +14,7 @@ async function api(path,opt={}){const method=(opt.method||'GET').toUpperCase();c
   }
   if(path.startsWith('/api/vendor/variations')){
     const pid=url.searchParams.get('product_id')||body?.product_id||'';
-    const parts=path.split('/').filter(Boolean);const variationId=parts[parts.length-1]&&parts[parts.length-1]!=='variations'?parts[parts.length-1]:'';
+    const parts=url.pathname.split('/').filter(Boolean);const last=parts[parts.length-1]||'';const variationId=last&&last!=='variations'?last:'';
     const target=variationId?('/api/marketplace/admin/variations/'+encodeURIComponent(variationId)+'?product_id='+encodeURIComponent(pid)):('/api/marketplace/admin/variations?product_id='+encodeURIComponent(pid));
     const r=await fetch(target,{method,credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
     const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||`Request failed (${r.status})`);return d;
