@@ -67,6 +67,8 @@ async function loadOrderVendorContext(){
       if(!bucket.some(x=>x.vendor_id===vid&&x.product_id===String(row.product_id||'')))bucket.push({vendor_id:vid,product_id:String(row.product_id||''),product_name:String(row.product_name||'Product'),vendor_name:name});
       orderVendorMap.set(oid,bucket);
     }
+    const productsByVendor=new Map();
+    for(const row of itemRows){const vid=String(itemVendorMap.get(String(row.id||''))||row.vendor_id||productVendorMap.get(String(row.product_id||''))||'').trim();if(!vid)continue;const arr=productsByVendor.get(vid)||[];const name=String(row.product_name||'Product');if(!arr.includes(name))arr.push(name);productsByVendor.set(vid,arr)}
     const vendorOrderByOrder=new Map();
     for(const row of vendorOrderRows){
       const oid=String(row.order_id||''); if(!oid)continue;
@@ -94,7 +96,7 @@ async function loadOrderVendorContext(){
         const fee=Number(row.shipping_fee);
         const delivery=Number(row.delivery_charge);
         const value=Number.isFinite(fee)&&fee>=0?fee:(Number.isFinite(delivery)&&delivery>=0?delivery:0);
-        snapshot.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||('Vendor '+vid.slice(0,8)),shipping:value});
+        snapshot.push({vendor_id:vid,vendor_name:vendorNameMap.get(vid)||('Vendor '+vid.slice(0,8)),product_names:productsByVendor.get(vid)||[],shipping:value});
       }
       const snapshotTotal=snapshot.reduce((n,x)=>n+Number(x.shipping||0),0);
 
@@ -106,6 +108,7 @@ async function loadOrderVendorContext(){
       const currentFees=vendorIds.map(vid=>({
         vendor_id:vid,
         vendor_name:vendorNameMap.get(vid)||('Vendor '+vid.slice(0,8)),
+        product_names:productsByVendor.get(vid)||[],
         shipping:Math.max(0,Number(vendorShippingMap.get(vid)??130))
       }));
       const currentFeeTotal=currentFees.reduce((n,x)=>n+Number(x.shipping||0),0);
@@ -131,7 +134,7 @@ async function loadOrderVendorContext(){
           return {...x,shipping:value};
         });
       }else if(invoiceShipping>0){
-        breakdown=[{vendor_id:'',vendor_name:'Customer invoice',shipping:invoiceShipping}];
+        breakdown=[{vendor_id:'',vendor_name:'Customer invoice',product_names:[],shipping:invoiceShipping}];
       }else{
         breakdown=[];
       }
@@ -488,7 +491,7 @@ async function openEditor(id){
  const renderShippingBreakdown=()=>{
    const box=$('oeShippingBreakdown'); if(!box)return;
    const f=orderFinancialMap.get(String(current.id)),rows=f?.breakdown||[];
-   box.innerHTML=rows.length?rows.map(x=>'<div class="gz-shipping-row"><span>'+esc(x.vendor_name||'Vendor')+'</span><b>'+money(x.shipping)+'</b></div>').join(''):'<div class="gz-shipping-row"><span>Delivery charge</span><b>'+money(current.shipping_charge||0)+'</b></div>';
+   box.innerHTML=rows.length?rows.map(x=>'<div class="gz-shipping-row"><span><strong>'+esc(x.vendor_name||'Vendor')+'</strong>'+(x.product_names&&x.product_names.length?'<small style="display:block;color:#777;margin-top:3px">'+esc(x.product_names.join(' · '))+'</small>':'')+'</span><b>'+money(x.shipping)+'</b></div>').join(''):'<div class="gz-shipping-row"><span>Delivery charge</span><b>'+money(current.shipping_charge||0)+'</b></div>';
  };
  $('oeAddItem').onclick=()=>{current.items.push({id:null,product_id:null,product_name:'',image_url:'',quantity:1,unit_price:0});renderItemEditor();updatePreview()};
  renderShippingBreakdown();
