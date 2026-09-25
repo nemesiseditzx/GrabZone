@@ -48,14 +48,14 @@
    const orderNo=String(o.orderNumber||o.order_number||o.order_id||'—');
    const tracking=String(o.tracking_id||o.trackingId||'—');
    const orderDate=o.created_at||o.createdAt||o.order_date||o.orderDate||'';
-   const dateText=orderDate?new Date(orderDate).toLocaleString('en-BD',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+   const dateText=orderDate?new Date(orderDate).toLocaleString('en-BD',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Dhaka'}):'—';
    const payment=String(o.payment_method||o.paymentMethod||'Cash on Delivery');
    const status=String(o.status||'Processing');
    const customer=String(o.customer_name||o.customerName||'—');
    const phone=String(o.phone||o.customer_phone||'—');
    const email=String(o.email||o.customer_email||'');
    const address=[o.address,o.upazila,o.district,o.division].filter(Boolean).join(', ')||'—';
-   const pointsUrl=new URL('grabpoints.html',location.href).href;
+   const pointsUrl='https://grabzone.store/grabpoints.html';
    const qrUrl='https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=6&data='+encodeURIComponent(pointsUrl);
    const sum=Number(o.subtotal||0),shipping=Number(o.shipping_charge||0);
    const discount=Number(o.referral_discount||0)+Number(o.rewards_voucher_discount||0)+Number(o.mystery_discount||0);
