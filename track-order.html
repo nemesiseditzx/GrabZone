@@ -349,200 +349,143 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
 @keyframes gzInvoiceReveal{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
 @media(max-width:600px){.track-page .receipt-printer{width:310px}.track-page .receipt-paper{left:30px;right:30px}}
 
-/* REALISTIC 3D RECEIPT PRINT — actual invoice feeds through the physical slot */
+/* REALISTIC 3D THERMAL PRINTER — paper visibly emerges from the slot */
 .track-page .invoice-modal.printing{
   background:rgba(6,7,8,.96)!important;
   overflow:hidden!important;
-  perspective:1400px!important;
-  perspective-origin:50% 50%!important;
+  perspective:1600px!important;
+  perspective-origin:50% 42%!important;
 }
 .track-page .invoice-printer-stage{
-  position:absolute!important;
-  inset:0!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  z-index:8!important;
-  pointer-events:none!important;
+  position:absolute!important;inset:0!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  z-index:8!important;pointer-events:none!important;
   transform-style:preserve-3d!important;
 }
 .track-page .receipt-printer{
-  width:min(540px,92vw)!important;
-  height:470px!important;
-  position:relative!important;
-  z-index:8!important;
-  filter:drop-shadow(0 42px 65px rgba(0,0,0,.58))!important;
-  transform:translateY(28px) scale(.82) rotateX(0deg)!important;
+  width:min(560px,94vw)!important;height:500px!important;
+  position:relative!important;z-index:8!important;
+  transform:translateY(35px) scale(.82)!important;
   transform-style:preserve-3d!important;
+  filter:drop-shadow(0 42px 65px rgba(0,0,0,.58))!important;
 }
 .track-page .invoice-modal.printing .receipt-printer{
-  animation:gzPrinter3DIn .75s cubic-bezier(.12,.85,.2,1) both, gzPrinterHum 1.2s ease-in-out 1s 3!important;
+  animation:gzPrinter3DIn .7s cubic-bezier(.12,.85,.2,1) both!important;
 }
 
-/* REAL INVOICE PAPER */
+/* The invoice starts UNDER the printer's top cover, exactly at the feed slot. */
 .track-page .invoice-modal.printing .invoice-sheet{
-  visibility:visible!important;
-  opacity:1!important;
-  position:absolute!important;
-  z-index:11!important;
-  left:50%!important;
-  top:50%!important;
+  visibility:visible!important;opacity:1!important;
+  position:absolute!important;z-index:6!important;
+  left:50%!important;top:50%!important;
   width:min(820px,calc(100% - 28px))!important;
-  max-height:92vh!important;
-  overflow:auto!important;
-  transform:translate(-50%,-50%) translateY(172px) scale(.255) rotateX(7deg)!important;
+  max-height:92vh!important;overflow:auto!important;
+  transform:translate(-50%,-50%) translateY(155px) scale(.24)!important;
   transform-origin:50% 0!important;
   pointer-events:none!important;
-  animation:gzTruePaperFeed 4.8s cubic-bezier(.16,.68,.12,1) .35s forwards!important;
-  will-change:transform,opacity,clip-path;
-  box-shadow:0 18px 30px rgba(0,0,0,.38),0 3px 0 rgba(255,255,255,.8) inset!important;
+  animation:gzPaperActuallyFeeds 5.8s cubic-bezier(.2,.65,.14,1) .25s forwards!important;
+  will-change:transform,opacity;
   border-radius:2px 2px 7px 7px!important;
+  box-shadow:0 14px 30px rgba(0,0,0,.38),0 1px 0 rgba(255,255,255,.8) inset!important;
 }
 
-/* Printer body sits above the paper, with a real transparent feed channel.
-   The paper is visible only through the slot while it is inside the machine. */
+/* Printer cover/body are intentionally above the paper until the paper clears the slot. */
+.track-page .printer-top{
+  position:absolute!important;left:0!important;right:0!important;top:34px!important;height:82px!important;
+  z-index:14!important;
+  background:linear-gradient(145deg,#4b5057,#14161a)!important;
+  border:1px solid #666c74!important;border-radius:22px 22px 11px 11px!important;
+  box-shadow:0 15px 30px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.13)!important;
+  transform:translateZ(18px)!important;
+}
+.track-page .printer-top::before{
+  left:34px!important;right:34px!important;top:21px!important;height:14px!important;
+  background:#030405!important;border-radius:10px!important;
+  box-shadow:inset 0 3px 7px #000,0 0 0 1px #70767e!important;
+}
 .track-page .printer-body{
-  position:absolute!important;
-  left:12px!important;
-  right:12px!important;
-  top:92px!important;
-  height:292px!important;
-  z-index:10!important;
-  background:linear-gradient(145deg,#30353b,#0e1013)!important;
-  border:1px solid #50565e!important;
-  border-radius:9px 9px 30px 30px!important;
+  position:absolute!important;left:12px!important;right:12px!important;top:92px!important;height:292px!important;
+  z-index:12!important;
+  background:linear-gradient(145deg,#343940,#0c0f12)!important;
+  border:1px solid #555b63!important;border-radius:9px 9px 30px 30px!important;
   padding:45px 36px 0!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.08),0 20px 34px rgba(0,0,0,.32)!important;
-  transform-style:preserve-3d!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.08),0 22px 38px rgba(0,0,0,.34)!important;
+  transform:translateZ(10px)!important;
 }
-
-/* Cover the body but leave a narrow physical paper channel open directly under the slot. */
-.track-page .printer-body::after{
-  content:''!important;
-  position:absolute!important;
-  inset:0!important;
-  z-index:13!important;
-  pointer-events:none!important;
-  border-radius:inherit!important;
-  background:linear-gradient(145deg,#30353b,#0e1013)!important;
-  border-radius:inherit!important;
-  -webkit-mask:
-    linear-gradient(to bottom,
-      #000 0,
-      #000 43px,
-      transparent 43px,
-      transparent 70px,
-      #000 70px,
-      #000 100%)!important;
-  mask:
-    linear-gradient(to bottom,
-      #000 0,
-      #000 43px,
-      transparent 43px,
-      transparent 70px,
-      #000 70px,
-      #000 100%)!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.08)!important;
-}
-
-/* Slot itself is above the paper, creating the correct mechanical edge. */
 .track-page .printer-slot{
-  height:22px!important;
-  border-radius:11px!important;
-  background:#020304!important;
-  border:1px solid #666c73!important;
-  box-shadow:inset 0 4px 9px #000,0 0 0 1px rgba(0,0,0,.4),0 0 18px rgba(255,101,0,.18)!important;
-  position:relative!important;
-  z-index:15!important;
+  height:22px!important;border-radius:11px!important;
+  background:#020304!important;border:1px solid #70757b!important;
+  box-shadow:inset 0 4px 9px #000,0 0 0 1px rgba(0,0,0,.5),0 0 20px rgba(255,101,0,.2)!important;
+  position:relative!important;z-index:20!important;
 }
 .track-page .printer-slot::after{
-  content:''!important;
-  position:absolute!important;
-  left:13px!important;
-  right:13px!important;
-  top:8px!important;
-  height:4px!important;
-  border-radius:4px!important;
-  background:#ff6500!important;
+  content:''!important;position:absolute!important;left:13px!important;right:13px!important;top:8px!important;height:4px!important;
+  border-radius:4px!important;background:#ff6500!important;
   box-shadow:0 0 18px rgba(255,101,0,1)!important;
   animation:gzPrintGlow .45s ease-in-out infinite alternate!important;
 }
-.track-page .printer-top{
-  position:absolute!important;
-  left:0!important;
-  right:0!important;
-  top:34px!important;
-  height:82px!important;
-  z-index:16!important;
-  background:linear-gradient(145deg,#454a51,#15171b)!important;
-  border:1px solid #626870!important;
-  border-radius:22px 22px 11px 11px!important;
-  box-shadow:0 14px 28px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.12)!important;
-  transform:translateZ(12px)!important;
-}
-.track-page .printer-top::before{
-  left:34px!important;
-  right:34px!important;
-  top:21px!important;
-  height:14px!important;
-  background:#030405!important;
-  box-shadow:inset 0 3px 7px #000,0 0 0 1px #686e75!important;
-}
 .track-page .printer-led{right:38px!important;top:46px!important;width:12px!important;height:12px!important}
-.track-page .printer-brand{margin-top:27px!important;font-size:16px!important;letter-spacing:.24em!important}
+.track-page .printer-brand{
+  margin-top:27px!important;font-size:17px!important;letter-spacing:.25em!important;
+  color:#fff!important;text-shadow:0 2px 8px rgba(0,0,0,.55)!important;
+}
 .track-page .printer-printing-label{bottom:34px!important;font-size:11px!important}
+
+/* No fake paper: only the real invoice moves. */
 .track-page .receipt-paper{display:none!important}
 
-/* Paper starts inside the printer, rises slowly through the slot, then expands and
-   transitions naturally into the readable invoice. */
-@keyframes gzTruePaperFeed{
+/* Paper movement is deliberately slow:
+   start hidden inside printer -> tiny strip at slot -> progressively more paper -> clear printer -> center. */
+@keyframes gzPaperActuallyFeeds{
   0%{
     opacity:0;
-    transform:translate(-50%,-50%) translateY(172px) scale(.255) rotateX(7deg);
+    transform:translate(-50%,-50%) translateY(155px) scale(.24);
   }
-  8%{
+  7%{
     opacity:1;
-    transform:translate(-50%,-50%) translateY(172px) scale(.255) rotateX(7deg);
+    transform:translate(-50%,-50%) translateY(155px) scale(.24);
   }
-  20%{
-    transform:translate(-50%,-50%) translateY(140px) scale(.26) rotateX(6deg);
+  18%{
+    transform:translate(-50%,-50%) translateY(137px) scale(.242);
   }
-  34%{
-    transform:translate(-50%,-50%) translateY(85px) scale(.275) rotateX(5deg);
+  30%{
+    transform:translate(-50%,-50%) translateY(112px) scale(.247);
   }
-  48%{
-    transform:translate(-50%,-50%) translateY(10px) scale(.30) rotateX(4deg);
+  42%{
+    transform:translate(-50%,-50%) translateY(78px) scale(.255);
   }
-  61%{
-    transform:translate(-50%,-50%) translateY(-90px) scale(.36) rotateX(3deg);
+  54%{
+    transform:translate(-50%,-50%) translateY(35px) scale(.27);
   }
-  73%{
-    transform:translate(-50%,-50%) translateY(-205px) scale(.46) rotateX(2deg);
+  65%{
+    transform:translate(-50%,-50%) translateY(-20px) scale(.30);
+  }
+  75%{
+    transform:translate(-50%,-50%) translateY(-100px) scale(.36);
   }
   84%{
-    transform:translate(-50%,-50%) translateY(-300px) scale(.61) rotateX(1deg);
+    transform:translate(-50%,-50%) translateY(-205px) scale(.48);
   }
-  93%{
-    transform:translate(-50%,-50%) translateY(-365px) scale(.79) rotateX(.5deg);
+  92%{
+    transform:translate(-50%,-50%) translateY(-300px) scale(.67);
+  }
+  97%{
+    transform:translate(-50%,-50%) translateY(-350px) scale(.86);
   }
   100%{
     opacity:1;
-    transform:translate(-50%,-50%) translateY(0) scale(1) rotateX(0);
+    transform:translate(-50%,-50%) translateY(0) scale(1);
   }
 }
 @keyframes gzPrinter3DIn{
-  0%{opacity:0;transform:translateY(100px) scale(.55) rotateX(7deg)}
-  60%{opacity:1;transform:translateY(-5px) scale(1.035) rotateX(0)}
-  100%{opacity:1;transform:translateY(28px) scale(.82) rotateX(0)}
+  0%{opacity:0;transform:translateY(110px) scale(.58) rotateX(6deg)}
+  55%{opacity:1;transform:translateY(-4px) scale(1.04) rotateX(0)}
+  100%{opacity:1;transform:translateY(35px) scale(.82) rotateX(0)}
 }
-@keyframes gzPrinterHum{
-  0%,100%{transform:translateY(28px) scale(.82) rotateX(0)}
-  50%{transform:translateY(28px) scale(.82) translateY(-2px) rotateX(.35deg)}
-}
-@keyframes gzPrintGlow{from{opacity:.25}to{opacity:1}}
+@keyframes gzPrintGlow{from{opacity:.3}to{opacity:1}}
 @keyframes gzInvoiceReveal{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
 @media(max-width:600px){
-  .track-page .receipt-printer{width:390px!important;height:410px!important}
+  .track-page .receipt-printer{width:400px!important;height:420px!important}
   .track-page .invoice-sheet{width:calc(100% - 20px)!important}
   .track-page .invoice-modal.printing .invoice-sheet{width:min(760px,calc(100% - 20px))!important}
 }
@@ -607,7 +550,7 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
 
 <script src="config.js"></script>
 <script src="d1-client.js?v=20260902cloudflarefix1"></script>
-<script src="track-order.js?v=20260924invoice8"></script>
+<script src="track-order.js?v=20260924invoice9"></script>
 <script src="grabzone-animation-controller.js?v=20260922full-animation1"></script>
 <script src="grabzone-mobile-app-shell.js?v=20260922mobileapp1"></script>
 </body>
