@@ -25,7 +25,7 @@ async function api(path,opt={}){const method=(opt.method||'GET').toUpperCase();c
       const products=[];
       for(const p of (data||[])){
         const {data:imgs}=await sb.from('product_images').select('*').eq('product_id',p.id).order('sort_order');
-        let productType='simple';
+        let productType=String(p.product_type||'').toLowerCase()==='variable'?'variable':'simple';
         try{const {data:vars}=await sb.from('product_variations').select('id').eq('product_id',p.id);if((vars||[]).length)productType='variable'}catch{}
         products.push({...p,product_type:productType,image_urls:(imgs||[]).map(x=>x.image_url).filter(Boolean)});
       }
@@ -99,7 +99,7 @@ async function editProduct(id){
  state.editing=p;state.files=[];state.mainIndex=0;
  $('#vpId').value=p.id;$('#vpName').value=p.name||'';$('#vpCategory').value=p.category||'';$('#vpProductType').value=p.product_type==='variable'?'variable':'simple';$('#vpPrice').value=p.price??'';$('#vpOldPrice').value=p.old_price??'';$('#vpSku').value=p.sku||'';$('#vpTag').value=p.tag||'';$('#vpDescription').value=p.description||'';$('#vpPublished').checked=!!p.published;
  $('#vpFormTitle').textContent='✎ Edit product';$('#vpSubmit').textContent='Save Product Changes';$('#vpCancel').hidden=false;renderMedia();toggleVariationPanel();
- if(p.product_type==='variable'){await loadVariations(p.id)}else{state.variationOptions=[];state.variations=[];renderOptionRows();renderVariationRows()}
+ await loadVariations(p.id);if(state.variationOptions.length||state.variations.length)$('#vpProductType').value='variable';else if(p.product_type!=='variable')$('#vpProductType').value='simple';toggleVariationPanel();
  window.scrollTo({top:$('#products').getBoundingClientRect().top+window.scrollY-20,behavior:'smooth'});
 }
 function handleFiles(){const files=[...($('#vpFiles').files||[])];if(files.length>MAX){alert('Maximum 10 images per product.');$('#vpFiles').value='';state.files=[];renderMedia();return}const bad=files.find(f=>f.size>MB||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));if(bad){alert(`${bad.name} is not a supported image or is larger than 1 MB.`);$('#vpFiles').value='';state.files=[];renderMedia();return}state.files=files;state.mainIndex=0;renderMedia()}
