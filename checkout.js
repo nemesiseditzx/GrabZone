@@ -23,8 +23,7 @@ async function loadMarketplaceShipping(){
       if(!p)return;
       const vid=String(p.vendor_id||'');
       if(!vid)return;
-      if(!groups.has(vid))groups.set(vid,{vendor_id:vid,name:String(p.vendor_name||p.brand_name||p.vendor_slug||'Vendor'),fee:Number(p.vendor_shipping_fee??p.shipping_fee??0),products:[]});
-      const g=groups.get(vid); const productName=String(i.name||p.name||'Product'); if(!g.products.includes(productName))g.products.push(productName);
+      if(!groups.has(vid))groups.set(vid,{vendor_id:vid,name:String(p.vendor_name||p.brand_name||p.vendor_slug||'Vendor'),fee:Number(p.vendor_shipping_fee??p.shipping_fee??0)});
     });
     shippingBreakdown=[...groups.values()].map(x=>({...x,fee:Math.max(0,x.fee)}));
     marketplaceShipping=shippingBreakdown.reduce((s,x)=>s+x.fee,0);
@@ -294,7 +293,7 @@ function render(){
   const breakdown=$('checkoutShippingBreakdown');
   if(breakdown){
     breakdown.hidden=!shippingBreakdown.length;
-    breakdown.innerHTML=shippingBreakdown.map(x=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-size:11px;color:#666;padding:5px 0;border-top:1px solid #eee"><span><b style="display:block;color:#222;font-size:12px">${esc(x.name)} delivery</b><span style="display:block;margin-top:2px;color:#888">${esc((x.products||[]).join(' · '))}</span></span><b style="white-space:nowrap;color:#222">${money(x.fee)}</b></div>`).join('');
+    breakdown.innerHTML=shippingBreakdown.map(x=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#666;padding:2px 0"><span>${esc(x.name)} delivery</span><b>${money(x.fee)}</b></div>`).join('');
   }
   $('checkoutDiscount').textContent='-'+money(discount);
   $('checkoutDiscountRow').hidden=discount<=0;
