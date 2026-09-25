@@ -578,6 +578,49 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
  .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet,
  .track-page .invoice-modal.printed .invoice-sheet{width:calc(100% - 20px)!important;max-width:calc(100vw - 20px)!important;padding:20px 16px!important}
 }
+
+/* Receipt feed alignment fix: paper emerges DOWN from the printer slot without reflowing mid-feed. */
+.track-page .invoice-modal.printing .invoice-sheet{
+  position:absolute!important;left:50%!important;top:calc(50% - 49px)!important;bottom:auto!important;
+  width:min(340px,calc(100vw - 28px))!important;max-width:calc(100vw - 24px)!important;
+  height:min(58vh,430px)!important;max-height:58vh!important;overflow:hidden!important;
+  box-sizing:border-box!important;z-index:11!important;opacity:1!important;visibility:visible!important;
+  pointer-events:none!important;transform:translateX(-50%)!important;transform-origin:50% 0!important;
+  clip-path:inset(0 0 100% 0)!important;border-radius:2px!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.3)!important;
+  transition:clip-path 3.7s cubic-bezier(.22,.65,.2,1),top 1.15s cubic-bezier(.22,.72,.18,1),
+    transform 1.15s cubic-bezier(.22,.72,.18,1),width 1.15s cubic-bezier(.22,.72,.18,1),
+    height 1.15s cubic-bezier(.22,.72,.18,1),max-height 1.15s ease,border-radius .6s ease,
+    box-shadow .6s ease!important;
+  will-change:clip-path,top,width,height;
+}
+.track-page .invoice-modal.printing.paper-feeding .invoice-sheet{clip-path:inset(0 0 0 0)!important}
+.track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+  top:50%!important;bottom:auto!important;left:50%!important;
+  width:min(1020px,calc(100% - 32px))!important;max-width:calc(100vw - 24px)!important;
+  height:82vh!important;max-height:86vh!important;overflow:auto!important;
+  clip-path:inset(0)!important;pointer-events:auto!important;
+  transform:translate(-50%,-50%)!important;border-radius:14px!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.48)!important;
+}
+.track-page .invoice-modal.printed .invoice-sheet{
+  position:relative!important;left:auto!important;top:auto!important;bottom:auto!important;
+  width:min(1020px,100%)!important;max-width:calc(100vw - 24px)!important;
+  height:auto!important;max-height:92vh!important;margin:auto!important;
+  opacity:1!important;visibility:visible!important;pointer-events:auto!important;
+  transform:none!important;clip-path:none!important;overflow:auto!important;border-radius:14px!important;
+}
+@media(max-width:700px){
+  .track-page .invoice-modal.printing .invoice-sheet{
+    top:calc(50% - 45px)!important;width:min(300px,calc(100vw - 24px))!important;
+    height:min(56vh,390px)!important;max-height:56vh!important;
+  }
+  .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+    top:50%!important;width:calc(100% - 20px)!important;max-width:calc(100vw - 20px)!important;
+    height:84vh!important;max-height:88vh!important;transform:translate(-50%,-50%)!important;
+  }
+}
+
 </style>
 </head>
 <body class="track-page">
