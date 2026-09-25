@@ -695,6 +695,80 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
   .track-page .gz-invoice-gp-rewards span{min-height:0!important}
 }
 
+
+/* Correct printer motion: a blank receipt sheet feeds down from the output slot,
+   then the complete invoice opens without shrinking or reflowing its contents. */
+.track-page .invoice-modal.printing .invoice-sheet{display:none!important}
+.track-page .invoice-modal.printing .receipt-printer{position:relative!important;overflow:visible!important}
+.track-page .invoice-modal.printing .receipt-paper{
+  display:block!important;position:absolute!important;left:25px!important;right:25px!important;top:102px!important;
+  height:0!important;overflow:hidden!important;z-index:5!important;box-sizing:border-box!important;
+  background:#fff!important;border:1px solid #e5e7eb!important;border-bottom:0!important;
+  box-shadow:0 7px 18px rgba(0,0,0,.22)!important;opacity:1!important;
+  transition:height 2.55s cubic-bezier(.22,.65,.2,1)!important;
+}
+.track-page .invoice-modal.printing.paper-feeding .receipt-paper{height:205px!important}
+.track-page .invoice-modal.printing .receipt-lines{
+  display:flex!important;flex-direction:column!important;gap:11px!important;padding:18px 15px!important;
+  box-sizing:border-box!important;opacity:.95!important;
+}
+.track-page .invoice-modal.printing .receipt-lines i{
+  display:block!important;height:5px!important;border-radius:2px!important;background:#c9cdd2!important;
+  width:78%!important;flex:0 0 5px!important;
+}
+.track-page .invoice-modal.printing .receipt-lines i:nth-child(2){width:58%!important}
+.track-page .invoice-modal.printing .receipt-lines i:nth-child(3){width:88%!important}
+.track-page .invoice-modal.printing .receipt-lines i:nth-child(4){width:64%!important}
+.track-page .invoice-modal.printing .receipt-lines i:nth-child(5){width:74%!important}
+.track-page .invoice-modal.printing.invoice-reveal .receipt-printer{
+  opacity:0!important;transform:translate3d(0,32px,0) scale(.94)!important;
+  transition:opacity .65s ease,transform .7s ease!important;
+}
+.track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+  display:block!important;position:relative!important;left:auto!important;top:auto!important;bottom:auto!important;
+  width:min(1020px,calc(100% - 32px))!important;max-width:calc(100vw - 24px)!important;
+  height:auto!important;max-height:88vh!important;overflow:auto!important;margin:auto!important;
+  clip-path:none!important;transform:none!important;visibility:visible!important;opacity:1!important;
+  pointer-events:auto!important;border-radius:14px!important;box-shadow:0 28px 90px rgba(0,0,0,.48)!important;
+  animation:gzInvoiceSmoothReveal .5s cubic-bezier(.2,.75,.2,1) both!important;
+}
+@keyframes gzInvoiceSmoothReveal{from{opacity:0;transform:translateY(16px) scale(.99)}to{opacity:1;transform:none}}
+@media(max-width:700px){
+  .track-page .invoice-modal.printing .receipt-paper{left:22px!important;right:22px!important;top:96px!important}
+  .track-page .invoice-modal.printing.paper-feeding .receipt-paper{height:170px!important}
+  .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+    width:calc(100% - 20px)!important;max-width:calc(100vw - 20px)!important;
+    max-height:88vh!important;padding:20px 16px!important;
+  }
+}
+/* Make the vendor/store identity legible beneath each product name. */
+.track-page .gz-inv-product .gz-inv-store{
+  display:block!important;margin:5px 0 2px!important;color:#07823f!important;font-size:12px!important;
+  font-weight:800!important;line-height:1.45!important;letter-spacing:0!important;
+}
+/* Brand marks and tidy social footer. */
+.track-page .gz-invoice-social-links{display:flex!important;flex-direction:column!important;gap:9px!important}
+.track-page .gz-invoice-social-link{display:inline-flex!important;align-items:center!important;gap:8px!important;width:max-content!important;max-width:100%!important}
+.track-page .gz-invoice-social-link svg{display:block!important;width:19px!important;height:19px!important;flex:0 0 19px!important}
+.track-page .gz-social-messenger svg{color:#0877e8!important}
+.track-page .gz-social-instagram svg{color:#c13584!important}
+.track-page .gz-social-whatsapp svg{color:#20b15a!important}
+.track-page .gz-invoice-social-link span{font-size:12px!important;font-weight:700!important}
+/* PDF staging copy: remove viewport scrolling constraints so every invoice section is captured. */
+.gz-invoice-pdf-root .gz-invoice-pdf-copy{
+  width:1020px!important;max-width:none!important;height:auto!important;max-height:none!important;
+  overflow:visible!important;position:static!important;transform:none!important;clip-path:none!important;
+  margin:0!important;box-shadow:none!important;border-radius:0!important;background:#fff!important;
+}
+.gz-invoice-pdf-root .gz-invoice-items{overflow:visible!important}
+.gz-invoice-pdf-root .gz-invoice-items table{width:100%!important;min-width:0!important;table-layout:auto!important}
+.gz-invoice-pdf-root .gz-invoice-items tr,.gz-invoice-pdf-root .gz-inv-product,
+.gz-invoice-pdf-root .gz-invoice-grabpoints,.gz-invoice-pdf-root .gz-invoice-barcodes,
+.gz-invoice-pdf-root .gz-invoice-thanks,.gz-invoice-pdf-root .gz-invoice-footer{break-inside:avoid!important;page-break-inside:avoid!important}
+.gz-invoice-pdf-root .gz-inv-product{min-width:0!important}
+.gz-invoice-pdf-root .gz-invoice-toolbar{padding-right:0!important}
+.gz-invoice-pdf-root .gz-invoice-brandhead{break-inside:avoid!important;page-break-inside:avoid!important}
+
 </style>
 </head>
 <body class="track-page">
@@ -754,7 +828,7 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
 <script src="d1-client.js?v=20260902cloudflarefix1"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="track-order.js?v=20260925-invoice-social-layout1"></script>
+<script src="track-order.js?v=20260925-invoice-pdf-printfix2"></script>
 <script src="grabzone-animation-controller.js?v=20260922full-animation1"></script>
 <script src="grabzone-mobile-app-shell.js?v=20260922mobileapp1"></script>
 </body>
