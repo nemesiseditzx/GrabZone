@@ -544,6 +544,9 @@ async function setProductMain(productId,imageId,imageUrl){
 ========================= */
 
 async function loadProducts(){
+ const productHost=$("products");
+ if(!productHost)return;
+ if(!sb){productHost.innerHTML="<p>Database service is not configured.</p>";return;}
 
  const{data,error}=await sb
    .from("products")
@@ -551,7 +554,7 @@ async function loadProducts(){
    .order("created_at",{ascending:false});
 
  if(error){
-   $("products").innerHTML=esc(error.message);
+   productHost.innerHTML=esc(error.message);
    return
  }
 
