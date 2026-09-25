@@ -413,6 +413,38 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
 @media(prefers-reduced-motion:reduce){
  .track-page .invoice-modal.printing .receipt-printer,.track-page .invoice-modal.printing .invoice-sheet{animation:none!important;transition:none!important}
 }
+
+/* Invoice order identifiers, barcode and GrabPoints receipt promotion */
+.track-page .invoice-id-panel{margin:0 0 16px;padding:14px;border:1px solid #e8e2da;border-radius:13px;background:#fbfaf8}
+.track-page .invoice-id-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.track-page .invoice-id-grid span{display:block;font-size:9px;letter-spacing:.09em;font-weight:900;color:#81796f}
+.track-page .invoice-id-grid b{display:block;margin-top:5px;font-size:13px;color:#171717;overflow-wrap:anywhere}
+.track-page .invoice-barcode-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:12px;padding:10px 8px 4px;border-top:1px dashed #d8d0c6}
+.track-page #gzInvoiceBarcode{display:block;width:min(100%,360px);height:62px;max-width:100%}
+.track-page .invoice-barcode-wrap small{margin-top:2px;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.07em;color:#4b4742;overflow-wrap:anywhere;text-align:center}
+.track-page .invoice-customer-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;color:#303840}
+.track-page .invoice-grabpoints{display:grid;grid-template-columns:minmax(0,1fr) 118px;gap:16px;align-items:center;margin-top:22px;padding:18px;border:1px solid #f0d4bd;border-radius:16px;background:linear-gradient(135deg,#fff8f0,#fff 80%)}
+.track-page .invoice-promo-kicker{font-size:10px;font-weight:950;letter-spacing:.12em;color:#c65100}
+.track-page .invoice-grabpoints h3{margin:7px 0 8px;font-size:18px;line-height:1.35;color:#211b16}
+.track-page .invoice-grabpoints p{font-size:12px;line-height:1.7;color:#64594f}
+.track-page .invoice-points-link{display:inline-flex;margin-top:12px;padding:10px 13px;border-radius:10px;background:#ff6500;color:#fff!important;text-decoration:none!important;font-size:12px;font-weight:900}
+.track-page .invoice-qr-link{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px;border:1px solid #ead8c7;border-radius:12px;background:#fff;text-decoration:none}
+.track-page .invoice-points-qr{display:block;width:100px;height:100px;object-fit:contain}
+.track-page .invoice-qr-link small{font-size:9px;font-weight:950;letter-spacing:.1em;color:#6d6258}
+.track-page .invoice-thanks{margin-top:17px;padding-top:14px;border-top:1px dashed #d8d0c6;text-align:center;font-size:12px;font-weight:850;color:#48413b;line-height:1.8}
+.track-page .invoice-thanks small{font-size:11px;font-weight:600;color:#7a7168}
+@media(max-width:560px){
+ .track-page .invoice-id-grid,.track-page .invoice-customer-grid{grid-template-columns:1fr}
+ .track-page .invoice-grabpoints{grid-template-columns:minmax(0,1fr) 96px;gap:10px;padding:13px}
+ .track-page .invoice-grabpoints h3{font-size:16px}
+ .track-page .invoice-points-qr{width:80px;height:80px}
+}
+@media print{
+ .track-page .invoice-modal{position:static!important;display:block!important;background:#fff!important;padding:0!important}
+ .track-page .invoice-printer-stage,.track-page #invoiceClose{display:none!important}
+ .track-page .invoice-sheet{width:100%!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;border:0!important;padding:0!important}
+ .track-page .invoice-grabpoints{break-inside:avoid}
+}
 </style>
 </head>
 <body class="track-page">
@@ -470,6 +502,7 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
 
 <script src="config.js"></script>
 <script src="d1-client.js?v=20260902cloudflarefix1"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="track-order.js?v=20260925receipt-feed-fix2"></script>
 <script src="grabzone-animation-controller.js?v=20260922full-animation1"></script>
 <script src="grabzone-mobile-app-shell.js?v=20260922mobileapp1"></script>
