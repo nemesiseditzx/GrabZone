@@ -463,7 +463,22 @@ async function openEditor(id){
    item.vendor_name=vendorNameMap.get(item.vendor_id)||'Vendor';
  }
  const financial=orderFinancialMap.get(String(id));
- current={...base,items:enrichedItems,shipping_charge:Number(financial?.shipping??base.shipping_charge??globalShippingFee)};
+ const routedForOrder=vendorOrderRows.filter(x=>String(x.order_id||'')===String(id));
+ const voIds=routedForOrder.map(x=>String(x.id||'')).filter(Boolean);
+ let shipmentRows=[];
+ if(voIds.length){
+   const sh=await sb.from('shipments').select('*').eq('order_id',id).order('created_at',{ascending:false});
+   const shipments=(!sh.error&&Array.isArray(sh.data))?sh.data:[];
+   const voi=await sb.from('vendor_order_items').select('vendor_order_id,order_item_id').in('vendor_order_id',voIds);
+   const maps=(!voi.error&&Array.isArray(voi.data))?voi.data:[];
+   const itemNameMap=new Map(enrichedItems.map(x=>[String(x.id),String(x.product_name||'Product')]));
+   const vendorMap=new Map(routedForOrder.map(x=>[String(x.vendor_id),vendorNameMap.get(String(x.vendor_id))||'Vendor']));
+   const productsByVo=new Map();
+   for(const x of maps){const a=productsByVo.get(String(x.vendor_order_id))||[];const n=itemNameMap.get(String(x.order_item_id));if(n&&!a.includes(n))a.push(n);productsByVo.set(String(x.vendor_order_id),a)}
+   const voVendor=new Map(routedForOrder.map(x=>[String(x.id),String(x.vendor_id||'')]));
+   shipmentRows=shipments.map(s=>{const void=String(s.vendor_order_id||'');const vid=String(s.vendor_id||voVendor.get(void)||'');return {...s,vendor_id:vid,vendor_name:vendorMap.get(vid)||'Vendor',product_names:productsByVo.get(void)||[]};});
+ }
+ current={...base,items:enrichedItems,shipments:shipmentRows,shipping_charge:Number(financial?.shipping??base.shipping_charge??globalShippingFee)};
  current.total=Math.max(0,Number(current.subtotal||0)+Number(current.shipping_charge||0)-Number(current.referral_discount||0)-Number(current.rewards_voucher_discount||0)-Number(current.mystery_discount||0));
  $('gzOrderEditorTitle').textContent=current.order_number;
  $('gzOrderSendBk').disabled=current.status!=='Confirmed'||!!current.business_koro_sent_at;
@@ -478,6 +493,7 @@ async function openEditor(id){
  <label class="gz-order-full">Street Address<textarea id="oeAddress">${esc(current.address)}</textarea></label><div class="gz-order-full" style="padding:13px 14px;border:1px solid #e4e4df;border-radius:12px;background:#fafaf8"><div style="font-size:10px;font-weight:900;letter-spacing:.08em;color:#777">CUSTOMER ORDER HISTORY</div><div style="margin-top:6px;font-size:12px;font-weight:800">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).length} order(s) linked to this phone number</div><div style="margin-top:7px;color:#666;font-size:11px;line-height:1.8">${orders.filter(x=>String(x.phone||'').replace(/\D/g,'')===String(current.phone||'').replace(/\D/g,'')).slice(0,8).map(x=>{const total=Number(x.total||0);return esc(x.order_number)+' · '+esc(x.status)+' · '+money(total)}).join('<br>')||'No other orders found.'}</div></div>
  <label>Payment Method<input id="oePayment" value="${esc(current.payment_method||'Cash on Delivery')}"></label><label>Shipping Charge<input id="oeShipping" type="number" step="1" min="0" value="${Number(current.shipping_charge??0)}" readonly></label>
  <div class="gz-order-full gz-shipping-breakdown"><div class="gz-shipping-title">DELIVERY CHARGE BY FULFILLMENT SOURCE</div><div id="oeShippingBreakdown"></div><small>Each vendor is charged separately. The order shipping total is the sum of these delivery charges.</small></div>
+ <div class="gz-order-full" style="padding:14px;border:1px solid #e4e4df;border-radius:12px;background:#fff"><div style="font-size:10px;font-weight:900;letter-spacing:.08em;color:#777">SHIPMENT TRACKING</div><div id="oeShipmentTracking" style="margin-top:9px"></div></div>
  <label>Referral Discount<input id="oeDiscount" type="number" step="0.01" min="0" value="${Number(current.referral_discount||0)}"></label>
  <label>GrabPoints Discount<input id="oeGpDiscount" type="number" step="0.01" min="0" value="${Number(current.rewards_voucher_discount||0)}" readonly></label>
  <div class="gz-order-full" style="font-size:12px;color:#666;padding:10px 12px;background:#f7f7f5;border-radius:10px">Final discount = Referral Discount + GrabPoints Discount${Number(current.mystery_discount||0)>0?' + Mystery Deal':''}. Total is recalculated automatically.</div>
@@ -495,6 +511,12 @@ async function openEditor(id){
  };
  $('oeAddItem').onclick=()=>{current.items.push({id:null,product_id:null,product_name:'',image_url:'',quantity:1,unit_price:0});renderItemEditor();updatePreview()};
  renderShippingBreakdown();
+ const renderShipmentTracking=()=>{
+   const box=$('oeShipmentTracking'); if(!box)return;
+   const rows=current.shipments||[];
+   box.innerHTML=rows.length?rows.map(s=>'<div style="padding:11px 0;border-top:1px solid #eee"><div style="font-size:12px;font-weight:900;color:#111">'+esc(s.vendor_name||'Vendor')+'</div><div style="font-size:12px;color:#555;margin-top:3px"><b>Product:</b> '+esc((s.product_names||[]).join(' · ')||'Product')+'</div><div style="margin-top:6px;font-size:12px;color:#666"><b>Shipment:</b> '+esc(s.status||'Processing')+' · '+esc(s.courier_name||s.courier||'Courier pending')+(s.courier_tracking_number||s.tracking_id||s.shipment_tracking_id?' · '+esc(s.courier_tracking_number||s.tracking_id||s.shipment_tracking_id):'')+'</div>'+(s.courier_tracking_url||s.tracking_url?'<a href="'+esc(s.courier_tracking_url||s.tracking_url)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;font-size:12px;font-weight:800;color:#111">Track Package →</a>':'')+'</div>').join(''):'<div style="color:#777;font-size:12px">No shipments added yet.</div>';
+ };
+ renderShipmentTracking();
  current.items.forEach((_,i)=>bindItemRow(i)); updatePreview(); $('oeShipping').oninput=updatePreview;
  $('gzOrderEditorMsg').textContent=''; $('gzOrderModal').classList.add('open');document.body.style.overflow='hidden';
 }
