@@ -241,6 +241,85 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
 @media(prefers-reduced-motion:reduce){
   .track-page *, .track-page *::before,.track-page *::after{animation:none!important;transition:none!important}
 }
+
+/* FINAL PREMIUM COLOR SYSTEM + ACTION UI */
+.track-page{
+  background:
+    radial-gradient(circle at 8% 8%,rgba(255,101,0,.09),transparent 25%),
+    radial-gradient(circle at 92% 90%,rgba(17,24,39,.045),transparent 30%),
+    #f7f7f5!important;color:#151515!important;
+}
+.track-page .track-card{background:rgba(255,255,255,.96)!important;border-color:#e7e3dd!important;box-shadow:0 28px 75px rgba(20,20,20,.10)!important}
+.track-page .track-card::before{background:linear-gradient(90deg,#ff6500,#ff8a32,#151515,#ff6500)!important}
+.track-page .eyebrow{color:#5d5a56!important;background:#fffaf5!important;border-color:#eee2d6!important}
+.track-page .eyebrow::before{background:#ff6500!important}
+.track-page h1,.track-page .result>b,.track-page .section-title,.track-page .help-title{color:#171717!important}
+.track-page .intro,.track-page .track-msg{color:#68645f!important}
+.track-page .track-form{background:#f7f5f2!important;border-color:#e5dfd8!important}
+.track-page .track-form input{color:#171717!important}
+.track-page .track-form button{
+  background:#ff6500!important;border-color:#ff6500!important;color:#fff!important;
+  box-shadow:0 9px 24px rgba(255,101,0,.25)!important;
+}
+.track-page .track-form button:hover{background:#e95700!important}
+.track-page .current-status{
+  background:linear-gradient(115deg,#171717,#272727)!important;color:#fff!important;
+  border-left:4px solid #ff6500!important;
+}
+.track-page .track-status-line::before{background:#ddd8d2!important}
+.track-page .track-status-step{background:#faf9f7!important;border-color:#e4dfd8!important;color:#66615b!important}
+.track-page .track-status-step.completed{background:#f0f8f1!important;border-color:#b9d8bd!important;color:#217337!important}
+.track-page .track-status-step.current{background:#ff6500!important;border-color:#ff6500!important;color:#fff!important;box-shadow:0 12px 30px rgba(255,101,0,.27)!important}
+.track-page .track-status-step.current .track-status-icon{color:#ff6500!important}
+.track-page .track-status-step.cancelled{background:#fff2f1!important;border-color:#efc2be!important;color:#a23b32!important}
+.track-page .track-status-icon{background:#fff!important;border-color:#ddd8d2!important}
+.track-page .invoice-btn{
+  background:#171717!important;color:#fff!important;border-color:#171717!important;
+  box-shadow:0 8px 20px rgba(20,20,20,.16)!important;
+}
+.track-page .invoice-btn:hover{background:#ff6500!important;border-color:#ff6500!important}
+.track-page .tracking-box{background:#fcfbf9!important;border-color:#e5dfd8!important;color:#272522!important}
+.track-page .tracking-box::before{background:linear-gradient(#ff6500,#ffb36f)!important}
+.track-page .tracking-link{background:#ff6500!important;border-color:#ff6500!important;color:#fff!important}
+.track-page .tracking-link:hover{background:#e95700!important}
+.track-page .help-grid a{background:#fff!important;border-color:#e2ddd7!important;color:#242321!important}
+.track-page .back-store{background:#171717!important;color:#fff!important}
+.track-page .back-store:hover{background:#ff6500!important}
+.track-page .invoice-modal{background:rgba(18,16,14,.72)!important}
+.track-page .invoice-sheet{background:#fff!important;border-color:#ebe6df!important}
+.track-page .invoice-close{background:#f7f5f2!important;border-color:#ddd7cf!important;color:#252321!important}
+.track-page .invoice-close:hover{background:#ff6500!important;border-color:#ff6500!important;color:#fff!important}
+.track-page .invoice-vendor{background:#fcfbf9!important;border-color:#e5dfd8!important}
+.track-page .invoice-row{color:#4b4742!important}
+.track-page .invoice-total{background:#fff8f2!important;border-color:#f1d8c4!important;color:#171717!important}
+.track-page .tracking-actions{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0 4px}
+.track-page .gz-action{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:40px;padding:9px 13px;border-radius:11px;border:1px solid #ded8d1;
+  background:#fff;color:#252321;font-weight:850;cursor:pointer;text-decoration:none;
+  transition:transform .2s ease,box-shadow .2s ease,background .2s ease,border-color .2s ease;
+}
+.track-page .gz-action:hover{transform:translateY(-2px);box-shadow:0 9px 20px rgba(20,20,20,.09);border-color:#cfc6bd}
+.track-page .gz-action.primary{background:#ff6500;border-color:#ff6500;color:#fff;box-shadow:0 8px 20px rgba(255,101,0,.2)}
+.track-page .gz-action.dark{background:#171717;border-color:#171717;color:#fff}
+.track-page .gz-action.success{background:#eef8f0;border-color:#b9d8bd;color:#217337}
+.track-page .gz-action .gz-action-icon{font-size:16px;line-height:1}
+.track-page .order-mini-info{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0;
+}
+.track-page .order-mini{
+  padding:12px 13px;border:1px solid #e7e1da;border-radius:13px;background:#faf9f7;
+}
+.track-page .order-mini span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#888078;font-weight:900}
+.track-page .order-mini b{display:block;margin-top:4px;color:#26231f;font-size:13px;word-break:break-word}
+.track-page .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#31a24c;box-shadow:0 0 0 4px rgba(49,162,76,.12);animation:gzPulse 1.6s infinite}
+.track-page .tracking-box .shipment-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.track-page .shipment-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:#fff3e9;color:#b84a00;border:1px solid #f2d2bb;font-size:10px;font-weight:900}
+@media(max-width:600px){
+ .track-page .order-mini-info{grid-template-columns:1fr}
+ .track-page .tracking-actions{display:grid;grid-template-columns:1fr 1fr}
+ .track-page .gz-action{width:100%}
+}
 </style>
 </head>
 <body class="track-page">
