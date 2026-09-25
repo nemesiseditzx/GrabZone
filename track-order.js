@@ -105,7 +105,7 @@
        if(!window.html2pdf)throw new Error('PDF generator did not load. Refresh the page and try again.');
        pdfRoot=document.createElement('div');
        pdfRoot.className='gz-invoice-pdf-root';
-       pdfRoot.style.cssText='position:fixed;left:-12000px;top:0;width:720px;box-sizing:border-box;background:#fff;color:#171923;z-index:-1;pointer-events:none;';
+       pdfRoot.style.cssText='position:fixed;left:0;top:0;width:720px;box-sizing:border-box;background:#fff;color:#171923;z-index:-1;pointer-events:none;';
        const clone=sheet.cloneNode(true);
        clone.classList.add('gz-invoice-pdf-copy');
        clone.style.setProperty('position','static','important');
