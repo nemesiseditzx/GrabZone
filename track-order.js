@@ -192,6 +192,7 @@
      if(!d?.order) throw new Error('Order not found. Please check your Order ID.');
      render(d.order);
      msg.textContent='Order found ✓';
+     if(params.get('invoice')==='1') openInvoice(d.order);
    }catch(e){
      console.error('Track order:',e);
      msg.textContent=e.message||'Could not load the order. Please try again.';
