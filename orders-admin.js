@@ -433,10 +433,17 @@ async function sendToBusinessKoro(id,force=false){
 }
 async function deleteOrder(id){
  const order=orders.find(x=>x.id===id); if(!order)return;
- const ok=await gzUiConfirm(`Delete order ${order.order_number}? This will permanently remove the order and its products from the admin panel.`);
+ const ok=await gzUiConfirm(`Delete order ${order.order_number}? This will permanently remove the order and its products from the admin panel and vendor marketplace.`);
  if(!ok)return;
  const {error}=await sb.from('orders').delete().eq('id',id);
  if(error){gzUiToast('Could not delete order: '+error.message,'error');return}
+ try{
+  const response=await fetch('/api/vendor/admin/order-delete',{method:'POST',credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:id})});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'Marketplace order cleanup failed.');
+ }catch(e){
+  gzUiToast('Order deleted from main orders, but vendor marketplace cleanup failed: '+e.message,'error');
+ }
  orders=orders.filter(x=>x.id!==id);
  await syncOrderToSheet(id);
  renderOrders();
