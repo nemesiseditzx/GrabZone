@@ -485,7 +485,7 @@ async function submit(e){
     if(!privateTrackingId)throw new Error('Order was created, but the private Tracking ID could not be generated. Please contact GrabZone support.');
 
     localStorage.removeItem(CART_KEY);localStorage.removeItem(BUY_NOW_KEY);
-    $('checkoutForm').hidden=true;$('checkoutSuccess').hidden=false;
+    $('checkoutForm').hidden=true;$('checkoutSuccess').hidden=false;document.querySelector('.checkout-layout')?.classList.add('checkout-completed');const summaryCard=document.querySelector('.summary-card');if(summaryCard)summaryCard.hidden=true;
     $('successOrderNumber').textContent=order.order_number;
     $('successTrackingId').textContent=privateTrackingId;
     const trackLink=$('successTrackLink');
