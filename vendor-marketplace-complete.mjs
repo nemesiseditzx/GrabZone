@@ -299,17 +299,27 @@ if(p==='/api/vendor/admin/products'&&(req.method==='GET'||req.method==='POST'||r
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const u=new URL(req.url),vid=clean(u.searchParams.get('vendor_id'),100);
 if(req.method==='GET'){
- const rows=(await q(e,`SELECT p.*,c.name category_name,c.slug category_slug,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN vendors v ON v.id=p.vendor_id WHERE (?='' OR p.vendor_id=?) ORDER BY p.created_at DESC`,[vid||'',vid||''])).results||[];
- for(const p0 of rows){if(!p0.category_name&&p0.category) {const cc=await one(e,'SELECT id,name,slug FROM marketplace_categories WHERE lower(trim(name))=lower(trim(?)) LIMIT 1',[p0.category]);if(cc){p0.category_id=cc.id;p0.category_name=cc.name;p0.category_slug=cc.slug}}}
- for(const p0 of rows){
-  p0.variations=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at,id',[p0.id])).results||[];
-  for(const v of p0.variations){
-   v.price=v.regular_price;
-   v.options={};
-   try{const vr=(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[v.id])).results||[];for(const x of vr)v.options[x.name]=x.value}catch{}
+ const rows=(await q(e,`SELECT p.*,COALESCE(c.name,c2.name) category_name,COALESCE(c.slug,c2.slug) category_slug,COALESCE(p.category_id,c2.id) resolved_category_id,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN marketplace_categories c2 ON lower(trim(c2.name))=lower(trim(p.category)) LEFT JOIN vendors v ON v.id=p.vendor_id WHERE (?='' OR p.vendor_id=?) ORDER BY p.created_at DESC`,[vid||'',vid||''])).results||[];
+ if(!rows.length)return json({products:[]});
+ const productIds=rows.map(x=>String(x.id));
+ const productMap=new Map(rows.map(x=>[String(x.id),x]));
+ const chunks=(arr,size=80)=>{const out=[];for(let i=0;i<arr.length;i+=size)out.push(arr.slice(i,i+size));return out;};
+ for(const p0 of rows){p0.category_id=p0.resolved_category_id||p0.category_id||null;delete p0.resolved_category_id;p0.variations=[];let legacy=[];try{legacy=Array.isArray(p0.image_urls)?p0.image_urls:(typeof p0.image_urls==='string'?JSON.parse(p0.image_urls||'[]'):[])}catch{}p0.image_urls=[...new Set([...legacy,p0.image_url||''].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10);}
+ const variationMap=new Map(),variationIds=[];
+ for(const ids of chunks(productIds)){try{const list=(await q(e,`SELECT * FROM product_variations WHERE product_id IN (${ids.map(()=>'?').join(',')}) ORDER BY created_at,id`,ids)).results||[];for(const v of list){v.price=v.regular_price;v.options={};variationIds.push(String(v.id));variationMap.set(String(v.id),v);const p0=productMap.get(String(v.product_id));if(p0)p0.variations.push(v);}}catch{}}
+ for(const ids of chunks(variationIds)){try{const list=(await q(e,`SELECT vo.variation_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id IN (${ids.map(()=>'?').join(',')}) ORDER BY po.sort_order,ov.sort_order`,ids)).results||[];for(const x of list){const v=variationMap.get(String(x.variation_id));if(v)v.options[x.name]=x.value;}}catch{}}
+ try{
+  await e.DB.prepare('CREATE TABLE IF NOT EXISTS product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_main INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
+  await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
+  for(const ids of chunks(productIds)){
+   const [legacy,modern]=await Promise.all([
+    q(e,`SELECT product_id,image_url FROM product_images WHERE product_id IN (${ids.map(()=>'?').join(',')}) ORDER BY sort_order,id`,ids).catch(()=>({results:[]})),
+    q(e,`SELECT product_id,image_url FROM vendor_product_images WHERE product_id IN (${ids.map(()=>'?').join(',')}) ORDER BY sort_order,id`,ids).catch(()=>({results:[]}))
+   ]);
+   for(const x of [...(legacy.results||[]),...(modern.results||[])]){const p0=productMap.get(String(x.product_id));if(p0)p0.image_urls.push(String(x.image_url||'').trim());}
   }
-  try{await e.DB.prepare('CREATE TABLE IF NOT EXISTS product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_main INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});const a=(await q(e,'SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order,id',[p0.id])).results||[];const b=(await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? ORDER BY sort_order,id',[p0.id])).results||[];let legacy=[];try{legacy=Array.isArray(p0.image_urls)?p0.image_urls:(typeof p0.image_urls==='string'?JSON.parse(p0.image_urls||'[]'):[])}catch{};p0.image_urls=[...new Set([...a,...b].map(x=>x.image_url).concat(legacy,p0.image_url||[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10)}catch{p0.image_urls=p0.image_url?[p0.image_url]:[]}
- }
+ }catch{}
+ for(const p0 of rows)p0.image_urls=[...new Set(p0.image_urls.map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10);
  return json({products:rows});
 }
 let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
