@@ -181,17 +181,31 @@
       </form>
 
       <div id="checkoutSuccess" class="success-box" hidden>
-        <div class="success-mark">✓</div>
-        <span class="eyebrow">ORDER RECEIVED</span>
-        <h2>Thank you for your order!</h2>
-        <p>Your order has been successfully placed. Our team will call you to verify the details before processing it.</p>
-        <div class="order-number-label">YOUR ORDER NUMBER</div>
-        <div id="successOrderNumber" class="order-number">GZ-0001</div>
-        <div class="order-number-label" style="margin-top:14px">YOUR PRIVATE TRACKING ID</div>
-        <div id="successTrackingId" class="order-number">GZ-XXXXXXXXXXXXXXX</div>
+        <section class="success-confirm-banner">
+          <div class="success-confirm-check" aria-hidden="true">✓</div>
+          <div class="success-confirm-copy">
+            <span class="success-confirm-eyebrow">ORDER CONFIRMED 🎉</span>
+            <h2>Order Confirmed Successfully!</h2>
+            <strong>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে</strong>
+            <p>Thank you for shopping with GrabZone!</p>
+          </div>
+          <div class="success-confirm-highlights">
+            <div><span aria-hidden="true">🚚</span><b>Cash on Delivery</b><small>Pay when you receive</small></div>
+            <div><span aria-hidden="true">🔔</span><b>Order Updates</b><small>We'll keep you informed</small></div>
+            <div><span aria-hidden="true">🎁</span><b>Earn GrabPoints</b><small>Rewards on your order</small></div>
+          </div>
+        </section>
+        <div class="success-order-identifiers">
+          <div><span>ORDER NUMBER</span><b id="successOrderNumber" class="order-number">GZ-0001</b></div>
+          <div><span>PRIVATE TRACKING ID</span><b id="successTrackingId" class="order-number">GZ-XXXXXXXXXXXXXXX</b></div>
+        </div>
         <p id="successEmailNote" class="success-email"></p>
         <div id="successInvoiceContent" class="success-invoice-content"></div>
-        <div class="success-invoice-actions"><button type="button" id="successDownloadInvoice" class="success-download-btn">📥 Download Invoice / Save as PDF</button><a id="successTrackLink" href="track-order.html" class="success-track-btn">🚚 Track Order</a><a href="index.html" class="success-shop-btn">🛍️ Continue Shopping</a></div>
+        <div class="success-invoice-actions">
+          <a href="index.html" class="success-shop-btn">← Continue Shopping</a>
+          <a id="successTrackLink" href="track-order.html" class="success-track-btn">🚚 Track Order</a>
+          <button type="button" id="successDownloadInvoice" class="success-download-btn">📥 Download Invoice (PDF)</button>
+        </div>
       </div>
     </section>
 
@@ -235,6 +249,7 @@
 <script src="config.js"></script>
 <script src="d1-client.js?v=20260902cloudflarefix1"></script>
 <script src="rewards.js?v=20260903gpmodel1"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="data/bangladesh-locations.js?v=fbb3187e"></script>
 <script src="checkout.js?v=20260918-vendor-delivery-v2"></script>
 
