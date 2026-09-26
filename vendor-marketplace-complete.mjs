@@ -301,6 +301,16 @@ const u=new URL(req.url),vid=clean(u.searchParams.get('vendor_id'),100);
 if(req.method==='GET'){
  const rows=(await q(e,`SELECT p.*,COALESCE(c.name,c2.name) category_name,COALESCE(c.slug,c2.slug) category_slug,COALESCE(p.category_id,c2.id) resolved_category_id,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN marketplace_categories c2 ON lower(trim(c2.name))=lower(trim(p.category)) LEFT JOIN vendors v ON v.id=p.vendor_id WHERE (?='' OR p.vendor_id=?) ORDER BY p.created_at DESC`,[vid||'',vid||''])).results||[];
  if(!rows.length)return json({products:[]});
+ // Main Admin's all-products view only needs summary fields. Avoid loading every
+ // product's variation and image tables in this unfiltered request.
+ if(!vid){
+  for(const p0 of rows){
+   p0.category_id=p0.resolved_category_id||p0.category_id||null;
+   delete p0.resolved_category_id;
+   p0.image_urls=p0.image_url?[p0.image_url]:[];
+  }
+  return json({products:rows});
+ }
  const productIds=rows.map(x=>String(x.id));
  const productMap=new Map(rows.map(x=>[String(x.id),x]));
  const chunks=(arr,size=80)=>{const out=[];for(let i=0;i<arr.length;i+=size)out.push(arr.slice(i,i+size));return out;};
