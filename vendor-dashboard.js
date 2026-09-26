@@ -9,10 +9,12 @@ async function loadProducts(){try{const d=await api('/api/vendor/products');stat
 function renderProducts(){const q=($('#productSearch')?.value||'').trim().toLowerCase(),f=$('#productFilter')?.value||'all';let rows=state.products.filter(p=>{const text=[p.name,p.sku,p.category,p.tag].join(' ').toLowerCase();if(q&&!text.includes(q))return false;if(f==='published'&&!p.published)return false;if(f==='hidden'&&p.published)return false;if(f==='low'&&Number(p.stock||0)>5)return false;return true});$('#productList').innerHTML=rows.map(p=>`<div class="gz-product-card"><img src="${esc(p.image_url||'')}" alt=""><div><b>${esc(p.name)}</b><div class="gz-product-meta">${esc(p.category||'No category')} · SKU ${esc(p.sku||'—')}<br>Price <b>${money(p.price)}</b> · Stock <b>${Number(p.stock||0)}</b> · ${p.published?'Published':'Hidden'}${p.tag?' · '+esc(p.tag):''}</div></div><button class="gz-btn light" onclick="editProduct('${esc(p.id)}')">Edit Product</button></div>`).join('')||'<div class="gz-empty" style="padding:18px">No products match your search.</div>'}
 async function loadOrders(){try{const d=await api('/api/vendor/orders');state.orders=d.orders||[];renderOrders()}catch(e){$('#orderList').innerHTML='<div class="gz-card" style="color:#a11;font-weight:800">'+esc(e.message)+'</div>'}}
 function customerCollection(o){
-  const subtotal=Number(o?.subtotal||o?.order_subtotal||0);
+  const subtotal=Number(o?.subtotal??o?.order_subtotal??0);
   const delivery=Number(o?.delivery_charge??o?.shipping_charge??0);
-  const fallback=subtotal+delivery;
-  return Number.isFinite(Number(o?.total))?Number(o.total):fallback;
+  // Vendor orders must show only this vendor's collectible amount, never the full marketplace order total.
+  const vendorTotal=Number(o?.vendor_total);
+  if(Number.isFinite(vendorTotal)&&o?.vendor_total!==null&&o?.vendor_total!==undefined&&o?.vendor_total!=='')return vendorTotal;
+  return subtotal+delivery;
 }
 function renderOrders(){
   const q=($('#orderSearch')?.value||'').trim().toLowerCase(),f=$('#orderFilter')?.value||'all';
