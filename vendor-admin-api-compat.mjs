@@ -71,10 +71,10 @@ async function overview(req,e){
  try{
   const vendors=await all(e,`SELECT v.*,
    (SELECT COUNT(*) FROM products p WHERE p.vendor_id=v.id) AS products,
-   (SELECT COUNT(*) FROM vendor_orders vo WHERE vo.vendor_id=v.id) AS orders,
-   (SELECT COALESCE(SUM(vo.subtotal),0) FROM vendor_orders vo WHERE vo.vendor_id=v.id) AS sales,
-   (SELECT COALESCE(SUM(vo.commission_amount),0) FROM vendor_orders vo WHERE vo.vendor_id=v.id) AS commission,
-   (SELECT COALESCE(SUM(vo.vendor_earnings),0) FROM vendor_orders vo WHERE vo.vendor_id=v.id) AS earnings
+   (SELECT COUNT(DISTINCT vo.order_id) FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=v.id) AS orders,
+   (SELECT COALESCE(SUM(vo.subtotal),0) FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=v.id) AS sales,
+   (SELECT COALESCE(SUM(vo.commission_amount),0) FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=v.id) AS commission,
+   (SELECT COALESCE(SUM(vo.vendor_earnings),0) FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=v.id) AS earnings
    FROM vendors v ORDER BY COALESCE(v.brand_name,v.business_name,v.slug) COLLATE NOCASE`);
   const totals=vendors.reduce((x,v)=>({
    sales:x.sales+Number(v.sales||0),
