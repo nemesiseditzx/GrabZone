@@ -523,9 +523,27 @@ async function submit(e){
     $('successEmailNote').textContent=emailSent
       ?'A confirmation email has been sent to your email address. Our team will call you to verify the order.'
       :'Your order has been saved successfully. Our team will call you to verify the order.';
-    // Open the same full invoice experience immediately after a successful checkout.
-    // The tracking page loads the saved order securely using the private tracking ID.
-    window.location.assign('track-order.html?tracking='+encodeURIComponent(privateTrackingId)+'&invoice=1');
+
+    // Keep customers on the checkout confirmation screen and show a complete, responsive order invoice.
+    const invoiceBox=$('successInvoiceContent');
+    if(invoiceBox){
+      const invoiceSubtotal=subtotal();
+      const invoiceReferral=Number(referralState.discount||0);
+      const invoiceVoucher=Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0);
+      const invoiceMystery=Number(order.mystery_discount||Math.min(invoiceSubtotal,invoiceSubtotal*Number(mysteryState.discount||0)/100));
+      const invoiceDiscount=invoiceReferral+invoiceVoucher+invoiceMystery;
+      const invoiceTotal=Math.max(0,invoiceSubtotal+shipping-invoiceDiscount);
+      const invoiceDate=new Date().toLocaleString('en-BD',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Dhaka'});
+      const invoiceItems=checkoutItems.map((item,index)=>'<tr><td class="success-invoice-product"><span class="success-invoice-index">'+(index+1)+'</span>'+(item.image_url?'<img src="'+esc(item.image_url)+'" alt="">':'')+'<div><strong>'+esc(item.name)+'</strong><small>🏬 Store: '+esc(item.vendor_name||item.brand_name||'GrabZone')+'</small><small>SKU: '+esc(item.variation_sku||item.sku||'—')+(item.variation_options&&typeof item.variation_options==='object'?' · '+Object.entries(item.variation_options).map(([k,v])=>esc(k)+': '+esc(v)).join(' · '):'')+'</small></div></td><td>'+money(item.price)+'</td><td>'+Number(item.quantity||1)+'</td><td><b>'+money(Number(item.price||0)*Number(item.quantity||1))+'</b></td></tr>').join('');
+      invoiceBox.innerHTML='<div class="success-invoice-head"><div class="success-invoice-brand"><img src="'+esc(site.logo_url||'favicon.png')+'" alt="GrabZone"><span>Grab<strong>Zone</strong><small>GADGETS • FASHION • MORE FOR YOU</small></span></div><div class="success-invoice-title"><span>ORDER INVOICE</span><small>Thank you for shopping with GrabZone!</small><time>'+esc(invoiceDate)+'</time></div></div>'+
+        '<div class="success-invoice-meta"><div><span>Order Number</span><b>'+esc(order.order_number)+'</b><span>Tracking ID</span><b>'+esc(privateTrackingId)+'</b></div><div><span>Payment Method</span><b>Cash on Delivery</b><span>Order Status</span><b class="success-invoice-status">● Processing</b></div></div>'+
+        '<div class="success-invoice-customer"><div><h3>👤 Customer Information</h3><b>'+esc(d.customer_name)+'</b><p>☎ '+esc(d.phone)+'<br>✉ '+esc(d.email)+'</p></div><div><h3>📍 Shipping Address</h3><p>'+esc([d.address,d.upazila,d.district,d.division].filter(Boolean).join(', '))+'</p></div></div>'+
+        '<div class="success-invoice-table-wrap"><table class="success-invoice-table"><thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead><tbody>'+invoiceItems+'</tbody></table></div>'+
+        '<div class="success-invoice-summary"><div><span>Subtotal</span><b>'+money(invoiceSubtotal)+'</b></div><div><span>Shipping</span><b>'+money(shipping)+'</b></div>'+(invoiceDiscount?'<div><span>Discount</span><b>−'+money(invoiceDiscount)+'</b></div>':'')+'<div class="success-invoice-grand"><span>Total to Pay (Cash on Delivery)</span><b>'+money(invoiceTotal)+'</b></div></div>'+
+        '<div class="success-invoice-thanks"><b>আপনার অর্ডারের জন্য ধন্যবাদ! 💚</b><span>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</span></div>';
+    }
+    const downloadInvoice=$('successDownloadInvoice');
+    if(downloadInvoice)downloadInvoice.onclick=()=>window.print();
   }catch(err){
     console.error(err);msg(err.message||'Could not place your order. Please try again.',true);
     b.disabled=false;b.textContent='Confirm Order';
