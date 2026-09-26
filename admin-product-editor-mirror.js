@@ -20,32 +20,21 @@ async function api(path,opt={}){const method=(opt.method||'GET').toUpperCase();c
     const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||`Request failed (${r.status})`);return d;
   }
   if(path.startsWith('/api/vendor/products')){
-    if(method==='GET'){
-      const {data,error}=await sb.from('products').select('*').order('created_at',{ascending:false});if(error)throw error;
-      const products=[];
-      for(const p of (data||[])){
-        const {data:imgs}=await sb.from('product_images').select('*').eq('product_id',p.id).order('sort_order');
-        let productType=String(p.product_type||'').toLowerCase()==='variable'?'variable':'simple';
-        try{const {data:vars}=await sb.from('product_variations').select('id').eq('product_id',p.id);if((vars||[]).length)productType='variable'}catch{}
-        products.push({...p,product_type:productType,image_urls:(imgs||[]).map(x=>x.image_url).filter(Boolean)});
-      }
-      return {products};
+    const target='/api/vendor/admin/products';
+    let payload=body||{};
+    if(method==='POST'&&!payload.vendor_id){
+      const vr=await fetch('/api/vendor/admin/vendors',{credentials:'include',cache:'no-store'});
+      const vd=await vr.json().catch(()=>({}));
+      if(!vr.ok)throw Error(vd.error||`Could not load vendors (${vr.status})`);
+      const official=(vd.vendors||[]).find(v=>String(v.slug||'').toLowerCase()==='grabzone')
+        ||(vd.vendors||[]).find(v=>String(v.brand_name||'').trim().toLowerCase()==='grabzone');
+      if(!official?.id)throw Error('Official GrabZone vendor was not found. Product was not created.');
+      payload={...payload,vendor_id:official.id};
     }
-    const b=body||{};let product;
-    if(method==='PATCH'&&b.id){
-      const id=b.id;const payload={name:b.name,category:b.category,price:Number(b.price||0),old_price:b.old_price==null?null:Number(b.old_price),tag:b.tag||null,description:b.description||'',published:!!b.published,image_url:b.image_url||'',sku:b.sku||null,category_id:b.category_id||null,updated_at:new Date().toISOString()};
-      const {error}=await sb.from('products').update(payload).eq('id',id);if(error)throw error;
-      const {data}=await sb.from('products').select('*').eq('id',id).single();if(!data)throw Error('Product not found after save.');product=data;
-      if(Array.isArray(b.image_urls)){
-        const {error:de}=await sb.from('product_images').delete().eq('product_id',id);if(de)throw de;
-        if(b.image_urls.length){const rows=b.image_urls.slice(0,10).map((u,i)=>({id:crypto.randomUUID(),product_id:id,image_url:u,sort_order:i,is_main:i===0,created_at:new Date().toISOString()}));const {error:ie}=await sb.from('product_images').insert(rows);if(ie)throw ie;}
-      }
-    }else{
-      const id=b.id||crypto.randomUUID();const payload={id,name:b.name,category:b.category,price:Number(b.price||0),old_price:b.old_price==null?null:Number(b.old_price),tag:b.tag||null,description:b.description||'',published:!!b.published,image_url:b.image_url||'',sku:b.sku||null,category_id:b.category_id||null,created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
-      const {data,error}=await sb.from('products').insert(payload).select().single();if(error)throw error;product=data;
-      if(Array.isArray(b.image_urls)&&b.image_urls.length){const rows=b.image_urls.slice(0,10).map((u,i)=>({id:crypto.randomUUID(),product_id:id,image_url:u,sort_order:i,is_main:i===0,created_at:new Date().toISOString()}));const {error:ie}=await sb.from('product_images').insert(rows);if(ie)throw ie;}
-    }
-    return {id:product.id,product};
+    const r=await fetch(target,{method,credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json'},body:method==='GET'?undefined:JSON.stringify(payload)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw Error(d.error||d.detail||`Product request failed (${r.status})`);
+    return d;
   }
   throw Error('Unsupported admin product-editor request.');
 }
@@ -140,10 +129,10 @@ async function generateVariations(){
  try{const d=await api('/api/vendor/variations?product_id='+encodeURIComponent(pid),{method:'POST',body:JSON.stringify({options:state.variationOptions})});state.variations=d.variations||[];renderVariationRows();msg.textContent=`✓ ${d.count} variations generated.`;$('#vpProductType').value='variable'}catch(e){msg.textContent='⚠ '+e.message}
 }
 function getVariationProductImages(){
- const urls=(state.editing?.image_urls||[]).filter(Boolean);
- if(urls.length)return urls;
+ const editing=state.editing||{};
  const p=state.products.find(x=>String(x.id)===String($('#vpId')?.value||''));
- return (p?.image_urls||[]).filter(Boolean);
+ const urls=[...(editing.image_urls||[]),editing.image_url||'',...(p?.image_urls||[]),p?.image_url||''].map(x=>String(x||'').trim()).filter(Boolean);
+ return [...new Set(urls)].slice(0,10);
 }
 function renderVariationRows(){
  const body=$('#vpVariationRows');if(!body)return;
