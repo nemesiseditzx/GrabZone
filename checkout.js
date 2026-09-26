@@ -540,10 +540,21 @@ async function submit(e){
         '<div class="success-invoice-customer"><div><h3>👤 Customer Information</h3><b>'+esc(d.customer_name)+'</b><p>☎ '+esc(d.phone)+'<br>✉ '+esc(d.email)+'</p></div><div><h3>📍 Shipping Address</h3><p>'+esc([d.address,d.upazila,d.district,d.division].filter(Boolean).join(', '))+'</p></div></div>'+
         '<div class="success-invoice-table-wrap"><table class="success-invoice-table"><thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead><tbody>'+invoiceItems+'</tbody></table></div>'+
         '<div class="success-invoice-summary"><div><span>Subtotal</span><b>'+money(invoiceSubtotal)+'</b></div><div><span>Shipping</span><b>'+money(shipping)+'</b></div>'+(invoiceDiscount?'<div><span>Discount</span><b>−'+money(invoiceDiscount)+'</b></div>':'')+'<div class="success-invoice-grand"><span>Total to Pay (Cash on Delivery)</span><b>'+money(invoiceTotal)+'</b></div></div>'+
-        '<div class="success-invoice-thanks"><b>আপনার অর্ডারের জন্য ধন্যবাদ! 💚</b><span>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</span></div>';
+        '<div class="success-invoice-thanks"><b>আপনার অর্ডারের জন্য ধন্যবাদ! 💚</b><span>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</span></div>'+
+        '<section class="success-invoice-barcodes"><div><h3>GrabZone Order Barcode</h3><svg id="successOrderBarcode" role="img" aria-label="Order barcode"></svg><small>'+esc(order.order_number)+'</small></div><div><h3>Tracking ID Barcode</h3><svg id="successTrackingBarcode" role="img" aria-label="Tracking ID barcode"></svg><small>'+esc(privateTrackingId)+'</small></div></section>'+
+        '<section class="success-invoice-rewards"><div class="success-rewards-mark">GP</div><div class="success-rewards-copy"><strong>Grab<span>Points</span></strong><h3>কেনাকাটায় আরও বেশি সুবিধা পান!</h3><p>GrabPoints সংগ্রহ করুন এবং ভবিষ্যতের অর্ডারে রিওয়ার্ড ও সুবিধা উপভোগ করুন।</p><a href="https://grab-zone-ten.vercel.app/grabpoints.html" target="_blank" rel="noopener noreferrer">🎁 Explore GrabPoints <span>→</span></a></div></section>'+
+        '<footer class="success-invoice-footer"><div><b>🛟 Need Help?</b><a href="mailto:grabzonesupport@gmail.com">grabzonesupport@gmail.com</a></div><div><b>🌐 Visit Our Store</b><a href="https://grab-zone-ten.vercel.app/" target="_blank" rel="noopener noreferrer">grab-zone-ten.vercel.app</a></div><div><b>📲 Follow GrabZone</b><span class="success-social-links"><a href="https://www.facebook.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Facebook"><span class="success-social-icon facebook">f</span> Facebook</a><a href="https://www.instagram.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Instagram"><span class="success-social-icon instagram">◎</span> Instagram</a></span></div><small>© '+new Date().getFullYear()+' GrabZone. All rights reserved.</small></footer>';
+    }
+    if(window.JsBarcode){
+      try{
+        window.JsBarcode('#successOrderBarcode',String(order.order_number),{format:'CODE128',displayValue:false,lineColor:'#17284c',background:'#ffffff',width:1.6,height:48,margin:4});
+        window.JsBarcode('#successTrackingBarcode',String(privateTrackingId),{format:'CODE128',displayValue:false,lineColor:'#17284c',background:'#ffffff',width:1.35,height:48,margin:4});
+      }catch(barcodeError){console.warn('Order confirmation barcode could not be rendered:',barcodeError);}
     }
     const downloadInvoice=$('successDownloadInvoice');
     if(downloadInvoice)downloadInvoice.onclick=()=>window.print();
+    // Keep the customer on this confirmation/invoice screen; tracking is available only by explicit button click.
+    requestAnimationFrame(()=> $('checkoutSuccess')?.scrollIntoView({behavior:'smooth',block:'start'}));
   }catch(err){
     console.error(err);msg(err.message||'Could not place your order. Please try again.',true);
     b.disabled=false;b.textContent='Confirm Order';
