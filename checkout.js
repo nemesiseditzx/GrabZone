@@ -523,7 +523,9 @@ async function submit(e){
     $('successEmailNote').textContent=emailSent
       ?'A confirmation email has been sent to your email address. Our team will call you to verify the order.'
       :'Your order has been saved successfully. Our team will call you to verify the order.';
-    window.scrollTo({top:0,behavior:'smooth'});
+    // Open the same full invoice experience immediately after a successful checkout.
+    // The tracking page loads the saved order securely using the private tracking ID.
+    window.location.assign('track-order.html?tracking='+encodeURIComponent(privateTrackingId)+'&invoice=1');
   }catch(err){
     console.error(err);msg(err.message||'Could not place your order. Please try again.',true);
     b.disabled=false;b.textContent='Confirm Order';
