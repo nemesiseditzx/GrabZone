@@ -7,9 +7,12 @@
   <title>GRABZONE — Admin</title>
 
   <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="vendor-product-editor.css?v=20260923adminmirror1">
   <link rel="stylesheet" href="billboard-admin.css">
 
 <style>
+/* Admin uses the vendor product editor; legacy admin overlay stays disabled. */
+#gzProductEditor{display:none !important}
 /* =========================================================
    GRABZONE PRODUCT EDITOR
 ========================================================= */
@@ -294,6 +297,7 @@ body.gz-gallery-dragging-active{
 }
 </style>
 
+  <link rel="stylesheet" href="grabzone-ui-consistency.css?v=20260923ui">
 </head>
 
 <body>
@@ -476,6 +480,9 @@ body.gz-gallery-dragging-active{
           Products
         </span>
       </button>
+
+
+
       <button
         class="side-link"
         data-tab="growth"
@@ -597,6 +604,20 @@ body.gz-gallery-dragging-active{
         ▤
         <span>
           Policies
+        </span>
+      </a>
+
+
+      <a
+        class="side-link marketplace-nav"
+        href="/vendor-admin.html"
+        target="_blank"
+        rel="noopener"
+        aria-label="Open Marketplace Admin in a new page"
+      >
+        🏪
+        <span>
+          Marketplace ↗
         </span>
       </a>
 
@@ -867,6 +888,42 @@ body.gz-gallery-dragging-active{
 
         </div>
 
+      </section>
+
+
+      <!-- =================================================
+           MARKETPLACE CONTROL
+      ================================================== -->
+      <section id="tab-marketplace" class="tab">
+        <div class="page-title">
+          <div>
+            <div class="eyebrow">MULTI-VENDOR MARKETPLACE</div>
+            <h1>Marketplace Admin</h1>
+            <p>The marketplace now has its own dedicated control center. Vendor profiles, products, variations, orders, store settings and security are managed on the new Marketplace Admin page.</p>
+          </div>
+        </div>
+
+        <div class="panel" style="padding:28px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
+            <div style="max-width:720px">
+              <div class="eyebrow">GRABZONE MARKETPLACE</div>
+              <h2 style="margin:8px 0 8px">Open Marketplace Admin</h2>
+              <p class="muted" style="margin:0 0 16px;line-height:1.7">
+                Open the dedicated Marketplace Admin in a new page. From there you can add vendors and open the full
+                <b>GrabZone VENDOR CONTROL</b> for each vendor, including Profile, Products, Orders, Store and Security.
+              </p>
+              <div style="display:flex;gap:9px;flex-wrap:wrap">
+                <a class="primary" href="/vendor-admin.html" target="_blank" rel="noopener">Open Marketplace Admin ↗</a>
+                <a class="ghost" href="/marketplace.html" target="_blank" rel="noopener">View Store ↗</a>
+              </div>
+            </div>
+            <div style="min-width:220px;padding:18px;border:1px solid #e7e2dc;border-radius:16px;background:#faf9f7">
+              <div class="muted" style="font-size:11px">DEDICATED CONTROL CENTER</div>
+              <strong style="display:block;font-size:20px;margin-top:5px">Vendor Management</strong>
+              <span class="muted" style="font-size:12px">Products · Variations · Orders · Store · Security</span>
+            </div>
+          </div>
+        </div>
       </section>
 
 
@@ -1794,7 +1851,7 @@ body.gz-gallery-dragging-active{
           <button
             class="primary"
             type="button"
-            onclick="gzOpenProductEditor()"
+            onclick="gzAdminOpenVendorEditor()"
           >
             ✎ Edit Products
           </button>
@@ -3031,6 +3088,13 @@ document.addEventListener("keydown",event=>{
 </script>
 
 <script src="admin-animations.js"></script>
+
+<script src="admin-product-editor-mirror.js?v=20260925-shared-db-sync1"></script>
+<script>
+/* Admin Products must use the exact vendor product/variation editor. */
+window.gzOpenProductEditor = function(){ if(window.gzAdminOpenVendorEditor) window.gzAdminOpenVendorEditor(); };
+window.gzSelectProduct = function(id){ if(window.gzAdminOpenVendorEdit && id) window.gzAdminOpenVendorEdit(id); };
+</script>
 <script src="payment-admin.js?v=20260902authfix4"></script>
 <script src="orders-admin.js?v=20260902authfix4"></script>
 <script src="tracking-admin.js?v=20260902authfix5"></script>

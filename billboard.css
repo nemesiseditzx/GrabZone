@@ -19,3 +19,10 @@
 .gz-billboard[data-transition="fade"] .gz-billboard-track{position:relative;display:block;transform:none!important}.gz-billboard[data-transition="fade"] .gz-billboard-slide{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .55s ease,visibility .55s ease}.gz-billboard[data-transition="fade"] .gz-billboard-slide.active{opacity:1;visibility:visible}
 .gz-billboard-empty{width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:32px;color:#fff;background:#101820}.gz-billboard-empty span{font-size:10px;font-weight:900;letter-spacing:.16em;margin-bottom:9px}.gz-billboard-empty strong{font-size:clamp(28px,4vw,52px);line-height:1}
 @media(max-width:760px){.gz-billboard{height:min(420px,72vw);min-height:250px;border-radius:20px}.gz-billboard-overlay{padding:18px}.gz-billboard-copy{max-width:88%}.gz-billboard-copy>strong{font-size:clamp(25px,8vw,42px)}.gz-billboard-copy>p{font-size:12px}.gz-billboard-arrow{width:36px;height:36px;font-size:25px}.gz-billboard-prev{left:9px}.gz-billboard-next{right:9px}}
+
+/* Broken remote media fallback */
+.gz-billboard-image-fallback{background:linear-gradient(135deg,#111820 0%,#1b2630 55%,#ff6b00 160%)}
+.gz-billboard-fallback{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:28px;color:#fff;background:radial-gradient(circle at 50% 35%,rgba(255,107,0,.22),transparent 42%)}
+.gz-billboard-fallback span{font-size:10px;font-weight:900;letter-spacing:.22em;opacity:.8}
+.gz-billboard-fallback strong{margin-top:10px;font-size:clamp(28px,4vw,52px);line-height:.98;letter-spacing:-.045em}
+.gz-billboard-fallback small{margin-top:14px;font-size:12px;color:rgba(255,255,255,.72)}

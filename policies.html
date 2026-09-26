@@ -13,7 +13,18 @@
 </script>
     
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Policies — GRABZONE</title><link rel="icon" href="favicon.png">
+<title>Store Policies | GrabZone Bangladesh</title>
+<meta name="description" content="Read GrabZone's store policies, order information, delivery terms, returns and customer support details.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://grabzone.tech/policies.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GrabZone">
+<meta property="og:title" content="Store Policies | GrabZone Bangladesh">
+<meta property="og:description" content="Read GrabZone's store policies, order information, delivery terms, returns and customer support details.">
+<meta property="og:url" content="https://grabzone.tech/policies.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Store Policies | GrabZone Bangladesh">
+<meta name="twitter:description" content="Read GrabZone's store policies, order information, delivery terms, returns and customer support details."><link rel="icon" href="favicon.png">
 <style>
 :root{--accent:#ff6a00;--accent2:#ff3d00;--bg:#f7f7f4;--card:#fff;--ink:#111;--muted:#686868;--line:#e6e5df;--shadow:0 24px 70px rgba(17,17,17,.08)}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.7;overflow-x:hidden}
@@ -30,7 +41,9 @@ footer{max-width:1180px;margin:auto;padding:22px;border-top:1px solid var(--line
 @media(max-width:760px){.top-inner{padding:10px 14px}.store{display:none}.wrap{padding:42px 14px 65px}.hero{padding:15px 0 38px}.hero h1{font-size:clamp(42px,13vw,62px)}.hero p{font-size:16px}.layout{grid-template-columns:1fr}.toc{position:sticky;top:68px;display:flex;overflow-x:auto;gap:4px;padding:7px;z-index:5}.toc a{white-space:nowrap}.policy{padding:23px 20px;border-radius:20px}.policy:hover{transform:none}.actions{gap:5px}.lang button{padding:6px 8px}.mark{width:38px;height:38px}footer{padding:18px 14px;flex-direction:column}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important;transition:none!important}}
 </style>
-<link rel="stylesheet" href="grabzone-mobile-global.css?v=20260908mobileglobal1">
+<link rel="stylesheet" href="grabzone-mobile-global.css?v=20260922mobileglobal2">
+<script src="/grabzone-animation-controller.js?v=20260922full-animation1"></script>
+  <link rel="stylesheet" href="grabzone-ui-consistency.css?v=20260923ui">
 </head>
 <body>
 <div class="progress" id="progress"></div>
@@ -144,4 +157,4 @@ function setupMotion(){const els=[...document.querySelectorAll('.reveal')];if(PO
 function renderMeta(){const store=POLICY.store_name||C.storeName||'GRABZONE';$('storeName').textContent=store;$('footerName').textContent=store;document.title='Policies — '+store;$('year').textContent=new Date().getFullYear();$('date').textContent=new Date(POLICY.updated_at||Date.now()).toLocaleDateString(LANG==='bn'?'bn-BD':'en-US',{day:'numeric',month:'long',year:'numeric'});$('policyWa').href=POLICY.whatsapp||C.whatsapp||'#';const logo=POLICY.logo_url||C.logoUrl;if(logo)$('mark').innerHTML='<img src="'+String(logo).replace(/"/g,'&quot;')+'" alt="'+String(store).replace(/"/g,'&quot;')+'">'}
 async function loadPolicy(){applyTheme();renderMeta();setLanguage(LANG);setupMotion();if(!window.grabzoneD1)return;try{const s=window.grabzoneD1;const [policyResult,siteResult]=await Promise.all([Promise.race([s.from('store_policies').select('*').eq('id',1).maybeSingle(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('Policy request timed out')),6000))]),s.from('site_settings').select('logo_url,store_name,whatsapp').eq('id',1).maybeSingle()]);if(policyResult?.data?.enabled!==false){POLICY={...POLICY,...policyResult.data,content:{...POLICY.content,...(policyResult.data.content||{})}}}if(siteResult?.data){POLICY={...POLICY,logo_url:siteResult.data.logo_url||POLICY.logo_url,store_name:siteResult.data.store_name||POLICY.store_name,whatsapp:siteResult.data.whatsapp||POLICY.whatsapp}}applyTheme();renderMeta();setLanguage(LANG)}catch(e){console.warn('Using local policy fallback:',e.message);applyTheme();renderMeta();setLanguage(LANG)}}
 $('bn').onclick=()=>setLanguage('bn');$('en').onclick=()=>setLanguage('en');loadPolicy();
-</script></body></html>
+</script><script src="grabzone-mobile-app-shell.js?v=20260922mobileapp1"></script></body></html>

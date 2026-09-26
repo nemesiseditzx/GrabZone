@@ -7,7 +7,37 @@ const d1=window.grabzoneD1||null;
 const CART_KEY='grabzone_cart_v2';
 const BUY_NOW_KEY='grabzone_buy_now_v2';
 const currency=C.currency||'৳';
-const flatShippingCharge=130;
+let marketplaceShipping=0,shippingBreakdown=[],marketplaceProductsLoaded=false;
+async function loadMarketplaceShipping(){
+  try{
+    const ids=[...new Set(checkoutItems.map(i=>i.product_id).filter(Boolean).map(String))];
+    const query=ids.length?'?ids='+encodeURIComponent(ids.join(','))+'&limit=500':'?limit=500';
+    const r=await fetch('/api/marketplace/products'+query,{credentials:'include',cache:'no-store'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||'Marketplace products unavailable');
+    const products=Array.isArray(d.products)?d.products:[];
+    const map=new Map(products.map(p=>[String(p.id),p]));
+    const groups=new Map();
+    checkoutItems.forEach(i=>{
+      const p=map.get(String(i.product_id));
+      if(!p)return;
+      const vid=String(p.vendor_id||'');
+      if(!vid)return;
+      if(!groups.has(vid))groups.set(vid,{vendor_id:vid,name:String(p.vendor_name||p.brand_name||p.vendor_slug||'Vendor'),fee:Number(p.vendor_shipping_fee??p.shipping_fee??0)});
+    });
+    shippingBreakdown=[...groups.values()].map(x=>({...x,fee:Math.max(0,x.fee)}));
+    marketplaceShipping=shippingBreakdown.reduce((s,x)=>s+x.fee,0);
+    checkoutItems=checkoutItems.map(i=>{const p=map.get(String(i.product_id));return p?{...i,vendor_id:p.vendor_id,vendor_name:p.vendor_name||p.brand_name||p.vendor_slug,vendor_shipping_fee:Number(p.vendor_shipping_fee??p.shipping_fee??0)}:i});
+    marketplaceProductsLoaded=true;
+    return marketplaceShipping;
+  }catch(e){
+    console.warn('GrabZone marketplace shipping:',e);
+    marketplaceProductsLoaded=false;
+    shippingBreakdown=[];marketplaceShipping=0;
+    return 0;
+  }
+}
+async function loadGlobalShipping(){ return loadMarketplaceShipping(); }
 
 let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0},grabPointsState={balance:0,use:0,discount:0},mysteryState={token:'',discount:0},grabPointsEnabled=true,grabPointsEarnRate=10,grabPointsValue=0.1;
 const $=id=>document.getElementById(id);
@@ -19,7 +49,7 @@ async function loadGrabPointsSettings(){try{const{data,error}=await d1.from('sit
 function loadMystery(){const x=read('grabzone_mystery_v1',null);if(x?.token&&x?.expires_at&&Date.parse(x.expires_at)>Date.now())mysteryState={token:String(x.token),discount:Number(x.discount||0)};else{mysteryState={token:'',discount:0};try{localStorage.removeItem('grabzone_mystery_v1')}catch{}}}
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
-const shippingForLocation=()=>flatShippingCharge;
+const shippingForLocation=()=>marketplaceShipping;
 function deliveryEtaForLocation(division,district){
   const d=String(district||'').toLowerCase(),v=String(division||'').toLowerCase();
   if(d||v)return '2–7 days';
@@ -249,17 +279,22 @@ function render(){
   if(empty)empty.hidden=true;if(form)form.hidden=false;
   box.innerHTML=checkoutItems.map(i=>`<div class="checkout-item">
     <img src="${esc(i.image_url)}" alt="${esc(i.name)}">
-    <div class="checkout-item-info"><strong>${esc(i.name)}</strong><span>Quantity: ${i.quantity}</span></div>
+    <div class="checkout-item-info"><strong>${esc(i.name)}</strong><span>Quantity: ${i.quantity}${i.variation_options&&typeof i.variation_options==='object'?' · '+Object.entries(i.variation_options).map(([k,v])=>esc(k)+': '+esc(v)).join(' · '):''}${i.variation_sku||i.sku?' · SKU: '+esc(i.variation_sku||i.sku):''}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
   side.innerHTML=checkoutItems.map(i=>`<div class="summary-product">
     <img src="${esc(i.image_url)}" alt="">
-    <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}</span></div>
+    <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}${i.variation_options&&typeof i.variation_options==='object'?' · '+Object.entries(i.variation_options).map(([k,v])=>esc(k)+': '+esc(v)).join(' · '):''}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
-  const sub=subtotal(),shipping=shippingForLocation($('division')?.value||''),discount=Number(referralState.discount||0),pointsDiscount=Number(rewardsVoucherState.discount||0),mysteryDiscount=Math.min(sub,sub*Number(mysteryState.discount||0)/100);
+  const sub=subtotal(),shipping=shippingForLocation(),discount=Number(referralState.discount||0),pointsDiscount=Number(rewardsVoucherState.discount||0),mysteryDiscount=Math.min(sub,sub*Number(mysteryState.discount||0)/100);
   $('checkoutSubtotal').textContent=money(sub);
   $('checkoutShipping').textContent=money(shipping);
+  const breakdown=$('checkoutShippingBreakdown');
+  if(breakdown){
+    breakdown.hidden=!shippingBreakdown.length;
+    breakdown.innerHTML=shippingBreakdown.map(x=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#666;padding:2px 0"><span>${esc(x.name)} delivery</span><b>${money(x.fee)}</b></div>`).join('');
+  }
   $('checkoutDiscount').textContent='-'+money(discount);
   $('checkoutDiscountRow').hidden=discount<=0;
   const pointsRow=$('checkoutPointsRow');if(pointsRow)pointsRow.hidden=pointsDiscount<=0;const pointsEl=$('checkoutPointsDiscount');if(pointsEl)pointsEl.textContent='-'+money(pointsDiscount);
@@ -312,13 +347,39 @@ async function hydrate(){
   if(!raw.length){render();return}
   if(!d1){checkoutItems=raw;render();return}
   const ids=[...new Set(raw.map(x=>x.product_id).filter(Boolean))];
-  const{data,error}=await d1.from('products').select('id,name,price,image_url,published').in('id',ids);
+  const{data,error}=await d1.from('products').select('id,name,price,image_url,published,vendor_id').in('id',ids);
   if(error){console.error(error);checkoutItems=raw;render();return}
   const map=new Map((data||[]).map(p=>[p.id,p]));
   checkoutItems=raw.map(x=>{
     const p=map.get(x.product_id);if(!p)return null;
-    return{product_id:p.id,name:p.name,image_url:p.image_url,price:Number(p.price||0),quantity:Math.max(1,Number(x.quantity||1))}
+    return{...x,product_id:p.id,name:p.name,image_url:p.image_url,price:Number(x.price??x.unit_price??p.price??0),quantity:Math.max(1,Number(x.quantity||1)),vendor_id:p.vendor_id,product_type:p.product_type}
   }).filter(Boolean);
+  const variationItems=checkoutItems.filter(x=>x.variation_id);
+  if(variationItems.length){
+    await Promise.all(variationItems.map(async item=>{
+      try{
+        const r=await fetch('/api/marketplace/variations?product_id='+encodeURIComponent(item.product_id),{credentials:'include',cache:'no-store'});
+        const d=await r.json().catch(()=>({}));
+        const v=(d.variations||[]).find(x=>String(x.id)===String(item.variation_id));
+        if(!v||String(v.status||'')!=='Available')throw new Error('This selected variation is no longer available.');
+        const regular=Number(v.regular_price||v.price||0),sale=Number(v.sale_price||0);
+        item.price=sale>0&&sale<regular?sale:regular;
+        item.unit_price=item.price;
+        item.image_url=v.image_url||item.image_url;
+        item.sku=v.sku||item.sku||'';
+        item.variation_options=v.options||item.variation_options||{};
+      }catch(e){
+        item.__variationError=e.message||'Selected variation is unavailable.';
+      }
+    }));
+    const unavailable=checkoutItems.find(x=>x.__variationError);
+    if(unavailable){
+      msg(unavailable.__variationError,true);
+      checkoutItems=checkoutItems.filter(x=>!x.__variationError);
+      if(!checkoutItems.length){render();return}
+    }
+  }
+  await loadMarketplaceShipping();
   render();
 }
 async function syncOrderToSheet(orderId){
@@ -352,7 +413,7 @@ function openOrderConfirm(d){
   return new Promise(resolve=>{
     const modal=$('orderConfirmModal');
     if(!modal){resolve(window.confirm('Please review your order details carefully before placing the order.'));return}
-    const shipping=shippingForLocation(d.division);
+    const shipping=shippingForLocation();
     const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100));
     const address=[d.address,d.upazila,d.district,d.division].filter(Boolean).join(', ');
     $('confirmCustomer').textContent=d.customer_name||'—';
@@ -401,7 +462,7 @@ async function submit(e){
     district:d.district,upazila:d.upazila,address:d.address,
     referral_code:d.referral_code||null,rewards_voucher_code:d.rewards_voucher_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
-    items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price)})),
+    items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price),variation_id:i.variation_id||null,variation_options:i.variation_options||{} ,variation_sku:i.variation_sku||i.sku||''})),
     subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:1,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
   };
   try{
@@ -424,7 +485,7 @@ async function submit(e){
     if(!privateTrackingId)throw new Error('Order was created, but the private Tracking ID could not be generated. Please contact GrabZone support.');
 
     localStorage.removeItem(CART_KEY);localStorage.removeItem(BUY_NOW_KEY);
-    $('checkoutForm').hidden=true;$('checkoutSuccess').hidden=false;
+    $('checkoutForm').hidden=true;$('checkoutSuccess').hidden=false;document.querySelector('.checkout-layout')?.classList.add('checkout-completed');const summaryCard=document.querySelector('.summary-card');if(summaryCard)summaryCard.hidden=true;
     $('successOrderNumber').textContent=order.order_number;
     $('successTrackingId').textContent=privateTrackingId;
     const trackLink=$('successTrackLink');
@@ -442,13 +503,13 @@ async function submit(e){
         upazila:d.upazila,
         address:d.address,
         payment_method:'Cash on Delivery',
-        shipping_charge:130,
+        shipping_charge:shipping,
         subtotal:subtotal(),
         referral_discount:Number(referralState.discount||0),
         rewards_voucher_code:String(order.rewards_voucher_code||rewardsVoucherState.code||''),
         rewards_voucher_discount:Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0),
         mystery_discount:Number(order.mystery_discount||0),
-        total:Math.max(0,subtotal()+130-Number(referralState.discount||0)-Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0)-Number(order.mystery_discount||0)),
+        total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0)-Number(order.mystery_discount||0)),
         public_tracking_id:privateTrackingId
       },
       checkoutItems.map(i=>({
@@ -462,12 +523,44 @@ async function submit(e){
     $('successEmailNote').textContent=emailSent
       ?'A confirmation email has been sent to your email address. Our team will call you to verify the order.'
       :'Your order has been saved successfully. Our team will call you to verify the order.';
-    window.scrollTo({top:0,behavior:'smooth'});
+
+    // Keep customers on the checkout confirmation screen and show a complete, responsive order invoice.
+    const invoiceBox=$('successInvoiceContent');
+    if(invoiceBox){
+      const invoiceSubtotal=subtotal();
+      const invoiceReferral=Number(referralState.discount||0);
+      const invoiceVoucher=Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0);
+      const invoiceMystery=Number(order.mystery_discount||Math.min(invoiceSubtotal,invoiceSubtotal*Number(mysteryState.discount||0)/100));
+      const invoiceDiscount=invoiceReferral+invoiceVoucher+invoiceMystery;
+      const invoiceTotal=Math.max(0,invoiceSubtotal+shipping-invoiceDiscount);
+      const invoiceDate=new Date().toLocaleString('en-BD',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Dhaka'});
+      const invoiceItems=checkoutItems.map((item,index)=>'<tr><td class="success-invoice-product"><span class="success-invoice-index">'+(index+1)+'</span>'+(item.image_url?'<img src="'+esc(item.image_url)+'" alt="">':'')+'<div><strong>'+esc(item.name)+'</strong><small>🏬 Store: '+esc(item.vendor_name||item.brand_name||'GrabZone')+'</small><small>SKU: '+esc(item.variation_sku||item.sku||'—')+(item.variation_options&&typeof item.variation_options==='object'?' · '+Object.entries(item.variation_options).map(([k,v])=>esc(k)+': '+esc(v)).join(' · '):'')+'</small></div></td><td>'+money(item.price)+'</td><td>'+Number(item.quantity||1)+'</td><td><b>'+money(Number(item.price||0)*Number(item.quantity||1))+'</b></td></tr>').join('');
+      invoiceBox.innerHTML='<div class="success-invoice-head"><div class="success-invoice-brand"><img src="'+esc(site.logo_url||'favicon.png')+'" alt="GrabZone"><span>Grab<strong>Zone</strong><small>GADGETS • FASHION • MORE FOR YOU</small></span></div><div class="success-invoice-title"><span>ORDER INVOICE</span><small>Thank you for shopping with GrabZone!</small><time>'+esc(invoiceDate)+'</time></div></div>'+
+        '<div class="success-invoice-meta"><div><span>Order Number</span><b>'+esc(order.order_number)+'</b><span>Tracking ID</span><b>'+esc(privateTrackingId)+'</b></div><div><span>Payment Method</span><b>Cash on Delivery</b><span>Order Status</span><b class="success-invoice-status">● Processing</b></div></div>'+
+        '<div class="success-invoice-customer"><div><h3>👤 Customer Information</h3><b>'+esc(d.customer_name)+'</b><p>☎ '+esc(d.phone)+'<br>✉ '+esc(d.email)+'</p></div><div><h3>📍 Shipping Address</h3><p>'+esc([d.address,d.upazila,d.district,d.division].filter(Boolean).join(', '))+'</p></div></div>'+
+        '<div class="success-invoice-table-wrap"><table class="success-invoice-table"><thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead><tbody>'+invoiceItems+'</tbody></table></div>'+
+        '<div class="success-invoice-summary"><div><span>Subtotal</span><b>'+money(invoiceSubtotal)+'</b></div><div><span>Shipping</span><b>'+money(shipping)+'</b></div>'+(invoiceDiscount?'<div><span>Discount</span><b>−'+money(invoiceDiscount)+'</b></div>':'')+'<div class="success-invoice-grand"><span>Total to Pay (Cash on Delivery)</span><b>'+money(invoiceTotal)+'</b></div></div>'+
+        '<div class="success-invoice-thanks"><b>আপনার অর্ডারের জন্য ধন্যবাদ! 💚</b><span>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</span></div>'+
+        '<section class="success-invoice-barcodes"><div><h3>GrabZone Order Barcode</h3><svg id="successOrderBarcode" role="img" aria-label="Order barcode"></svg><small>'+esc(order.order_number)+'</small></div><div><h3>Tracking ID Barcode</h3><svg id="successTrackingBarcode" role="img" aria-label="Tracking ID barcode"></svg><small>'+esc(privateTrackingId)+'</small></div></section>'+
+        '<section class="success-invoice-rewards"><div class="success-rewards-mark">GP</div><div class="success-rewards-copy"><strong>Grab<span>Points</span></strong><h3>কেনাকাটায় আরও বেশি সুবিধা পান!</h3><p>GrabPoints সংগ্রহ করুন এবং ভবিষ্যতের অর্ডারে রিওয়ার্ড ও সুবিধা উপভোগ করুন।</p><a href="https://grab-zone-ten.vercel.app/grabpoints.html" target="_blank" rel="noopener noreferrer">🎁 Explore GrabPoints <span>→</span></a></div></section>'+
+        '<footer class="success-invoice-footer"><div><b>🛟 Need Help?</b><a href="mailto:grabzonesupport@gmail.com">grabzonesupport@gmail.com</a></div><div><b>🌐 Visit Our Store</b><a href="https://grab-zone-ten.vercel.app/" target="_blank" rel="noopener noreferrer">grab-zone-ten.vercel.app</a></div><div><b>📲 Follow GrabZone</b><span class="success-social-links"><a href="https://www.facebook.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Facebook"><span class="success-social-icon facebook">f</span> Facebook</a><a href="https://www.instagram.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Instagram"><span class="success-social-icon instagram">◎</span> Instagram</a></span></div><small>© '+new Date().getFullYear()+' GrabZone. All rights reserved.</small></footer>';
+    }
+    if(window.JsBarcode){
+      try{
+        window.JsBarcode('#successOrderBarcode',String(order.order_number),{format:'CODE128',displayValue:false,lineColor:'#17284c',background:'#ffffff',width:1.6,height:48,margin:4});
+        window.JsBarcode('#successTrackingBarcode',String(privateTrackingId),{format:'CODE128',displayValue:false,lineColor:'#17284c',background:'#ffffff',width:1.35,height:48,margin:4});
+      }catch(barcodeError){console.warn('Order confirmation barcode could not be rendered:',barcodeError);}
+    }
+    const downloadInvoice=$('successDownloadInvoice');
+    if(downloadInvoice)downloadInvoice.onclick=()=>window.print();
+    // Keep the customer on this confirmation/invoice screen; tracking is available only by explicit button click.
+    requestAnimationFrame(()=> $('checkoutSuccess')?.scrollIntoView({behavior:'smooth',block:'start'}));
   }catch(err){
     console.error(err);msg(err.message||'Could not place your order. Please try again.',true);
     b.disabled=false;b.textContent='Confirm Order';
   }
 }
+loadGlobalShipping().then(()=>{try{render();renderDeliveryEta()}catch{}}).catch(()=>{});
 document.addEventListener('DOMContentLoaded',async()=>{
   $('checkoutForm')?.addEventListener('submit',submit);
   $('division')?.addEventListener('change',onDivisionChange);
@@ -496,6 +589,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('grabpointsOptIn')?.addEventListener('change',()=>{const on=$('grabpointsOptIn').checked;const m=$('grabpointsMsg');if(m&&!on&&rewardsVoucherState.code)m.textContent='Your reward voucher can still be used; this checkbox only controls earning GP on this order.';render()});
 
   $('referralCode')?.addEventListener('input',()=>{referralState={code:'',discount:0};$('referralMessage').textContent='Enter the code and press Apply.';render()});
-  loadMystery();await loadGrabPointsSettings();await loadLocations();await loadSite();await hydrate();
+  loadMystery();await loadGrabPointsSettings();await loadLocations();await loadSite();await hydrate();await loadMarketplaceShipping();render();
 });
 })();

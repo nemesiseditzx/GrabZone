@@ -1,122 +1,902 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff">
 <title>Track Your Order | GrabZone</title>
-<link rel="icon" href="favicon.png"><link rel="stylesheet" href="styles.css">
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="grabzone-mobile-global.css?v=20260922mobileglobal2">
+<link rel="stylesheet" href="grabzone-ui-consistency.css?v=20260923ui">
 <style>
-body{background:#f7f7f4}.track-wrap{max-width:760px;margin:70px auto;padding:20px}.track-card{background:#fff;border:1px solid #e5e5e1;border-radius:24px;padding:28px;box-shadow:0 10px 35px rgba(0,0,0,.06)}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.12em;color:#777}.track-card h1{margin:8px 0 8px;font-size:34px}.track-card p{color:#666}.track-form{display:flex;gap:10px;margin-top:22px}.track-form input{flex:1;border:1px solid #ddd;border-radius:12px;padding:14px;font:inherit;text-transform:uppercase}.track-form button{border:0;background:#111;color:#fff;border-radius:12px;padding:0 20px;font-weight:800;cursor:pointer}.track-msg{margin-top:12px;font-size:13px;font-weight:700}.result{margin-top:24px}.track-status-line{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:18px 0;position:relative}.track-status-line::before{content:'';position:absolute;left:5%;right:5%;top:46px;height:2px;background:#ddd;z-index:0}.track-status-step{position:relative;z-index:1;min-height:112px;padding:13px 8px 10px;border:1px solid #e1e1dd;border-radius:14px;background:#f5f5f2;color:#777;font-size:12px;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;box-sizing:border-box;gap:7px}.track-status-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#888;background:#fff;border:1px solid #ddd}.track-status-icon svg{width:19px;height:19px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.track-status-step.completed{background:#eef7ef;border-color:#b9d8bd;color:#176b2c}.track-status-step.completed .track-status-icon{color:#176b2c;border-color:#b9d8bd}.track-status-step.current{background:#111;color:#fff;border-color:#111;box-shadow:0 7px 18px rgba(0,0,0,.12)}.track-status-step.current .track-status-icon{background:#fff;color:#111;border-color:#fff}.track-status-step.cancelled{background:#fff0f0;color:#a11;border-color:#efc4c4}.track-status-step.cancelled .track-status-icon{color:#c33;border-color:#efc4c4}.help{margin-top:24px;padding-top:22px;border-top:1px solid #eee}.help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.help-grid a{display:flex;align-items:center;justify-content:center;gap:9px;padding:12px;border:1px solid #ddd;border-radius:12px;text-decoration:none;color:#111;text-align:center;font-weight:800;background:#fff;transition:.15s ease}.help-grid a:hover{background:#f6f6f3;transform:translateY(-1px)}.help-icon{width:24px;height:24px;display:grid;place-items:center;border-radius:7px;color:#fff;flex:0 0 24px}.help-icon svg{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.help-icon.instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d 52%,#fcb045)}.help-icon.facebook{background:#1877f2}.help-icon.whatsapp{background:#25d366}.back-store{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:12px;padding:13px 16px;border-radius:12px;background:#111;color:#fff;text-decoration:none;font-weight:800;transition:.15s ease}.back-store:hover{transform:translateY(-1px);background:#222}.back-store svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.current-status{margin:4px 0 16px;padding:13px 15px;border-radius:13px;background:#111;color:#fff;font-size:14px;font-weight:800}.current-status small{display:block;margin-top:4px;color:#cfcfcf;font-size:12px;font-weight:600}.tracking-box{margin-top:18px;padding:18px;background:#f5f5f2;border-radius:16px}.tracking-link{display:inline-block;margin-top:10px;padding:11px 15px;background:#111;color:#fff;border-radius:10px;text-decoration:none;font-weight:800}.help{margin-top:24px;padding-top:22px;border-top:1px solid #eee}.help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.help-grid a{display:flex;align-items:center;justify-content:center;gap:9px;padding:12px;border:1px solid #ddd;border-radius:12px;text-decoration:none;color:#111;text-align:center;font-weight:800;background:#fff;transition:.15s ease}.items{margin-top:18px;border-top:1px solid #eee;padding-top:15px}.item{display:flex;justify-content:space-between;padding:8px 0;font-size:13px}@media(max-width:760px){.track-status-line{grid-template-columns:repeat(4,minmax(0,1fr))}.track-status-line::before{display:none}}@media(max-width:600px){.track-wrap{margin:25px auto}.track-card{padding:20px}.track-card h1{font-size:28px}.track-form{flex-direction:column}.track-form button{height:48px}.track-status-line{grid-template-columns:repeat(2,minmax(0,1fr))}.help-grid{grid-template-columns:1fr}}
+/* Tracking page — explicit overrides keep the page readable even when global UI styles load later. */
+body.track-page{background:#f4f5f7!important;color:#15181c!important}
+.track-page .track-wrap{width:min(820px,calc(100% - 32px));margin:48px auto;padding:16px}
+.track-page .track-card{background:#fff!important;color:#15181c!important;border:1px solid #dfe3e8!important;border-radius:24px!important;padding:30px!important;box-shadow:0 16px 45px rgba(15,23,42,.08)!important}
+.track-page .eyebrow{display:inline-flex;align-items:center;gap:7px;color:#5b6470!important;font-size:11px;font-weight:900;letter-spacing:.12em}
+.track-page .eyebrow::before{content:'';width:7px;height:7px;border-radius:50%;background:#ff6500;display:inline-block}
+.track-page h1{color:#111827!important;margin:10px 0 8px;font-size:38px;line-height:1.05;letter-spacing:-.04em}
+.track-page .intro{color:#59636f!important;margin:0;line-height:1.6}
+.track-page .track-form{display:flex;gap:10px;margin-top:22px}
+.track-page .track-form input{flex:1;width:auto!important;min-width:0;border:1px solid #cfd5dc!important;border-radius:12px!important;background:#fff!important;color:#111827!important;padding:13px 14px!important;text-transform:uppercase}
+.track-page .track-form input::placeholder{color:#8a929c!important}
+.track-page .track-form button{flex:0 0 auto;background:#11151a!important;color:#fff!important;border:1px solid #11151a!important;border-radius:12px!important;padding:0 20px!important;min-height:48px!important;font-weight:850!important}
+.track-page .track-form button:hover{background:#292e34!important;color:#fff!important}
+.track-page .track-msg{margin-top:12px;color:#20262d!important;font-size:13px;font-weight:750}
+.track-page .result{margin-top:24px;color:#15181c!important}
+.track-page .result>b{display:block;font-size:17px;color:#111827!important;margin-bottom:10px}
+.track-page .current-status{margin:0 0 16px!important;padding:15px 16px!important;border-radius:14px!important;background:#11151a!important;color:#fff!important;font-size:14px;font-weight:850}
+.track-page .current-status small{display:block;margin-top:5px;color:#d9dee5!important;font-size:12px;font-weight:600}
+.track-page .track-status-line{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:18px 0;position:relative}
+.track-page .track-status-line::before{content:'';position:absolute;left:5%;right:5%;top:48px;height:2px;background:#d8dde3;z-index:0}
+.track-page .track-status-step{position:relative;z-index:1;min-height:116px;padding:13px 8px 10px;border:1px solid #d8dde3!important;border-radius:14px!important;background:#f0f2f4!important;color:#4f5964!important;font-size:12px;font-weight:850;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;box-sizing:border-box;gap:7px}
+.track-page .track-status-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:#5d6772!important;background:#fff!important;border:1px solid #cfd5dc!important}
+.track-page .track-status-icon svg{width:19px;height:19px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.track-page .track-status-step.completed{background:#eaf7ed!important;border-color:#a8d4b1!important;color:#176b2c!important}
+.track-page .track-status-step.completed .track-status-icon{color:#176b2c!important;border-color:#a8d4b1!important}
+.track-page .track-status-step.current{background:#11151a!important;border-color:#11151a!important;color:#fff!important;box-shadow:0 8px 20px rgba(17,21,26,.16)}
+.track-page .track-status-step.current .track-status-icon{background:#fff!important;color:#11151a!important;border-color:#fff!important}
+.track-page .track-status-step.cancelled{background:#fff0f0!important;border-color:#efbcbc!important;color:#a11!important}
+.track-page .invoice-btn{display:inline-flex!important;align-items:center;justify-content:center;margin-top:10px;padding:11px 15px!important;background:#fff!important;color:#111827!important;border:1px solid #cfd5dc!important;border-radius:10px!important;font-weight:850!important;cursor:pointer}
+.track-page .invoice-btn:hover{background:#f6f7f9!important;color:#111827!important}
+.track-page .section-title{display:block;margin:22px 0 10px;color:#111827!important;font-size:17px;font-weight:900}
+.track-page .tracking-box{margin-top:12px;padding:18px!important;background:#f8fafb!important;color:#20262d!important;border:1px solid #dfe3e8!important;border-radius:16px!important}
+.track-page .tracking-box .shop-label{font-size:11px;color:#68717b!important;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.track-page .tracking-box .shop-name{margin-top:3px;color:#111827!important;font-size:18px;font-weight:900}
+.track-page .tracking-box .product-line{margin-top:7px;color:#3f4852!important;font-size:13px;line-height:1.5}
+.track-page .tracking-box a{color:#1d4ed8!important;text-decoration:underline;text-underline-offset:3px}
+.track-page .tracking-link{display:inline-block;margin-top:10px;padding:10px 13px!important;background:#11151a!important;color:#fff!important;border-radius:10px!important;text-decoration:none!important;font-weight:850}
+.track-page .tracking-link:hover{background:#292e34!important;color:#fff!important}
+.track-page .items{margin-top:18px;border-top:1px solid #e1e5e9;padding-top:15px}
+.track-page .item{display:flex;justify-content:space-between;gap:12px;padding:9px 0;color:#20262d!important;font-size:13px}
+.track-page .help{margin-top:28px;padding-top:22px;border-top:1px solid #e1e5e9}
+.track-page .help-title{color:#111827!important;font-weight:850}
+.track-page .help-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+.track-page .help-grid a{display:flex;align-items:center;justify-content:center;gap:9px;padding:12px;border:1px solid #d8dde3!important;border-radius:12px;text-decoration:none;color:#111827!important;text-align:center;font-weight:800;background:#fff!important}
+.track-page .help-grid a:hover{background:#f6f7f9!important;color:#111827!important}
+.track-page .help-icon{width:24px;height:24px;display:grid;place-items:center;border-radius:7px;color:#fff!important;flex:0 0 24px}
+.track-page .help-icon svg{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.track-page .help-icon.instagram{background:linear-gradient(135deg,#833ab4,#fd1d1d 52%,#fcb045)!important}
+.track-page .help-icon.facebook{background:#1877f2!important}
+.track-page .help-icon.whatsapp{background:#25d366!important}
+.track-page .back-store{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:12px;padding:13px 16px;background:#11151a!important;color:#fff!important;border-radius:12px;text-decoration:none;font-weight:850}
+.track-page .back-store:hover{background:#292e34!important;color:#fff!important}
+.track-page .back-store svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.track-page .invoice-modal{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(8,12,18,.68)!important}
+.track-page .invoice-modal.open{display:flex}
+.track-page .invoice-sheet{width:min(760px,100%);max-height:92vh;overflow:auto;background:#fff!important;color:#15181c!important;border-radius:20px;padding:26px;box-sizing:border-box;box-shadow:0 25px 80px rgba(0,0,0,.24)}
+.track-page .invoice-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;border-bottom:1px solid #e1e5e9;padding-bottom:15px}
+.track-page .invoice-head h2{color:#111827!important}
+.track-page .invoice-close{border:1px solid #cfd5dc!important;background:#fff!important;color:#111827!important;border-radius:9px;padding:8px 12px;cursor:pointer;font-weight:850}
+.track-page .invoice-close:hover{background:#f6f7f9!important}
+.track-page .product-card{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-top:1px solid #e5e7eb!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}
+.track-page .product-thumb{width:76px;height:76px;flex:0 0 76px;object-fit:cover;border-radius:10px;border:1px solid #d8dde3!important;background:#fff!important}
+.track-page .product-info{min-width:0;flex:1}
+.track-page .product-info a{color:#111827!important;text-decoration:none}
+.track-page .product-info a:hover{text-decoration:underline}
+.track-page .invoice-vendor{margin-top:16px;border:1px solid #dfe3e8!important;border-radius:14px;padding:13px;background:#fafbfc!important}
+.track-page .invoice-vendor h4{margin:0 0 8px;color:#111827!important}
+.track-page .invoice-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;color:#303840!important}
+.track-page .invoice-total{font-size:18px;font-weight:900;border-top:1px solid #cfd5dc;margin-top:8px;padding-top:12px;color:#111827!important}
+@media(max-width:900px){.track-page .track-status-line{grid-template-columns:repeat(4,minmax(0,1fr))}.track-page .track-status-line::before{display:none}}
+@media(max-width:600px){
+  .track-page .track-wrap{width:calc(100% - 20px);margin:20px auto;padding:0}
+  .track-page .track-card{padding:20px!important;border-radius:18px!important}
+  .track-page h1{font-size:30px}
+  .track-page .track-form{flex-direction:column}
+  .track-page .track-form input,.track-page .track-form button{width:100%!important}
+  .track-page .track-status-line{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .track-page .track-status-step{min-height:105px}
+  .track-page .help-grid{grid-template-columns:1fr}
+  .track-page .invoice-sheet{padding:18px;border-radius:16px}
+}
+
+/* FUTURISTIC TRACKING EXPERIENCE */
+.track-page{
+  min-height:100vh!important;
+  background:
+    radial-gradient(circle at 15% 10%,rgba(255,101,0,.12),transparent 28%),
+    radial-gradient(circle at 85% 80%,rgba(59,130,246,.08),transparent 30%),
+    linear-gradient(135deg,#f8fafc 0%,#eef1f5 48%,#f7f8fa 100%)!important;
+  position:relative;
+}
+.track-page::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.32;
+  background-image:linear-gradient(rgba(17,24,39,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(17,24,39,.035) 1px,transparent 1px);
+  background-size:32px 32px;
+  mask-image:linear-gradient(to bottom,black,transparent 85%);
+}
+.track-page .track-wrap{position:relative;z-index:1;animation:gzTrackEnter .7s cubic-bezier(.2,.8,.2,1) both}
+.track-page .track-card{
+  position:relative;overflow:hidden;
+  border:1px solid rgba(255,255,255,.9)!important;
+  background:rgba(255,255,255,.88)!important;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  box-shadow:0 30px 80px rgba(15,23,42,.12),0 2px 0 rgba(255,255,255,.8) inset!important;
+}
+.track-page .track-card::before{
+  content:'';position:absolute;left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,#ff6500,#ff9d4d,#111827,#ff6500);
+  background-size:240% 100%;animation:gzTrackGradient 5s linear infinite;
+}
+.track-page .eyebrow{
+  padding:7px 10px!important;border:1px solid #e6e9ee;border-radius:999px;
+  background:rgba(255,255,255,.8);box-shadow:0 5px 18px rgba(15,23,42,.05);
+}
+.track-page .eyebrow::before{box-shadow:0 0 0 4px rgba(255,101,0,.12),0 0 16px rgba(255,101,0,.7);animation:gzPulse 1.8s ease-in-out infinite}
+.track-page h1{font-weight:950!important;text-shadow:0 2px 20px rgba(17,24,39,.06)}
+.track-page .intro{max-width:650px}
+.track-page .track-form{padding:6px;background:rgba(247,248,250,.85);border:1px solid #e4e7eb;border-radius:17px;box-shadow:0 10px 28px rgba(15,23,42,.06)}
+.track-page .track-form input{
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  min-height:48px!important;padding-left:12px!important;font-weight:750;letter-spacing:.02em;
+}
+.track-page .track-form button{
+  position:relative;overflow:hidden;min-width:145px!important;border-radius:12px!important;
+  box-shadow:0 8px 22px rgba(17,21,26,.18)!important;
+  transition:transform .2s ease,box-shadow .2s ease,background .2s ease!important;
+}
+.track-page .track-form button::after,.track-page .invoice-btn::after,.track-page .tracking-link::after,.track-page .back-store::after{
+  content:'';position:absolute;top:-40%;left:-80%;width:45%;height:180%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent);
+  transform:skewX(-20deg);transition:left .55s ease;
+}
+.track-page .track-form button:hover,.track-page .invoice-btn:hover,.track-page .tracking-link:hover,.track-page .back-store:hover{
+  transform:translateY(-2px);box-shadow:0 12px 28px rgba(15,23,42,.16)!important;
+}
+.track-page .track-form button:hover::after,.track-page .invoice-btn:hover::after,.track-page .tracking-link:hover::after,.track-page .back-store:hover::after{left:135%}
+.track-page .track-msg{padding-left:4px;min-height:18px}
+.track-page .result{animation:gzResultIn .5s cubic-bezier(.2,.8,.2,1) both}
+.track-page .current-status{
+  position:relative;overflow:hidden;
+  background:linear-gradient(110deg,#11151a,#242a31 55%,#11151a)!important;
+  background-size:200% 100%;animation:gzStatusShift 5s ease infinite;
+  box-shadow:0 14px 30px rgba(17,21,26,.16)!important;
+}
+.track-page .current-status::after{
+  content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.08) 50%,transparent 75%);
+  transform:translateX(-100%);animation:gzSweep 4s ease-in-out infinite;
+}
+.track-page .track-status-line{margin:22px 0}
+.track-page .track-status-line::before{background:linear-gradient(90deg,#a8d4b1,#d8dde3,#d8dde3)!important}
+.track-page .track-status-step{
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease!important;
+  box-shadow:0 5px 14px rgba(15,23,42,.04);
+}
+.track-page .track-status-step:hover{transform:translateY(-4px);box-shadow:0 12px 25px rgba(15,23,42,.1)}
+.track-page .track-status-step.completed{box-shadow:0 7px 20px rgba(22,163,74,.09)}
+.track-page .track-status-step.current{
+  box-shadow:0 12px 30px rgba(17,21,26,.24)!important;
+  animation:gzCurrentFloat 2.6s ease-in-out infinite;
+}
+.track-page .track-status-icon{transition:transform .25s ease,box-shadow .25s ease!important}
+.track-page .track-status-step:hover .track-status-icon{transform:scale(1.08)}
+.track-page .invoice-btn,.track-page .tracking-link,.track-page .back-store{
+  position:relative;overflow:hidden;
+  border:1px solid #11151a!important;
+  box-shadow:0 7px 18px rgba(17,21,26,.1);
+  transition:transform .2s ease,box-shadow .2s ease,background .2s ease!important;
+}
+.track-page .invoice-btn{
+  margin-top:12px!important;background:#11151a!important;color:#fff!important;
+  padding:12px 17px!important;border-radius:12px!important;
+}
+.track-page .invoice-btn::before{content:'↗';margin-right:8px;font-size:15px}
+.track-page .tracking-box{
+  position:relative;overflow:hidden;
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease!important;
+}
+.track-page .tracking-box:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(15,23,42,.08);border-color:#cbd2da!important}
+.track-page .tracking-box::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(#ff6500,#ffb06e);opacity:.9;
+}
+.track-page .tracking-link{background:#11151a!important}
+.track-page .help{border-top-color:#d9dee5}
+.track-page .help-grid a{
+  position:relative;overflow:hidden;
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease!important;
+}
+.track-page .help-grid a:hover{transform:translateY(-3px)!important;box-shadow:0 12px 25px rgba(15,23,42,.09)!important;border-color:#c5ccd5!important}
+.track-page .back-store{background:linear-gradient(110deg,#11151a,#292e34)!important}
+.track-page .invoice-modal{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:gzModalBg .25s ease both}
+.track-page .invoice-sheet{
+  border:1px solid rgba(255,255,255,.9)!important;
+  box-shadow:0 35px 100px rgba(0,0,0,.3)!important;
+  animation:gzModalIn .35s cubic-bezier(.2,.8,.2,1) both;
+}
+.track-page .invoice-head{border-bottom-color:#e4e7eb}
+.track-page .invoice-close{
+  transition:transform .2s ease,background .2s ease,box-shadow .2s ease!important;
+}
+.track-page .invoice-close:hover{transform:rotate(2deg) scale(1.03);box-shadow:0 7px 18px rgba(15,23,42,.1)}
+.track-page .invoice-vendor{
+  transition:transform .2s ease,box-shadow .2s ease!important;
+}
+.track-page .invoice-vendor:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(15,23,42,.06)}
+.track-page .product-card{transition:background .2s ease!important}
+.track-page .product-card:hover{background:#f8fafc!important}
+.track-page .product-thumb{transition:transform .25s ease,box-shadow .25s ease!important}
+.track-page .product-card:hover .product-thumb{transform:scale(1.035);box-shadow:0 7px 18px rgba(15,23,42,.1)}
+.track-page .invoice-total{
+  background:linear-gradient(90deg,#f7f8fa,#fff);border-radius:10px;padding:12px 10px!important;
+}
+@keyframes gzTrackEnter{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes gzResultIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes gzTrackGradient{to{background-position:240% 0}}
+@keyframes gzPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.82);opacity:.65}}
+@keyframes gzStatusShift{0%,100%{background-position:0 0}50%{background-position:100% 0}}
+@keyframes gzSweep{0%,65%{transform:translateX(-100%)}100%{transform:translateX(130%)}}
+@keyframes gzCurrentFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@keyframes gzModalBg{from{opacity:0}to{opacity:1}}
+@keyframes gzModalIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+@media(max-width:600px){
+  .track-page .track-card{padding:18px!important}
+  .track-page .track-form{padding:5px}
+  .track-page .track-form button{min-width:0!important;width:100%!important}
+  .track-page .track-status-step{min-height:110px}
+  .track-page .invoice-btn{width:100%!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .track-page *, .track-page *::before,.track-page *::after{animation:none!important;transition:none!important}
+}
+
+/* FINAL PREMIUM COLOR SYSTEM + ACTION UI */
+.track-page{
+  background:
+    radial-gradient(circle at 8% 8%,rgba(255,101,0,.09),transparent 25%),
+    radial-gradient(circle at 92% 90%,rgba(17,24,39,.045),transparent 30%),
+    #f7f7f5!important;color:#151515!important;
+}
+.track-page .track-card{background:rgba(255,255,255,.96)!important;border-color:#e7e3dd!important;box-shadow:0 28px 75px rgba(20,20,20,.10)!important}
+.track-page .track-card::before{background:linear-gradient(90deg,#ff6500,#ff8a32,#151515,#ff6500)!important}
+.track-page .eyebrow{color:#5d5a56!important;background:#fffaf5!important;border-color:#eee2d6!important}
+.track-page .eyebrow::before{background:#ff6500!important}
+.track-page h1,.track-page .result>b,.track-page .section-title,.track-page .help-title{color:#171717!important}
+.track-page .intro,.track-page .track-msg{color:#68645f!important}
+.track-page .track-form{background:#f7f5f2!important;border-color:#e5dfd8!important}
+.track-page .track-form input{color:#171717!important}
+.track-page .track-form button{
+  background:#ff6500!important;border-color:#ff6500!important;color:#fff!important;
+  box-shadow:0 9px 24px rgba(255,101,0,.25)!important;
+}
+.track-page .track-form button:hover{background:#e95700!important}
+.track-page .current-status{
+  background:linear-gradient(115deg,#171717,#272727)!important;color:#fff!important;
+  border-left:4px solid #ff6500!important;
+}
+.track-page .track-status-line::before{background:#ddd8d2!important}
+.track-page .track-status-step{background:#faf9f7!important;border-color:#e4dfd8!important;color:#66615b!important}
+.track-page .track-status-step.completed{background:#f0f8f1!important;border-color:#b9d8bd!important;color:#217337!important}
+.track-page .track-status-step.current{background:#ff6500!important;border-color:#ff6500!important;color:#fff!important;box-shadow:0 12px 30px rgba(255,101,0,.27)!important}
+.track-page .track-status-step.current .track-status-icon{color:#ff6500!important}
+.track-page .track-status-step.cancelled{background:#fff2f1!important;border-color:#efc2be!important;color:#a23b32!important}
+.track-page .track-status-icon{background:#fff!important;border-color:#ddd8d2!important}
+.track-page .invoice-btn{
+  background:#171717!important;color:#fff!important;border-color:#171717!important;
+  box-shadow:0 8px 20px rgba(20,20,20,.16)!important;
+}
+.track-page .invoice-btn:hover{background:#ff6500!important;border-color:#ff6500!important}
+.track-page .tracking-box{background:#fcfbf9!important;border-color:#e5dfd8!important;color:#272522!important}
+.track-page .tracking-box::before{background:linear-gradient(#ff6500,#ffb36f)!important}
+.track-page .tracking-link{background:#ff6500!important;border-color:#ff6500!important;color:#fff!important}
+.track-page .tracking-link:hover{background:#e95700!important}
+.track-page .help-grid a{background:#fff!important;border-color:#e2ddd7!important;color:#242321!important}
+.track-page .back-store{background:#171717!important;color:#fff!important}
+.track-page .back-store:hover{background:#ff6500!important}
+.track-page .invoice-modal{background:rgba(18,16,14,.72)!important}
+.track-page .invoice-sheet{background:#fff!important;border-color:#ebe6df!important}
+.track-page .invoice-close{background:#f7f5f2!important;border-color:#ddd7cf!important;color:#252321!important}
+.track-page .invoice-close:hover{background:#ff6500!important;border-color:#ff6500!important;color:#fff!important}
+.track-page .invoice-vendor{background:#fcfbf9!important;border-color:#e5dfd8!important}
+.track-page .invoice-row{color:#4b4742!important}
+.track-page .invoice-total{background:#fff8f2!important;border-color:#f1d8c4!important;color:#171717!important}
+.track-page .tracking-actions{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0 4px}
+.track-page .gz-action{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:40px;padding:9px 13px;border-radius:11px;border:1px solid #ded8d1;
+  background:#fff;color:#252321;font-weight:850;cursor:pointer;text-decoration:none;
+  transition:transform .2s ease,box-shadow .2s ease,background .2s ease,border-color .2s ease;
+}
+.track-page .gz-action:hover{transform:translateY(-2px);box-shadow:0 9px 20px rgba(20,20,20,.09);border-color:#cfc6bd}
+.track-page .gz-action.primary{background:#ff6500;border-color:#ff6500;color:#fff;box-shadow:0 8px 20px rgba(255,101,0,.2)}
+.track-page .gz-action.dark{background:#171717;border-color:#171717;color:#fff}
+.track-page .gz-action.success{background:#eef8f0;border-color:#b9d8bd;color:#217337}
+.track-page .gz-action .gz-action-icon{font-size:16px;line-height:1}
+.track-page .order-mini-info{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0;
+}
+.track-page .order-mini{
+  padding:12px 13px;border:1px solid #e7e1da;border-radius:13px;background:#faf9f7;
+}
+.track-page .order-mini span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#888078;font-weight:900}
+.track-page .order-mini b{display:block;margin-top:4px;color:#26231f;font-size:13px;word-break:break-word}
+.track-page .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#31a24c;box-shadow:0 0 0 4px rgba(49,162,76,.12);animation:gzPulse 1.6s infinite}
+.track-page .tracking-box .shipment-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.track-page .shipment-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:#fff3e9;color:#b84a00;border:1px solid #f2d2bb;font-size:10px;font-weight:900}
+@media(max-width:600px){
+ .track-page .order-mini-info{grid-template-columns:1fr}
+ .track-page .tracking-actions{display:grid;grid-template-columns:1fr 1fr}
+ .track-page .gz-action{width:100%}
+}
+
+/* GRABZONE printer animation — one clean layer stack, paper feeds upward from the slot */
+.track-page .invoice-modal.printing{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ overflow:hidden!important;isolation:isolate!important;perspective:1200px!important;
+ background:radial-gradient(ellipse at 50% 44%,#202329 0%,#101114 62%,#08090b 100%)!important;
+}
+.track-page .invoice-modal.printing .invoice-printer-stage{
+ position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;
+ justify-content:center!important;z-index:10!important;pointer-events:none!important;overflow:visible!important;
+}
+.track-page .receipt-printer{
+ position:relative!important;width:min(420px,84vw)!important;flex:0 0 auto!important;
+ transform-style:preserve-3d!important;filter:drop-shadow(0 28px 34px rgba(0,0,0,.48))!important;
+ opacity:1!important;transform:translate3d(0,0,0)!important;
+ transition:opacity .85s ease,transform .95s cubic-bezier(.2,.75,.2,1)!important;
+}
+.track-page .invoice-modal.printer-phase .receipt-printer{animation:gzPrinterSettle .9s cubic-bezier(.2,.75,.2,1) both!important}
+.track-page .printer-top{
+ position:relative!important;height:58px!important;box-sizing:border-box!important;
+ background:linear-gradient(145deg,#4b5059 0%,#292d35 50%,#17191f 100%)!important;
+ border:1px solid #646b75!important;border-radius:20px 20px 8px 8px!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.2),0 9px 18px rgba(0,0,0,.4)!important;z-index:4!important;
+}
+.track-page .printer-top::before{
+ content:''!important;position:absolute!important;left:30px!important;right:30px!important;top:18px!important;
+ height:11px!important;border-radius:99px!important;background:#030405!important;
+ border:1px solid #747b84!important;box-shadow:inset 0 3px 6px #000!important;
+}
+.track-page .printer-body{
+ height:210px!important;position:relative!important;box-sizing:border-box!important;padding:28px 30px 0!important;
+ background:linear-gradient(145deg,#30353d 0%,#1b1e24 58%,#101216 100%)!important;
+ border:1px solid #4e555f!important;border-top:0!important;border-radius:8px 8px 25px 25px!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.09),0 18px 32px rgba(0,0,0,.36)!important;z-index:3!important;
+}
+.track-page .printer-slot{
+ position:relative!important;height:17px!important;border-radius:10px!important;background:#030405!important;
+ border:1px solid #707782!important;box-shadow:inset 0 3px 6px #000!important;z-index:9!important;
+}
+.track-page .printer-slot::after{
+ content:''!important;position:absolute!important;left:12px!important;right:12px!important;top:6px!important;
+ height:3px!important;border-radius:9px!important;background:#ff6500!important;
+ box-shadow:0 0 13px rgba(255,101,0,.8)!important;animation:gzPrinterGlow .8s ease-in-out infinite alternate!important;
+}
+.track-page .printer-led{right:31px!important;top:35px!important;width:9px!important;height:9px!important;background:#ff6500!important;box-shadow:0 0 0 4px rgba(255,101,0,.13),0 0 15px rgba(255,101,0,.85)!important;animation:gzPrinterGlow .8s ease-in-out infinite alternate!important}
+.track-page .printer-brand{margin:20px 0 0 2px!important;color:#fff!important;font-size:15px!important;font-weight:950!important;letter-spacing:.24em!important;text-shadow:0 2px 8px rgba(0,0,0,.55)!important}
+.track-page .printer-printing-label{position:absolute!important;left:0!important;right:0!important;bottom:23px!important;text-align:center!important;color:#c4c8ce!important;font-size:10px!important;font-weight:900!important;letter-spacing:.12em!important;text-transform:uppercase!important}
+.track-page .invoice-modal.printing .receipt-paper{display:none!important}
+/* The real invoice is the paper. Its lower edge is anchored at the output slot. */
+.track-page .invoice-modal.printing .invoice-sheet{
+ position:absolute!important;left:50%!important;top:auto!important;bottom:calc(50% + 30px)!important;
+ width:min(340px,calc(100% - 32px))!important;max-width:calc(100vw - 24px)!important;
+ height:min(58vh,430px)!important;max-height:58vh!important;overflow:hidden!important;box-sizing:border-box!important;
+ z-index:6!important;opacity:1!important;visibility:visible!important;pointer-events:none!important;
+ transform:translateX(-50%)!important;transform-origin:50% 100%!important;
+ clip-path:inset(100% 0 0 0)!important;
+ border-radius:2px 2px 0 0!important;box-shadow:0 -5px 18px rgba(0,0,0,.28)!important;
+ transition:clip-path 3.8s cubic-bezier(.22,.65,.2,1),bottom 1.25s cubic-bezier(.22,.72,.18,1),width 1.25s cubic-bezier(.22,.72,.18,1),height 1.25s ease,max-height 1.25s ease,border-radius .7s ease,box-shadow .7s ease!important;
+ will-change:clip-path,bottom,width,height;
+}
+.track-page .invoice-modal.printing.paper-feeding .invoice-sheet{clip-path:inset(0 0 0 0)!important}
+.track-page .invoice-modal.printing.invoice-reveal .receipt-printer{
+ opacity:0!important;transform:translate3d(0,46px,-20px) scale(.92)!important;
+ transition:opacity .85s ease,transform .95s cubic-bezier(.2,.7,.2,1)!important;
+}
+.track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+ bottom:calc(50% - 40vh)!important;width:min(760px,calc(100% - 32px))!important;
+ max-width:calc(100vw - 24px)!important;height:auto!important;max-height:82vh!important;overflow:auto!important;
+ clip-path:inset(0)!important;pointer-events:auto!important;border-radius:12px!important;
+ box-shadow:0 28px 90px rgba(0,0,0,.48)!important;
+}
+.track-page .invoice-modal.printed .invoice-printer-stage{display:none!important}
+.track-page .invoice-modal.printed .receipt-paper{display:none!important}
+.track-page .invoice-modal.printed .invoice-sheet{
+ position:relative!important;left:auto!important;top:auto!important;bottom:auto!important;
+ width:min(760px,100%)!important;max-width:100%!important;height:auto!important;max-height:88vh!important;
+ margin:auto!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;
+ transform:none!important;clip-path:none!important;overflow:auto!important;border-radius:16px!important;
+ box-shadow:0 28px 90px rgba(0,0,0,.48)!important;
+}
+@keyframes gzPrinterSettle{0%{opacity:0;transform:translate3d(0,60px,0) scale(.88) rotateX(5deg)}72%{opacity:1;transform:translate3d(0,-3px,0) scale(1.01)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+@keyframes gzPrinterGlow{from{opacity:.45}to{opacity:1}}
+@media(max-width:600px){
+ .track-page .receipt-printer{width:min(350px,88vw)!important}
+ .track-page .printer-top{height:52px!important}
+ .track-page .printer-body{height:190px!important;padding:24px 24px 0!important}
+ .track-page .invoice-modal.printing .invoice-sheet{width:min(300px,calc(100% - 24px))!important;height:min(56vh,390px)!important;max-height:56vh!important;bottom:calc(50% + 28px)!important}
+ .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{bottom:calc(50% - 40vh)!important;width:calc(100% - 20px)!important;max-width:calc(100vw - 20px)!important;height:auto!important;max-height:84vh!important}
+ .track-page .invoice-modal.printed .invoice-sheet{width:100%!important;max-height:88vh!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .track-page .invoice-modal.printing .receipt-printer,.track-page .invoice-modal.printing .invoice-sheet{animation:none!important;transition:none!important}
+}
+
+/* Invoice order identifiers, barcode and GrabPoints receipt promotion */
+.track-page .invoice-id-panel{margin:0 0 16px;padding:14px;border:1px solid #e8e2da;border-radius:13px;background:#fbfaf8}
+.track-page .invoice-id-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.track-page .invoice-id-grid span{display:block;font-size:9px;letter-spacing:.09em;font-weight:900;color:#81796f}
+.track-page .invoice-id-grid b{display:block;margin-top:5px;font-size:13px;color:#171717;overflow-wrap:anywhere}
+.track-page .invoice-barcode-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:12px;padding:10px 8px 4px;border-top:1px dashed #d8d0c6}
+.track-page #gzInvoiceBarcode{display:block;width:min(100%,360px);height:62px;max-width:100%}
+.track-page .invoice-barcode-wrap small{margin-top:2px;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.07em;color:#4b4742;overflow-wrap:anywhere;text-align:center}
+.track-page .invoice-customer-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;color:#303840}
+.track-page .invoice-grabpoints{display:grid;grid-template-columns:minmax(0,1fr) 118px;gap:16px;align-items:center;margin-top:22px;padding:18px;border:1px solid #f0d4bd;border-radius:16px;background:linear-gradient(135deg,#fff8f0,#fff 80%)}
+.track-page .invoice-promo-kicker{font-size:10px;font-weight:950;letter-spacing:.12em;color:#c65100}
+.track-page .invoice-grabpoints h3{margin:7px 0 8px;font-size:18px;line-height:1.35;color:#211b16}
+.track-page .invoice-grabpoints p{font-size:12px;line-height:1.7;color:#64594f}
+.track-page .invoice-points-link{display:inline-flex;margin-top:12px;padding:10px 13px;border-radius:10px;background:#ff6500;color:#fff!important;text-decoration:none!important;font-size:12px;font-weight:900}
+.track-page .invoice-qr-link{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px;border:1px solid #ead8c7;border-radius:12px;background:#fff;text-decoration:none}
+.track-page .invoice-points-qr{display:block;width:100px;height:100px;object-fit:contain}
+.track-page .invoice-qr-link small{font-size:9px;font-weight:950;letter-spacing:.1em;color:#6d6258}
+.track-page .invoice-thanks{margin-top:17px;padding-top:14px;border-top:1px dashed #d8d0c6;text-align:center;font-size:12px;font-weight:850;color:#48413b;line-height:1.8}
+.track-page .invoice-thanks small{font-size:11px;font-weight:600;color:#7a7168}
+@media(max-width:560px){
+ .track-page .invoice-id-grid,.track-page .invoice-customer-grid{grid-template-columns:1fr}
+ .track-page .invoice-grabpoints{grid-template-columns:minmax(0,1fr) 96px;gap:10px;padding:13px}
+ .track-page .invoice-grabpoints h3{font-size:16px}
+ .track-page .invoice-points-qr{width:80px;height:80px}
+}
+@media print{
+ .track-page .invoice-modal{position:static!important;display:block!important;background:#fff!important;padding:0!important}
+ .track-page .invoice-printer-stage,.track-page #invoiceClose{display:none!important}
+ .track-page .invoice-sheet{width:100%!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;border:0!important;padding:0!important}
+ .track-page .invoice-grabpoints{break-inside:avoid}
+}
+
+/* Invoice redesign: clean full-page receipt layout matching the supplied reference */
+.track-page .invoice-sheet{
+ position:relative!important;width:min(1020px,100%)!important;max-width:calc(100vw - 36px)!important;
+ max-height:92vh!important;overflow:auto!important;padding:28px 32px!important;border-radius:14px!important;
+ background:#fff!important;color:#171923!important;box-sizing:border-box!important;
+}
+.track-page .invoice-head{position:static!important;display:block!important;border:0!important;padding:0!important;margin:0!important}
+.track-page .invoice-head>div{display:none!important}
+.track-page .invoice-head #invoiceClose{position:absolute!important;right:16px!important;top:16px!important;z-index:30!important}
+.track-page #invoiceBody{margin-top:0!important;font-family:Inter,Arial,sans-serif!important;color:#171923!important}
+.track-page .gz-invoice-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 18px;padding-right:44px}
+.track-page .gz-invoice-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid #f0dfd0;border-radius:999px;background:#fff9f3;color:#6b625a;font-size:10px;font-weight:900;letter-spacing:.1em}
+.track-page .gz-invoice-chip:first-letter{color:#ff6500}
+.track-page .gz-invoice-actions{display:flex;gap:8px}
+.track-page .gz-invoice-download{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;background:#ff6500;color:#fff;padding:11px 16px;font-size:13px;font-weight:850;cursor:pointer;box-shadow:0 5px 14px #ff650033}
+.track-page .gz-invoice-download:hover{background:#e95700}
+.track-page .gz-invoice-download:disabled{opacity:.65;cursor:wait}
+.track-page .gz-invoice-brandhead{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;padding:0 4px 22px;border-bottom:1px solid #e5e7eb}
+.track-page .gz-invoice-brand{display:flex;align-items:center;gap:13px;min-width:0}
+.track-page .gz-invoice-brand img{width:64px;height:64px;object-fit:contain;flex:0 0 64px}
+.track-page .gz-invoice-brand strong{display:block;font-size:clamp(30px,4vw,48px);font-weight:950;line-height:1;letter-spacing:-.055em;color:#121827}
+.track-page .gz-invoice-brand strong span{color:#f05b0b}
+.track-page .gz-invoice-brand small{display:block;margin-top:8px;font-size:10px;font-weight:850;letter-spacing:.11em;color:#42454b;white-space:normal}
+.track-page .gz-invoice-title{text-align:left}
+.track-page .gz-invoice-title h2{margin:0;color:#171923;font-size:clamp(25px,3.2vw,36px);font-weight:950;letter-spacing:-.035em;line-height:1.15}
+.track-page .gz-invoice-title p{margin:5px 0 0;color:#6b7280;font-size:15px}
+.track-page .gz-invoice-order-meta{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;padding:20px 8px;border-bottom:1px dashed #d9dde3}
+.track-page .gz-invoice-identifiers{display:grid;gap:10px;align-content:center}
+.track-page .gz-invoice-identifiers>div{display:grid;grid-template-columns:minmax(125px,auto) minmax(0,1fr);align-items:center;gap:10px}
+.track-page .gz-invoice-identifiers span,.track-page .gz-invoice-orderfacts span{font-size:13px;font-weight:700;color:#353943}
+.track-page .gz-invoice-identifiers b{display:block;min-width:0;padding:8px 10px;border-radius:9px;background:#fff5ec;color:#df560a;font-size:13px;overflow-wrap:anywhere}
+.track-page .gz-invoice-identifiers>div+div b{background:#f1f2f4;color:#414650}
+.track-page .gz-invoice-orderfacts{display:grid;gap:10px;padding-left:22px;border-left:1px solid #e0e3e8}
+.track-page .gz-invoice-orderfacts>div{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.track-page .gz-invoice-orderfacts b{display:flex;align-items:center;gap:8px;text-align:right;font-size:13px;color:#30343c}
+.track-page .gz-invoice-status-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;flex:0 0 10px}
+.track-page .gz-invoice-parties{display:grid;grid-template-columns:1fr 1fr;gap:28px;padding:20px 8px;border-bottom:1px dashed #d9dde3}
+.track-page .gz-invoice-parties>div+div{padding-left:28px;border-left:1px solid #e0e3e8}
+.track-page .gz-invoice-parties h3{margin:0 0 8px;font-size:16px;font-weight:900;color:#222631}
+.track-page .gz-invoice-parties b{font-size:15px;color:#1b202b}
+.track-page .gz-invoice-parties p{margin:4px 0 0;color:#555c67;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.track-page .gz-invoice-items{margin-top:18px;border:1px solid #e5e7eb;border-radius:13px;overflow:hidden}
+.track-page .gz-invoice-items table{width:100%;border-collapse:collapse;font-size:13px}
+.track-page .gz-invoice-items thead{background:#f8f5f1}
+.track-page .gz-invoice-items th{padding:13px 12px;text-align:left;font-size:12px;color:#44464c;font-weight:850}
+.track-page .gz-invoice-items th:not(:first-child),.track-page .gz-invoice-items td:not(:first-child){text-align:right;white-space:nowrap}
+.track-page .gz-invoice-items td{padding:13px 12px;border-top:1px solid #e8eaed;color:#222631;vertical-align:middle}
+.track-page .gz-inv-product{display:flex;align-items:center;gap:12px;min-width:190px;text-align:left}
+.track-page .gz-inv-product img{width:68px;height:68px;object-fit:cover;border:1px solid #e1e4e8;border-radius:10px;flex:0 0 68px}
+.track-page .gz-inv-product b{display:block;font-size:14px;line-height:1.35;color:#1b202b;white-space:normal}
+.track-page .gz-inv-product small{display:block;margin-top:4px;font-size:11px;line-height:1.5;color:#777e88;white-space:normal}
+.track-page .gz-invoice-totals{width:min(430px,100%);margin:0 0 18px auto;padding-top:8px}
+.track-page .gz-invoice-totals>div{display:flex;justify-content:space-between;gap:18px;padding:6px 10px;color:#50545d;font-size:14px}
+.track-page .gz-invoice-totals b{color:#262a33}
+.track-page .gz-invoice-totals .gz-invoice-grandtotal{margin-top:6px;padding:13px 14px;border-radius:10px;background:#fff5ee;color:#171923;font-weight:900}
+.track-page .gz-invoice-grandtotal span{font-weight:900}
+.track-page .gz-invoice-grandtotal b{font-size:23px;font-weight:950;color:#171923}
+.track-page .gz-invoice-barcodes{display:grid;grid-template-columns:1fr 1fr;gap:22px;padding:18px 8px;border-top:1px dashed #d9dde3;border-bottom:1px dashed #d9dde3}
+.track-page .gz-invoice-barcodes>div+div{border-left:1px solid #e0e3e8;padding-left:22px}
+.track-page .gz-invoice-barcodes h3{margin:0 0 8px;text-align:center;font-size:14px;color:#272b34}
+.track-page .gz-invoice-barcode{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.track-page .gz-invoice-barcode svg{display:block;width:min(100%,340px);height:56px}
+.track-page .gz-invoice-barcode small{font:13px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.04em;color:#222631;overflow-wrap:anywhere;text-align:center}
+.track-page .gz-invoice-thanks{display:grid;grid-template-columns:1fr 1.3fr;gap:20px;align-items:center;padding:20px 8px;border-bottom:1px dashed #d9dde3}
+.track-page .gz-invoice-signoff{text-align:center;border-right:1px solid #e0e3e8;padding-right:20px}
+.track-page .gz-invoice-signoff strong{display:block;font-family:"Brush Script MT",cursive;font-size:clamp(27px,4vw,42px);font-weight:500;color:#171923}
+.track-page .gz-invoice-signoff strong span{color:#e22d2d}
+.track-page .gz-invoice-signoff em{display:block;margin-top:2px;font-size:14px;color:#5b6069}
+.track-page .gz-invoice-bangla b{font-size:17px;color:#222631}
+.track-page .gz-invoice-bangla p{margin:5px 0 0;font-size:13px;line-height:1.7;color:#626874}
+.track-page .gz-invoice-grabpoints{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:22px;align-items:center;margin:18px 0;padding:22px;border:1px solid #d8f0e2;border-radius:17px;background:linear-gradient(130deg,#f0fbf5,#f8fcf9)}
+.track-page .gz-invoice-gp-brand{display:flex;align-items:flex-start;gap:16px}
+.track-page .gz-invoice-gp-icon{display:grid;place-items:center;width:68px;height:68px;flex:0 0 68px;border-radius:50%;background:#079447;color:#fff;border:5px solid #b6edcb;box-shadow:0 4px 12px #07843c22;font-size:24px;font-weight:950}
+.track-page .gz-invoice-gp-brand strong{display:block;font-size:clamp(27px,3.5vw,39px);line-height:1;font-weight:950;letter-spacing:-.045em;color:#171923}
+.track-page .gz-invoice-gp-brand strong span{color:#079447}
+.track-page .gz-invoice-gp-brand h3{margin:9px 0 5px;font-size:16px;color:#20262f}
+.track-page .gz-invoice-gp-brand p{margin:0;font-size:13px;line-height:1.7;color:#59616b}
+.track-page .gz-invoice-gp-rewards{display:flex;gap:7px;margin-top:15px}
+.track-page .gz-invoice-gp-rewards span{flex:1;padding:9px 7px;border:1px solid #e2e8e3;border-radius:9px;background:#fff;text-align:center;font-size:10px;line-height:1.6;color:#444d47}
+.track-page .gz-invoice-gp-qr{display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px;border:1px solid #d8eee1;border-radius:13px;background:#fff;text-decoration:none;text-align:center}
+.track-page .gz-invoice-gp-qr img{display:block;width:142px;height:142px;object-fit:contain}
+.track-page .gz-invoice-gp-qr b{font-size:13px;color:#18231c}
+.track-page .gz-invoice-gp-qr small{font-size:11px;color:#667269}
+.track-page .gz-invoice-gp-qr strong{display:block;width:100%;padding:10px 8px;border-radius:8px;background:#078f48;color:#fff;font-size:12px;overflow-wrap:anywhere}
+.track-page .gz-invoice-footer{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:12px 4px 0}
+.track-page .gz-invoice-footer>div{display:flex;flex-direction:column;gap:5px;padding:3px 12px;border-right:1px solid #e3e5e8}
+.track-page .gz-invoice-footer>div:last-of-type{border-right:0}
+.track-page .gz-invoice-footer b{font-size:12px;color:#252a33}
+.track-page .gz-invoice-footer span{font-size:11px;color:#737985;overflow-wrap:anywhere}
+.track-page .gz-invoice-footer>small{grid-column:1/-1;margin-top:6px;padding-top:12px;border-top:1px solid #e7e9ec;text-align:center;color:#737985;font-size:11px}
+@media(max-width:700px){
+ .track-page .invoice-sheet{padding:20px 16px!important;max-width:calc(100vw - 20px)!important}
+ .track-page .gz-invoice-brandhead{grid-template-columns:1fr;gap:18px}
+ .track-page .gz-invoice-title{text-align:left}
+ .track-page .gz-invoice-brand img{width:48px;height:48px;flex-basis:48px}
+ .track-page .gz-invoice-order-meta,.track-page .gz-invoice-parties{grid-template-columns:1fr;gap:16px}
+ .track-page .gz-invoice-orderfacts{padding:14px 0 0;border-left:0;border-top:1px solid #e0e3e8}
+ .track-page .gz-invoice-parties>div+div{padding:14px 0 0;border-left:0;border-top:1px solid #e0e3e8}
+ .track-page .gz-invoice-items{overflow-x:auto}
+ .track-page .gz-invoice-items table{min-width:580px}
+ .track-page .gz-invoice-barcodes{grid-template-columns:1fr;gap:16px}
+ .track-page .gz-invoice-barcodes>div+div{border-left:0;border-top:1px solid #e0e3e8;padding:16px 0 0}
+ .track-page .gz-invoice-thanks{grid-template-columns:1fr;gap:14px}
+ .track-page .gz-invoice-signoff{border-right:0;border-bottom:1px solid #e0e3e8;padding:0 0 14px}
+ .track-page .gz-invoice-grabpoints{grid-template-columns:1fr;padding:15px}
+ .track-page .gz-invoice-gp-qr img{width:125px;height:125px}
+ .track-page .gz-invoice-footer{grid-template-columns:1fr}
+ .track-page .gz-invoice-footer>div{border-right:0;border-bottom:1px solid #e7e9ec;padding:8px 4px}
+ .track-page .gz-invoice-toolbar{align-items:flex-start;flex-wrap:wrap;padding-right:42px}
+ .track-page .gz-invoice-download{font-size:12px;padding:10px 12px}
+}
+@media print{
+ body.track-page{background:#fff!important}
+ .track-page .invoice-modal{position:static!important;display:block!important;padding:0!important;background:#fff!important}
+ .track-page .invoice-sheet{width:100%!important;max-width:none!important;max-height:none!important;overflow:visible!important;padding:0!important;border:0!important;box-shadow:none!important}
+ .track-page .invoice-printer-stage,.track-page #invoiceClose,.track-page .gz-invoice-toolbar{display:none!important}
+ .track-page .gz-invoice-grabpoints,.track-page .gz-invoice-barcodes,.track-page .gz-invoice-items{break-inside:avoid}
+}
+
+
+/* Final sizing override: full invoice expands after the receipt-print animation. */
+.track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+ width:min(1020px,calc(100% - 32px))!important;max-width:calc(100vw - 24px)!important;
+}
+.track-page .invoice-modal.printed .invoice-sheet{
+ width:min(1020px,100%)!important;max-width:calc(100vw - 24px)!important;
+ max-height:92vh!important;padding:28px 32px!important;border-radius:14px!important;
+}
+@media(max-width:700px){
+ .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet,
+ .track-page .invoice-modal.printed .invoice-sheet{width:calc(100% - 20px)!important;max-width:calc(100vw - 20px)!important;padding:20px 16px!important}
+}
+
+/* Receipt feed alignment fix: paper emerges DOWN from the printer slot without reflowing mid-feed. */
+.track-page .invoice-modal.printing .invoice-sheet{
+  position:absolute!important;left:50%!important;top:calc(50% - 49px)!important;bottom:auto!important;
+  width:min(340px,calc(100vw - 28px))!important;max-width:calc(100vw - 24px)!important;
+  height:min(58vh,430px)!important;max-height:58vh!important;overflow:hidden!important;
+  box-sizing:border-box!important;z-index:11!important;opacity:1!important;visibility:visible!important;
+  pointer-events:none!important;transform:translateX(-50%)!important;transform-origin:50% 0!important;
+  clip-path:inset(0 0 100% 0)!important;border-radius:2px!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.3)!important;
+  transition:clip-path 3.7s cubic-bezier(.22,.65,.2,1),top 1.15s cubic-bezier(.22,.72,.18,1),
+    transform 1.15s cubic-bezier(.22,.72,.18,1),width 1.15s cubic-bezier(.22,.72,.18,1),
+    height 1.15s cubic-bezier(.22,.72,.18,1),max-height 1.15s ease,border-radius .6s ease,
+    box-shadow .6s ease!important;
+  will-change:clip-path,top,width,height;
+}
+.track-page .invoice-modal.printing.paper-feeding .invoice-sheet{clip-path:inset(0 0 0 0)!important}
+.track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+  top:50%!important;bottom:auto!important;left:50%!important;
+  width:min(1020px,calc(100% - 32px))!important;max-width:calc(100vw - 24px)!important;
+  height:82vh!important;max-height:86vh!important;overflow:auto!important;
+  clip-path:inset(0)!important;pointer-events:auto!important;
+  transform:translate(-50%,-50%)!important;border-radius:14px!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.48)!important;
+}
+.track-page .invoice-modal.printed .invoice-sheet{
+  position:relative!important;left:auto!important;top:auto!important;bottom:auto!important;
+  width:min(1020px,100%)!important;max-width:calc(100vw - 24px)!important;
+  height:auto!important;max-height:92vh!important;margin:auto!important;
+  opacity:1!important;visibility:visible!important;pointer-events:auto!important;
+  transform:none!important;clip-path:none!important;overflow:auto!important;border-radius:14px!important;
+}
+@media(max-width:700px){
+  .track-page .invoice-modal.printing .invoice-sheet{
+    top:calc(50% - 45px)!important;width:min(300px,calc(100vw - 24px))!important;
+    height:min(56vh,390px)!important;max-height:56vh!important;
+  }
+  .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+    top:50%!important;width:calc(100% - 20px)!important;max-width:calc(100vw - 20px)!important;
+    height:84vh!important;max-height:88vh!important;transform:translate(-50%,-50%)!important;
+  }
+}
+
+
+/* Invoice polish: keep the download action clear of the floating close control. */
+.track-page .gz-invoice-toolbar{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  flex-wrap:wrap!important;gap:12px!important;padding-right:112px!important;margin:0 0 20px!important;
+  min-height:44px;box-sizing:border-box;
+}
+.track-page .gz-invoice-chip{flex:0 0 auto;white-space:nowrap}
+.track-page .gz-invoice-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important;min-width:0}
+.track-page .gz-invoice-download{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  gap:8px!important;min-height:44px!important;padding:11px 16px!important;white-space:nowrap!important;
+  border-radius:12px!important;font-size:13px!important;line-height:1.2!important;
+}
+.track-page .invoice-head #invoiceClose{
+  position:absolute!important;right:18px!important;top:18px!important;z-index:50!important;
+  min-height:40px!important;min-width:66px!important;display:inline-flex!important;
+  align-items:center!important;justify-content:center!important;gap:6px!important;
+}
+.track-page .gz-invoice-grabpoints{
+  grid-template-columns:minmax(0,1fr) 258px!important;
+  grid-template-rows:auto auto!important;align-items:stretch!important;gap:16px 22px!important;
+  padding:22px!important;
+}
+.track-page .gz-invoice-gp-brand{grid-column:1!important;grid-row:1!important;min-width:0!important}
+.track-page .gz-invoice-gp-rewards{
+  grid-column:1!important;grid-row:2!important;display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;align-self:start!important;
+  gap:9px!important;margin-top:0!important;
+}
+.track-page .gz-invoice-gp-rewards span{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  min-height:62px!important;padding:10px 8px!important;line-height:1.55!important;
+  font-size:11px!important;overflow-wrap:anywhere!important;
+}
+.track-page .gz-invoice-gp-qr{
+  grid-column:2!important;grid-row:1 / span 2!important;align-self:stretch!important;
+  justify-content:center!important;min-width:0!important;padding:16px!important;
+}
+.track-page .gz-invoice-gp-qr img{width:136px!important;height:136px!important;max-width:100%!important}
+.track-page .gz-invoice-gp-qr strong{overflow-wrap:anywhere!important;text-align:center!important}
+.track-page .gz-invoice-footer a{
+  display:block!important;color:#555f6d!important;font-size:11px!important;line-height:1.55!important;
+  overflow-wrap:anywhere!important;text-decoration:none!important;
+}
+.track-page .gz-invoice-footer a:hover{color:#f05b0b!important;text-decoration:underline!important}
+.track-page .gz-invoice-social-links{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:5px!important}
+.track-page .gz-invoice-footer .gz-invoice-social-links a{font-weight:700!important}
+@media(max-width:700px){
+  .track-page .gz-invoice-toolbar{padding-right:82px!important;align-items:flex-start!important;gap:10px!important}
+  .track-page .gz-invoice-actions{margin-left:auto!important}
+  .track-page .gz-invoice-download{min-height:40px!important;padding:10px 12px!important;font-size:12px!important}
+  .track-page .invoice-head #invoiceClose{right:12px!important;top:12px!important;min-width:58px!important;padding:8px 10px!important}
+  .track-page .gz-invoice-grabpoints{
+    grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;gap:15px!important;padding:16px!important;
+  }
+  .track-page .gz-invoice-gp-brand,.track-page .gz-invoice-gp-rewards,.track-page .gz-invoice-gp-qr{
+    grid-column:1!important;grid-row:auto!important;
+  }
+  .track-page .gz-invoice-gp-rewards{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+  .track-page .gz-invoice-gp-rewards span{font-size:10px!important;min-height:58px!important;padding:8px 5px!important}
+  .track-page .gz-invoice-gp-qr{width:100%!important;max-width:100%!important}
+  .track-page .gz-invoice-footer{gap:10px!important}
+  .track-page .gz-invoice-footer>div{border-right:0!important;border-bottom:1px solid #e7e9ec!important;padding:9px 4px!important}
+  .track-page .gz-invoice-social-links{flex-direction:row!important;flex-wrap:wrap!important;gap:10px 14px!important}
+}
+@media(max-width:390px){
+  .track-page .gz-invoice-toolbar{padding-right:72px!important}
+  .track-page .gz-invoice-chip{font-size:9px!important;padding:6px 8px!important}
+  .track-page .gz-invoice-download{font-size:11px!important;padding:9px 10px!important}
+  .track-page .gz-invoice-gp-rewards{grid-template-columns:1fr!important}
+  .track-page .gz-invoice-gp-rewards span{min-height:0!important}
+}
+
+
+/* Correct printer motion: a blank receipt sheet feeds down from the output slot,
+   then the complete invoice opens without shrinking or reflowing its contents. */
+.track-page .invoice-modal.printing .invoice-sheet{display:none!important}
+.track-page .invoice-modal.printing .receipt-printer{position:relative!important;overflow:visible!important}
+.track-page .invoice-modal.printing .receipt-paper{
+  display:block!important;position:absolute!important;left:25px!important;right:25px!important;top:102px!important;
+  height:0!important;overflow:hidden!important;z-index:5!important;box-sizing:border-box!important;
+  background:#fff!important;border:1px solid #e5e7eb!important;border-bottom:0!important;
+  box-shadow:0 7px 18px rgba(0,0,0,.22)!important;opacity:1!important;
+  transition:height 2.55s cubic-bezier(.22,.65,.2,1)!important;
+}
+.track-page .invoice-modal.printing.paper-feeding .receipt-paper{height:205px!important}
+.track-page .invoice-modal.printing .receipt-lines{
+  display:flex!important;flex-direction:column!important;gap:11px!important;padding:18px 15px!important;
+  box-sizing:border-box!important;opacity:.95!important;
+}
+.track-page .invoice-modal.printing .receipt-lines i{
+  display:block!important;height:5px!important;border-radius:2px!important;background:#c9cdd2!important;
+  width:78%!important;flex:0 0 5px!important;
+}
+.track-page .invoice-modal.printing .receipt-lines i:nth-child(2){width:58%!important}
+.track-page .invoice-modal.printing .receipt-lines i:nth-child(3){width:88%!important}
+.track-page .invoice-modal.printing .receipt-lines i:nth-child(4){width:64%!important}
+.track-page .invoice-modal.printing .receipt-lines i:nth-child(5){width:74%!important}
+.track-page .invoice-modal.printing.invoice-reveal .receipt-printer{
+  opacity:0!important;transform:translate3d(0,32px,0) scale(.94)!important;
+  transition:opacity .65s ease,transform .7s ease!important;
+}
+.track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+  display:block!important;position:relative!important;left:auto!important;top:auto!important;bottom:auto!important;
+  width:min(1020px,calc(100% - 32px))!important;max-width:calc(100vw - 24px)!important;
+  height:auto!important;max-height:88vh!important;overflow:auto!important;margin:auto!important;
+  clip-path:none!important;transform:none!important;visibility:visible!important;opacity:1!important;
+  pointer-events:auto!important;border-radius:14px!important;box-shadow:0 28px 90px rgba(0,0,0,.48)!important;
+  animation:gzInvoiceSmoothReveal .5s cubic-bezier(.2,.75,.2,1) both!important;
+}
+@keyframes gzInvoiceSmoothReveal{from{opacity:0;transform:translateY(16px) scale(.99)}to{opacity:1;transform:none}}
+@media(max-width:700px){
+  .track-page .invoice-modal.printing .receipt-paper{left:22px!important;right:22px!important;top:96px!important}
+  .track-page .invoice-modal.printing.paper-feeding .receipt-paper{height:170px!important}
+  .track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{
+    width:calc(100% - 20px)!important;max-width:calc(100vw - 20px)!important;
+    max-height:88vh!important;padding:20px 16px!important;
+  }
+}
+/* Make the vendor/store identity legible beneath each product name. */
+.track-page .gz-inv-product .gz-inv-store{
+  display:block!important;margin:5px 0 2px!important;color:#07823f!important;font-size:12px!important;
+  font-weight:800!important;line-height:1.45!important;letter-spacing:0!important;
+}
+/* Brand marks and tidy social footer. */
+.track-page .gz-invoice-social-links{display:flex!important;flex-direction:column!important;gap:9px!important}
+.track-page .gz-invoice-social-link{display:inline-flex!important;align-items:center!important;gap:8px!important;width:max-content!important;max-width:100%!important}
+.track-page .gz-invoice-social-link svg{display:block!important;width:19px!important;height:19px!important;flex:0 0 19px!important}
+.track-page .gz-social-messenger svg{color:#0877e8!important}
+.track-page .gz-social-instagram svg{color:#c13584!important}
+.track-page .gz-social-whatsapp svg{color:#20b15a!important}
+.track-page .gz-invoice-social-link span{font-size:12px!important;font-weight:700!important}
+/* PDF staging copy: remove viewport scrolling constraints so every invoice section is captured. */
+.gz-invoice-pdf-root .gz-invoice-pdf-copy{
+  width:680px!important;max-width:680px!important;min-width:0!important;box-sizing:border-box!important;height:auto!important;max-height:none!important;
+  overflow:visible!important;position:static!important;transform:none!important;clip-path:none!important;
+  margin:0!important;box-shadow:none!important;border-radius:0!important;background:#fff!important;
+}
+.gz-invoice-pdf-root .gz-invoice-items{overflow:visible!important}
+.gz-invoice-pdf-root .gz-invoice-items table{width:100%!important;min-width:0!important;table-layout:auto!important}
+.gz-invoice-pdf-root .gz-invoice-items tr,.gz-invoice-pdf-root .gz-inv-product,
+.gz-invoice-pdf-root .gz-invoice-grabpoints,.gz-invoice-pdf-root .gz-invoice-barcodes,
+.gz-invoice-pdf-root .gz-invoice-thanks,.gz-invoice-pdf-root .gz-invoice-footer{break-inside:avoid!important;page-break-inside:avoid!important}
+.gz-invoice-pdf-root .gz-inv-product{min-width:0!important}
+.gz-invoice-pdf-root .gz-invoice-toolbar{padding-right:0!important}
+.gz-invoice-pdf-root .gz-invoice-brandhead{break-inside:avoid!important;page-break-inside:avoid!important}
+
+
+/* Smooth invoice expansion, full-width-safe PDF, and brighter GrabZone styling */
+.track-page .invoice-modal.printing .receipt-paper{transition:height 2.7s cubic-bezier(.2,.72,.18,1),opacity .25s ease!important}
+.track-page .invoice-modal.printing.invoice-reveal .receipt-paper{opacity:0!important;transition:opacity .5s ease!important}
+.track-page .invoice-modal.printing.invoice-reveal .receipt-printer{opacity:0!important;transform:translate3d(0,20px,0) scale(.97)!important;transition:opacity .85s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)!important}
+.track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{width:min(900px,calc(100% - 28px))!important;max-width:calc(100vw - 24px)!important;max-height:88vh!important;overflow:auto!important;animation:gzInvoiceExpandSmooth .9s cubic-bezier(.16,1,.3,1) both!important;transform-origin:50% 30%!important}
+.track-page .invoice-modal.printed .invoice-sheet{width:min(900px,100%)!important;max-height:90vh!important;overflow:auto!important}
+@keyframes gzInvoiceExpandSmooth{0%{opacity:0;transform:translateY(34px) scale(.91);filter:blur(2px)}65%{opacity:1;filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+/* Orange, indigo, emerald accents */
+.track-page .gz-invoice-toolbar{border-bottom:3px solid #f26312;padding-bottom:14px!important}
+.track-page .gz-invoice-brandhead{background:linear-gradient(105deg,#fff7ef,#fff 54%,#f1f5ff)!important;border-radius:14px;padding:18px 16px 22px!important;border-bottom:3px solid #f26312!important}
+.track-page .gz-invoice-title h2{color:#17233b!important}.track-page .gz-invoice-title p{color:#596783!important}
+.track-page .gz-invoice-order-meta{background:linear-gradient(110deg,#fffaf5,#f7f9ff);border-radius:12px;border-bottom:1px dashed #f0b78f!important}
+.track-page .gz-invoice-identifiers>div:first-child b{background:#fff0df!important;color:#c64b05!important;border:1px solid #ffd5b5}
+.track-page .gz-invoice-orderfacts b{color:#24334f!important}.track-page .gz-invoice-parties h3{color:#e45b0b!important}
+.track-page .gz-invoice-items{border-color:#dce3f0!important;box-shadow:0 5px 18px #17233b0a}
+.track-page .gz-invoice-items thead{background:linear-gradient(90deg,#17233b,#273f67)!important}.track-page .gz-invoice-items th{color:#fff!important}
+.track-page .gz-invoice-items tbody tr:nth-child(even){background:#f7f9fd!important}.track-page .gz-inv-product .gz-inv-store{color:#078447!important}
+.track-page .gz-invoice-grandtotal{background:linear-gradient(105deg,#fff0e4,#ffe4cf)!important;border:1px solid #ffd0ad!important}.track-page .gz-invoice-grandtotal b{color:#d94f08!important}
+.track-page .gz-invoice-barcodes{background:#f7f9ff;border-radius:12px;border-color:#cfd8ee!important}.track-page .gz-invoice-barcodes h3{color:#344d7a!important}
+.track-page .gz-invoice-thanks{background:linear-gradient(90deg,#fff8f0,#f8faff);border-radius:12px}.track-page .gz-invoice-bangla b{color:#d9540a!important}
+.track-page .gz-invoice-grabpoints{background:linear-gradient(130deg,#eafaf1,#f2f7ff)!important;border-color:#a8e3c0!important;box-shadow:0 8px 22px #078f4b12}
+.track-page .gz-invoice-gp-qr strong{background:linear-gradient(90deg,#078f4b,#0b7f82)!important}.track-page .gz-invoice-footer{border-top:2px solid #e7edf7;margin-top:15px}
+.gz-invoice-pdf-root{width:680px!important;max-width:680px!important;box-sizing:border-box!important;overflow:visible!important}
+.gz-invoice-pdf-root .gz-invoice-pdf-copy{width:680px!important;max-width:680px!important;min-width:0!important;box-sizing:border-box!important;padding:20px!important;overflow:visible!important}
+.gz-invoice-pdf-root .gz-invoice-brandhead,.gz-invoice-pdf-root .gz-invoice-order-meta,.gz-invoice-pdf-root .gz-invoice-parties,.gz-invoice-pdf-root .gz-invoice-barcodes{grid-template-columns:1fr 1fr!important}
+.gz-invoice-pdf-root .gz-invoice-thanks{grid-template-columns:1fr 1.3fr!important}
+.gz-invoice-pdf-root .gz-invoice-grabpoints{grid-template-columns:minmax(0,1fr) 230px!important;padding:16px!important;gap:14px!important}
+.gz-invoice-pdf-root .gz-invoice-gp-qr img{width:115px!important;height:115px!important}
+.gz-invoice-pdf-root .gz-invoice-items table{table-layout:fixed!important}
+.gz-invoice-pdf-root .gz-invoice-items th:first-child,.gz-invoice-pdf-root .gz-invoice-items td:first-child{width:58%!important}
+.gz-invoice-pdf-root .gz-invoice-items td,.gz-invoice-pdf-root .gz-invoice-items th{padding:10px 8px!important;white-space:normal!important;overflow-wrap:anywhere!important}
+.gz-invoice-pdf-root .gz-invoice-footer{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.gz-invoice-pdf-root .gz-invoice-footer>div{min-width:0!important;overflow-wrap:anywhere!important}
+@media(max-width:700px){.track-page .invoice-modal.printing.invoice-reveal .invoice-sheet{width:calc(100% - 20px)!important;max-width:calc(100vw - 20px)!important}}
+
+/* Receipt preview text is set before the feed starts, so it travels with the paper. */
+.track-page .invoice-modal.printing .receipt-lines{
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:7px!important;
+  padding:12px 12px 14px!important;box-sizing:border-box!important;color:#252a32!important;
+  font:10px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace!important;white-space:normal!important;
+}
+.track-page .invoice-modal.printing .receipt-lines strong{
+  display:block!important;text-align:center!important;font:900 14px/1.2 Arial,sans-serif!important;
+  letter-spacing:.18em!important;color:#171923!important;
+}
+.track-page .invoice-modal.printing .receipt-lines b{
+  display:block!important;text-align:center!important;font:800 9px/1.3 Arial,sans-serif!important;
+  letter-spacing:.12em!important;color:#525866!important;
+}
+.track-page .invoice-modal.printing .receipt-lines hr{
+  width:100%!important;border:0!important;border-top:1px dashed #aeb4bd!important;margin:1px 0 2px!important;
+}
+.track-page .invoice-modal.printing .receipt-lines span{
+  display:block!important;font:10px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace!important;
+  color:#303640!important;overflow-wrap:anywhere!important;
+}
+.track-page .invoice-modal.printing .receipt-lines .receipt-mini-total{
+  text-align:left!important;font:900 11px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace!important;
+  letter-spacing:0!important;color:#171923!important;margin-top:2px!important;
+}
+.track-page .invoice-modal.printing .receipt-lines i{
+  display:block!important;height:3px!important;border-radius:1px!important;background:#c9cdd2!important;
+  width:78%!important;flex:0 0 3px!important;
+}
+.track-page .invoice-modal.printing .receipt-lines i:last-child{width:58%!important}
+
 </style>
-<link rel="stylesheet" href="grabzone-mobile-global.css?v=20260908mobileglobal1">
 </head>
-<body>
-<div class="track-wrap"><div class="track-card">
-<div class="eyebrow">GRABZONE ORDER TRACKING</div><h1>Track Your Order</h1>
-<p>Enter your Order Tracking ID to see the latest status of your order.</p>
-<form class="track-form" id="trackForm"><input id="orderId" placeholder="GZ-XXXXXXXXXXXXXXX" autocomplete="off" required><button>Track Order</button></form>
-<div id="msg" class="track-msg"></div><div id="result" class="result" hidden></div>
-<div class="help"><b>Need help with your order?</b><div class="help-grid">
-<a id="ig" target="_blank" rel="noopener"><span class="help-icon instagram"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.3" cy="6.8" r="1" fill="currentColor" stroke="none"/></svg></span><span>Instagram</span></a>
-<a id="fb" target="_blank" rel="noopener"><span class="help-icon facebook"><svg viewBox="0 0 24 24"><path d="M14 8h3V4.5h-3c-3 0-5 2-5 5V12H6v3.5h3V21h3.5v-5.5H16l.7-3.5h-4.2V9.7c0-1.1.5-1.7 1.5-1.7Z" fill="currentColor" stroke="none"/></svg></span><span>Facebook</span></a>
-<a id="wa" target="_blank" rel="noopener"><span class="help-icon whatsapp"><svg viewBox="0 0 24 24"><path d="M7 20l1.2-3A7.8 7.8 0 1 1 17 18.3L14 19.5 7 20Z"/><path d="M9.5 9.3c.2 1.4 2 3.4 3.3 4.1.5.3 1 .3 1.5-.1l.7-.6"/></svg></span><span>WhatsApp</span></a>
-</div><a class="back-store" href="index.html"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg><span>Back to Store</span></a></div>
-</div></div>
+<body class="track-page">
+<main class="track-wrap">
+  <section class="track-card">
+    <div class="eyebrow">GRABZONE ORDER TRACKING</div>
+    <h1>Track Your Order</h1>
+    <p class="intro">Enter your Order Tracking ID to see the latest status of your order.</p>
+
+    <form class="track-form" id="trackForm">
+      <input id="orderId" placeholder="GZ-XXXXXXXXXXXXXXX" autocomplete="off" required>
+      <button type="submit">Track Order</button>
+    </form>
+
+    <div id="msg" class="track-msg" aria-live="polite"></div>
+    <div id="result" class="result" hidden></div>
+
+    <div id="invoiceModal" class="invoice-modal" role="dialog" aria-modal="true" aria-labelledby="invoiceTitle">
+      <div class="invoice-printer-stage" aria-hidden="true">
+        <div class="receipt-printer">
+          <div class="receipt-paper"><div class="receipt-lines"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="printer-top"></div>
+          <div class="printer-body">
+            <div class="printer-led"></div>
+            <div class="printer-slot"></div>
+            <div class="printer-brand">GRABZONE</div>
+            <div class="printer-printing-label">Printing receipt…</div>
+          </div>
+        </div>
+      </div>
+      <div class="invoice-sheet">
+        <div class="invoice-head">
+          <div>
+            <div class="eyebrow">GRABZONE RECEIPT</div>
+            <h2 id="invoiceTitle" style="margin:5px 0">Order Invoice</h2>
+            <div id="invoiceMeta" style="color:#68717b;font-size:12px"></div>
+          </div>
+          <button id="invoiceClose" class="invoice-close" type="button">✖️ Close</button>
+        </div>
+        <div id="invoiceBody" style="margin-top:15px"></div>
+      </div>
+    </div>
+
+    <div class="help">
+      <div class="help-title">Need help with your order?</div>
+      <div class="help-grid">
+        <a id="ig" target="_blank" rel="noopener"><span class="help-icon instagram"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.3" cy="6.8" r="1" fill="currentColor" stroke="none"/></svg></span><span>Instagram</span></a>
+        <a id="fb" target="_blank" rel="noopener"><span class="help-icon facebook"><svg viewBox="0 0 24 24"><path d="M14 8h3V4.5h-3c-3 0-5 2-5 5V12H6v3.5h3V21h3.5v-5.5H16l.7-3.5h-4.2V9.7c0-1.1.5-1.7 1.5-1.7Z" fill="currentColor" stroke="none"/></svg></span><span>Facebook</span></a>
+        <a id="wa" target="_blank" rel="noopener"><span class="help-icon whatsapp"><svg viewBox="0 0 24 24"><path d="M7 20l1.2-3A7.8 7.8 0 1 1 17 18.3L14 19.5 7 20Z"/><path d="M9.5 9.3c.2 1.4 2 3.4 3.3 4.1.5.3 1 .3 1.5-.1l.7-.6"/></svg></span><span>WhatsApp</span></a>
+      </div>
+      <a class="back-store" href="index.html"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg><span>Back to Store</span></a>
+    </div>
+  </section>
+</main>
+
 <script src="config.js"></script>
-<script src="d1-client.js?v=20260902cloudflarefix1"></script><script>
-(()=> {
- const C=window.GRABZONE_CONFIG||{};
- const $=id=>document.getElementById(id);
- const statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
- const statusIcons={
-   New:'<svg viewBox="0 0 24 24"><path d="M4 9.5 12 4l8 5.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-9Z"/><path d="M8 20v-6h8v6"/></svg>',
-   Contacting:'<svg viewBox="0 0 24 24"><path d="M7 4h3l1.5 4-2 1.5a13 13 0 0 0 5 5l1.5-2 4 1.5v3c0 1-1 1.5-2 1.5C11 18.5 5.5 13 5.5 6 5.5 5 6 4 7 4Z"/></svg>',
-   Confirmed:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg>',
-   Processing:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>',
-   Shipped:'<svg viewBox="0 0 24 24"><path d="M3 6h11v11H3zM14 10h4l3 3v4h-7z"/><circle cx="7" cy="19" r="1.5"/><circle cx="18" cy="19" r="1.5"/></svg>',
-   Delivered:'<svg viewBox="0 0 24 24"><path d="M5 12h10M11 8l4 4-4 4"/><path d="M4 5h16v14H4z"/></svg>',
-   Cancelled:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m9 9 6 6M15 9l-6 6"/></svg>'
- };
-
- async function loadSocial(){
-   try{
-     if(window.grabzoneD1){
-       const sb=window.grabzoneD1;
-       const q=await sb.from('site_settings').select('whatsapp,instagram,messenger').eq('id',1).maybeSingle();
-       const s=q.data||{};
-       const wa=String(s.whatsapp||C.whatsapp||'').trim();
-       const ig=String(s.instagram||C.instagram||'').trim();
-       const fb=String(s.messenger||C.messenger||'').trim();
-       if(wa&&!wa.includes('XXXXXXXX')) $('wa').href=wa; else $('wa').removeAttribute('href');
-       if(ig&&!ig.includes('yourstore')) $('ig').href=ig; else $('ig').removeAttribute('href');
-       if(fb&&!fb.includes('yourpage')) $('fb').href=fb; else $('fb').removeAttribute('href');
-     }
-   }catch(e){console.error('Social links:',e)}
- }
- loadSocial();
-
- function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
- function render(o){
-   const idx=statuses.indexOf(o.status);
-   const safeIdx=idx<0?0:idx;
-   const descriptions={
-     New:'Order received',
-     Contacting:'We are contacting you to confirm the order',
-     Confirmed:'Order confirmed successfully',
-     Processing:'Your order is being prepared',
-     Shipped:'Your package is on the way',
-     Delivered:'Order delivered',
-     Cancelled:'This order has been cancelled'
-   };
-   $('result').hidden=false;
-   const currentLabel=descriptions[o.status]||'Your order status has been updated';
-   const district=String(o.district||'').toLowerCase(),division=String(o.division||'').toLowerCase();
-   const eta=(district.includes('dhaka')||division==='dhaka')?'1–2 days':(district.includes('chattogram')||district.includes('chittagong')||division.includes('chattogram')||division.includes('chittagong'))?'2–4 days':(division?'2–5 days':'');
-   const statusMarkup=statuses.map((s,i)=>{
-     const isCancelled=s==='Cancelled';
-     const cls=o.status==='Cancelled'?(isCancelled?'cancelled current':''):(i<safeIdx?'completed':i===safeIdx?'current':'');
-     return '<div class="track-status-step '+cls+'"><span class="track-status-icon">'+statusIcons[s]+'</span><span>'+esc(s)+'</span></div>';
-   }).join('');
-   $('result').innerHTML='<b>Order #'+esc(o.orderNumber)+'</b>'+
-   '<div class="current-status">Current Status: '+esc(o.status||'Unknown')+'<small>'+esc(currentLabel)+'</small></div>'+
-   (eta?'<div class="tracking-box"><b>📦 Estimated Arrival</b><div>'+esc(eta)+'</div></div>':'')+
-   '<div class="track-status-line" aria-label="Order status progress">'+statusMarkup+'</div>'+
-   (o.tracking?.number||o.tracking?.courier||o.tracking?.url?
-     '<div class="tracking-box"><b>Package Tracking</b><div>'+esc(o.tracking.courier||'Courier')+(o.tracking.number?' · '+esc(o.tracking.number):'')+'</div>'+
-     (o.tracking.url?'<a class="tracking-link" href="'+esc(o.tracking.url)+'" target="_blank" rel="noopener">Track Package →</a>':'')+'</div>':
-     '<div class="tracking-box">Courier tracking details will appear here once your package is shipped.</div>')+
-   (o.items?.length?'<div class="items"><b>Order Items</b>'+o.items.map(i=>'<div class="item"><span>'+esc(i.name)+' × '+i.quantity+'</span><span>৳'+Number(i.price*i.quantity).toLocaleString('en-BD')+'</span></div>').join('')+'</div>':'');
- }
-
- async function getOrder(id){
-   const clean=String(id||'').trim().toUpperCase();
-   if(!clean) throw new Error('Please enter your Order Tracking ID.');
-   if(!window.grabzoneD1) throw new Error('Tracking service is not configured.');
-   const sb=window.grabzoneD1;
-   const {data,error}=await sb.rpc('track_public_order',{p_tracking_id:clean});
-   if(!error&&data) return {success:true,order:data};
-   console.warn('Direct tracking RPC failed:',error);
-   const response=await fetch('/api/track-order?trackingId='+encodeURIComponent(clean),{cache:'no-store'});
-   let body={}; try{body=await response.json()}catch{}
-   if(!response.ok) throw new Error(body.error||'Order not found. Please check your Order ID.');
-   return body;
- }
-
- $('trackForm').addEventListener('submit',async e=>{
-   e.preventDefault();
-   const msg=$('msg'),result=$('result');
-   msg.textContent='Checking order…'; result.hidden=true;
-   try{
-     const d=await getOrder($('orderId').value);
-     if(!d?.order) throw new Error('Order not found. Please check your Order ID.');
-     render(d.order);
-     msg.textContent='Order found ✓';
-   }catch(e){
-     console.error('Track order:',e);
-     msg.textContent=e.message||'Could not load the order. Please try again.';
-   }
- });
-const params=new URLSearchParams(location.search);
- const initialTracking=params.get('tracking')||'';
- if(initialTracking){$('orderId').value=initialTracking.toUpperCase();setTimeout(()=>$('trackForm').requestSubmit(),50)}
-})();
-</script></body></html>
+<script src="d1-client.js?v=20260902cloudflarefix1"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="track-order.js?v=20260925-invoice-pdf-smoothfix4"></script>
+<script src="grabzone-animation-controller.js?v=20260922full-animation1"></script>
+<script src="grabzone-mobile-app-shell.js?v=20260922mobileapp1"></script>
+</body>
+</html>

@@ -1,5 +1,7 @@
+var _gzHost = String(window.location.hostname || '').toLowerCase();
+var _gzDevWorker = _gzHost === 'vendor-system-dev-grabzone.nemesiseditzx984.workers.dev';
 window.GRABZONE_CONFIG = {
-  backendUrl: "https://grabzone.nemesiseditzx984.workers.dev",
+  backendUrl: _gzDevWorker ? window.location.origin : "https://grabzone.nemesiseditzx984.workers.dev",
   storeName: "GRABZONE",
   tagline: "Grab What's Trending.",
   currency: "৳",

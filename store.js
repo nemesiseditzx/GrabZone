@@ -736,6 +736,17 @@ function applySiteSettings() {
           "
         >
       `;
+      const logoImg = element.querySelector("img");
+      if (logoImg) {
+        logoImg.addEventListener("error",()=>{
+          logoImg.remove();
+          element.textContent = "GZ";
+          element.style.fontWeight = "900";
+          element.style.fontSize = "14px";
+          element.style.color = "#fff";
+          element.style.background = "#111";
+        },{once:true});
+      }
     });
   }
 
@@ -771,11 +782,19 @@ function applySiteSettings() {
     const hero = document.getElementById("heroCard");
 
     if (hero) {
-      hero.style.backgroundImage =
-        `url("${escAttr(SITE.hero_image_url)}")`;
-
+      const heroUrl = String(SITE.hero_image_url || "").trim();
+      hero.style.backgroundImage = "linear-gradient(135deg,#111820,#1b2630)";
       hero.style.backgroundSize = "cover";
       hero.style.backgroundPosition = "center";
+
+      const probe = new Image();
+      probe.onload = () => {
+        hero.style.backgroundImage = `url("${escAttr(heroUrl)}")`;
+      };
+      probe.onerror = () => {
+        hero.style.backgroundImage = "linear-gradient(135deg,#111820 0%,#1b2630 58%,#ff6b00 170%)";
+      };
+      probe.src = heroUrl;
     }
   }
 
@@ -1410,16 +1429,52 @@ async function renderDetail() {
       .eq("product_id", productId)
       .order("sort_order");
 
-  const gallery =
-    images && images.length
-      ? images
-      : [
-          {
-            image_url:
-              product.image_url,
-            is_main: true
-          }
-        ];
+  // Also read the public marketplace API so the storefront gallery uses the
+  // same complete image set as the vendor/admin product editor.
+  let marketplaceImages = [];
+  try {
+    const mr = await fetch("/api/marketplace/variations?product_id=" + encodeURIComponent(productId), {
+      credentials: "include",
+      cache: "no-store"
+    });
+    const md = await mr.json().catch(() => ({}));
+    const apiUrls = Array.isArray(md?.product?.image_urls) ? md.product.image_urls : [];
+    marketplaceImages = apiUrls.filter(Boolean).map(image_url => ({ image_url }));
+  } catch {}
+
+  /*
+    Vendor editor stores the complete gallery in products.image_urls.
+    Older products may not have product_images rows, so always use
+    image_urls as the fallback (and merge it with any DB gallery rows).
+  */
+  const storedUrls = Array.isArray(product.image_urls)
+    ? product.image_urls.filter(Boolean)
+    : (typeof product.image_urls === "string"
+        ? (() => { try { const x = JSON.parse(product.image_urls); return Array.isArray(x) ? x.filter(Boolean) : []; } catch { return []; } })()
+        : []);
+
+  const dbGallery = Array.isArray(images)
+    ? images.filter(x => x && x.image_url)
+    : [];
+
+  const seenGallery = new Set();
+  const gallery = [...dbGallery, ...marketplaceImages, ...storedUrls.map((image_url, i) => ({
+    image_url,
+    is_main: i === 0
+  }))]
+    .filter(x => {
+      const url = String(x.image_url || "").trim();
+      if (!url || seenGallery.has(url)) return false;
+      seenGallery.add(url);
+      return true;
+    });
+
+  if (!gallery.length && product.image_url) {
+    gallery.push({
+      image_url: product.image_url,
+      is_main: true
+    });
+  }
 
   const currency =
     SITE.currency || "৳";
@@ -1545,11 +1600,11 @@ async function renderDetail() {
 
         </div>
 
-        <p class="detail-desc">
+        <div class="detail-desc">
           ${esc(
             product.description || ""
           )}
-        </p>
+        </div>
 
         <div class="dm-box">
           <button
@@ -1568,6 +1623,9 @@ async function renderDetail() {
 
   window.__gallery =
     gallery;
+  window.__gzProductRendered = true;
+  window.dispatchEvent(new Event('grabzone:product-rendered'));
+  if(typeof window.GZMountCustomerVariations==='function') window.GZMountCustomerVariations();
 
   const orderButton =
     document.getElementById(
@@ -1590,12 +1648,15 @@ async function renderDetail() {
     });
   }
 
-
+  // Marketplace variable-product UI is mounted here, after the real product
+  // has rendered. This is intentionally self-contained so Buy Now/Add to Cart
+  // never depends on a secondary injected script winning a race.
 }
 
 /* =========================================================
    PRODUCT GALLERY
 ========================================================= */
+
 
 /* =========================================================
    PRODUCT GALLERY NEXT / PREVIOUS

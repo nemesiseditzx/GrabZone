@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin.html
+Disallow: /vendor-admin.html
+Disallow: /vendor-dashboard.html
+Disallow: /vendor-login.html
+Disallow: /marketplace-admin-
+Disallow: /marketplace-vendor-control
+Disallow: /marketplace-sales.html
+Disallow: /marketplace-shipping.html
+Disallow: /marketplace-settings.html
+Disallow: /policy-admin.html
+Disallow: /product-control.html
+Disallow: /checkout.html
+Disallow: /track-order.html
+
+Sitemap: https://grabzone.tech/sitemap.xml

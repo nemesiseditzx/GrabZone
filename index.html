@@ -2,20 +2,38 @@
 <html lang="bn">
 <head>
   
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-79VRLMQ1ZF"></script>
+  <!-- Google Analytics: keep the dev worker quiet; production analytics remains enabled. -->
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-79VRLMQ1ZF');
+(function(){
+  var host=String(location.hostname||'').toLowerCase();
+  var isDev=host==='vendor-system-dev-grabzone.nemesiseditzx984.workers.dev';
+  if(isDev)return;
+  var s=document.createElement('script');
+  s.async=true;
+  s.src='https://www.googletagmanager.com/gtag/js?id=G-79VRLMQ1ZF';
+  document.head.appendChild(s);
+  window.dataLayer=window.dataLayer||[];
+  window.gtag=function(){window.dataLayer.push(arguments);};
+  window.gtag('js',new Date());
+  window.gtag('config','G-79VRLMQ1ZF');
+})();
 </script>
   
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>GRABZONE</title>
+  <title>GrabZone Bangladesh | Online Shopping for Gadgets, Fashion & Essentials</title>
+<meta name="description" content="Shop gadgets, fashion, home essentials and everyday finds at GrabZone Bangladesh. Discover products, enjoy easy checkout, Cash on Delivery and GrabPoints rewards.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://grabzone.tech/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GrabZone">
+<meta property="og:title" content="GrabZone Bangladesh | Online Shopping for Gadgets, Fashion & Essentials">
+<meta property="og:description" content="Shop gadgets, fashion, home essentials and everyday finds at GrabZone Bangladesh. Discover products, enjoy easy checkout, Cash on Delivery and GrabPoints rewards.">
+<meta property="og:url" content="https://grabzone.tech/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GrabZone Bangladesh | Online Shopping for Gadgets, Fashion & Essentials">
+<meta name="twitter:description" content="Shop gadgets, fashion, home essentials and everyday finds at GrabZone Bangladesh. Discover products, enjoy easy checkout, Cash on Delivery and GrabPoints rewards.">
 
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="favicon.png">
@@ -544,7 +562,42 @@
   .step-top{margin-bottom:24px}
 }
 </style>
-<link rel="stylesheet" href="grabzone-mobile-global.css?v=20260908mobileglobal1">
+<link rel="stylesheet" href="grabzone-mobile-global.css?v=20260922mobileglobal2">
+<link rel="stylesheet" href="marketplace-home-brand-premium.css?v=20260922-store-grid">
+<script src="/grabzone-animation-controller.js?v=20260922full-animation1"></script>
+  <link rel="stylesheet" href="grabzone-ui-consistency.css?v=20260923ui">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "OnlineStore",
+      "@id": "https://grabzone.tech/#store",
+      "name": "GrabZone",
+      "url": "https://grabzone.tech/",
+      "description": "Shop gadgets, fashion, home essentials and everyday finds at GrabZone Bangladesh. Discover products, enjoy easy checkout, Cash on Delivery and GrabPoints rewards.",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Bangladesh"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://grabzone.tech/#website",
+      "url": "https://grabzone.tech/",
+      "name": "GrabZone",
+      "inLanguage": [
+        "bn",
+        "en"
+      ],
+      "publisher": {
+        "@id": "https://grabzone.tech/#store"
+      }
+    }
+  ]
+}
+</script>
 </head>
 
 <body>
@@ -1261,7 +1314,7 @@
 
   <script src="store.js"></script>
   <script src="billboard.js"></script>
-<script src="cart.js?v=20260903cartclean1"></script>
+<script src="cart.js?v=20260919-status-only"></script>
 <script src="rewards.js?v=20260903rewardsfix7"></script>
 <script>
 (function(){
@@ -1744,12 +1797,13 @@
     });
   </script>
 
+  <script src="/grabzone-home-reference-marketplace.js?v=20260922-store-grid"></script>
   <script src="grabzone-animations.js"></script>
   <script src="grabzone-animation-loader.js"></script>
   <script src="policy-link.js"></script>
-<script src="phase5.js?v=20260902p5"></script>
+<script src="phase5.js?v=20260919-status-only"></script>
 
  
 
-</body>
+<script src="grabzone-mobile-app-shell.js?v=20260922mobileapp1"></script></body>
 </html>
