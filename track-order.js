@@ -46,9 +46,10 @@
    function productImage(i){return String(i.image_url||'').trim()||'https://placehold.co/160x160?text=Product'}
  function variationText(i){let v=i.variation_options;if(typeof v==='string'){try{v=JSON.parse(v||'{}')}catch{v={}}}return v&&typeof v==='object'&&!Array.isArray(v)?Object.entries(v).map(([k,val])=>esc(k)+': '+esc(val)).join(' · '):''}
  async function openInvoice(o){
-   await socialSettingsReady;
    const modal=$('invoiceModal'),body=$('invoiceBody'),meta=$('invoiceMeta');
-   if(!modal||!body)return;
+   if(!modal||!body||modal.classList.contains('open')||modal.dataset.opening==='1')return;
+   modal.dataset.opening='1';
+   await socialSettingsReady;
    (window.__gzInvoicePrintTimers||[]).forEach(clearTimeout);window.__gzInvoicePrintTimers=[];
    modal.classList.remove('open','printing','printed','paper-feeding','invoice-reveal','printer-phase');modal.scrollTop=0;
    const orderNo=String(o.orderNumber||o.order_number||o.order_id||'—');
@@ -105,17 +106,17 @@
        if(!window.html2pdf)throw new Error('PDF generator did not load. Refresh the page and try again.');
        pdfRoot=document.createElement('div');
        pdfRoot.className='gz-invoice-pdf-root';
-       pdfRoot.style.cssText='position:fixed;left:0;top:0;width:720px;box-sizing:border-box;background:#fff;color:#171923;z-index:-1;pointer-events:none;';
+       pdfRoot.style.cssText='position:fixed;left:0;top:0;width:680px;box-sizing:border-box;background:#fff;color:#171923;z-index:2147483647;pointer-events:none;opacity:.001;';
        const clone=sheet.cloneNode(true);
        clone.classList.add('gz-invoice-pdf-copy');
        clone.style.setProperty('position','static','important');
-       clone.style.setProperty('width','720px','important');
+       clone.style.setProperty('width','680px','important');
        clone.style.setProperty('max-width','none','important');
        clone.style.setProperty('height','auto','important');
        clone.style.setProperty('max-height','none','important');
        clone.style.setProperty('overflow','visible','important');
        clone.style.setProperty('margin','0','important');
-       clone.style.setProperty('padding','24px 22px','important');
+       clone.style.setProperty('padding','20px','important');
        clone.style.setProperty('transform','none','important');
        clone.style.setProperty('clip-path','none','important');
        clone.style.setProperty('box-shadow','none','important');
@@ -129,12 +130,12 @@
        await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true})})));
        const pdfHeight=Math.max(clone.scrollHeight,clone.getBoundingClientRect().height);
        const opt={
-         margin:[4,4,6,4],
+         margin:[6,6,8,6],
          filename:'GrabZone-Invoice-'+orderNo.replace(/[^a-z0-9_-]/gi,'-')+'.pdf',
          image:{type:'jpeg',quality:.98},
-         html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',scrollX:0,scrollY:0,windowWidth:1200,windowHeight:Math.max(1600,pdfHeight+120),width:720},
+         html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',scrollX:0,scrollY:0},
          jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-         pagebreak:{mode:['css','legacy'],avoid:['.gz-invoice-grabpoints','.gz-invoice-barcodes','.gz-invoice-thanks','.gz-invoice-footer','.gz-inv-product']}
+         pagebreak:{mode:['css'],avoid:['.gz-invoice-grabpoints','.gz-invoice-barcodes','.gz-invoice-thanks','.gz-invoice-footer','.gz-inv-product']}
        };
        await window.html2pdf().set(opt).from(clone).save();
      }catch(err){console.error('Invoice PDF download failed:',err);alert('Invoice PDF তৈরি করা যায়নি। পেজটি রিফ্রেশ করে আবার চেষ্টা করুন।');}
@@ -143,7 +144,7 @@
    modal.classList.add('open','printing','printer-phase');
    window.__gzInvoicePrintTimers.push(setTimeout(()=>modal.classList.add('paper-feeding'),250));
    window.__gzInvoicePrintTimers.push(setTimeout(()=>modal.classList.add('invoice-reveal'),3000));
-   window.__gzInvoicePrintTimers.push(setTimeout(()=>{modal.classList.remove('printing','printer-phase','paper-feeding','invoice-reveal');modal.classList.add('printed')},4300));
+   window.__gzInvoicePrintTimers.push(setTimeout(()=>{modal.classList.remove('printing','printer-phase','paper-feeding','invoice-reveal');modal.classList.add('printed');delete modal.dataset.opening},4300));
  }
  const shipmentMarkup=vendors.length?vendors.map(v=>{
      const products=(v.items||[]).map(i=>esc(i.product_name||'Product')+' × '+Number(i.quantity||1)).join(' · ')||'Product';
@@ -162,7 +163,7 @@
    const copyBtn=$('copyTrackingBtn');if(copyBtn)copyBtn.onclick=async()=>{const value=String(o.tracking_id||o.orderNumber||'').trim();try{await navigator.clipboard.writeText(value);copyBtn.innerHTML='<span class="gz-action-icon">✅</span> Copied!';setTimeout(()=>{copyBtn.innerHTML='<span class="gz-action-icon">📋</span> Copy Tracking ID'},1600)}catch{copyBtn.innerHTML='<span class="gz-action-icon">⚠️</span> Copy unavailable';setTimeout(()=>{copyBtn.innerHTML='<span class="gz-action-icon">📋</span> Copy Tracking ID'},1600)}};
    const refreshBtn=$('refreshOrderBtn');if(refreshBtn)refreshBtn.onclick=async()=>{refreshBtn.disabled=true;refreshBtn.innerHTML='<span class="gz-action-icon">⏳</span> Updating...';try{const d=await getOrder(o.tracking_id||o.orderNumber);if(d?.order){render(d.order);$('msg').innerHTML='<span class="live-dot"></span> Status updated just now';}}catch(e){$('msg').textContent=e.message||'Could not refresh order.'}finally{if($('refreshOrderBtn'))$('refreshOrderBtn').disabled=false}};
    const storeBtn=$('storeActionBtn');if(storeBtn)storeBtn.onclick=()=>{location.href='index.html'};
-   const closeInvoice=()=>{(window.__gzInvoicePrintTimers||[]).forEach(clearTimeout);window.__gzInvoicePrintTimers=[];const m=$('invoiceModal');if(m)m.classList.remove('open','printing','printed','printer-phase','paper-feeding','invoice-reveal')};const invClose=$('invoiceClose');if(invClose)invClose.onclick=closeInvoice;const invModal=$('invoiceModal');if(invModal)invModal.onclick=e=>{if(e.target===invModal)closeInvoice()};
+   const closeInvoice=()=>{(window.__gzInvoicePrintTimers||[]).forEach(clearTimeout);window.__gzInvoicePrintTimers=[];const m=$('invoiceModal');if(m){m.classList.remove('open','printing','printed','printer-phase','paper-feeding','invoice-reveal');delete m.dataset.opening}};const invClose=$('invoiceClose');if(invClose)invClose.onclick=closeInvoice;const invModal=$('invoiceModal');if(invModal)invModal.onclick=e=>{if(e.target===invModal)closeInvoice()};
  }
 
  async function getOrder(id){
