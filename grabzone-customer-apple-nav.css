@@ -1,0 +1,41 @@
+/* GrabZone customer-facing Apple-inspired navigation layer.
+   Shared customer pages only; admin/vendor dashboards are intentionally excluded. */
+:root{--gz-customer-nav:#101116;--gz-customer-navline:rgba(255,255,255,.09);--gz-customer-navtext:#f5f5f7;--gz-customer-accent:#168cff}
+@keyframes gzCustomerNavEnter{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gzCustomerLinkGlow{0%,100%{box-shadow:0 0 0 rgba(22,140,255,0)}50%{box-shadow:0 0 20px rgba(22,140,255,.12)}}
+.header,.mp-header,.checkout-header,.nav,.store-header,.gz-top,.top-inner,.payment-top{
+  background:rgba(16,17,22,.96)!important;color:var(--gz-customer-navtext)!important;
+  border-color:var(--gz-customer-navline)!important;box-shadow:0 8px 28px rgba(0,0,0,.12)!important;
+  backdrop-filter:blur(22px) saturate(150%)!important;-webkit-backdrop-filter:blur(22px) saturate(150%)!important;
+  animation:gzCustomerNavEnter .45s cubic-bezier(.2,.8,.2,1) both;
+}
+.header nav a,.mp-links a,.nav a,.store-header a,.gz-top a,.top-inner a,.payment-top a{
+  color:#d8d9df!important;transition:color .22s ease,background .22s ease,transform .22s ease!important;
+}
+.header nav a:hover,.mp-links a:hover,.nav a:hover,.store-header a:hover,.gz-top a:hover,.top-inner a:hover,.payment-top a:hover{
+  color:#fff!important;transform:translateY(-1px);
+}
+.header .brand,.mp-logo,.store-header .store-brand{color:#fff!important}
+.header .brand span,.mp-logo span{color:#f5f5f7!important}
+.header .brand-mark{background:#fff!important;color:#111!important}
+.header .icon-btn,.header .mobile-menu-btn,.mp-search,.mp-rewards,.mp-cart,.mp-action,.market-action{
+  border-color:rgba(255,255,255,.14)!important;
+}
+.header .icon-btn{color:#f5f5f7!important;background:rgba(255,255,255,.06)!important}
+.header .mobile-menu-btn{background:#191a20!important}
+.header .mobile-menu-btn span{background:#f5f5f7!important}
+.header .mobile-nav{background:#17181e!important;border-color:rgba(255,255,255,.12)!important;box-shadow:0 22px 55px rgba(0,0,0,.32)!important}
+.header .mobile-nav a{color:#f5f5f7!important}
+.header .mobile-nav a:hover,.header .mobile-nav a:active{background:rgba(255,255,255,.09)!important}
+.mp-search{background:rgba(255,255,255,.06)!important}
+.mp-search input{color:#fff!important}
+.mp-search input::placeholder{color:#a1a1aa!important}
+.mp-links{border-color:var(--gz-customer-navline)!important}
+.checkout-header a,.payment-top a{color:#f5f5f7!important}
+@media(max-width:760px){
+ .header,.mp-header,.checkout-header,.nav,.store-header,.gz-top,.top-inner,.payment-top{backdrop-filter:blur(18px)!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .header,.mp-header,.checkout-header,.nav,.store-header,.gz-top,.top-inner,.payment-top{animation:none!important}
+ .header nav a,.mp-links a,.nav a,.store-header a,.gz-top a,.top-inner a,.payment-top a{transition:none!important}
+}
