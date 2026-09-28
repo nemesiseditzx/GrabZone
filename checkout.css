@@ -223,3 +223,15 @@
  .success-invoice-footer{padding:12px 12px 0!important}
  @page{size:A4 portrait;margin:9mm}
 }
+
+
+/* Checkout premium orange/charcoal finish */
+:root{--checkout-accent:#f56a12;--checkout-soft:#fff3e9}
+body{background:radial-gradient(ellipse at 10% 0%,#fff2e7 0,transparent 36%),#f6f7f9}
+.checkout-card,.checkout-panel,.order-summary,.summary-card{border-color:#e7e9ed!important;border-radius:20px!important;box-shadow:0 10px 32px #18202b09!important}
+button.primary,.primary-btn,.place-order-btn,.checkout-submit{background:linear-gradient(135deg,#ff8a32,#ed5b05)!important;color:#fff!important;box-shadow:0 8px 22px #f56a1229!important;border-color:transparent!important}
+button.primary:hover,.primary-btn:hover,.place-order-btn:hover,.checkout-submit:hover{filter:saturate(1.08);transform:translateY(-1px)}
+input:focus,select:focus,textarea:focus{border-color:#ff9a54!important;box-shadow:0 0 0 4px #f56a1218!important;outline:0!important}
+.grabpoints-icon{background:linear-gradient(135deg,#ff8a32,#ed5b05)!important}
+.grabpoints-box{border-color:#ffd7b9!important;background:linear-gradient(145deg,#fff,#fff8f1)!important}
+.grabpoints-balance{color:#b64b06!important;background:#fff0e4!important;border-color:#ffddc2!important}
