@@ -836,6 +836,109 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
 }
 .track-page .invoice-modal.printing .receipt-lines i:last-child{width:58%!important}
 
+
+/* Receipt-printer refresh — adapted from the supplied component, preserving the existing invoice feed flow. */
+.track-page .invoice-modal.printing .invoice-printer-stage{
+  padding:24px 16px!important;
+}
+.track-page .receipt-printer{
+  width:min(390px,86vw)!important;
+  filter:drop-shadow(0 30px 40px rgba(0,0,0,.42))!important;
+}
+.track-page .printer-top{
+  height:52px!important;
+  border-radius:22px 22px 10px 10px!important;
+  background:linear-gradient(155deg,#e8ebef 0%,#cbd1d9 48%,#aeb6c1 100%)!important;
+  border:1px solid #f7f8fa!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 10px 22px rgba(0,0,0,.28)!important;
+}
+.track-page .printer-top::before{
+  left:24px!important;right:24px!important;top:16px!important;height:9px!important;
+  background:#272d35!important;border:1px solid #7b8490!important;
+  box-shadow:inset 0 2px 5px #101319!important;
+}
+.track-page .printer-body{
+  min-height:238px!important;height:auto!important;
+  padding:23px 25px 25px!important;
+  border-radius:9px 9px 24px 24px!important;
+  background:linear-gradient(145deg,#dce1e7 0%,#c2c9d2 52%,#aab3bf 100%)!important;
+  border:1px solid #f3f5f8!important;border-top:0!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 20px 34px rgba(0,0,0,.3)!important;
+}
+.track-page .printer-led{
+  top:23px!important;right:25px!important;width:8px!important;height:8px!important;
+  background:#22c55e!important;
+  box-shadow:0 0 0 4px rgba(34,197,94,.14),0 0 13px rgba(34,197,94,.65)!important;
+}
+.track-page .printer-brand{
+  margin:0 0 15px!important;color:#202630!important;font-size:13px!important;
+  letter-spacing:.18em!important;text-shadow:none!important;line-height:1.3!important;
+}
+.track-page .printer-model{
+  display:block!important;margin-top:4px!important;color:#697382!important;
+  font-size:8px!important;letter-spacing:.2em!important;font-weight:800!important;
+}
+.track-page .printer-screen{
+  position:relative!important;z-index:4!important;
+  padding:14px 15px 13px!important;margin:0 0 17px!important;
+  border:1px solid #515b69!important;border-radius:13px!important;
+  background:linear-gradient(145deg,#17202b,#0b111a)!important;
+  color:#f4f7fb!important;
+  box-shadow:inset 0 2px 10px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.4)!important;
+}
+.track-page .printer-screen-top{
+  display:flex!important;justify-content:space-between!important;align-items:center!important;gap:10px!important;
+  color:#9aa7b8!important;font-size:8px!important;font-weight:900!important;letter-spacing:.13em!important;
+}
+.track-page .printer-live{display:inline-flex!important;align-items:center!important;gap:5px!important;color:#8ce0a7!important}
+.track-page .printer-live i{
+  display:inline-block!important;width:6px!important;height:6px!important;border-radius:50%!important;
+  background:#4ade80!important;box-shadow:0 0 9px rgba(74,222,128,.8)!important;
+}
+.track-page .printer-screen-status{
+  margin-top:13px!important;color:#fff!important;font-size:15px!important;font-weight:850!important;
+  letter-spacing:-.02em!important;line-height:1.3!important;
+}
+.track-page .printer-screen-track{
+  height:5px!important;margin-top:12px!important;overflow:hidden!important;border-radius:99px!important;
+  background:#303b49!important;
+}
+.track-page .printer-screen-track i{
+  display:block!important;width:62%!important;height:100%!important;border-radius:inherit!important;
+  background:linear-gradient(90deg,#ff6500,#ffb36d)!important;
+  box-shadow:0 0 12px rgba(255,101,0,.35)!important;
+  animation:gzReceiptProgress 2.2s ease-in-out infinite alternate!important;
+}
+.track-page .printer-slot{
+  height:13px!important;margin:0!important;border-radius:6px!important;
+  background:#252c35!important;border:1px solid #7f8997!important;
+  box-shadow:inset 0 3px 6px #101319,0 1px 0 rgba(255,255,255,.55)!important;
+}
+.track-page .printer-slot::after{
+  left:10px!important;right:10px!important;top:4px!important;height:3px!important;
+  background:#ff7a1a!important;box-shadow:0 0 12px rgba(255,122,26,.8)!important;
+}
+.track-page .printer-printing-label{
+  bottom:11px!important;color:#4f5a68!important;font-size:8px!important;
+  font-weight:900!important;letter-spacing:.13em!important;
+}
+.track-page .invoice-modal.printing .invoice-sheet{
+  background-color:#fffdf8!important;
+  background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,rgba(26,36,48,.045) 28px)!important;
+  box-shadow:0 14px 28px rgba(0,0,0,.24)!important;
+}
+@keyframes gzReceiptProgress{0%{transform:translateX(-10%);width:42%}100%{transform:translateX(38%);width:62%}}
+@media(max-width:600px){
+  .track-page .receipt-printer{width:min(350px,88vw)!important}
+  .track-page .printer-body{min-height:220px!important;padding:20px 20px 23px!important}
+  .track-page .printer-screen{padding:12px!important;margin-bottom:14px!important}
+  .track-page .printer-screen-status{font-size:14px!important}
+  .track-page .printer-printing-label{bottom:9px!important;font-size:7px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .track-page .printer-screen-track i{animation:none!important;width:62%!important}
+}
+
 </style>
 </head>
 <body class="track-page">
@@ -860,9 +963,14 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
           <div class="printer-top"></div>
           <div class="printer-body">
             <div class="printer-led"></div>
+            <div class="printer-brand">GRABZONE <span class="printer-model">SMART RECEIPT</span></div>
+            <div class="printer-screen">
+              <div class="printer-screen-top"><span>ORDER STATUS</span><span class="printer-live"><i></i> LIVE</span></div>
+              <div class="printer-screen-status">Printing your receipt</div>
+              <div class="printer-screen-track"><i></i></div>
+            </div>
             <div class="printer-slot"></div>
-            <div class="printer-brand">GRABZONE</div>
-            <div class="printer-printing-label">Printing receipt…</div>
+            <div class="printer-printing-label">Receipt is being prepared</div>
           </div>
         </div>
       </div>
