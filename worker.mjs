@@ -387,11 +387,12 @@ for(const i of items){
    const vendorId=String(item.vendor_id||"");
    let rewardsEligible=vendorId?0:1,referralEligible=vendorId?0:1;
    if(vendorId){
-     const eligibility=(await q(env,`SELECT COALESCE(vrs.eligibility_status,'inactive') vendor_status,COALESCE(vrs.rewards_enabled,0) rewards_enabled,COALESCE(vrs.referral_enabled,0) referral_enabled,COALESCE(pre.rewards_eligible,0) product_rewards,COALESCE(pre.referral_eligible,0) product_referral FROM products p LEFT JOIN vendor_rewards_settings vrs ON vrs.vendor_id=p.vendor_id LEFT JOIN product_rewards_eligibility pre ON pre.product_id=p.id AND pre.vendor_id=p.vendor_id WHERE p.id=? LIMIT 1`,[String(item.product_id||"")])).results?.[0];
+     const eligibility=(await q(env,`SELECT COALESCE(vrs.eligibility_status,'inactive') vendor_status,COALESCE(vrs.rewards_enabled,0) rewards_enabled,COALESCE(vrs.referral_enabled,0) referral_enabled FROM products p LEFT JOIN vendor_rewards_settings vrs ON vrs.vendor_id=p.vendor_id WHERE p.id=? LIMIT 1`,[String(item.product_id||"")])).results?.[0];
      const global=(await q(env,"SELECT enabled FROM rewards_settings WHERE id=1 LIMIT 1")).results?.[0];
      const active=String(eligibility?.vendor_status||"").toLowerCase()==="active"&&Number(global?.enabled??1)===1;
-     rewardsEligible=active&&Number(eligibility?.rewards_enabled)===1&&Number(eligibility?.product_rewards)===1?1:0;
-     referralEligible=active&&Number(eligibility?.referral_enabled)===1&&Number(eligibility?.product_referral)===1?1:0;
+     // Store-level eligibility automatically covers every current and future product.
+     rewardsEligible=active&&Number(eligibility?.rewards_enabled)===1?1:0;
+     referralEligible=active&&Number(eligibility?.referral_enabled)===1?1:0;
    }
    const t0=now();
    await env.DB.prepare("INSERT OR IGNORE INTO rewards_order_allocations(id,order_id,order_item_id,vendor_id,product_id,rewards_eligible,referral_eligible,qualifying_subtotal,referral_discount,cashback_percent,cashback_points,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?, ?,0,0,0,'pending',?,?)")
