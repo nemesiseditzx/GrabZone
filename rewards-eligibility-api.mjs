@@ -20,6 +20,9 @@ async function ensure(db){
  `CREATE INDEX IF NOT EXISTS product_rewards_vendor_idx ON product_rewards_eligibility(vendor_id,status)`
  ];
  for(const sql of statements) await db.prepare(sql).run();
+ // Keep this endpoint safe when it initializes an older rewards_settings table
+ // before the main Worker schema migration has added the referral reward column.
+ await db.prepare("ALTER TABLE rewards_settings ADD COLUMN referral_reward_points INTEGER NOT NULL DEFAULT 0").run().catch(()=>{});
  await db.prepare("INSERT OR IGNORE INTO rewards_settings(id,enabled,gp_value_bdt,updated_at) VALUES(1,1,NULL,?)").bind(stamp()).run();
 }
 const one=async(db,sql,...args)=>(await db.prepare(sql).bind(...args).all()).results?.[0]||null;
