@@ -61,7 +61,7 @@ export async function handleRewardsEligibility(req,env,adminSession){
  if(path==="/api/admin/rewards-eligibility/audit"&&method==="GET"){
   const u=new URL(req.url),vid=u.searchParams.get("vendor_id")||"",pid=u.searchParams.get("product_id")||"";
   const limit=Math.min(200,Math.max(1,Number(u.searchParams.get("limit")||100)));
-  const logs=await all(db,`SELECT id,admin_id,vendor_id,product_id,action,old_value,new_value,reason,created_at FROM rewards_audit_logs WHERE (?='' OR vendor_id=?) AND (?='' OR product_id=?) ORDER BY created_at DESC LIMIT ${limit}`,vid,vid,pid,pid);
+  const logs=await all(db,`SELECT a.id,a.admin_id,a.vendor_id,COALESCE(v.brand_name,v.business_name,'Unknown store') vendor_name,a.product_id,COALESCE(p.name,'') product_name,a.action,a.old_value,a.new_value,a.reason,a.created_at FROM rewards_audit_logs a LEFT JOIN vendors v ON v.id=a.vendor_id LEFT JOIN products p ON p.id=a.product_id WHERE (?='' OR a.vendor_id=?) AND (?='' OR a.product_id=?) ORDER BY a.created_at DESC LIMIT ${limit}`,vid,vid,pid,pid);
   return json({logs});
  }
  if(path==="/api/admin/rewards-eligibility/activity"&&method==="GET"){
