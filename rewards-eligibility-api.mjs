@@ -71,7 +71,7 @@ export async function handleRewardsEligibility(req,env,adminSession){
   return json({activity:rows});
  }
  if(path==="/api/admin/rewards-eligibility/overview"&&method==="GET"){
-  const stats=await one(db,`SELECT (SELECT COUNT(*) FROM vendor_rewards_settings WHERE eligibility_status='active') eligible_vendors,(SELECT COUNT(*) FROM vendor_rewards_settings WHERE rewards_enabled=1 AND eligibility_status='active') rewards_vendors,(SELECT COUNT(*) FROM vendor_rewards_settings WHERE referral_enabled=1 AND eligibility_status='active') referral_vendors,(SELECT COUNT(*) FROM product_rewards_eligibility WHERE status='eligible') eligible_products,(SELECT COALESCE(SUM(CASE WHEN type='earn' THEN points ELSE 0 END),0) FROM grabpoints_ledger) gp_issued,(SELECT COALESCE(SUM(CASE WHEN type='redeem' THEN -points ELSE 0 END),0) FROM grabpoints_ledger) gp_redeemed`);
+  const stats=await one(db,`SELECT (SELECT COUNT(*) FROM vendor_rewards_settings WHERE eligibility_status='active') eligible_vendors,(SELECT COUNT(*) FROM vendor_rewards_settings WHERE rewards_enabled=1 AND eligibility_status='active') rewards_vendors,(SELECT COUNT(*) FROM vendor_rewards_settings WHERE referral_enabled=1 AND eligibility_status='active') referral_vendors,(SELECT COUNT(*) FROM product_rewards_eligibility WHERE status='eligible') eligible_products,(SELECT COALESCE(SUM(CASE WHEN points>0 AND (type='earn' OR type LIKE 'earn:%' OR type LIKE 'referral:%') THEN points ELSE 0 END),0) FROM grabpoints_ledger) gp_issued,(SELECT COALESCE(SUM(CASE WHEN type='redeem' THEN -points ELSE 0 END),0) FROM grabpoints_ledger) gp_redeemed`);
   return json({stats:stats||{}});
  }
  if(path==="/api/admin/rewards-eligibility/vendors"&&method==="GET"){
