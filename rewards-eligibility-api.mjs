@@ -43,7 +43,7 @@ export async function handleRewardsEligibility(req,env,adminSession){
    const global=await one(db,"SELECT enabled FROM rewards_settings WHERE id=1");
    const active=String(row.vendor_status||"").toLowerCase()==="active";
    const globallyEnabled=Number(global?.enabled??1)===1;
-   return json({product_id:row.product_id,vendor_id:row.vendor_id,rewards_eligible:!!(globallyEnabled&&active&&row.rewards_enabled),referral_eligible:!!(globallyEnabled&&active&&row.referral_enabled),eligible_store_layout:!!(active&&row.eligible_store_layout)});
+   return json({product_id:row.product_id,vendor_id:row.vendor_id,rewards_eligible:!!(globallyEnabled&&active),referral_eligible:!!(globallyEnabled&&active),eligible_store_layout:!!active});
   }
   const slug=new URL(req.url).searchParams.get("slug");
   if(slug){
@@ -52,7 +52,7 @@ export async function handleRewardsEligibility(req,env,adminSession){
    const v=await one(db,"SELECT * FROM vendor_rewards_settings WHERE vendor_id=?",vendor.id);
    const global=await one(db,"SELECT enabled FROM rewards_settings WHERE id=1");
    const active=String(v?.eligibility_status||"").toLowerCase()==="active",globallyEnabled=Number(global?.enabled??1)===1;
-   return json({vendor_id:vendor.id,eligible:active,rewards_enabled:!!(globallyEnabled&&active&&v?.rewards_enabled),referral_enabled:!!(globallyEnabled&&active&&v?.referral_enabled),eligible_store_layout:!!(active&&v?.eligible_store_layout)});
+   return json({vendor_id:vendor.id,eligible:active,rewards_enabled:!!(globallyEnabled&&active),referral_enabled:!!(globallyEnabled&&active),eligible_store_layout:!!active});
   }
   return json({error:"Provide product_id or slug."},400);
  }
