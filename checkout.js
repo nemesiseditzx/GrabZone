@@ -261,7 +261,7 @@ function formData(){
     district:$('district').value.trim(),
     upazila:$('upazila').value.trim(),
     address:$('address').value.trim(),
-    referral_code:$('referralCode').value.trim().toUpperCase(),
+    referral_code:$('referralCode')?.value.trim().toUpperCase()||'',
     rewards_voucher_code:$('rewardsVoucherCode')?.value.trim().toUpperCase()||'',
     grabpoints_opt_in:1,
     mystery_token:mysteryState.token
@@ -573,7 +573,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('division')?.addEventListener('change',onDivisionChange);
   $('district')?.addEventListener('change',onDistrictChange);
   bindLocationPickers();
-  $('applyReferralBtn')?.addEventListener('click',applyReferral);
   async function applyRewardsVoucher(){
     const input=$('rewardsVoucherCode'),msgp=$('grabpointsMsg');
     const code=String(input?.value||'').trim().toUpperCase(),phone=String($('customerPhone')?.value||'').replace(/\D/g,'');
