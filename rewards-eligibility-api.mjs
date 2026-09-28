@@ -38,12 +38,12 @@ export async function handleRewardsEligibility(req,env,adminSession){
  if(path==="/api/rewards/eligibility"&&method==="GET"){
   const productId=new URL(req.url).searchParams.get("product_id");
   if(productId){
-   const row=await one(db,`SELECT p.id product_id,p.vendor_id,COALESCE(vrs.eligibility_status,'inactive') vendor_status,COALESCE(vrs.rewards_enabled,0) rewards_enabled,COALESCE(vrs.referral_enabled,0) referral_enabled,COALESCE(vrs.eligible_store_layout,0) eligible_store_layout,COALESCE(pre.rewards_eligible,0) product_rewards,COALESCE(pre.referral_eligible,0) product_referral FROM products p LEFT JOIN vendor_rewards_settings vrs ON vrs.vendor_id=p.vendor_id LEFT JOIN product_rewards_eligibility pre ON pre.product_id=p.id AND pre.vendor_id=p.vendor_id WHERE p.id=? LIMIT 1`,productId);
+   const row=await one(db,`SELECT p.id product_id,p.vendor_id,COALESCE(vrs.eligibility_status,'inactive') vendor_status,COALESCE(vrs.rewards_enabled,0) rewards_enabled,COALESCE(vrs.referral_enabled,0) referral_enabled,COALESCE(vrs.eligible_store_layout,0) eligible_store_layout FROM products p LEFT JOIN vendor_rewards_settings vrs ON vrs.vendor_id=p.vendor_id WHERE p.id=? LIMIT 1`,productId);
    if(!row)return json({error:"Product not found."},404);
    const global=await one(db,"SELECT enabled FROM rewards_settings WHERE id=1");
    const active=String(row.vendor_status||"").toLowerCase()==="active";
    const globallyEnabled=Number(global?.enabled??1)===1;
-   return json({product_id:row.product_id,vendor_id:row.vendor_id,rewards_eligible:!!(globallyEnabled&&active&&row.rewards_enabled&&row.product_rewards),referral_eligible:!!(globallyEnabled&&active&&row.referral_enabled&&row.product_referral),eligible_store_layout:!!(active&&row.eligible_store_layout)});
+   return json({product_id:row.product_id,vendor_id:row.vendor_id,rewards_eligible:!!(globallyEnabled&&active&&row.rewards_enabled),referral_eligible:!!(globallyEnabled&&active&&row.referral_enabled),eligible_store_layout:!!(active&&row.eligible_store_layout)});
   }
   const slug=new URL(req.url).searchParams.get("slug");
   if(slug){
@@ -71,7 +71,7 @@ export async function handleRewardsEligibility(req,env,adminSession){
   return json({activity:rows});
  }
  if(path==="/api/admin/rewards-eligibility/overview"&&method==="GET"){
-  const stats=await one(db,`SELECT (SELECT COUNT(*) FROM vendor_rewards_settings WHERE eligibility_status='active') eligible_vendors,(SELECT COUNT(*) FROM vendor_rewards_settings WHERE rewards_enabled=1 AND eligibility_status='active') rewards_vendors,(SELECT COUNT(*) FROM vendor_rewards_settings WHERE referral_enabled=1 AND eligibility_status='active') referral_vendors,(SELECT COUNT(*) FROM product_rewards_eligibility WHERE status='eligible') eligible_products,(SELECT COALESCE(SUM(CASE WHEN points>0 AND (type='earn' OR type LIKE 'earn:%' OR type LIKE 'referral:%') THEN points ELSE 0 END),0) FROM grabpoints_ledger) gp_issued,(SELECT COALESCE(SUM(CASE WHEN type='redeem' THEN -points ELSE 0 END),0) FROM grabpoints_ledger) gp_redeemed`);
+  const stats=await one(db,`SELECT (SELECT COUNT(*) FROM vendor_rewards_settings WHERE eligibility_status='active') eligible_vendors,(SELECT COUNT(*) FROM vendor_rewards_settings WHERE rewards_enabled=1 AND eligibility_status='active') rewards_vendors,(SELECT COUNT(*) FROM vendor_rewards_settings WHERE referral_enabled=1 AND eligibility_status='active') referral_vendors,(SELECT COUNT(*) FROM products p JOIN vendor_rewards_settings s ON s.vendor_id=p.vendor_id WHERE s.eligibility_status='active') eligible_products,(SELECT COALESCE(SUM(CASE WHEN points>0 AND (type='earn' OR type LIKE 'earn:%' OR type LIKE 'referral:%') THEN points ELSE 0 END),0) FROM grabpoints_ledger) gp_issued,(SELECT COALESCE(SUM(CASE WHEN type='redeem' THEN -points ELSE 0 END),0) FROM grabpoints_ledger) gp_redeemed`);
   return json({stats:stats||{}});
  }
  if(path==="/api/admin/rewards-eligibility/vendors"&&method==="GET"){
