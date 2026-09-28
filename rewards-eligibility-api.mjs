@@ -94,10 +94,17 @@ export async function handleRewardsEligibility(req,env,adminSession){
   if(!vid)return json({error:"vendor_id is required."},400);
   const v=await one(db,"SELECT id FROM vendors WHERE id=?",vid);if(!v)return json({error:"Vendor not found."},404);
   const old=await one(db,"SELECT * FROM vendor_rewards_settings WHERE vendor_id=?",vid);
-  const next={rewards_enabled:Number(b.rewards_enabled??old?.rewards_enabled??0)?1:0,referral_enabled:Number(b.referral_enabled??old?.referral_enabled??0)?1:0,eligible_store_layout:Number(b.eligible_store_layout??old?.eligible_store_layout??0)?1:0,eligibility_status:(b.eligibility_status??old?.eligibility_status??"inactive")==="active"?"active":"inactive"};
+  // One store-level switch controls eligibility: an active/eligible store automatically
+  // enables Rewards + Referral + storefront eligibility for all of its products.
+  const eligible=(b.eligibility_status??old?.eligibility_status??"inactive")==="active";
+  const next={rewards_enabled:eligible?1:0,referral_enabled:eligible?1:0,eligible_store_layout:eligible?1:0,eligibility_status:eligible?"active":"inactive"};
   await db.prepare(`INSERT INTO vendor_rewards_settings(vendor_id,rewards_enabled,referral_enabled,eligible_store_layout,eligibility_status,updated_by,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(vendor_id) DO UPDATE SET rewards_enabled=excluded.rewards_enabled,referral_enabled=excluded.referral_enabled,eligible_store_layout=excluded.eligible_store_layout,eligibility_status=excluded.eligibility_status,updated_by=excluded.updated_by,updated_at=excluded.updated_at`).bind(vid,next.rewards_enabled,next.referral_enabled,next.eligible_store_layout,next.eligibility_status,adminId,stamp()).run();
+  await db.prepare(`INSERT INTO product_rewards_eligibility(product_id,vendor_id,rewards_eligible,referral_eligible,status,updated_by,updated_at)
+    SELECT id, vendor_id, ?, ?, ?, ?, ? FROM products WHERE vendor_id=?
+    ON CONFLICT(product_id) DO UPDATE SET vendor_id=excluded.vendor_id,rewards_eligible=excluded.rewards_eligible,referral_eligible=excluded.referral_eligible,status=excluded.status,updated_by=excluded.updated_by,updated_at=excluded.updated_at`)
+    .bind(next.rewards_enabled,next.referral_enabled,eligible?"eligible":"not_eligible",adminId,stamp(),vid).run();
   await audit(db,adminId,vid,null,"vendor_eligibility_update",old,next,b.reason);
-  return json({ok:true,vendor_id:vid,...next});
+  return json({ok:true,vendor_id:vid,...next,products_auto_updated:true});
  }
  if(path==="/api/admin/rewards-eligibility/products"&&method==="PATCH"){
   const b=await req.json().catch(()=>({})),pid=String(b.product_id||"");
