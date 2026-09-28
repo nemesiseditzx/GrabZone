@@ -95,6 +95,42 @@
       #gzRewardsApp.gz-auth-ui .gz-auth-form .eyebrow{color:#721de0}
       #gzRewardsApp.gz-auth-ui .gz-auth-switch{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.42)}
       #gzRewardsApp.gz-auth-ui .gz-auth-switch:hover{background:#fff;color:#5010d5}
+
+      /* Rich motion layer: drifting reward tokens, orbit rings, glow and shimmer */
+      #gzRewardsApp.gz-auth-ui .gz-auth-visual{overflow:hidden}
+      #gzRewardsApp.gz-auth-ui .gz-auth-motion{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+      #gzRewardsApp.gz-auth-ui .gz-auth-motion:before{content:"";position:absolute;inset:-40%;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.075) 48%,transparent 61%);transform:translateX(-70%) rotate(8deg);animation:gzAuthShimmer 7s ease-in-out infinite}
+      #gzRewardsApp.gz-auth-ui .gz-orbit{position:absolute;border:1px solid rgba(255,255,255,.2);border-radius:50%;width:350px;height:350px;right:-125px;top:8%;animation:gzOrbitDrift 15s ease-in-out infinite}
+      #gzRewardsApp.gz-auth-ui .gz-orbit-b{width:245px;height:245px;right:-65px;top:18%;border-style:dashed;border-color:rgba(255,255,255,.18);animation:gzOrbitDrift 19s ease-in-out infinite reverse}
+      #gzRewardsApp.gz-auth-ui .gz-float{position:absolute;display:grid;place-items:center;color:#fff;box-shadow:0 14px 32px rgba(32,0,85,.2);backdrop-filter:blur(7px);animation:gzTokenFloat 5.4s ease-in-out infinite}
+      #gzRewardsApp.gz-auth-ui .gz-float-star{top:15%;right:20%;font-size:28px;width:54px;height:54px;border-radius:18px;background:rgba(255,255,255,.15);animation-delay:-1.1s}
+      #gzRewardsApp.gz-auth-ui .gz-float-gift{right:12%;bottom:18%;font-size:28px;width:66px;height:66px;border-radius:22px;background:rgba(255,255,255,.16);animation-delay:-2.7s}
+      #gzRewardsApp.gz-auth-ui .gz-float-coin{right:43%;top:46%;width:48px;height:48px;border-radius:50%;font-weight:950;font-size:13px;background:linear-gradient(145deg,#ffeaa1,#eebd4e);color:#6e3bb1;border:3px solid rgba(255,255,255,.5);animation:gzCoinFloat 6s ease-in-out infinite}
+      #gzRewardsApp.gz-auth-ui .gz-float-heart{right:24%;bottom:38%;width:40px;height:40px;border-radius:14px;background:rgba(255,255,255,.17);font-size:22px;animation-delay:-3.5s}
+      #gzRewardsApp.gz-auth-ui .gz-glow{position:absolute;border-radius:50%;filter:blur(2px);background:rgba(255,255,255,.15);animation:gzGlowPulse 5s ease-in-out infinite}
+      #gzRewardsApp.gz-auth-ui .gz-glow-one{width:150px;height:150px;top:30%;left:9%}
+      #gzRewardsApp.gz-auth-ui .gz-glow-two{width:90px;height:90px;right:12%;top:65%;animation-delay:-2.4s}
+      #gzRewardsApp.gz-auth-ui .gz-auth-point i{animation:gzPointPulse 3s ease-in-out infinite}
+      #gzRewardsApp.gz-auth-ui .gz-auth-point:nth-child(2) i{animation-delay:.5s}
+      #gzRewardsApp.gz-auth-ui .gz-auth-point:nth-child(3) i{animation-delay:1s}
+      #gzRewardsApp.gz-auth-ui .gz-auth-form .gz-rewards-grid>*{animation:gzInputRise .55s cubic-bezier(.2,.8,.2,1) both}
+      #gzRewardsApp.gz-auth-ui .gz-auth-form .gz-rewards-grid>*:nth-child(2){animation-delay:.07s}
+      #gzRewardsApp.gz-auth-ui .gz-auth-form .gz-rewards-grid>*:nth-child(3){animation-delay:.14s}
+      #gzRewardsApp.gz-auth-ui .gz-auth-form .gz-rewards-grid>*:nth-child(4){animation-delay:.21s}
+      #gzRewardsApp.gz-auth-ui .gz-auth-form .gz-rewards-grid>*:nth-child(5){animation-delay:.28s}
+      #gzRewardsApp.gz-auth-ui .gz-auth-form .gz-rewards-grid>*:nth-child(6){animation-delay:.35s}
+      #gzRewardsApp.gz-auth-ui .gz-auth-form .gz-rewards-btn:not(.alt){position:relative;overflow:hidden}
+      #gzRewardsApp.gz-auth-ui .gz-auth-form .gz-rewards-btn:not(.alt):after{content:"";position:absolute;inset:-50% auto -50% -45%;width:30%;transform:skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:gzButtonShine 4.8s ease-in-out infinite}
+      @keyframes gzTokenFloat{0%,100%{transform:translate3d(0,0,0) rotate(-4deg)}50%{transform:translate3d(0,-17px,0) rotate(5deg)}}
+      @keyframes gzCoinFloat{0%,100%{transform:translate3d(0,0,0) rotateY(0)}50%{transform:translate3d(-9px,-15px,0) rotateY(180deg)}}
+      @keyframes gzOrbitDrift{0%,100%{transform:translate3d(0,0,0) rotate(0)}50%{transform:translate3d(-22px,18px,0) rotate(12deg)}}
+      @keyframes gzGlowPulse{0%,100%{opacity:.35;transform:scale(.88)}50%{opacity:.8;transform:scale(1.12)}}
+      @keyframes gzPointPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}50%{box-shadow:0 0 0 6px rgba(255,255,255,.08)}}
+      @keyframes gzInputRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes gzAuthShimmer{0%,30%{transform:translateX(-70%) rotate(8deg)}75%,100%{transform:translateX(70%) rotate(8deg)}}
+      @keyframes gzButtonShine{0%,65%{left:-45%}100%{left:140%}}
+      @media(max-width:760px){#gzRewardsApp.gz-auth-ui .gz-float-star{top:12%;right:12%}#gzRewardsApp.gz-auth-ui .gz-float-gift{right:8%;bottom:12%}#gzRewardsApp.gz-auth-ui .gz-float-coin{right:18%;top:45%}#gzRewardsApp.gz-auth-ui .gz-float-heart{right:38%;bottom:20%}#gzRewardsApp.gz-auth-ui .gz-orbit{width:240px;height:240px;right:-95px}}
+
       @media(prefers-reduced-motion:reduce){#gzRewardsApp.gz-auth-ui .gz-auth-logo,#gzRewardsApp.gz-auth-ui .gz-auth-kicker,#gzRewardsApp.gz-auth-ui .gz-auth-visual h3,#gzRewardsApp.gz-auth-ui .gz-auth-visual p,#gzRewardsApp.gz-auth-ui .gz-auth-points,#gzRewardsApp.gz-auth-ui .gz-auth-switch,#gzRewardsApp.gz-auth-ui .gz-auth-form{animation:none!important}}
 
       @keyframes gzFormInMobile{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
@@ -144,7 +180,7 @@
 
     const visual = document.createElement('aside');
     visual.className = 'gz-auth-visual';
-    visual.innerHTML = '<img class="gz-auth-logo" src="favicon.png" alt="GrabZone"><div class="gz-auth-kicker">GRABZONE REWARDS</div><h3>More rewards.<br>More reasons to come back.</h3><p>One account for your GrabPoints balance, membership tier and rewards. Keep shopping, keep earning, keep leveling up.</p><div class="gz-auth-points"><div class="gz-auth-point"><i>✓</i><span>Track your GP balance</span></div><div class="gz-auth-point"><i>★</i><span>Unlock higher tiers</span></div><div class="gz-auth-point"><i>↗</i><span>Redeem securely</span></div></div>';
+    visual.innerHTML = '<div class="gz-auth-motion" aria-hidden="true"><span class="gz-orbit gz-orbit-a"></span><span class="gz-orbit gz-orbit-b"></span><span class="gz-float gz-float-star">✦</span><span class="gz-float gz-float-gift">🎁</span><span class="gz-float gz-float-coin">GP</span><span class="gz-float gz-float-heart">♥</span><span class="gz-glow gz-glow-one"></span><span class="gz-glow gz-glow-two"></span></div><img class="gz-auth-logo" src="favicon.png" alt="GrabZone"><div class="gz-auth-kicker">GRABZONE REWARDS</div><h3>More rewards.<br>More reasons to come back.</h3><p>One account for your GrabPoints balance, membership tier and rewards. Keep shopping, keep earning, keep leveling up.</p><div class="gz-auth-points"><div class="gz-auth-point"><i>✓</i><span>Track your GP balance</span></div><div class="gz-auth-point"><i>★</i><span>Unlock higher tiers</span></div><div class="gz-auth-point"><i>↗</i><span>Redeem securely</span></div></div>';
 
     const switcher = document.createElement('button');
     switcher.type = 'button';
