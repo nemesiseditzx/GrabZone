@@ -730,9 +730,9 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
   height:auto!important;max-height:88vh!important;overflow:auto!important;margin:auto!important;
   clip-path:none!important;transform:none!important;visibility:visible!important;opacity:1!important;
   pointer-events:auto!important;border-radius:14px!important;box-shadow:0 28px 90px rgba(0,0,0,.48)!important;
-  animation:gzInvoiceSmoothReveal .5s cubic-bezier(.2,.75,.2,1) both!important;
+  /* Single invoice entrance is handled by gzInvoiceExpandSmooth below. */
 }
-@keyframes gzInvoiceSmoothReveal{from{opacity:0;transform:translateY(16px) scale(.99)}to{opacity:1;transform:none}}
+
 @media(max-width:700px){
   .track-page .invoice-modal.printing .receipt-paper{left:22px!important;right:22px!important;top:96px!important}
   .track-page .invoice-modal.printing.paper-feeding .receipt-paper{height:170px!important}
@@ -939,6 +939,13 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
   .track-page .printer-screen-track i{animation:none!important;width:62%!important}
 }
 
+
+/* Receipt printer stages from the supplied component: processing → printing → complete. */
+.track-page .invoice-modal[data-printer-stage="processing"] .printer-screen-track i{width:18%!important;transform:none!important;animation:none!important}
+.track-page .invoice-modal[data-printer-stage="printing"] .printer-screen-track i{animation:gzReceiptProgress 1.9s ease-in-out infinite alternate!important}
+.track-page .invoice-modal[data-printer-stage="complete"] .printer-screen-track i{width:100%!important;transform:none!important;animation:none!important;transition:width .45s cubic-bezier(.2,.8,.2,1)!important}
+@media(prefers-reduced-motion:reduce){.track-page .invoice-modal[data-printer-stage] .printer-screen-track i{animation:none!important;transition:none!important}}
+
 </style>
 </head>
 <body class="track-page">
@@ -966,11 +973,11 @@ body.track-page{background:#f4f5f7!important;color:#15181c!important}
             <div class="printer-brand">GRABZONE <span class="printer-model">SMART RECEIPT</span></div>
             <div class="printer-screen">
               <div class="printer-screen-top"><span>ORDER STATUS</span><span class="printer-live"><i></i> LIVE</span></div>
-              <div class="printer-screen-status">Printing your receipt</div>
+              <div class="printer-screen-status" id="printerScreenStatus" role="status" aria-live="polite">Processing your order</div>
               <div class="printer-screen-track"><i></i></div>
             </div>
             <div class="printer-slot"></div>
-            <div class="printer-printing-label">Receipt is being prepared</div>
+            <div class="printer-printing-label">Preparing your receipt…</div>
           </div>
         </div>
       </div>
