@@ -1,0 +1,26 @@
+/* GrabZone dashboard motion system — lightweight, accessible */
+:root{--gz-motion-accent:#4caf17;--gz-motion-ease:cubic-bezier(.22,.8,.25,1)}
+@media (prefers-reduced-motion:no-preference){
+  body:not(.gz-motion-ready) .content .tab.active,
+  body:not(.gz-motion-ready) .gz-main{animation:gzPageEnter .48s var(--gz-motion-ease) both}
+  @keyframes gzPageEnter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+  .side-link,.gz-nav button,.gz-btn,.primary,.ghost,.quick{transition:color .22s ease,background-color .22s ease,border-color .22s ease,box-shadow .24s ease,transform .24s var(--gz-motion-ease)!important}
+  .side-link{position:relative;overflow:hidden}
+  .side-link:active,.gz-nav button:active,.gz-btn:active,.quick:active{transform:scale(.975)!important}
+  .side-link.active{box-shadow:inset 3px 0 var(--gz-motion-accent),0 5px 16px rgba(76,175,23,.09)}
+  .side-link.active:before{content:"";position:absolute;left:0;top:12%;bottom:12%;width:3px;border-radius:0 5px 5px 0;background:var(--gz-motion-accent);animation:gzNavMark .28s var(--gz-motion-ease) both}
+  @keyframes gzNavMark{from{transform:scaleY(.2);opacity:0}to{transform:scaleY(1);opacity:1}}
+  .side-link:hover,.gz-nav button:hover{transform:translateY(-1px)}
+  .side-link.active:hover,.gz-nav button.active{background:linear-gradient(110deg,#edf9e8,#f8fff5)!important;color:#287d12!important;border-color:#d7efca!important}
+  .stat,.gz-kpi,.gz-stat,.quick,.gz-card,.gz-product-card,.gz-order-card,.panel{animation:gzCardEnter .48s var(--gz-motion-ease) both}
+  .stats>.stat:nth-child(2),.gz-kpi-grid>.gz-kpi:nth-child(2),.gz-grid>.gz-stat:nth-child(2){animation-delay:.05s}
+  .stats>.stat:nth-child(3),.gz-kpi-grid>.gz-kpi:nth-child(3),.gz-grid>.gz-stat:nth-child(3){animation-delay:.1s}
+  .gz-kpi-grid>.gz-kpi:nth-child(4),.gz-grid>.gz-stat:nth-child(4){animation-delay:.15s}
+  .gz-kpi-grid>.gz-kpi:nth-child(5){animation-delay:.2s}.gz-kpi-grid>.gz-kpi:nth-child(6){animation-delay:.25s}
+  @keyframes gzCardEnter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .stat,.gz-kpi,.gz-stat,.quick,.gz-card,.gz-product-card,.gz-order-card{transition:transform .25s var(--gz-motion-ease),box-shadow .25s ease,border-color .25s ease}
+  .stat:hover,.gz-kpi:hover,.gz-stat:hover,.quick:hover,.gz-product-card:hover,.gz-order-card:hover{transform:translateY(-3px);box-shadow:0 14px 32px rgba(22,48,15,.09);border-color:#cce8bf}
+  .primary:hover,.gz-btn.primary:hover{box-shadow:0 9px 22px rgba(76,175,23,.2);filter:saturate(1.06)}
+  .gz-modal,.gz-modal-box,.gz-editor-overlay .gz-editor{transition:opacity .2s ease,transform .24s var(--gz-motion-ease)}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
