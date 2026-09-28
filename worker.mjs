@@ -2,6 +2,7 @@
 import { sendCustomerOrderConfirmation } from './grabzone-email.mjs';
 import { notifyVendorsForOrder } from './vendor-order-notify.mjs';
 import { gzApplyCors, gzPreflight } from './cors-policy.mjs';
+import { handleRewardsEligibility } from './rewards-eligibility-api.mjs';
 const TABLES=new Set(["products","product_images","orders","order_items","billboards","billboard_settings","notices","referral_codes","site_settings","store_policies","customer_points","grabpoints_ledger","vendors","vendor_orders","vendor_order_items","shipments"]);
 const PUBLIC_TABLES=new Set(["products","product_images","notices","site_settings","billboards","billboard_settings","store_policies"]);
 const BOOLS=new Set(["drop_enabled","published","active","is_main","autoplay","show_arrows","show_dots","enabled","animation_enabled","show_notice","show_offer","show_how","show_referral","animations_enabled","page_load","scroll_reveal","product_hover","button_effects","hero_animation","floating_effects","notice_animation","magnetic_cursor","text_reveal","image_parallax","scroll_velocity","product_stagger","marquee_motion","header_scroll","premium_hover_glow","section_transitions","product_entrance","product_3d_tilt","product_image_zoom","product_image_parallax","product_cursor_spotlight","product_shine","product_hover_lift","product_featured_glow","billboard_animation","rewards_auth_animation","rewards_redeem_animation","rewards_redeem_sound","mobile_nav_animation","store_page_animation","cart_animation","modal_animation","micro_interactions","global_transitions"]);
@@ -573,6 +574,8 @@ async function shippingSettings(req,env){
   return json({ok:true,global_shipping_fee:fee});
 }
 async function api(req,env){const p=new URL(req.url).pathname;
+if(p==="/api/rewards/eligibility")return handleRewardsEligibility(req,env,null);
+if(p.startsWith("/api/admin/rewards-eligibility/"))return handleRewardsEligibility(req,env,await session(req,env));
 if(p==="/api/marketplace/shipping-settings")return shippingSettings(req,env);
 if(p==="/api/admin-auth")return auth(req,env);if(p==="/api/d1")return d1(req,env);if(p==="/api/track-order")return track(req,env);if(p==="/api/r2-upload")return upload(req,env);if(p.startsWith("/api/r2/"))return r2(req,env);if(p==="/api/r2-presign")return json({error:"Legacy upload endpoint removed. Use /api/r2-upload."},410);if(p==="/api/business-koro-order")return req.method==="POST"?business(req,env):json({error:"Method not allowed."},405);if(p==="/api/send-order-email"||p==="/send-order-email")return req.method==="POST"?email(req,env):json({error:"Method not allowed."},405);if(p==="/api/email/status")return req.method==="GET"?emailStatus(req,env):json({error:"Method not allowed."},405);if(p==="/api/sync-order-sheet")return req.method==="POST"?sheet(req,env):json({error:"Method not allowed."},405);if(p==="/api/product-reviews")return productReviews(req,env);if(p==="/api/product-review-photo")return productReviewPhoto(req,env);if(p==="/api/health")return json({ok:true,backend:"cloudflare-worker",d1:!!env.DB,r2:!!env.ASSETS_BUCKET});return null}
 function cors(r,req,env){
