@@ -61,7 +61,7 @@ export async function handleRewardsEligibility(req,env,adminSession){
  if(path==="/api/admin/rewards-eligibility/audit"&&method==="GET"){
   const u=new URL(req.url),vid=u.searchParams.get("vendor_id")||"",pid=u.searchParams.get("product_id")||"";
   const limit=Math.min(200,Math.max(1,Number(u.searchParams.get("limit")||100)));
-  const logs=await all(db,`SELECT a.id,a.admin_id,a.vendor_id,COALESCE(v.brand_name,v.business_name,'Unknown store') vendor_name,a.product_id,COALESCE(p.name,'') product_name,a.action,a.old_value,a.new_value,a.reason,a.created_at FROM rewards_audit_logs a LEFT JOIN vendors v ON v.id=a.vendor_id LEFT JOIN products p ON p.id=a.product_id WHERE (?='' OR a.vendor_id=?) AND (?='' OR a.product_id=?) ORDER BY a.created_at DESC LIMIT ${limit}`,vid,vid,pid,pid);
+  const logs=await all(db,`SELECT a.id,a.admin_id,a.vendor_id,COALESCE(vp.brand_name,vp.business_name,vd.brand_name,vd.business_name,vu.brand_name,vu.business_name,vu2.brand_name,vu2.business_name,'Store unavailable') vendor_name,a.product_id,COALESCE(p.name,'') product_name,a.action,a.old_value,a.new_value,a.reason,a.created_at FROM rewards_audit_logs a LEFT JOIN products p ON p.id=a.product_id LEFT JOIN vendors vd ON vd.id=a.vendor_id LEFT JOIN vendors vp ON vp.id=p.vendor_id LEFT JOIN vendor_users vu ON vu.id=a.vendor_id LEFT JOIN vendors vu2 ON vu2.id=vu.vendor_id WHERE (?='' OR a.vendor_id=? OR p.vendor_id=?) AND (?='' OR a.product_id=?) ORDER BY a.created_at DESC LIMIT ${limit}`,vid,vid,vid,pid,pid);
   return json({logs});
  }
  if(path==="/api/admin/rewards-eligibility/activity"&&method==="GET"){
