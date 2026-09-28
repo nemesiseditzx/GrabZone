@@ -112,11 +112,13 @@ export async function handleRewardsEligibility(req,env,adminSession){
   const b=await req.json().catch(()=>({})),old=await one(db,"SELECT * FROM rewards_settings WHERE id=1");
   const enabled=Number(b.enabled??old?.enabled??1)?1:0;
   const gp=b.gp_value_bdt==null?old?.gp_value_bdt:Number(b.gp_value_bdt);
+  const referralReward=Math.floor(Number(b.referral_reward_points??old?.referral_reward_points??0));
+  if(!Number.isFinite(referralReward)||referralReward<0||referralReward>1000000)return json({error:"Referral reward must be between 0 and 1,000,000 GP."},400);
   if(gp!=null&&(!Number.isFinite(gp)||gp<=0||gp>1000))return json({error:"GP conversion must be a positive value."},400);
-  await db.prepare("INSERT INTO rewards_settings(id,enabled,gp_value_bdt,updated_at) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled,gp_value_bdt=COALESCE(excluded.gp_value_bdt,rewards_settings.gp_value_bdt),updated_at=excluded.updated_at").bind(enabled,gp??null,stamp()).run();
+  await db.prepare("INSERT INTO rewards_settings(id,enabled,gp_value_bdt,referral_reward_points,updated_at) VALUES(1,?,?,?,?) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled,gp_value_bdt=COALESCE(excluded.gp_value_bdt,rewards_settings.gp_value_bdt),referral_reward_points=excluded.referral_reward_points,updated_at=excluded.updated_at").bind(enabled,gp??null,referralReward,stamp()).run();
   if(gp!=null){await db.prepare("INSERT INTO site_settings(id,grabpoints_enabled,grabpoints_value,updated_at) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET grabpoints_enabled=excluded.grabpoints_enabled,grabpoints_value=excluded.grabpoints_value,updated_at=excluded.updated_at").bind(enabled,gp,stamp()).run()}else{await db.prepare("UPDATE site_settings SET grabpoints_enabled=?,updated_at=? WHERE id=1").bind(enabled,stamp()).run()}
   await audit(db,adminId,null,null,"global_rewards_settings_update",old,{enabled,gp_value_bdt:gp??null},b.reason);
-  return json({ok:true,enabled,gp_value_bdt:gp??null});
+  return json({ok:true,enabled,gp_value_bdt:gp??null,referral_reward_points:referralReward});
  }
  return json({error:"Method not allowed or route not found."},405);
 }
