@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS rewards_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   enabled INTEGER NOT NULL DEFAULT 1,
   gp_value_bdt REAL,
+  referral_reward_points INTEGER NOT NULL DEFAULT 0,
   updated_at TEXT NOT NULL
 );
 
