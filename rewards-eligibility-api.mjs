@@ -7,10 +7,20 @@ async function ensure(db){
  `CREATE TABLE IF NOT EXISTS vendor_rewards_settings(vendor_id TEXT PRIMARY KEY,rewards_enabled INTEGER NOT NULL DEFAULT 0,referral_enabled INTEGER NOT NULL DEFAULT 0,eligible_store_layout INTEGER NOT NULL DEFAULT 0,eligibility_status TEXT NOT NULL DEFAULT 'inactive',updated_by TEXT,updated_at TEXT NOT NULL)`,
  `CREATE TABLE IF NOT EXISTS product_rewards_eligibility(product_id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,rewards_eligible INTEGER NOT NULL DEFAULT 0,referral_eligible INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'not_eligible',updated_by TEXT,updated_at TEXT NOT NULL)`,
  `CREATE TABLE IF NOT EXISTS rewards_audit_logs(id TEXT PRIMARY KEY,admin_id TEXT,vendor_id TEXT,product_id TEXT,action TEXT NOT NULL,old_value TEXT,new_value TEXT,reason TEXT,created_at TEXT NOT NULL)`,
+ `CREATE TABLE IF NOT EXISTS referrals(id TEXT PRIMARY KEY,referrer_member_id TEXT NOT NULL,referral_code TEXT NOT NULL UNIQUE,referred_member_id TEXT,status TEXT NOT NULL DEFAULT 'pending',qualifying_order_id TEXT,created_at TEXT NOT NULL,qualified_at TEXT,rewarded_at TEXT)`,
+ `CREATE INDEX IF NOT EXISTS referrals_referrer_idx ON referrals(referrer_member_id,created_at DESC)`,
+ `CREATE INDEX IF NOT EXISTS referrals_referred_idx ON referrals(referred_member_id)`,
+ `CREATE INDEX IF NOT EXISTS referrals_order_idx ON referrals(qualifying_order_id)`,
+ `CREATE TABLE IF NOT EXISTS referral_rewards(id TEXT PRIMARY KEY,referral_id TEXT NOT NULL,order_id TEXT NOT NULL,referrer_member_id TEXT NOT NULL,referred_member_id TEXT,discount_amount REAL NOT NULL DEFAULT 0,reward_points INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL,completed_at TEXT,reversed_at TEXT,UNIQUE(referral_id,order_id))`,
+ `CREATE INDEX IF NOT EXISTS referral_rewards_referrer_idx ON referral_rewards(referrer_member_id,status,created_at DESC)`,
+ `CREATE TABLE IF NOT EXISTS rewards_order_allocations(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,order_item_id TEXT,vendor_id TEXT NOT NULL,product_id TEXT NOT NULL,rewards_eligible INTEGER NOT NULL DEFAULT 0,referral_eligible INTEGER NOT NULL DEFAULT 0,qualifying_subtotal REAL NOT NULL DEFAULT 0,referral_discount REAL NOT NULL DEFAULT 0,cashback_percent REAL NOT NULL DEFAULT 0,cashback_points INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,order_item_id))`,
+ `CREATE INDEX IF NOT EXISTS rewards_alloc_order_idx ON rewards_order_allocations(order_id,status)`,
+ `CREATE INDEX IF NOT EXISTS rewards_alloc_vendor_idx ON rewards_order_allocations(vendor_id,created_at DESC)`,
  `CREATE INDEX IF NOT EXISTS vendor_rewards_settings_active_idx ON vendor_rewards_settings(eligibility_status,rewards_enabled,referral_enabled)`,
  `CREATE INDEX IF NOT EXISTS product_rewards_vendor_idx ON product_rewards_eligibility(vendor_id,status)`
  ];
  for(const sql of statements) await db.prepare(sql).run();
+ await db.prepare("INSERT OR IGNORE INTO rewards_settings(id,enabled,gp_value_bdt,updated_at) VALUES(1,1,NULL,?)").bind(stamp()).run();
 }
 const one=async(db,sql,...args)=>(await db.prepare(sql).bind(...args).all()).results?.[0]||null;
 const all=async(db,sql,...args)=>(await db.prepare(sql).bind(...args).all()).results||[];
@@ -27,15 +37,19 @@ export async function handleRewardsEligibility(req,env,adminSession){
   if(productId){
    const row=await one(db,`SELECT p.id product_id,p.vendor_id,COALESCE(vrs.eligibility_status,'inactive') vendor_status,COALESCE(vrs.rewards_enabled,0) rewards_enabled,COALESCE(vrs.referral_enabled,0) referral_enabled,COALESCE(vrs.eligible_store_layout,0) eligible_store_layout,COALESCE(pre.rewards_eligible,0) product_rewards,COALESCE(pre.referral_eligible,0) product_referral FROM products p LEFT JOIN vendor_rewards_settings vrs ON vrs.vendor_id=p.vendor_id LEFT JOIN product_rewards_eligibility pre ON pre.product_id=p.id AND pre.vendor_id=p.vendor_id WHERE p.id=? LIMIT 1`,productId);
    if(!row)return json({error:"Product not found."},404);
-   const active=row.vendor_status==="active";
-   return json({product_id:row.product_id,vendor_id:row.vendor_id,rewards_eligible:!!(active&&row.rewards_enabled&&row.product_rewards),referral_eligible:!!(active&&row.referral_enabled&&row.product_referral),eligible_store_layout:!!(active&&row.eligible_store_layout)});
+   const global=await one(db,"SELECT enabled FROM rewards_settings WHERE id=1");
+   const active=String(row.vendor_status||"").toLowerCase()==="active";
+   const globallyEnabled=Number(global?.enabled??1)===1;
+   return json({product_id:row.product_id,vendor_id:row.vendor_id,rewards_eligible:!!(globallyEnabled&&active&&row.rewards_enabled&&row.product_rewards),referral_eligible:!!(globallyEnabled&&active&&row.referral_enabled&&row.product_referral),eligible_store_layout:!!(active&&row.eligible_store_layout)});
   }
   const slug=new URL(req.url).searchParams.get("slug");
   if(slug){
    const vendor=await one(db,"SELECT id FROM vendors WHERE slug=? LIMIT 1",slug);
    if(!vendor)return json({error:"Vendor not found."},404);
    const v=await one(db,"SELECT * FROM vendor_rewards_settings WHERE vendor_id=?",vendor.id);
-   return json({vendor_id:vendor.id,eligible:!!(v?.eligibility_status==="active"),rewards_enabled:!!(v?.eligibility_status==="active"&&v?.rewards_enabled),referral_enabled:!!(v?.eligibility_status==="active"&&v?.referral_enabled),eligible_store_layout:!!(v?.eligibility_status==="active"&&v?.eligible_store_layout)});
+   const global=await one(db,"SELECT enabled FROM rewards_settings WHERE id=1");
+   const active=String(v?.eligibility_status||"").toLowerCase()==="active",globallyEnabled=Number(global?.enabled??1)===1;
+   return json({vendor_id:vendor.id,eligible:active,rewards_enabled:!!(globallyEnabled&&active&&v?.rewards_enabled),referral_enabled:!!(globallyEnabled&&active&&v?.referral_enabled),eligible_store_layout:!!(active&&v?.eligible_store_layout)});
   }
   return json({error:"Provide product_id or slug."},400);
  }
