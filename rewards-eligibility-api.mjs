@@ -88,7 +88,8 @@ export async function handleRewardsEligibility(req,env,adminSession){
   const enabled=Number(b.enabled??old?.enabled??1)?1:0;
   const gp=b.gp_value_bdt==null?old?.gp_value_bdt:Number(b.gp_value_bdt);
   if(gp!=null&&(!Number.isFinite(gp)||gp<=0||gp>1000))return json({error:"GP conversion must be a positive value."},400);
-  await db.prepare("INSERT INTO rewards_settings(id,enabled,gp_value_bdt,updated_at) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled,gp_value_bdt=excluded.gp_value_bdt,updated_at=excluded.updated_at").bind(enabled,gp??null,stamp()).run();
+  await db.prepare("INSERT INTO rewards_settings(id,enabled,gp_value_bdt,updated_at) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET enabled=excluded.enabled,gp_value_bdt=COALESCE(excluded.gp_value_bdt,rewards_settings.gp_value_bdt),updated_at=excluded.updated_at").bind(enabled,gp??null,stamp()).run();
+  if(gp!=null){await db.prepare("INSERT INTO site_settings(id,grabpoints_enabled,grabpoints_value,updated_at) VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET grabpoints_enabled=excluded.grabpoints_enabled,grabpoints_value=excluded.grabpoints_value,updated_at=excluded.updated_at").bind(enabled,gp,stamp()).run()}else{await db.prepare("UPDATE site_settings SET grabpoints_enabled=?,updated_at=? WHERE id=1").bind(enabled,stamp()).run()}
   await audit(db,adminId,null,null,"global_rewards_settings_update",old,{enabled,gp_value_bdt:gp??null},b.reason);
   return json({ok:true,enabled,gp_value_bdt:gp??null});
  }
