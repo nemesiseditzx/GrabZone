@@ -41,9 +41,8 @@ export async function handleRewardsEligibility(req,env,adminSession){
    const row=await one(db,`SELECT p.id product_id,p.vendor_id,COALESCE(vrs.eligibility_status,'inactive') vendor_status,COALESCE(vrs.rewards_enabled,0) rewards_enabled,COALESCE(vrs.referral_enabled,0) referral_enabled,COALESCE(vrs.eligible_store_layout,0) eligible_store_layout FROM products p LEFT JOIN vendor_rewards_settings vrs ON vrs.vendor_id=p.vendor_id WHERE p.id=? LIMIT 1`,productId);
    if(!row)return json({error:"Product not found."},404);
    const global=await one(db,"SELECT enabled FROM rewards_settings WHERE id=1");
-   const active=String(row.vendor_status||"").toLowerCase()==="active";
    const globallyEnabled=Number(global?.enabled??1)===1;
-   return json({product_id:row.product_id,vendor_id:row.vendor_id,rewards_eligible:!!(globallyEnabled&&active),referral_eligible:!!(globallyEnabled&&active),eligible_store_layout:!!active});
+   return json({product_id:row.product_id,vendor_id:row.vendor_id,rewards_eligible:!!(globallyEnabled&&Number(row.rewards_enabled)===1),referral_eligible:!!(globallyEnabled&&Number(row.referral_enabled)===1),eligible_store_layout:!!(Number(row.eligible_store_layout)===1)});
   }
   const slug=new URL(req.url).searchParams.get("slug");
   if(slug){
@@ -51,8 +50,8 @@ export async function handleRewardsEligibility(req,env,adminSession){
    if(!vendor)return json({error:"Vendor not found."},404);
    const v=await one(db,"SELECT * FROM vendor_rewards_settings WHERE vendor_id=?",vendor.id);
    const global=await one(db,"SELECT enabled FROM rewards_settings WHERE id=1");
-   const active=String(v?.eligibility_status||"").toLowerCase()==="active",globallyEnabled=Number(global?.enabled??1)===1;
-   return json({vendor_id:vendor.id,eligible:active,rewards_enabled:!!(globallyEnabled&&active),referral_enabled:!!(globallyEnabled&&active),eligible_store_layout:!!active});
+   const globallyEnabled=Number(global?.enabled??1)===1;
+   return json({vendor_id:vendor.id,eligible:!!(Number(v?.rewards_enabled)||Number(v?.referral_enabled)||Number(v?.eligible_store_layout)),rewards_enabled:!!(globallyEnabled&&Number(v?.rewards_enabled)===1),referral_enabled:!!(globallyEnabled&&Number(v?.referral_enabled)===1),eligible_store_layout:!!(Number(v?.eligible_store_layout)===1)});
   }
   return json({error:"Provide product_id or slug."},400);
  }
@@ -94,15 +93,15 @@ export async function handleRewardsEligibility(req,env,adminSession){
   if(!vid)return json({error:"vendor_id is required."},400);
   const v=await one(db,"SELECT id FROM vendors WHERE id=?",vid);if(!v)return json({error:"Vendor not found."},404);
   const old=await one(db,"SELECT * FROM vendor_rewards_settings WHERE vendor_id=?",vid);
-  // One store-level switch controls eligibility: an active/eligible store automatically
-  // enables Rewards + Referral + storefront eligibility for all of its products.
-  const eligible=(b.eligibility_status??old?.eligibility_status??"inactive")==="active";
-  const next={rewards_enabled:eligible?1:0,referral_enabled:eligible?1:0,eligible_store_layout:eligible?1:0,eligibility_status:eligible?"active":"inactive"};
-  await db.prepare(`INSERT INTO vendor_rewards_settings(vendor_id,rewards_enabled,referral_enabled,eligible_store_layout,eligibility_status,updated_by,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(vendor_id) DO UPDATE SET rewards_enabled=excluded.rewards_enabled,referral_enabled=excluded.referral_enabled,eligible_store_layout=excluded.eligible_store_layout,eligibility_status=excluded.eligibility_status,updated_by=excluded.updated_by,updated_at=excluded.updated_at`).bind(vid,next.rewards_enabled,next.referral_enabled,next.eligible_store_layout,next.eligibility_status,adminId,stamp()).run();
+  const flag=(key,previous)=>Number(b[key]??previous??0)?1:0;
+  const rewards=flag("rewards_enabled",old?.rewards_enabled),referral=flag("referral_enabled",old?.referral_enabled),layout=flag("eligible_store_layout",old?.eligible_store_layout);
+  const status=(rewards||referral||layout)?"active":"inactive";
+  const next={rewards_enabled:rewards,referral_enabled:referral,eligible_store_layout:layout,eligibility_status:status};
+  await db.prepare(`INSERT INTO vendor_rewards_settings(vendor_id,rewards_enabled,referral_enabled,eligible_store_layout,eligibility_status,updated_by,updated_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(vendor_id) DO UPDATE SET rewards_enabled=excluded.rewards_enabled,referral_enabled=excluded.referral_enabled,eligible_store_layout=excluded.eligible_store_layout,eligibility_status=excluded.eligibility_status,updated_by=excluded.updated_by,updated_at=excluded.updated_at`).bind(vid,rewards,referral,layout,status,adminId,stamp()).run();
   await db.prepare(`INSERT INTO product_rewards_eligibility(product_id,vendor_id,rewards_eligible,referral_eligible,status,updated_by,updated_at)
-    SELECT id, vendor_id, ?, ?, ?, ?, ? FROM products WHERE vendor_id=?
+    SELECT id,vendor_id,?,?,?, ?,? FROM products WHERE vendor_id=?
     ON CONFLICT(product_id) DO UPDATE SET vendor_id=excluded.vendor_id,rewards_eligible=excluded.rewards_eligible,referral_eligible=excluded.referral_eligible,status=excluded.status,updated_by=excluded.updated_by,updated_at=excluded.updated_at`)
-    .bind(next.rewards_enabled,next.referral_enabled,eligible?"eligible":"not_eligible",adminId,stamp(),vid).run();
+    .bind(rewards,referral,(rewards||referral)?"eligible":"not_eligible",adminId,stamp(),vid).run();
   await audit(db,adminId,vid,null,"vendor_eligibility_update",old,next,b.reason);
   return json({ok:true,vendor_id:vid,...next,products_auto_updated:true});
  }
