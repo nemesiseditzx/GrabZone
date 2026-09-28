@@ -261,7 +261,7 @@ function formData(){
     district:$('district').value.trim(),
     upazila:$('upazila').value.trim(),
     address:$('address').value.trim(),
-    referral_code:$('referralCode')?.value.trim().toUpperCase()||'',
+    referral_code:$('referralCode').value.trim().toUpperCase(),
     rewards_voucher_code:$('rewardsVoucherCode')?.value.trim().toUpperCase()||'',
     grabpoints_opt_in:1,
     mystery_token:mysteryState.token
@@ -571,6 +571,7 @@ loadGlobalShipping().then(()=>{try{render();renderDeliveryEta()}catch{}}).catch(
 document.addEventListener('DOMContentLoaded',async()=>{
   $('checkoutForm')?.addEventListener('submit',submit);
   $('division')?.addEventListener('change',onDivisionChange);
+  $('applyReferralBtn')?.addEventListener('click',applyReferral);
   $('district')?.addEventListener('change',onDistrictChange);
   bindLocationPickers();
   async function applyRewardsVoucher(){
