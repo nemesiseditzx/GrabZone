@@ -133,7 +133,7 @@
 
       @media(prefers-reduced-motion:reduce){#gzRewardsApp.gz-auth-ui .gz-auth-logo,#gzRewardsApp.gz-auth-ui .gz-auth-kicker,#gzRewardsApp.gz-auth-ui .gz-auth-visual h3,#gzRewardsApp.gz-auth-ui .gz-auth-visual p,#gzRewardsApp.gz-auth-ui .gz-auth-points,#gzRewardsApp.gz-auth-ui .gz-auth-switch,#gzRewardsApp.gz-auth-ui .gz-auth-form{animation:none!important}}
 
-      @keyframes gzFormInMobile{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+      @media(prefers-reduced-motion:reduce){#gzRewardsApp.gz-auth-ui .gz-auth-motion *,#gzRewardsApp.gz-auth-ui .gz-auth-form .gz-rewards-grid>*,#gzRewardsApp.gz-auth-ui .gz-auth-form .gz-rewards-btn:after{animation:none!important;transition:none!important}}\n      @keyframes gzFormInMobile{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
     `;
   }
 
