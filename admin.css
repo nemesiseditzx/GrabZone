@@ -246,3 +246,17 @@ input[type=checkbox],input[type=radio]{appearance:auto;width:auto;min-height:aut
   #tab-products .vp-var-actions .gz-btn{width:100% !important}
   #tab-products .vp-var-actions input{width:100% !important}
 }
+
+
+/* Admin dashboard consistency: one navigation, bounded text, responsive panels. */
+.gz-unified-topnav,.gz-unified-dock{display:none!important}
+.content,.tab,.panel,.stat,.quick,.page-title,.form-grid,.product-list,.item{min-width:0;max-width:100%}
+.page-title h1,.page-title p,.panel h2,.panel p,.stat,.quick,.item,.meta,.hint,label{overflow-wrap:anywhere;word-break:normal}
+.panel{overflow:hidden}
+.form-grid>*{min-width:0}
+input,textarea,select{max-width:100%;min-width:0}
+button,.primary,.ghost,.side-link{line-height:1.35;white-space:normal}
+.sidebar{flex:0 0 225px}
+@media(max-width:950px){.sidebar{flex:0 0 190px}.content{padding:22px;min-width:0}}
+@media(max-width:700px){.layout{display:block}.sidebar{display:flex;width:100%;min-height:0;position:sticky;top:70px;z-index:40;overflow-x:auto;padding:8px;background:rgba(255,255,255,.97);border-bottom:1px solid #e5e7eb}.side-link{flex:0 0 auto;width:auto;margin:0;white-space:nowrap;padding:10px 12px}.content{padding:16px 12px}.page-title{display:flex;flex-direction:column;align-items:flex-start;gap:8px}.stats,.form-grid,.toggle-grid,.quick-grid{grid-template-columns:minmax(0,1fr)!important}.panel{padding:15px}.product-list .item{grid-template-columns:58px minmax(0,1fr);gap:10px}.item img{width:58px;height:58px}.item button{grid-column:2}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
