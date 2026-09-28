@@ -21,10 +21,10 @@ const shippingPage=path.includes('shipping');
 const storesPage=path.includes('stores');\nconst productsPage=path.includes('products');
 const settingsPage=path.includes('settings');
 const controlPage=path.includes('vendor-control');
-const vendorPage=path.includes('vendor-dashboard')||path.includes('vendor-login')||controlPage;
+const vendorPage=path.includes('vendor-dashboard')||path.includes('vendor-login');
 const isAdminMain=path.endsWith('/admin.html');
 const items=vendorPage?vendor:admin;
-const current=vendorPage?(path.includes('vendor-dashboard')?'Dashboard':controlPage?'Vendors':'Dashboard'):isAdminMain?'Overview':orderPage?'Orders':salesPage?'Sales':productsPage?'Products':shippingPage?'Shipping':storesPage?'Stores':settingsPage?'Settings':'Vendors';
+const vendorTab=({products:'Products',orders:'Orders',store:'Store',settings:'Settings'})[location.hash.slice(1)]||'Dashboard';\nconst current=vendorPage?vendorTab:isAdminMain?'Overview':orderPage?'Orders':salesPage?'Sales':productsPage?'Products':shippingPage?'Shipping':storesPage?'Stores':settingsPage?'Settings':'Vendors';
 function link(item,cls){const [label,url,ico]=item;const a=document.createElement('a');a.className=cls+(label===current?' is-active':'');a.href=url;a.innerHTML=(icon[ico]||icon.grid)+'<span>'+label+'</span>';if(label===current)a.setAttribute('aria-current','page');return a}
 function mount(){
  if(document.querySelector('.gz-unified-topnav'))return;
