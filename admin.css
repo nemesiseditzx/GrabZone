@@ -249,7 +249,7 @@ input[type=checkbox],input[type=radio]{appearance:auto;width:auto;min-height:aut
 
 
 /* Admin dashboard consistency: one navigation, bounded text, responsive panels. */
-.gz-unified-topnav,.gz-unified-dock{display:none!important}
+.gz-unified-topnav,.gz-unified-dock{display:none!important}body.gz-has-unified-dock{padding-bottom:0!important}
 .content,.tab,.panel,.stat,.quick,.page-title,.form-grid,.product-list,.item{min-width:0;max-width:100%}
 .page-title h1,.page-title p,.panel h2,.panel p,.stat,.quick,.item,.meta,.hint,label{overflow-wrap:anywhere;word-break:normal}
 .panel{overflow:hidden}
