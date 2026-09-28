@@ -56,6 +56,17 @@ export async function handleRewardsEligibility(req,env,adminSession){
  if(!path.startsWith("/api/admin/rewards-eligibility"))return null;
  if(!adminSession)return json({error:"Unauthorized."},401);
  const adminId=adminSession.id||adminSession.email||null;
+ if(path==="/api/admin/rewards-eligibility/audit"&&method==="GET"){
+  const u=new URL(req.url),vid=u.searchParams.get("vendor_id")||"",pid=u.searchParams.get("product_id")||"";
+  const limit=Math.min(200,Math.max(1,Number(u.searchParams.get("limit")||100)));
+  const logs=await all(db,`SELECT id,admin_id,vendor_id,product_id,action,old_value,new_value,reason,created_at FROM rewards_audit_logs WHERE (?='' OR vendor_id=?) AND (?='' OR product_id=?) ORDER BY created_at DESC LIMIT ${limit}`,vid,vid,pid,pid);
+  return json({logs});
+ }
+ if(path==="/api/admin/rewards-eligibility/activity"&&method==="GET"){
+  const u=new URL(req.url),vid=u.searchParams.get("vendor_id")||"",limit=Math.min(200,Math.max(1,Number(u.searchParams.get("limit")||100)));
+  const rows=await all(db,`SELECT a.order_id,a.vendor_id,a.product_id,a.rewards_eligible,a.referral_eligible,a.qualifying_subtotal,a.referral_discount,a.cashback_percent,a.cashback_points,a.status,a.created_at,o.order_number,o.status order_status,o.phone FROM rewards_order_allocations a LEFT JOIN orders o ON o.id=a.order_id WHERE (?='' OR a.vendor_id=?) ORDER BY a.created_at DESC LIMIT ${limit}`,vid,vid);
+  return json({activity:rows});
+ }
  if(path==="/api/admin/rewards-eligibility/overview"&&method==="GET"){
   const stats=await one(db,`SELECT (SELECT COUNT(*) FROM vendor_rewards_settings WHERE eligibility_status='active') eligible_vendors,(SELECT COUNT(*) FROM vendor_rewards_settings WHERE rewards_enabled=1 AND eligibility_status='active') rewards_vendors,(SELECT COUNT(*) FROM vendor_rewards_settings WHERE referral_enabled=1 AND eligibility_status='active') referral_vendors,(SELECT COUNT(*) FROM product_rewards_eligibility WHERE status='eligible') eligible_products,(SELECT COALESCE(SUM(CASE WHEN type='earn' THEN points ELSE 0 END),0) FROM grabpoints_ledger) gp_issued,(SELECT COALESCE(SUM(CASE WHEN type='redeem' THEN -points ELSE 0 END),0) FROM grabpoints_ledger) gp_redeemed`);
   return json({stats:stats||{}});
