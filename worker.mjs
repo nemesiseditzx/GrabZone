@@ -391,8 +391,8 @@ for(const i of items){
      const global=(await q(env,"SELECT enabled FROM rewards_settings WHERE id=1 LIMIT 1")).results?.[0];
      const active=String(eligibility?.vendor_status||"").toLowerCase()==="active"&&Number(global?.enabled??1)===1;
      // Store-level eligibility automatically covers every current and future product.
-     rewardsEligible=active&&Number(eligibility?.rewards_enabled)===1?1:0;
-     referralEligible=active&&Number(eligibility?.referral_enabled)===1?1:0;
+     rewardsEligible=active?1:0;
+     referralEligible=active?1:0;
    }
    const t0=now();
    await env.DB.prepare("INSERT OR IGNORE INTO rewards_order_allocations(id,order_id,order_item_id,vendor_id,product_id,rewards_eligible,referral_eligible,qualifying_subtotal,referral_discount,cashback_percent,cashback_points,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?, ?,0,0,0,'pending',?,?)")
