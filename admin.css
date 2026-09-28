@@ -260,3 +260,24 @@ button,.primary,.ghost,.side-link{line-height:1.35;white-space:normal}
 @media(max-width:950px){.sidebar{flex:0 0 190px}.content{padding:22px;min-width:0}}
 @media(max-width:700px){.layout{display:block}.sidebar{display:flex;width:100%;min-height:0;position:sticky;top:70px;z-index:40;overflow-x:auto;padding:8px;background:rgba(255,255,255,.97);border-bottom:1px solid #e5e7eb}.side-link{flex:0 0 auto;width:auto;margin:0;white-space:nowrap;padding:10px 12px}.content{padding:16px 12px}.page-title{display:flex;flex-direction:column;align-items:flex-start;gap:8px}.stats,.form-grid,.toggle-grid,.quick-grid{grid-template-columns:minmax(0,1fr)!important}.panel{padding:15px}.product-list .item{grid-template-columns:58px minmax(0,1fr);gap:10px}.item img{width:58px;height:58px}.item button{grid-column:2}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+
+/* GrabZone premium admin refresh — warm ivory surfaces, orange action hierarchy */
+:root{--admin-accent:#f56a12;--admin-accent-dark:#d95100;--admin-accent-soft:#fff0e5;--admin-ink:#17191d;--admin-muted:#727985;--admin-line:#e7e9ed;--admin-bg:#f5f6f8}
+body{background:radial-gradient(ellipse at 10% 0%,#fff1e6 0,transparent 32%),var(--admin-bg);color:var(--admin-ink)}
+.topbar{background:rgba(255,255,255,.92);backdrop-filter:blur(18px);border-bottom-color:#e9e5df;box-shadow:0 5px 24px #24242408}
+.brand-badge,.logo-badge{background:linear-gradient(135deg,#ff8b35,#ed5a00);box-shadow:0 7px 18px #f56a1233}
+.sidebar{background:rgba(255,255,255,.9);border-right-color:#e9e5df}
+.side-link{color:#535b66;transition:background .18s,color .18s,transform .18s}
+.side-link.active,.side-link:hover{background:linear-gradient(100deg,#f56a12,#ff8c36);color:#fff;box-shadow:0 7px 18px #f56a1228;transform:translateX(2px)}
+.primary{background:linear-gradient(135deg,#ff852d,#ed5b05);box-shadow:0 7px 18px #f56a1226;color:#fff}
+.primary:hover{background:linear-gradient(135deg,#f56a12,#d94e00);transform:translateY(-1px)}
+.ghost,.view-store{border-color:#e4e6eb;background:#fff;color:#343a43;transition:.18s}
+.ghost:hover,.view-store:hover{border-color:#ffc18e;background:#fff7f0;color:#c64b00}
+.stat,.panel,.quick{border-color:#e8e9ed;border-radius:20px;box-shadow:0 8px 28px #17202a07;transition:transform .2s,box-shadow .2s,border-color .2s}
+.stat:hover,.quick:hover{transform:translateY(-3px);border-color:#ffd0ad;box-shadow:0 16px 38px #17202a0c}
+.stat{background:linear-gradient(145deg,#fff,#fffaf6)}
+.stat b{letter-spacing:-.04em}
+.panel h2{letter-spacing:-.025em}
+input:focus,textarea:focus,select:focus{outline:0!important;border-color:#ff9a54!important;box-shadow:0 0 0 4px #ff78141a!important}
+@media(max-width:760px){.content{padding:18px 13px}.topbar{padding:0 14px}.side-link.active,.side-link:hover{transform:none}}
