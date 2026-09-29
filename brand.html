@@ -5,7 +5,8 @@
 (function(){
   try{
     var slug=new URLSearchParams(location.search).get('slug');
-    if(!slug){ location.replace('/marketplace.html'); }
+    if(slug){ location.replace('/marketplace-store?slug='+encodeURIComponent(slug)); }
+    else{ location.replace('/marketplace.html'); }
   }catch(e){}
 })();
 </script><link rel="stylesheet" href="/vendor.css"><style>
