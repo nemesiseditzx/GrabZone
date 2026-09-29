@@ -2499,7 +2499,6 @@ async function gzSaveMystery(){
  const {error}=await sb.from('site_settings').update({mystery_enabled:enabled,mystery_min_percent:min,mystery_max_percent:max,updated_at:new Date().toISOString()}).eq('id',1);
  msg.textContent=error?'✕ '+error.message:'✓ Mystery Deal settings saved.';
 }
-document.addEventListener('DOMContentLoaded',()=>setTimeout(gzLoadMystery,1000));
 </script>
 <script>
 async function gzLoadGrowth(){
