@@ -382,7 +382,9 @@ for(const i of items){
  await env.DB.prepare("INSERT INTO order_items("+fields.join(",")+") VALUES("+fields.map(()=>"?" ).join(",")+")").bind(...fields.map(k=>row[k])).run();
 }
  // Snapshot reward eligibility at checkout so later vendor setting changes do not
- // rewrite the qualification of an already placed order.
+ // rewrite the qualification of an already placed order. Allocate referral discounts
+ // only across referral-eligible items, not across the full cart.
+ const allocationRows=[];
  for(const item of items){
    const vendorId=String(item.vendor_id||"");
    let rewardsEligible=vendorId?0:1,referralEligible=vendorId?0:1;
@@ -394,9 +396,22 @@ for(const i of items){
      rewardsEligible=globallyEnabled&&Number(eligibility?.rewards_enabled)===1?1:0;
      referralEligible=globallyEnabled&&Number(eligibility?.referral_enabled)===1?1:0;
    }
+   allocationRows.push({item,vendorId,rewardsEligible,referralEligible,lineSubtotal:Math.max(0,Number(item.line_total||0))});
+ }
+ const referralEligibleSubtotal=allocationRows.reduce((sum,row)=>sum+(row.referralEligible?row.lineSubtotal:0),0);
+ const allocatableReferralDiscount=Math.min(Math.max(0,Number(discount||0)),referralEligibleSubtotal);
+ let allocatedReferralDiscount=0;
+ const lastReferralIndex=allocationRows.reduce((last,row,index)=>row.referralEligible&&row.lineSubtotal>0?index:last,-1);
+ for(let index=0;index<allocationRows.length;index++){
+   const row=allocationRows[index],{item,vendorId,rewardsEligible,referralEligible,lineSubtotal}=row;
+   let lineReferralDiscount=0;
+   if(referralEligible&&lineSubtotal>0&&referralEligibleSubtotal>0){
+     lineReferralDiscount=index===lastReferralIndex
+       ?Math.max(0,Math.round((allocatableReferralDiscount-allocatedReferralDiscount)*100)/100)
+       :Math.min(lineSubtotal,Math.round((allocatableReferralDiscount*lineSubtotal/referralEligibleSubtotal)*100)/100);
+     allocatedReferralDiscount+=lineReferralDiscount;
+   }
    const t0=now();
-   const lineSubtotal=Math.max(0,Number(item.line_total||0));
-   const lineReferralDiscount=subtotal>0?Math.min(lineSubtotal,Math.round((Math.max(0,Number(discount||0))*lineSubtotal/subtotal)*100)/100):0;
    await env.DB.prepare("INSERT OR IGNORE INTO rewards_order_allocations(id,order_id,order_item_id,vendor_id,product_id,rewards_eligible,referral_eligible,qualifying_subtotal,referral_discount,cashback_percent,cashback_points,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,0,0,'pending',?,?)")
     .bind(crypto.randomUUID(),id,String(item.id),vendorId||"grabzone",String(item.product_id||""),rewardsEligible,referralEligible,rewardsEligible?lineSubtotal:0,lineReferralDiscount,t0,t0).run();
  }
