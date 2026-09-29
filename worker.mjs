@@ -395,8 +395,10 @@ for(const i of items){
      referralEligible=globallyEnabled&&Number(eligibility?.referral_enabled)===1?1:0;
    }
    const t0=now();
-   await env.DB.prepare("INSERT OR IGNORE INTO rewards_order_allocations(id,order_id,order_item_id,vendor_id,product_id,rewards_eligible,referral_eligible,qualifying_subtotal,referral_discount,cashback_percent,cashback_points,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?, ?,0,0,0,'pending',?,?)")
-    .bind(crypto.randomUUID(),id,String(item.id),vendorId||"grabzone",String(item.product_id||""),rewardsEligible,referralEligible,rewardsEligible?Math.max(0,Number(item.line_total||0)):0,t0,t0).run();
+   const lineSubtotal=Math.max(0,Number(item.line_total||0));
+   const lineReferralDiscount=subtotal>0?Math.min(lineSubtotal,Math.round((Math.max(0,Number(discount||0))*lineSubtotal/subtotal)*100)/100):0;
+   await env.DB.prepare("INSERT OR IGNORE INTO rewards_order_allocations(id,order_id,order_item_id,vendor_id,product_id,rewards_eligible,referral_eligible,qualifying_subtotal,referral_discount,cashback_percent,cashback_points,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,0,0,'pending',?,?)")
+    .bind(crypto.randomUUID(),id,String(item.id),vendorId||"grabzone",String(item.product_id||""),rewardsEligible,referralEligible,rewardsEligible?lineSubtotal:0,lineReferralDiscount,t0,t0).run();
  }
 
 if(code)await env.DB.prepare("UPDATE referral_codes SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?)").bind(t,code).run();
