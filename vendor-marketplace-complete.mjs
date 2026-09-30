@@ -188,6 +188,13 @@ if(req.method==='POST'){const id=crypto.randomUUID(),t=now();await e.DB.prepare(
 const id=clean(b.id,100);if(req.method==='PATCH'){await e.DB.prepare('UPDATE vendor_store_sections SET section_type=?,title=?,body=?,sort_order=?,enabled=?,data_json=?,updated_at=? WHERE id=? AND vendor_id=?').bind(clean(b.section_type,50)||'custom',clean(b.title,300),clean(b.body,10000),Number(b.sort_order||0),b.enabled?1:0,JSON.stringify(b.data_json||{}),now(),id,vid).run();return json({ok:true})}
 await e.DB.prepare('DELETE FROM vendor_store_sections WHERE id=? AND vendor_id=?').bind(id,vid).run();return json({ok:true});
 }
+if(p==='/api/vendor/admin/reset-password'&&req.method==='GET'){
+const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+const vidGet=clean(new URL(req.url).searchParams.get('vendor_id'),100);if(!vidGet)return json({error:'Vendor ID required'},400);
+const vGet=await one(e,'SELECT id FROM vendors WHERE id=? OR slug=? LIMIT 1',[vidGet,vidGet]);if(!vGet)return json({error:'Vendor not found'},404);
+const uGet=await one(e,'SELECT email,status,role FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[vGet.id]);
+return json({email:uGet?.email||'',status:uGet?.status||'',role:uGet?.role||'vendor_admin'});
+}
 if(p==='/api/vendor/admin/reset-password'&&req.method==='POST'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
 const vid=clean(b.vendor_id,100),pass=String(b.password||''),loginEmail=clean(b.login_email||b.email,200).toLowerCase();
@@ -300,16 +307,18 @@ if(p==='/api/vendor/admin/products'&&(req.method==='GET'||req.method==='POST'||r
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const u=new URL(req.url),vid=clean(u.searchParams.get('vendor_id'),100);
 if(req.method==='GET'){
- const rows=(await q(e,`SELECT p.*,c.name category_name,c.slug category_slug,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN vendors v ON v.id=p.vendor_id WHERE (?='' OR p.vendor_id=?) ORDER BY p.created_at DESC`,[vid||'',vid||''])).results||[];
- for(const p0 of rows){if(!p0.category_name&&p0.category) {const cc=await one(e,'SELECT id,name,slug FROM marketplace_categories WHERE lower(trim(name))=lower(trim(?)) LIMIT 1',[p0.category]);if(cc){p0.category_id=cc.id;p0.category_name=cc.name;p0.category_slug=cc.slug}}}
+ const rows=(await q(e,'SELECT p.*,c.name category_name,c.slug category_slug,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN vendors v ON v.id=p.vendor_id WHERE (?='' OR p.vendor_id=?) ORDER BY p.created_at DESC',[vid||'',vid||''])).results||[];
+ const ids=rows.map(x=>x.id).filter(Boolean);
+ const imageMap=new Map();
+ if(ids.length){
+  const ph=ids.map(()=>'?').join(',');
+  try{const rs=(await q(e,'SELECT product_id,image_url,sort_order FROM product_images WHERE product_id IN ('+ph+') ORDER BY sort_order,id',ids)).results||[];for(const x of rs){if(!imageMap.has(x.product_id))imageMap.set(x.product_id,[]);imageMap.get(x.product_id).push(x.image_url)}}catch{}
+  try{const rs=(await q(e,'SELECT product_id,image_url,sort_order FROM vendor_product_images WHERE product_id IN ('+ph+') ORDER BY sort_order,id',ids)).results||[];for(const x of rs){if(!imageMap.has(x.product_id))imageMap.set(x.product_id,[]);imageMap.get(x.product_id).push(x.image_url)}}catch{}
+ }
  for(const p0 of rows){
-  p0.variations=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at,id',[p0.id])).results||[];
-  for(const v of p0.variations){
-   v.price=v.regular_price;
-   v.options={};
-   try{const vr=(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[v.id])).results||[];for(const x of vr)v.options[x.name]=x.value}catch{}
-  }
-  try{await e.DB.prepare('CREATE TABLE IF NOT EXISTS product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_main INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});const a=(await q(e,'SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order,id',[p0.id])).results||[];const b=(await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? ORDER BY sort_order,id',[p0.id])).results||[];let legacy=[];try{legacy=Array.isArray(p0.image_urls)?p0.image_urls:(typeof p0.image_urls==='string'?JSON.parse(p0.image_urls||'[]'):[])}catch{};p0.image_urls=[...new Set([...a,...b].map(x=>x.image_url).concat(legacy,p0.image_url||[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10)}catch{p0.image_urls=p0.image_url?[p0.image_url]:[]}
+  if(!p0.category_name&&p0.category){const cc=await one(e,'SELECT id,name,slug FROM marketplace_categories WHERE lower(trim(name))=lower(trim(?)) LIMIT 1',[p0.category]);if(cc){p0.category_id=cc.id;p0.category_name=cc.name;p0.category_slug=cc.slug}}
+  let legacy=[];try{legacy=Array.isArray(p0.image_urls)?p0.image_urls:(typeof p0.image_urls==='string'?JSON.parse(p0.image_urls||'[]'):[])}catch{}
+  p0.image_urls=[...new Set([...(imageMap.get(p0.id)||[]),...legacy,p0.image_url||''].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10);
  }
  return json({products:rows});
 }
