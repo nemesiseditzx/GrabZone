@@ -1535,3 +1535,10 @@ body{background:#fff;color:var(--ink)}
 .product-price,.price{color:#d95400}
 button:focus-visible,a:focus-visible{outline:3px solid #ff9a54;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.product-card,.product,.category-card{transition:none}}
+
+
+/* Shared GrabZone brand assets — customer + admin */
+.brand-mark{width:150px;height:38px;min-width:150px;border-radius:0;background:transparent;display:flex;align-items:center;overflow:visible}
+.brand-mark img{width:150px;height:38px;object-fit:contain;object-position:left center;border-radius:0;display:block}
+.brand-name{display:none}
+@media(max-width:760px){.brand-mark{width:126px;height:32px;min-width:126px}.brand-mark img{width:126px;height:32px}}
