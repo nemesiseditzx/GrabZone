@@ -307,7 +307,7 @@ if(p==='/api/vendor/admin/products'&&(req.method==='GET'||req.method==='POST'||r
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const u=new URL(req.url),vid=clean(u.searchParams.get('vendor_id'),100);
 if(req.method==='GET'){
- const rows=(await q(e,'SELECT p.*,c.name category_name,c.slug category_slug,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN vendors v ON v.id=p.vendor_id WHERE (?='' OR p.vendor_id=?) ORDER BY p.created_at DESC',[vid||'',vid||''])).results||[];
+ const rows=(await q(e,`SELECT p.*,c.name category_name,c.slug category_slug,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN vendors v ON v.id=p.vendor_id WHERE (?='' OR p.vendor_id=?) ORDER BY p.created_at DESC`,[vid||'',vid||''])).results||[];
  const ids=rows.map(x=>x.id).filter(Boolean);
  const imageMap=new Map();
  if(ids.length){
