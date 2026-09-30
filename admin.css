@@ -661,3 +661,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .login-card{padding:27px 20px}
   .gz-login-logo{width:190px}
 }
+
+
+/* Exact shared customer branding asset */
+.gz-shared-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.gz-shared-brand img{width:42px;height:42px;display:block;object-fit:contain;border-radius:11px}
+.gz-shared-brand span{font-size:16px;font-weight:950;letter-spacing:-.04em;color:#17191d}
+.gz-login-logo{display:none!important}
+@media(max-width:560px){.gz-shared-brand img{width:36px;height:36px}.gz-shared-brand span{font-size:14px}}
