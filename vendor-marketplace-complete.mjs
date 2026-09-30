@@ -188,6 +188,18 @@ if(req.method==='POST'){const id=crypto.randomUUID(),t=now();await e.DB.prepare(
 const id=clean(b.id,100);if(req.method==='PATCH'){await e.DB.prepare('UPDATE vendor_store_sections SET section_type=?,title=?,body=?,sort_order=?,enabled=?,data_json=?,updated_at=? WHERE id=? AND vendor_id=?').bind(clean(b.section_type,50)||'custom',clean(b.title,300),clean(b.body,10000),Number(b.sort_order||0),b.enabled?1:0,JSON.stringify(b.data_json||{}),now(),id,vid).run();return json({ok:true})}
 await e.DB.prepare('DELETE FROM vendor_store_sections WHERE id=? AND vendor_id=?').bind(id,vid).run();return json({ok:true});
 }
+if(p==='/api/vendor/admin/product-images'&&req.method==='GET'){
+ const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+ const vid=clean(new URL(req.url).searchParams.get('vendor_id'),100),pid=clean(new URL(req.url).searchParams.get('product_id'),100);
+ if(!vid||!pid)return json({error:'vendor_id and product_id are required'},400);
+ const owner=await one(e,'SELECT id FROM products WHERE id=? AND vendor_id=?',[pid,vid]);if(!owner)return json({error:'Product not found'},404);
+ const urls=[];
+ try{const rows=(await q(e,'SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order,id',[pid])).results||[];urls.push(...rows.map(x=>x.image_url))}catch{}
+ try{const rows=(await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? AND vendor_id=? ORDER BY sort_order,id',[pid,vid])).results||[];urls.push(...rows.map(x=>x.image_url))}catch{}
+ const p0=await one(e,'SELECT image_url FROM products WHERE id=?',[pid]);
+ let legacy=[];try{legacy=Array.isArray(p0?.image_urls)?p0.image_urls:(typeof p0?.image_urls==='string'?JSON.parse(p0.image_urls||'[]'):[])}catch{}
+ return json({images:[...new Set([...urls,...legacy,p0?.image_url||''].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10)});
+}
 if(p==='/api/vendor/admin/reset-password'&&req.method==='GET'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const vidGet=clean(new URL(req.url).searchParams.get('vendor_id'),100);if(!vidGet)return json({error:'Vendor ID required'},400);
