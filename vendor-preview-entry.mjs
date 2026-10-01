@@ -120,7 +120,7 @@ export default{fetch:async(req,env,ctx)=>{try{
     const isHome=(p==='/'||p==='/index.html');
     const isVendorPanel=(p==='/marketplace-vendor-control-v2'||p==='/marketplace-vendor-control-v2.html'||p==='/vendor-admin'||p==='/vendor-admin.html');
     const extra=[
-      '<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20261001">',
+      '<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20261001-favicon-final">',
       '<link rel="apple-touch-icon" href="/favicon.svg?v=20261001">',
       isHome?NOTICE_SYNC:'',
       isVendorPanel?(p.startsWith('/marketplace-vendor-control-v2')?UPLOAD_AUTH_FIX+'\n'+VENDOR_PRODUCT_EDITOR:UPLOAD_AUTH_FIX):''
