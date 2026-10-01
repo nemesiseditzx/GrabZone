@@ -115,17 +115,22 @@ export default{fetch:async(req,env,ctx)=>{try{
   if(direct)return direct;
   const response=await gateway.fetch(req,env,ctx);
   const type=response.headers.get('content-type')||'';
-  if(response.ok&&type.includes('text/html')&&(p==='/'||p==='/index.html')){
+  if(response.ok&&type.includes('text/html')){
     const body=await response.text();
-    const html=body.replace(/<head[^>]*>/i,m=>m+'\n'+NOTICE_SYNC);
+    const isHome=(p==='/'||p==='/index.html');
+    const isVendorPanel=(p==='/marketplace-vendor-control-v2'||p==='/marketplace-vendor-control-v2.html'||p==='/vendor-admin'||p==='/vendor-admin.html');
+    const extra=[
+      '<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20261001">',
+      '<link rel="apple-touch-icon" href="/favicon.svg?v=20261001">',
+      isHome?NOTICE_SYNC:'',
+      isVendorPanel?(p.startsWith('/marketplace-vendor-control-v2')?UPLOAD_AUTH_FIX+'\n'+VENDOR_PRODUCT_EDITOR:UPLOAD_AUTH_FIX):''
+    ].filter(Boolean).join('\n');
+    const html=body.replace(/<head[^>]*>/i,m=>m+'\n'+extra);
     const h=new Headers(response.headers);
     h.delete('Content-Length');
     h.set('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');
     h.set('Pragma','no-cache');
     return new Response(html,{status:response.status,statusText:response.statusText,headers:h});
-  }
-  if((p==='/marketplace-vendor-control-v2'||p==='/marketplace-vendor-control-v2.html'||p==='/vendor-admin'||p==='/vendor-admin.html')){
-    if(type.includes('text/html')){const body=await response.text();const extra=p.startsWith('/marketplace-vendor-control-v2')?UPLOAD_AUTH_FIX+'\n'+VENDOR_PRODUCT_EDITOR:UPLOAD_AUTH_FIX;const html=body.replace(/<head[^>]*>/i,m=>m+'\n'+extra);const h=new Headers(response.headers);h.delete('Content-Length');h.set('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');h.set('Pragma','no-cache');return new Response(html,{status:response.status,statusText:response.statusText,headers:h})}
   }
   return response;
 }catch(err){return json({error:err?.message||'Vendor preview failed'},500)}}};
