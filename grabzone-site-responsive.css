@@ -18,3 +18,40 @@ body:not(.admin) .btn-dark,body:not(.admin) .dark-btn,body:not(.admin) .confirm-
 /* HOMEPAGE DESKTOP STRUCTURE */
 @media(min-width:1201px){html body .header{position:relative!important;z-index:1000!important;height:112px!important;min-height:112px!important;display:grid!important;grid-template-columns:250px minmax(0,1fr) auto auto auto!important;grid-template-rows:58px 54px!important;align-items:center!important;gap:0 18px!important;padding:0 max(24px,calc((100vw - 1440px)/2 + 28px))!important;overflow:visible!important}.header .brand{grid-column:1!important;grid-row:1!important}.header>nav{grid-column:2!important;grid-row:1!important;display:flex!important;gap:24px!important;position:static!important;white-space:nowrap!important}.header>.header-actions{display:flex!important;position:static!important;grid-column:3/6!important;grid-row:1!important;align-items:center!important;justify-content:flex-end!important;gap:9px!important}.header .gz-ref-search{position:absolute!important;left:max(28px,calc((100vw - 1440px)/2 + 28px))!important;top:66px!important;width:450px!important;height:38px!important}}
 @media(max-width:1200px) and (min-width:761px){html body .header{height:112px!important;min-height:112px!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;grid-template-rows:58px 54px!important;padding:0 24px!important;gap:0 18px!important;overflow:visible!important}.header .brand{grid-column:1;grid-row:1!important}.header>nav{grid-column:2;grid-row:1!important;display:flex!important;gap:14px!important;white-space:nowrap!important}.header>.header-actions{grid-column:3;grid-row:1!important}.header .gz-ref-search{position:absolute!important;left:24px!important;top:64px!important;width:min(360px,42vw)!important;height:38px!important}}
+
+
+/* Canonical GrabZone customer logo */
+html body .header .brand-mark{
+  width:170px!important;
+  min-width:170px!important;
+  height:40px!important;
+  flex:0 0 170px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  overflow:visible!important;
+  border-radius:0!important;
+  background:transparent!important;
+  padding:0!important;
+}
+html body .header .brand-mark img{
+  width:170px!important;
+  height:40px!important;
+  max-width:none!important;
+  object-fit:contain!important;
+  object-position:left center!important;
+  display:block!important;
+  border-radius:0!important;
+}
+@media(max-width:760px){
+  html body .header .brand-mark{
+    width:126px!important;
+    min-width:126px!important;
+    height:32px!important;
+    flex:0 0 126px!important;
+  }
+  html body .header .brand-mark img{
+    width:126px!important;
+    height:32px!important;
+  }
+}
