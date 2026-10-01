@@ -2,7 +2,7 @@
 if(window.__GZ_CUSTOMER_HEADER_FIX__)return;
 window.__GZ_CUSTOMER_HEADER_FIX__=true;
 
-const isHome=()=>{const p=(location.pathname||'/').replace(/\\/+$/,'')||'/';return p==='/'||p==='/index.html'};
+const isHome=()=>{const p=(location.pathname||'/').replace(/\/+$/,'')||'/';return p==='/'||p==='/index.html'};
 if(!isHome())return;
 
 function findSearch(){
