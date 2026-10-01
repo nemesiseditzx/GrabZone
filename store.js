@@ -151,45 +151,35 @@ function getSocialUrl(type) {
 ========================================================= */
 
 function applyFavicon() {
-  const logo =
-    SITE.logo_url ||
-    C?.logoUrl ||
-    "";
+  /*
+    GrabZone's favicon is a brand asset, not the admin-uploaded store logo.
+    Keep one canonical icon everywhere so an old/incorrect site_settings.logo_url
+    cannot overwrite the browser tab icon after the page loads.
+  */
+  const iconUrl = "/favicon.svg?v=20261001-favicon-final";
 
-  if (!logo) return;
+  document
+    .querySelectorAll('link[rel~="icon"], link[data-grabzone-favicon], link[data-grabzone-apple-icon]')
+    .forEach(link => link.remove());
 
-  let favicon =
-    document.querySelector('link[data-grabzone-favicon]');
+  const favicon = document.createElement("link");
+  favicon.rel = "icon";
+  favicon.type = "image/svg+xml";
+  favicon.href = iconUrl;
+  favicon.setAttribute("data-grabzone-favicon", "true");
+  document.head.appendChild(favicon);
 
-  if (!favicon) {
-    favicon = document.createElement("link");
-    favicon.rel = "icon";
-    favicon.type = "image/png";
-    favicon.setAttribute(
-      "data-grabzone-favicon",
-      "true"
-    );
-    document.head.appendChild(favicon);
-  }
+  const shortcut = document.createElement("link");
+  shortcut.rel = "shortcut icon";
+  shortcut.type = "image/svg+xml";
+  shortcut.href = iconUrl;
+  document.head.appendChild(shortcut);
 
-  favicon.href = logo;
-
-  let appleIcon =
-    document.querySelector(
-      'link[data-grabzone-apple-icon]'
-    );
-
-  if (!appleIcon) {
-    appleIcon = document.createElement("link");
-    appleIcon.rel = "apple-touch-icon";
-    appleIcon.setAttribute(
-      "data-grabzone-apple-icon",
-      "true"
-    );
-    document.head.appendChild(appleIcon);
-  }
-
-  appleIcon.href = logo;
+  const appleIcon = document.createElement("link");
+  appleIcon.rel = "apple-touch-icon";
+  appleIcon.href = iconUrl;
+  appleIcon.setAttribute("data-grabzone-apple-icon", "true");
+  document.head.appendChild(appleIcon);
 }
 
 /* =========================================================
@@ -744,37 +734,22 @@ function applySiteSettings() {
   setText("howButton", SITE.how_button_text);
   setHref("howButton", SITE.how_button_link);
 
-  if (SITE.logo_url) {
-    ["brandMark", "footerMark"].forEach(id => {
-      const element = document.getElementById(id);
+  /*
+    Use the same canonical horizontal GrabZone logo on the storefront header
+    and footer. This prevents a stale/incorrect admin logo URL from producing
+    the tiny or mismatched mark shown in the customer header.
+  */
+  const brandLogo = "/grabzone-header.svg?v=20261001-logo-final";
 
-      if (!element) return;
+  ["brandMark", "footerMark"].forEach(id => {
+    const element = document.getElementById(id);
+    if (!element) return;
 
-      element.innerHTML = `
-        <img
-          src="${escAttr(SITE.logo_url)}"
-          alt="${escAttr(storeName)}"
-          style="
-            width:100%;
-            height:100%;
-            object-fit:contain;
-            border-radius:inherit;
-          "
-        >
-      `;
-      const logoImg = element.querySelector("img");
-      if (logoImg) {
-        logoImg.addEventListener("error",()=>{
-          logoImg.remove();
-          element.textContent = "GZ";
-          element.style.fontWeight = "900";
-          element.style.fontSize = "14px";
-          element.style.color = "#fff";
-          element.style.background = "#111";
-        },{once:true});
-      }
-    });
-  }
+    element.innerHTML =
+      '<img src="' + brandLogo + '" alt="' + escAttr(storeName) +
+      '" width="170" height="40" decoding="async" ' +
+      'style="width:100%;height:100%;max-width:none;object-fit:contain;object-position:left center;border-radius:0;display:block">';
+  });
 
   /*
     Social footer links still use the Admin Panel settings.
@@ -1240,7 +1215,6 @@ function setupSearch() {
 ========================================================= */
 
 async function loadNotices() {
-  if (!sb) return;
 
   let section = document.getElementById("noticeSection");
   if (!section) {
@@ -1260,22 +1234,60 @@ async function loadNotices() {
 
   if (!track) return;
 
-  const { data, error } = await sb
-    .from("notices")
-    .select("*")
-    .eq("active", true)
-    .order("sort_order");
+  /*
+    Read notices through the public D1 marketplace endpoint first.
+    The storefront is public, so notice rendering must not depend on an
+    authenticated Supabase-compatible client or its initialization timing.
+    A D1-client fallback is retained for older deployments.
+  */
+  let notices = [];
+  let showNotice = true;
 
-  if (error) {
-    console.error("Notice error:", error);
-    track.innerHTML = "";
+  try {
+    const response = await fetch(
+      "/api/marketplace/notices?v=20261001",
+      {
+        method: "GET",
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json" }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Notice endpoint returned " + response.status);
+    }
+
+    const payload = await response.json();
+    showNotice = payload?.show_notice !== false;
+    notices = Array.isArray(payload?.notices) ? payload.notices : [];
+  } catch (endpointError) {
+    console.warn("Public notice endpoint failed; using D1 fallback.", endpointError);
+
+    if (sb) {
+      const fallback = await sb
+        .from("notices")
+        .select("*")
+        .eq("active", true)
+        .order("sort_order");
+
+      if (fallback.error) {
+        console.error("Notice fallback error:", fallback.error);
+      } else {
+        notices = fallback.data || [];
+      }
+    }
+  }
+
+  if (!showNotice) {
+    section.style.display = "none";
     return;
   }
 
-  const notices = data || [];
+  section.style.display = "";
 
   if (!notices.length) {
-    track.innerHTML = "";
+    track.innerHTML = '<div style="height:100%;display:flex;align-items:center;padding:0 18px;color:#aeb4bb;font-size:12px;font-weight:700;white-space:nowrap">No active notices</div>';
     return;
   }
 
