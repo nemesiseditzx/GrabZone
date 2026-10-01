@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/vendor.css?v=20260922vendorpro9">
+<link rel="stylesheet" href="/vendor.css?v=20260928premium1">
 <link rel="stylesheet" href="/vendor-product-editor.css?v=20260923category1">
 <style>
 .gz-vendor-note{background:#f7f7f4;border:1px solid #e5e5df;border-radius:16px;padding:14px 16px;color:#666;font-size:13px;line-height:1.6;margin-top:14px}
@@ -28,9 +28,18 @@
 .gz-editor-section h3{margin:0 0 10px;font-size:14px}
 @media(max-width:700px){.gz-product-card{grid-template-columns:58px 1fr}.gz-product-card img{width:58px;height:58px}.gz-product-card .gz-btn{grid-column:2}.gz-toolbar input,.gz-toolbar select{min-width:0;width:100%}}
 @media(max-width:650px){.gz-layout{display:block!important}.gz-side{position:sticky!important;top:0!important;z-index:120!important;overflow-x:auto!important;max-width:100%!important;border-radius:0 0 16px 16px!important;background:rgba(255,255,255,.96)!important;backdrop-filter:blur(14px)}.gz-nav{display:flex!important;flex-wrap:nowrap!important;gap:6px!important;min-width:max-content!important;padding:8px!important}.gz-nav button{flex:0 0 auto!important;min-height:40px!important;border-radius:12px!important}.gz-main{min-width:0!important}.gz-stat{min-width:0!important;overflow:hidden!important}.gz-order-card,.gz-product-card{box-shadow:0 8px 22px rgba(17,24,39,.055)!important}}.gz-nav button{transition:background .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease!important}.gz-nav button.active{background:linear-gradient(135deg,#11151a,#2b3038)!important;color:#fff!important;box-shadow:0 7px 18px rgba(17,21,26,.18)!important}.gz-stat{transition:transform .2s ease,box-shadow .2s ease!important}.gz-stat:hover{transform:translateY(-3px)!important;box-shadow:0 16px 34px rgba(17,24,39,.09)!important}
+/* Keep exactly one navigation system; the dashboard's own nav is authoritative. */
+.gz-unified-topnav,.gz-unified-dock{display:none!important}body.gz-has-unified-dock{padding-bottom:0!important}
+.gz-top{position:sticky;top:0;z-index:100}
+.gz-side{z-index:40}
+.gz-main,.gz-section,.gz-card,.gz-head,.gz-product-card,.gz-order-card{min-width:0;max-width:100%}
+.gz-head h1,.gz-head p,.gz-card p,.gz-product-meta,.gz-item-row span{overflow-wrap:anywhere;word-break:normal}
+.gz-nav{min-width:0}
+.gz-nav button{white-space:nowrap}
+@media(max-width:650px){.gz-side{position:sticky!important;top:64px!important;z-index:40!important}.gz-main{padding:18px 12px!important}.gz-head{gap:12px}.gz-card{padding:15px!important}.gz-nav{overflow-x:auto!important;scrollbar-width:none}.gz-nav button{flex:0 0 auto!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 </style>
   <link rel="stylesheet" href="grabzone-ui-consistency.css?v=20260923ui">
-  <link rel="stylesheet" href="/grabzone-unified-panel-nav.css?v=20260927a">
 
 <link rel="stylesheet" href="/grabzone-dashboard-motion.css?v=20260927motion1">
 </head>
@@ -58,6 +67,7 @@
     <div class="gz-card gz-stat"><div class="label">Net Earnings</div><div id="statEarn" class="num">—</div></div>
   </div>
   <div class="gz-card" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><b>Open shipments</b><span id="statShip" class="gz-status">—</span></div><p style="color:#777;margin-bottom:0">Orders that still need delivery progress updates.</p></div>
+  <div id="vendorRewardsStatus" class="gz-card" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><b>🎁 Rewards & Referral Eligibility</b><span class="gz-status">Loading…</span></div><p style="color:#777;margin-bottom:0">Your eligibility and qualifying product status are controlled by GrabZone Admin.</p></div>
   <div class="gz-vendor-note"><b>What you can control:</b> your own products, price, stock, publishing and fulfillment. <b>GrabZone controls:</b> marketplace settings, checkout, membership, commissions and other vendors. You never see another vendor's products or orders.</div>
 </section>
 <section id="products" class="gz-section">
@@ -104,6 +114,5 @@
 </div></div>
 <script src="/vendor-dashboard.js?v=20260922vendorpro9"></script>
 <script src="/vendor-product-editor.js?v=20260925-variation-size-fix1"></script>
-  <script defer src="/grabzone-unified-panel-nav.js?v=20260927a"></script>
 </body>
 </html>

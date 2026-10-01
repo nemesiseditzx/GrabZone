@@ -1740,6 +1740,8 @@ async function renderDetail() {
     </div>
   `;
 
+  try{const er=await fetch('/api/rewards/eligibility?product_id='+encodeURIComponent(product.id),{cache:'no-store'});if(er.ok){const eligibility=await er.json();const badges=[];if(eligibility.rewards_eligible)badges.push('Rewards Eligible');if(eligibility.referral_eligible)badges.push('Referral Eligible');if(badges.length){const priceEl=element.querySelector('.detail-price');if(priceEl){const wrap=document.createElement('div');wrap.className='gz-product-benefit-badges';wrap.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:12px 0';wrap.innerHTML=badges.map(x=>'<span style="display:inline-flex;background:#e4f7ea;color:#16723b;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:900">'+x+'</span>').join('');priceEl.parentNode.insertBefore(wrap,priceEl)}}}}catch(e){console.warn('Rewards eligibility unavailable',e)}
+
   window.__gallery =
     gallery;
   window.__gzProductRendered = true;

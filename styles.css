@@ -1518,3 +1518,27 @@ footer {
     margin-right: 50px;
   }
 }
+
+
+/* GrabZone customer storefront refresh */
+:root{--ink:#17191d;--muted:#6e7681;--line:#e8e9ed;--soft:#fff3e9;--white:#fff;--gz-accent:#f56a12}
+body{background:#fff;color:var(--ink)}
+.header{background:rgba(255,255,255,.92);border-bottom-color:#ebe7e2;box-shadow:0 4px 22px #1b1d2208}
+.btn-primary,.primary-btn,.hero-cta,.shop-btn{background:linear-gradient(135deg,#ff8a32,#ed5b05);color:#fff;box-shadow:0 8px 22px #f56a1225}
+.btn-primary:hover,.primary-btn:hover,.hero-cta:hover,.shop-btn:hover{filter:saturate(1.08);transform:translateY(-1px)}
+.hero{background:linear-gradient(125deg,#fff2e7 0%,#fffaf5 54%,#f6f7f9 100%)}
+.hero h1{color:#17191d}
+.section-head h2,.how-section h2,.ref-section h2{letter-spacing:-.04em}
+.product-card,.product,.hero-card,.category-card{border-color:#e9e9ed;box-shadow:0 8px 28px #17202a08;transition:transform .2s,box-shadow .2s,border-color .2s}
+.product-card:hover,.product:hover,.category-card:hover{transform:translateY(-3px);border-color:#ffd0ad;box-shadow:0 16px 36px #17202a10}
+.product-info{background:#fff}
+.product-price,.price{color:#d95400}
+button:focus-visible,a:focus-visible{outline:3px solid #ff9a54;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.product-card,.product,.category-card{transition:none}}
+
+
+/* Shared GrabZone brand assets — customer + admin */
+.brand-mark{width:150px;height:38px;min-width:150px;border-radius:0;background:transparent;display:flex;align-items:center;overflow:visible}
+.brand-mark img{width:150px;height:38px;object-fit:contain;object-position:left center;border-radius:0;display:block}
+.brand-name{display:none}
+@media(max-width:760px){.brand-mark{width:126px;height:32px;min-width:126px}.brand-mark img{width:126px;height:32px}}

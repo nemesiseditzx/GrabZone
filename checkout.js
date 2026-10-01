@@ -571,9 +571,9 @@ loadGlobalShipping().then(()=>{try{render();renderDeliveryEta()}catch{}}).catch(
 document.addEventListener('DOMContentLoaded',async()=>{
   $('checkoutForm')?.addEventListener('submit',submit);
   $('division')?.addEventListener('change',onDivisionChange);
+  $('applyReferralBtn')?.addEventListener('click',applyReferral);
   $('district')?.addEventListener('change',onDistrictChange);
   bindLocationPickers();
-  $('applyReferralBtn')?.addEventListener('click',applyReferral);
   async function applyRewardsVoucher(){
     const input=$('rewardsVoucherCode'),msgp=$('grabpointsMsg');
     const code=String(input?.value||'').trim().toUpperCase(),phone=String($('customerPhone')?.value||'').replace(/\D/g,'');

@@ -286,3 +286,28 @@ body{font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;backgroun
   .gz-table th,.gz-table td{padding:11px 10px}
   .gz-grid{gap:10px}
 }
+
+
+/* GrabZone vendor/admin premium UI polish */
+:root{--gz:#f56a12;--gz2:#ff923d;--soft:#fff2e8;--line:#e7e9ee;--bg:#f5f6f8;--shadow:0 12px 34px rgba(20,26,35,.055)}
+body{background:radial-gradient(ellipse at 8% 0%,#fff0e4 0,transparent 34%),linear-gradient(180deg,#f8f9fb 0,#f3f5f8 100%)}
+.gz-top{background:linear-gradient(110deg,#17191e,#292d34);box-shadow:0 8px 30px #10131a22}
+.gz-logo span{color:#ff8b3d}
+.gz-btn.primary{background:linear-gradient(135deg,#ff8a32,#ed5b05);box-shadow:0 8px 22px #f56a1230}
+.gz-btn.primary:hover{background:linear-gradient(135deg,#f56a12,#d94e00);box-shadow:0 12px 26px #f56a1238}
+.gz-btn.light{border:1px solid #e7e8ec;background:#fff;color:#343a44}
+.gz-btn.light:hover{border-color:#ffc18e;background:#fff7f0;color:#bd4a00}
+.gz-side{background:rgba(255,255,255,.94);backdrop-filter:blur(16px);border-right-color:#e9e5df}
+.gz-nav button{transition:background .18s,color .18s,transform .18s,box-shadow .18s}
+.gz-nav button.active,.gz-nav button:hover{background:linear-gradient(110deg,#fff0e5,#fff8f2);color:#c74d00;box-shadow:inset 3px 0 #f56a12}
+.gz-card,.gz-order-card,.gz-product-card,.gz-editor-section{border-color:#e7e9ee;box-shadow:0 8px 28px #18202b08}
+.gz-card{border-radius:21px}
+.gz-stat{background:linear-gradient(145deg,#fff,#fffaf6)}
+.gz-stat:after{background:#f56a1214}
+.gz-stat .num{letter-spacing:-.045em}
+.gz-product-card:hover,.gz-order-card:hover{border-color:#ffd0ad;box-shadow:0 15px 34px #18202b10}
+.gz-field input:focus,.gz-field textarea:focus,.gz-field select:focus,.gz-toolbar input:focus,.gz-toolbar select:focus{border-color:#ff9a54;box-shadow:0 0 0 4px #f56a1216;outline:0}
+.gz-pill.active,.gz-status.active{background:#e5f8ec;color:#176c3b}
+.gz-vendor-note{background:linear-gradient(135deg,#fff7ef,#fff);border-color:#ffe0c5}
+.gz-table th{background:#fff7f0;color:#7c4a2b}
+@media(max-width:650px){.gz-main{padding:18px 12px 42px}.gz-card{border-radius:17px;padding:16px}.gz-head h1{font-size:27px}}
