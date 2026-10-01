@@ -155,3 +155,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .section{padding-inline:14px!important}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.tier{transition:none}}
+
+
+/* Single-source navigation: disable the retired legacy bottom app shell. */
+#gzMobileAppNav{display:none!important}
+html body{padding-bottom:0!important}
