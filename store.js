@@ -152,11 +152,12 @@ function getSocialUrl(type) {
 
 function applyFavicon() {
   /*
-    GrabZone's favicon is a brand asset, not the admin-uploaded store logo.
-    Keep one canonical icon everywhere so an old/incorrect site_settings.logo_url
-    cannot overwrite the browser tab icon after the page loads.
+    The Admin Panel Website Design logo is the source of truth.
+    Use it for the browser favicon too, with the built-in GrabZone mark
+    only as a fallback when no admin logo has been configured.
   */
-  const iconUrl = "/favicon.svg?v=20261001-favicon-final";
+  const logoUrl = String(SITE.logo_url || "").trim();
+  const iconUrl = logoUrl || "/favicon.svg?v=20261001-favicon-final";
 
   document
     .querySelectorAll('link[rel~="icon"], link[data-grabzone-favicon], link[data-grabzone-apple-icon]')
@@ -164,16 +165,9 @@ function applyFavicon() {
 
   const favicon = document.createElement("link");
   favicon.rel = "icon";
-  favicon.type = "image/svg+xml";
   favicon.href = iconUrl;
   favicon.setAttribute("data-grabzone-favicon", "true");
   document.head.appendChild(favicon);
-
-  const shortcut = document.createElement("link");
-  shortcut.rel = "shortcut icon";
-  shortcut.type = "image/svg+xml";
-  shortcut.href = iconUrl;
-  document.head.appendChild(shortcut);
 
   const appleIcon = document.createElement("link");
   appleIcon.rel = "apple-touch-icon";
@@ -735,21 +729,27 @@ function applySiteSettings() {
   setHref("howButton", SITE.how_button_link);
 
   /*
-    Use the same canonical horizontal GrabZone logo on the storefront header
-    and footer. This prevents a stale/incorrect admin logo URL from producing
-    the tiny or mismatched mark shown in the customer header.
+    Website Design -> Logo in the Admin Panel is the storefront logo source.
+    Fall back to the bundled GrabZone header mark only when no admin logo exists.
   */
-  const brandLogo = "/grabzone-header.svg?v=20261001-logo-final";
+  const brandLogo = String(SITE.logo_url || "").trim() ||
+    "/grabzone-header.svg?v=20261001-logo-final";
 
   ["brandMark", "footerMark"].forEach(id => {
     const element = document.getElementById(id);
     if (!element) return;
 
     element.innerHTML =
-      '<img src="' + brandLogo + '" alt="' + escAttr(storeName) +
-      '" width="170" height="40" decoding="async" ' +
+      '<img src="' + escAttr(brandLogo) + '" alt="' + escAttr(storeName) +
+      '" width="190" height="48" decoding="async" ' +
       'style="width:100%;height:100%;max-width:none;object-fit:contain;object-position:left center;border-radius:0;display:block">';
   });
+
+  const storeNameEl = document.getElementById("storeName");
+  if (storeNameEl) {
+    /* The uploaded admin logo already contains the brand name. */
+    storeNameEl.style.display = String(SITE.logo_url || "").trim() ? "none" : "";
+  }
 
   /*
     Social footer links still use the Admin Panel settings.
