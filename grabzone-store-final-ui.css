@@ -151,3 +151,102 @@
  .store-page .member-value-strip{grid-template-columns:1fr!important;gap:8px!important}
  .store-page .member-value-card{padding:11px!important}
 }
+
+
+/* Eligible / Featured Partner storefront: intentionally distinctive from normal vendors,
+   while preserving the same component system and functionality. */
+.store-page.gz-member-store{
+  background:
+    radial-gradient(circle at 88% 8%,rgba(246,91,10,.10),transparent 24%),
+    linear-gradient(180deg,#f8fafb 0,#fff 460px)!important;
+}
+.store-page.gz-member-store .store-header{
+  background:rgba(15,19,24,.97)!important;
+  border-bottom:1px solid #2d343c!important;
+  box-shadow:0 10px 30px rgba(0,0,0,.16)!important;
+}
+.store-page.gz-member-store .logo,
+.store-page.gz-member-store .logo span{color:#fff!important}
+.store-page.gz-member-store .store-top .back{
+  background:#20262d!important;color:#f3f5f7!important;border-color:#3b444d!important;
+}
+.store-page.gz-member-store .store-top .cart{
+  background:linear-gradient(135deg,#ff7a24,#f65b0a)!important;
+  box-shadow:0 8px 22px rgba(246,91,10,.28)!important;
+}
+.store-page.gz-member-store .hero{padding-top:34px!important}
+.store-page.gz-member-store .store-banner{
+  border:2px solid rgba(246,91,10,.58)!important;
+  box-shadow:0 18px 46px rgba(25,31,38,.13),0 0 0 6px rgba(246,91,10,.05)!important;
+}
+.store-page.gz-member-store .hero-copy{
+  position:relative!important;
+  margin-top:0!important;
+  padding:50px 26px 24px!important;
+  border:1px solid #e5e8eb!important;
+  border-top:3px solid #f65b0a!important;
+  border-radius:0 0 22px 22px!important;
+  background:linear-gradient(135deg,#fff 0,#fff8f2 100%)!important;
+  box-shadow:0 12px 34px rgba(17,25,35,.06)!important;
+}
+.store-page.gz-member-store .gz-store-member-tag{
+  border:1px solid #ffc39f!important;
+  background:#fff1e8!important;
+  color:#b94408!important;
+  box-shadow:0 5px 14px rgba(246,91,10,.10)!important;
+  font-size:10px!important;
+  letter-spacing:.10em!important;
+}
+.store-page.gz-member-store .gz-store-member-tag:before{
+  color:#f65b0a!important;
+}
+.store-page.gz-member-store .eyebrow{color:#f65b0a!important}
+.store-page.gz-member-store .hero h1{color:#111820!important}
+.store-page.gz-member-store .hero p{color:#66717c!important}
+.store-page.gz-member-store .gz-store-member-perks span{
+  border-color:#ffd4bc!important;
+  background:#fff!important;
+  color:#4d5862!important;
+  box-shadow:0 4px 12px rgba(17,25,35,.04)!important;
+}
+.store-page.gz-member-store .gz-store-member-perks span b{color:#f65b0a!important}
+.store-page.gz-member-store .member-value-strip{gap:12px!important}
+.store-page.gz-member-store .member-value-card{
+  border-color:#e3e7ea!important;
+  background:#fff!important;
+  box-shadow:0 8px 24px rgba(17,25,35,.055)!important;
+}
+.store-page.gz-member-store .member-value-card:first-child{
+  border-color:#ffd0b5!important;
+  background:linear-gradient(135deg,#fff,#fff5ee)!important;
+}
+.store-page.gz-member-store .member-value-icon{
+  background:#151a20!important;
+  color:#fff!important;
+  box-shadow:0 7px 16px rgba(17,25,35,.15)!important;
+}
+.store-page.gz-member-store .member-value-card:first-child .member-value-icon{
+  background:linear-gradient(145deg,#ff7926,#f65b0a)!important;
+}
+.store-page.gz-member-store .products{padding-top:18px!important}
+.store-page.gz-member-store .product{
+  border-color:#e1e5e8!important;
+  box-shadow:0 8px 25px rgba(17,25,35,.055)!important;
+}
+.store-page.gz-member-store .product:hover{
+  border-color:#ffb48c!important;
+  box-shadow:0 17px 36px rgba(17,25,35,.10)!important;
+}
+.store-page.gz-member-store .info small{
+  background:#fff0e7!important;color:#c24d0b!important;
+}
+.store-page.gz-member-store .price{color:#111820!important}
+.store-page.gz-member-store .add{
+  background:#151a20!important;
+  box-shadow:none!important;
+}
+.store-page.gz-member-store .add:hover{background:#f65b0a!important}
+@media(max-width:760px){
+  .store-page.gz-member-store .hero-copy{padding:43px 15px 20px!important}
+  .store-page.gz-member-store .member-value-strip{gap:8px!important}
+}
