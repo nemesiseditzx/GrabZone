@@ -747,8 +747,9 @@ function applySiteSettings() {
 
   const storeNameEl = document.getElementById("storeName");
   if (storeNameEl) {
-    /* The uploaded admin logo already contains the brand name. */
-    storeNameEl.style.display = String(SITE.logo_url || "").trim() ? "none" : "";
+    /* Keep the Admin Panel store name visible beside the uploaded logo.
+       The uploaded logo may be an icon/mark without the wordmark. */
+    storeNameEl.style.display = "";
   }
 
   /*
