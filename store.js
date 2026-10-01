@@ -1240,9 +1240,25 @@ function setupSearch() {
 ========================================================= */
 
 async function loadNotices() {
-  const track = document.getElementById("noticeTrack");
+  if (!sb) return;
 
-  if (!track || !sb) return;
+  let section = document.getElementById("noticeSection");
+  if (!section) {
+    section = document.createElement("div");
+    section.id = "noticeSection";
+    section.className = "notice-wrap";
+    const header = document.querySelector("header.header,.header,header");
+    if (header?.parentNode) header.parentNode.insertBefore(section, header.nextSibling);
+    else document.body.prepend(section);
+  }
+
+  let track = section.querySelector("#noticeTrack");
+  if (!track) {
+    section.innerHTML = '<div class="notice-label" data-i18n="noticeLabel">NOTICE</div><div id="noticeTrack" class="notice-track"></div>';
+    track = section.querySelector("#noticeTrack");
+  }
+
+  if (!track) return;
 
   const { data, error } = await sb
     .from("notices")
