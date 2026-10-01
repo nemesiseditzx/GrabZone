@@ -1,0 +1,56 @@
+/* GrabZone final storefront polish — additive only */
+:root{
+  --gz-orange:#f65b0a;
+  --gz-ink:#151a20;
+  --gz-muted:#69727d;
+  --gz-line:#e7eaee;
+}
+html{scroll-behavior:smooth}
+body{background:#fff;color:var(--gz-ink)}
+*:focus-visible{outline:3px solid rgba(246,91,10,.28)!important;outline-offset:2px!important}
+.header{isolation:isolate}
+.header .brand{z-index:2;text-decoration:none!important}
+.header .brand-name{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
+.header .header-actions .btn{min-height:40px}
+.header .language-switch{display:flex;align-items:center;gap:4px}
+.header .language-switch .lang-btn{min-height:40px;border-radius:12px!important}
+.shop-section{position:relative}
+.shop-section .section-head{align-items:flex-end}
+.shop-tools{min-width:0}
+.shop-tools #categories{max-width:100%;overflow-x:auto;scrollbar-width:none}
+.shop-tools #categories::-webkit-scrollbar{display:none}
+.shop-tools #categories .chip{white-space:nowrap}
+.product-card{position:relative;overflow:hidden}
+.product-card img{background:#fafafa}
+.product-card .product-name{line-height:1.35!important}
+.product-card .price{font-weight:950!important}
+.product-card .shop-btn{min-height:40px}
+.gz-home-brands-inner,.gz-p5-section{scroll-margin-top:90px}
+.notice-wrap{position:relative;z-index:20}
+.hero{overflow:hidden}
+.hero-card{overflow:hidden}
+.hero-card img{display:block;max-width:100%;height:auto}
+footer .brand{align-items:center}
+footer .brand-mark{flex:0 0 auto}
+footer .brand-name{display:inline-flex!important;font-weight:900!important;white-space:nowrap!important}
+@media(max-width:760px){
+  .header{position:sticky!important;top:0!important;z-index:5000!important}
+  .header .header-actions{gap:5px!important}
+  .header .language-switch{display:none!important}
+  .header .icon-btn{width:38px!important;height:38px!important}
+  .header .gz-cart-btn{padding:0 10px!important;font-size:11px!important}
+  .hero{border-radius:0!important}
+  .hero-card{min-height:240px!important}
+  .shop-section .section-head{gap:14px!important}
+  .shop-tools #categories{width:100%;flex-wrap:nowrap!important;padding-bottom:3px}
+  .product-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+  .product-card{min-width:0!important}
+  .product-card .shop-btn{font-size:11px!important}
+  footer .brand-name{font-size:16px!important}
+}
+@media(min-width:761px){
+  .product-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+}
