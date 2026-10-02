@@ -2059,3 +2059,28 @@ body:has(#productDetail) #productDetail .gz-customer-variations{
     max-width:112px!important;
   }
 }
+
+
+/* Product header: keep the readable GrabZone wordmark beside the uploaded logo. */
+body:has(#productDetail) > .header #storeName{
+  display:inline-flex!important;
+  align-items:center!important;
+  width:auto!important;
+  min-width:max-content!important;
+  height:48px!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+  text-overflow:clip!important;
+  color:#17202a!important;
+  font-size:22px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:-.045em!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+body:has(#productDetail) > .header .brand{
+  gap:10px!important;
+}
