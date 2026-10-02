@@ -2084,3 +2084,60 @@ body:has(#productDetail) > .header #storeName{
 body:has(#productDetail) > .header .brand{
   gap:10px!important;
 }
+
+
+/* Final product header brand lockup: compact logo + wordmark with no empty gap. */
+body:has(#productDetail) > .header .brand{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:0!important;
+  height:48px!important;
+  gap:8px!important;
+  margin:0!important;
+}
+body:has(#productDetail) > .header .brand-mark{
+  flex:0 0 52px!important;
+  width:52px!important;
+  min-width:52px!important;
+  max-width:52px!important;
+  height:40px!important;
+  min-height:40px!important;
+  max-height:40px!important;
+  padding:0!important;
+  margin:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  overflow:hidden!important;
+}
+body:has(#productDetail) > .header .brand-mark img{
+  display:block!important;
+  width:52px!important;
+  height:40px!important;
+  max-width:52px!important;
+  max-height:40px!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+body:has(#productDetail) > .header #storeName{
+  display:inline-flex!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:max-content!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  align-items:center!important;
+  color:#17202a!important;
+  font-size:21px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:-.045em!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
