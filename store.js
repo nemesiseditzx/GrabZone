@@ -747,9 +747,14 @@ function applySiteSettings() {
 
   const storeNameEl = document.getElementById("storeName");
   if (storeNameEl) {
-    /* Keep the Admin Panel store name visible beside the uploaded logo.
-       The uploaded logo may be an icon/mark without the wordmark. */
-    storeNameEl.style.display = "";
+    /*
+      The uploaded Admin Panel logo is the complete customer-facing brand.
+      Do not render the legacy text wordmark beside it; otherwise the product
+      header shows the logo plus a second "GrabZone" label.
+    */
+    storeNameEl.textContent = "";
+    storeNameEl.style.display = "none";
+    storeNameEl.setAttribute("aria-hidden", "true");
   }
 
   /*
