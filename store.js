@@ -748,13 +748,13 @@ function applySiteSettings() {
   const storeNameEl = document.getElementById("storeName");
   if (storeNameEl) {
     /*
-      The uploaded Admin Panel logo is the complete customer-facing brand.
-      Do not render the legacy text wordmark beside it; otherwise the product
-      header shows the logo plus a second "GrabZone" label.
+      Keep the store name beside the uploaded Admin Panel logo. The uploaded
+      asset is the mark/icon, while the store name provides the readable
+      GrabZone wordmark in the product header.
     */
-    storeNameEl.textContent = "";
-    storeNameEl.style.display = "none";
-    storeNameEl.setAttribute("aria-hidden", "true");
+    storeNameEl.textContent = storeName;
+    storeNameEl.style.display = "inline-flex";
+    storeNameEl.removeAttribute("aria-hidden");
   }
 
   /*
