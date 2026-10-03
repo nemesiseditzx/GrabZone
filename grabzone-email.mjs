@@ -53,7 +53,7 @@ export function statusLabel(status){
 }
 
 /** The branded, mobile-friendly "new order" message for one vendor. */
-export function buildVendorOrderEmail({vendorName,orderNumber,placedAt,orderStatus,items,subtotal,shipping,total,panelUrl,customerName}){
+export function buildVendorOrderEmail({vendorName,orderNumber,placedAt,orderStatus,items,subtotal,discount=0,shipping,total,panelUrl,customerName}){
   const rows=(items||[]).map(x=>{
     const name=esc(x.product_name||x.name||"Product");
     const variant=esc(variationText(x));
@@ -90,6 +90,7 @@ export function buildVendorOrderEmail({vendorName,orderNumber,placedAt,orderStat
    +`</tr></thead><tbody>${rows}</tbody></table>`
    +`<div style="margin-top:16px;text-align:right;line-height:2;font-size:14px">`
    +`<div>Subtotal: <b>${money(subtotal)}</b></div>`
+   +`${Number(discount||0)>0?`<div style="color:#b23b00">Store coupon: <b>-${money(discount)}</b></div>`:""}`
    +`<div>Delivery charge: <b>${money(shipping)}</b></div>`
    +`<div style="font-size:18px;margin-top:4px">Total for your store: <b style="color:#e2570b">${money(total)}</b></div></div>`
    +`<p style="margin:26px 0 18px;text-align:center"><a href="${esc(link)}" style="display:inline-block;background:#ff6b00;color:#fff;text-decoration:none;padding:14px 24px;border-radius:10px;font-weight:bold;font-size:15px">Open in Vendor Panel</a></p>`
