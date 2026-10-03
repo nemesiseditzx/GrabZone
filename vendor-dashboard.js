@@ -114,11 +114,13 @@ function viewOrder(id){
       </div>
       <div class="gz-editor-section">
         <div class="gz-section-title"><h3>Shipments</h3><span class="gz-status">${esc(o.status||'Processing')}</span></div>
-        ${(o.shipments||[]).map(s=>`<div class="gz-shipment-row"><div style="flex:1"><b>${esc(s.courier||'Courier')}</b> · ${esc(s.tracking_id||s.shipment_tracking_id||'Tracking pending')}<br><span class="gz-status">${esc(s.status||'Processing')}</span>${s.tracking_url?' · <a href="'+esc(s.tracking_url)+'" target="_blank" rel="noopener">Track shipment ↗</a>':''}${s.note?'<div class="gz-muted" style="margin-top:4px">'+esc(s.note)+'</div>':''}</div><div class="gz-actions"><button type="button" class="gz-btn light" onclick="editShipment(\''+esc(o.id)+'\',\''+esc(s.id)+'\')">Edit</button><button type="button" class="gz-btn danger" onclick="deleteShipment(\''+esc(o.id)+'\',\''+esc(s.id)+'\')">Delete</button></div></div>`).join('')||'<p class="gz-muted">No shipment added yet.</p>'}
+        ${(o.shipments||[]).map(s=>`<div class="gz-shipment-row"><div style="flex:1"><b>${esc(s.courier||'Courier')}</b> · ${esc(s.tracking_id||s.shipment_tracking_id||'Tracking pending')}<br><span class="gz-status">${esc(s.status||'Processing')}</span>${s.tracking_url?' · <a href="'+esc(s.tracking_url)+'" target="_blank" rel="noopener">Track shipment ↗</a>':''}${s.note?'<div class="gz-muted" style="margin-top:4px">'+esc(s.note)+'</div>':''}</div><div class="gz-actions"><button type="button" class="gz-btn light" data-shipment-edit="${esc(o.id)}:${esc(s.id)}">Edit</button><button type="button" class="gz-btn danger" data-shipment-delete="${esc(o.id)}:${esc(s.id)}">Delete</button></div></div>`).join('')||'<p class="gz-muted">No shipment added yet.</p>'}
       </div>
       <div class="gz-order-actions"><button class="gz-btn primary" onclick="addShipment('${esc(o.id)}')">+ Add Shipment</button><button class="gz-btn light" onclick="closeModal()">Close</button></div>
     </div>`;
-  openModal()
+  openModal();
+  $('#orderBody [data-shipment-edit]').forEach(btn=>btn.addEventListener('click',()=>{const [voId,sid]=btn.dataset.shipmentEdit.split(':');editShipment(voId,sid)}));
+  $('#orderBody [data-shipment-delete]').forEach(btn=>btn.addEventListener('click',()=>{const [voId,sid]=btn.dataset.shipmentDelete.split(':');deleteShipment(voId,sid)}));
 }
 async function editShipment(voId,sid){
  const o=state.orders.find(x=>x.id===voId),s=(o?.shipments||[]).find(x=>x.id===sid);if(!o||!s)return;
