@@ -1518,3 +1518,626 @@ footer {
     margin-right: 50px;
   }
 }
+
+
+/* GrabZone customer storefront refresh */
+:root{--ink:#17191d;--muted:#6e7681;--line:#e8e9ed;--soft:#fff3e9;--white:#fff;--gz-accent:#f56a12}
+body{background:#fff;color:var(--ink)}
+.header{background:rgba(255,255,255,.92);border-bottom-color:#ebe7e2;box-shadow:0 4px 22px #1b1d2208}
+.btn-primary,.primary-btn,.hero-cta,.shop-btn{background:linear-gradient(135deg,#ff8a32,#ed5b05);color:#fff;box-shadow:0 8px 22px #f56a1225}
+.btn-primary:hover,.primary-btn:hover,.hero-cta:hover,.shop-btn:hover{filter:saturate(1.08);transform:translateY(-1px)}
+.hero{background:linear-gradient(125deg,#fff2e7 0%,#fffaf5 54%,#f6f7f9 100%)}
+.hero h1{color:#17191d}
+.section-head h2,.how-section h2,.ref-section h2{letter-spacing:-.04em}
+.product-card,.product,.hero-card,.category-card{border-color:#e9e9ed;box-shadow:0 8px 28px #17202a08;transition:transform .2s,box-shadow .2s,border-color .2s}
+.product-card:hover,.product:hover,.category-card:hover{transform:translateY(-3px);border-color:#ffd0ad;box-shadow:0 16px 36px #17202a10}
+.product-info{background:#fff}
+.product-price,.price{color:#d95400}
+button:focus-visible,a:focus-visible{outline:3px solid #ff9a54;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.product-card,.product,.category-card{transition:none}}
+
+
+/* Shared GrabZone brand assets — customer + admin */
+.brand-mark{width:150px;height:38px;min-width:150px;border-radius:0;background:transparent;display:flex;align-items:center;overflow:visible}
+.brand-mark img{width:150px;height:38px;object-fit:contain;object-position:left center;border-radius:0;display:block}
+.brand-name{display:none}
+@media(max-width:760px){.brand-mark{width:126px;height:32px;min-width:126px}.brand-mark img{width:126px;height:32px}}
+
+
+/* =========================================================
+   PRODUCT DETAIL — FINAL ALIGNED UI
+========================================================= */
+body:has(#productDetail){
+  background:#fff!important;
+}
+body:has(#productDetail) .header{
+  position:sticky!important;
+  top:0!important;
+  height:72px!important;
+  min-height:72px!important;
+  padding:0 max(24px,5vw)!important;
+  gap:24px!important;
+  z-index:100!important;
+}
+body:has(#productDetail) .header .brand{
+  flex:0 0 auto!important;
+}
+body:has(#productDetail) .header nav{
+  gap:22px!important;
+}
+body:has(#productDetail) .header #headerDm{
+  margin-left:auto!important;
+  min-width:150px!important;
+  height:42px!important;
+  border-radius:12px!important;
+}
+body:has(#productDetail) .detail{
+  width:min(1280px,100%)!important;
+  margin:0 auto!important;
+  padding:54px 32px 90px!important;
+}
+body:has(#productDetail) .detail-grid{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1.02fr) minmax(420px,.98fr)!important;
+  align-items:start!important;
+  gap:64px!important;
+}
+body:has(#productDetail) .gallery{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:76px minmax(0,1fr)!important;
+  gap:14px!important;
+  align-items:start!important;
+}
+body:has(#productDetail) .gallery-thumbs{
+  width:76px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:10px!important;
+}
+body:has(#productDetail) .gallery-thumb{
+  width:76px!important;
+  height:76px!important;
+  flex:0 0 76px!important;
+  padding:0!important;
+  border:1px solid #e2e5e8!important;
+  border-radius:12px!important;
+  background:#fff!important;
+}
+body:has(#productDetail) .gallery-thumb.active{
+  border:2px solid #f56a12!important;
+  box-shadow:0 0 0 2px rgba(245,106,18,.10)!important;
+}
+body:has(#productDetail) .gallery-thumb img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  border-radius:10px!important;
+}
+body:has(#productDetail) .gallery-main{
+  width:100%!important;
+  aspect-ratio:1/1!important;
+  max-height:650px!important;
+  border:1px solid #e7e9ec!important;
+  border-radius:24px!important;
+  background:#f6f6f4!important;
+  box-shadow:0 12px 34px rgba(20,25,30,.06)!important;
+}
+body:has(#productDetail) .gallery-main #mainProductImage{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+}
+body:has(#productDetail) .gallery-nav{
+  width:40px!important;
+  height:40px!important;
+  border:1px solid #e2e5e8!important;
+  background:rgba(255,255,255,.96)!important;
+  color:#20262d!important;
+  font-size:25px!important;
+  box-shadow:0 6px 18px rgba(0,0,0,.10)!important;
+}
+body:has(#productDetail) .detail-grid > div:last-child{
+  min-width:0!important;
+  padding-top:4px!important;
+}
+body:has(#productDetail) .detail-grid > div:last-child > .eyebrow{
+  display:inline-flex!important;
+  align-items:center!important;
+  min-height:30px!important;
+  margin:0 0 14px!important;
+  padding:7px 11px!important;
+  border:1px solid #eceff1!important;
+  border-radius:999px!important;
+  background:#fafbfc!important;
+  color:#68727d!important;
+  font-size:10px!important;
+  letter-spacing:.12em!important;
+}
+body:has(#productDetail) .detail h1{
+  max-width:720px!important;
+  margin:0!important;
+  font-size:clamp(40px,4.3vw,64px)!important;
+  line-height:1.02!important;
+  letter-spacing:-.055em!important;
+  color:#151b22!important;
+}
+body:has(#productDetail) .detail-grid > div:last-child > .tag{
+  margin-top:18px!important;
+  background:#fff1e8!important;
+  color:#c44e0b!important;
+}
+body:has(#productDetail) .detail-price{
+  display:flex!important;
+  align-items:baseline!important;
+  flex-wrap:wrap!important;
+  gap:10px!important;
+  margin:24px 0 18px!important;
+  font-size:31px!important;
+  line-height:1.1!important;
+  color:#111820!important;
+  font-weight:950!important;
+}
+body:has(#productDetail) .detail-price .old{
+  margin-left:0!important;
+  color:#9aa1a8!important;
+  font-size:15px!important;
+}
+body:has(#productDetail) .gz-product-benefit-badges{
+  margin:0 0 18px!important;
+  gap:7px!important;
+}
+body:has(#productDetail) .gz-product-benefit-badges span{
+  padding:7px 10px!important;
+  border:1px solid #ccebd6!important;
+  background:#effaf2!important;
+  color:#18743c!important;
+  font-size:10px!important;
+}
+body:has(#productDetail) .detail-desc{
+  margin:0!important;
+  max-width:680px!important;
+  color:#626c76!important;
+  font-size:14px!important;
+  line-height:1.8!important;
+  white-space:pre-wrap!important;
+}
+body:has(#productDetail) .dm-box{
+  margin-top:22px!important;
+  padding:0!important;
+  background:transparent!important;
+}
+body:has(#productDetail) #orderBtn{
+  width:100%!important;
+  min-height:50px!important;
+  border:0!important;
+  border-radius:13px!important;
+  background:#151a20!important;
+  color:#fff!important;
+  font-size:13px!important;
+  font-weight:900!important;
+}
+body:has(#productDetail) #orderBtn:hover{
+  background:#f56a12!important;
+}
+body:has(#productDetail) .gz-customer-variations{
+  width:100%!important;
+  margin:24px 0 0!important;
+  padding:20px!important;
+  border:1px solid #e4e7ea!important;
+  border-radius:18px!important;
+  background:#fff!important;
+  box-shadow:0 10px 30px rgba(17,25,35,.055)!important;
+}
+body:has(#productDetail) .gz-cv-title{
+  margin-bottom:16px!important;
+  color:#151b22!important;
+  font-size:18px!important;
+  font-weight:950!important;
+}
+body:has(#productDetail) .gz-cv-row{
+  margin:16px 0!important;
+}
+body:has(#productDetail) .gz-cv-row>label{
+  margin-bottom:8px!important;
+  color:#505a64!important;
+  font-size:10px!important;
+}
+body:has(#productDetail) .gz-cv-values{
+  gap:8px!important;
+}
+body:has(#productDetail) .gz-cv-values button{
+  min-height:40px!important;
+  padding:9px 14px!important;
+  border:1px solid #dfe3e6!important;
+  border-radius:11px!important;
+  background:#fff!important;
+  color:#242b33!important;
+  font-size:11px!important;
+}
+body:has(#productDetail) .gz-cv-values button.selected{
+  border-color:#f56a12!important;
+  background:#fff4ec!important;
+  box-shadow:0 0 0 1px #f56a12 inset!important;
+}
+body:has(#productDetail) .gz-cv-state{
+  margin-top:16px!important;
+  border-radius:11px!important;
+}
+body:has(#productDetail) .gz-cv-qty{
+  margin-top:16px!important;
+}
+body:has(#productDetail) .gz-cv-actions{
+  margin-top:16px!important;
+}
+body:has(#productDetail) .gz-cv-actions button{
+  min-height:48px!important;
+  border-radius:12px!important;
+}
+@media(max-width:1000px){
+  body:has(#productDetail) .detail-grid{
+    grid-template-columns:minmax(0,1fr) minmax(340px,.9fr)!important;
+    gap:36px!important;
+  }
+  body:has(#productDetail) .gallery{
+    grid-template-columns:64px minmax(0,1fr)!important;
+  }
+  body:has(#productDetail) .gallery-thumbs,
+  body:has(#productDetail) .gallery-thumb{
+    width:64px!important;
+  }
+  body:has(#productDetail) .gallery-thumb{
+    height:64px!important;
+    flex-basis:64px!important;
+  }
+}
+@media(max-width:760px){
+  body:has(#productDetail) .header{
+    height:60px!important;
+    min-height:60px!important;
+    padding:0 12px!important;
+  }
+  body:has(#productDetail) .header nav{display:none!important}
+  body:has(#productDetail) .header #headerDm{
+    min-width:92px!important;
+    height:38px!important;
+    padding:8px 11px!important;
+    font-size:10px!important;
+  }
+  body:has(#productDetail) .detail{
+    padding:24px 12px 55px!important;
+  }
+  body:has(#productDetail) .detail-grid{
+    grid-template-columns:1fr!important;
+    gap:28px!important;
+  }
+  body:has(#productDetail) .gallery{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+  }
+  body:has(#productDetail) .gallery-main{
+    order:1!important;
+    border-radius:18px!important;
+  }
+  body:has(#productDetail) .gallery-thumbs{
+    order:2!important;
+    width:100%!important;
+    flex-direction:row!important;
+    overflow-x:auto!important;
+    padding-bottom:3px!important;
+  }
+  body:has(#productDetail) .gallery-thumb{
+    flex:0 0 64px!important;
+    width:64px!important;
+    height:64px!important;
+  }
+  body:has(#productDetail) .detail h1{
+    font-size:38px!important;
+  }
+  body:has(#productDetail) .detail-price{
+    font-size:27px!important;
+  }
+  body:has(#productDetail) .gz-customer-variations{
+    padding:15px!important;
+  }
+}
+
+
+/* =========================================================
+   PRODUCT DETAIL — FINAL HEADER + ALIGNMENT OVERRIDE
+   This block intentionally comes last so legacy responsive rules
+   cannot re-introduce the old two-row product header.
+========================================================= */
+body:has(#productDetail) > .header{
+  position:sticky!important;
+  top:0!important;
+  width:100%!important;
+  height:72px!important;
+  min-height:72px!important;
+  max-height:72px!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  padding:0 clamp(22px,4vw,56px)!important;
+  gap:28px!important;
+  overflow:visible!important;
+  z-index:1000!important;
+  box-sizing:border-box!important;
+}
+body:has(#productDetail) > .header .brand{
+  display:flex!important;
+  align-items:center!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:0!important;
+  height:48px!important;
+  gap:10px!important;
+}
+body:has(#productDetail) > .header .brand-mark{
+  width:150px!important;
+  min-width:150px!important;
+  max-width:150px!important;
+  height:38px!important;
+  min-height:38px!important;
+  max-height:38px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+body:has(#productDetail) > .header .brand-mark img{
+  width:150px!important;
+  height:38px!important;
+  max-width:150px!important;
+  object-fit:contain!important;
+  object-position:left center!important;
+  border:0!important;
+  border-radius:0!important;
+}
+body:has(#productDetail) > .header #storeName{
+  display:none!important;
+}
+body:has(#productDetail) > .header > nav{
+  display:flex!important;
+  flex:1 1 auto!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  width:auto!important;
+  min-width:0!important;
+  height:72px!important;
+  gap:24px!important;
+  margin:0!important;
+  padding:0!important;
+  white-space:nowrap!important;
+}
+body:has(#productDetail) > .header > nav a{
+  display:inline-flex!important;
+  align-items:center!important;
+  height:72px!important;
+  padding:0!important;
+  font-size:13px!important;
+  font-weight:800!important;
+}
+body:has(#productDetail) > .header > #headerDm,
+body:has(#productDetail) > .header > .header-actions{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:180px!important;
+  height:44px!important;
+  margin:0 0 0 auto!important;
+  padding:0 22px!important;
+  border-radius:999px!important;
+  box-sizing:border-box!important;
+}
+body:has(#productDetail) > .header > #headerDm{
+  background:#111!important;
+  color:#fff!important;
+  border:0!important;
+  font-size:13px!important;
+  font-weight:900!important;
+}
+body:has(#productDetail) > .header > #headerDm:hover{
+  background:#f56a12!important;
+  color:#fff!important;
+}
+
+/* Notice always occupies its own row directly below the product header. */
+body:has(#productDetail) > .notice-wrap{
+  position:relative!important;
+  top:auto!important;
+  z-index:900!important;
+  height:42px!important;
+  min-height:42px!important;
+  margin:0!important;
+  width:100%!important;
+}
+
+/* Product content gets a stable two-column desktop rhythm. */
+body:has(#productDetail) > main{
+  width:100%!important;
+  margin:0!important;
+  padding:0!important;
+}
+body:has(#productDetail) #productDetail.detail{
+  width:min(1240px,calc(100% - 48px))!important;
+  margin:0 auto!important;
+  padding:48px 0 96px!important;
+}
+body:has(#productDetail) #productDetail .detail-grid{
+  width:100%!important;
+  grid-template-columns:minmax(0,1fr) minmax(420px,.92fr)!important;
+  gap:56px!important;
+  align-items:start!important;
+}
+body:has(#productDetail) #productDetail .gallery{
+  grid-template-columns:78px minmax(0,1fr)!important;
+  gap:14px!important;
+}
+body:has(#productDetail) #productDetail .gallery-thumbs{
+  width:78px!important;
+  gap:10px!important;
+}
+body:has(#productDetail) #productDetail .gallery-thumb{
+  width:78px!important;
+  height:78px!important;
+  flex:0 0 78px!important;
+}
+body:has(#productDetail) #productDetail .gallery-main{
+  width:100%!important;
+  max-height:none!important;
+  aspect-ratio:1/1!important;
+}
+body:has(#productDetail) #productDetail .detail-grid > div:last-child{
+  padding-top:2px!important;
+}
+body:has(#productDetail) #productDetail h1{
+  font-size:clamp(38px,4vw,58px)!important;
+  line-height:1.02!important;
+}
+body:has(#productDetail) #productDetail .detail-price{
+  margin-top:22px!important;
+}
+body:has(#productDetail) #productDetail .gz-customer-variations{
+  margin-top:28px!important;
+}
+
+/* Tablet/mobile: keep one clean header row and stack product content. */
+@media(max-width:900px){
+  body:has(#productDetail) > .header{
+    height:64px!important;
+    min-height:64px!important;
+    max-height:64px!important;
+    padding:0 16px!important;
+    gap:12px!important;
+  }
+  body:has(#productDetail) > .header .brand-mark,
+  body:has(#productDetail) > .header .brand-mark img{
+    width:126px!important;
+    min-width:126px!important;
+    max-width:126px!important;
+    height:32px!important;
+    max-height:32px!important;
+  }
+  body:has(#productDetail) > .header > nav{
+    display:none!important;
+  }
+  body:has(#productDetail) > .header > #headerDm{
+    min-width:132px!important;
+    height:40px!important;
+    padding:0 16px!important;
+    font-size:12px!important;
+  }
+  body:has(#productDetail) > .notice-wrap{
+    height:40px!important;
+    min-height:40px!important;
+  }
+  body:has(#productDetail) #productDetail.detail{
+    width:calc(100% - 28px)!important;
+    padding:28px 0 64px!important;
+  }
+  body:has(#productDetail) #productDetail .detail-grid{
+    grid-template-columns:1fr!important;
+    gap:30px!important;
+  }
+}
+@media(max-width:520px){
+  body:has(#productDetail) > .header > #headerDm{
+    min-width:110px!important;
+    padding:0 12px!important;
+    font-size:11px!important;
+  }
+  body:has(#productDetail) > .header .brand-mark,
+  body:has(#productDetail) > .header .brand-mark img{
+    width:112px!important;
+    min-width:112px!important;
+    max-width:112px!important;
+  }
+}
+
+
+/* Product header: keep the readable GrabZone wordmark beside the uploaded logo. */
+body:has(#productDetail) > .header #storeName{
+  display:inline-flex!important;
+  align-items:center!important;
+  width:auto!important;
+  min-width:max-content!important;
+  height:48px!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+  text-overflow:clip!important;
+  color:#17202a!important;
+  font-size:22px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:-.045em!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+body:has(#productDetail) > .header .brand{
+  gap:10px!important;
+}
+
+
+/* Final product header brand lockup: compact logo + wordmark with no empty gap. */
+body:has(#productDetail) > .header .brand{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:0!important;
+  height:48px!important;
+  gap:8px!important;
+  margin:0!important;
+}
+body:has(#productDetail) > .header .brand-mark{
+  flex:0 0 52px!important;
+  width:52px!important;
+  min-width:52px!important;
+  max-width:52px!important;
+  height:40px!important;
+  min-height:40px!important;
+  max-height:40px!important;
+  padding:0!important;
+  margin:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  overflow:hidden!important;
+}
+body:has(#productDetail) > .header .brand-mark img{
+  display:block!important;
+  width:52px!important;
+  height:40px!important;
+  max-width:52px!important;
+  max-height:40px!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+body:has(#productDetail) > .header #storeName{
+  display:inline-flex!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:max-content!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  align-items:center!important;
+  color:#17202a!important;
+  font-size:21px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:-.045em!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  visibility:visible!important;
+  opacity:1!important;
+}

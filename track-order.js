@@ -1,5 +1,7 @@
 
 (()=> {
+ if(window.__gzTrackOrderInitialized)return;
+ window.__gzTrackOrderInitialized=true;
  const C=window.GRABZONE_CONFIG||{};
  let invoiceSiteSettings={whatsapp:C.whatsapp||'',instagram:C.instagram||'',messenger:C.messenger||''};
  const $=id=>document.getElementById(id);
@@ -62,7 +64,7 @@
    const phone=String(o.phone||o.customer_phone||'—');
    const email=String(o.email||o.customer_email||'');
    const address=[o.address,o.upazila,o.district,o.division].filter(Boolean).join(', ')||'—';
-   const pointsUrl='https://grab-zone-ten.vercel.app/grabpoints.html';
+   const pointsUrl='https://grabzone.tech/grabpoints.html';
    const socialIcons={
      messenger:'<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C6.48 2 2 6.15 2 11.27c0 2.92 1.47 5.52 3.77 7.2V22l3.44-1.89c.9.25 1.83.38 2.79.38 5.52 0 10-4.15 10-9.22S17.52 2 12 2Zm1 12.42-2.55-2.72-4.98 2.72 5.48-5.82 2.61 2.72 4.92-2.72-5.48 5.82Z"/></svg>',
      instagram:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2.3"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2.3"/><circle cx="17.7" cy="6.5" r="1.4" fill="currentColor"/></svg>',
@@ -88,8 +90,8 @@
      '<section class="gz-invoice-totals"><div><span>Subtotal</span><b>'+money(sum)+'</b></div><div><span>Shipping</span><b>'+money(shipping)+'</b></div>'+(discount?'<div><span>Discount</span><b>−'+money(discount)+'</b></div>':'')+'<div class="gz-invoice-grandtotal"><span>Total Paid ('+esc(payment)+')</span><b>'+money(total)+'</b></div></section>'+
      '<section class="gz-invoice-barcodes"><div><h3>GrabZone Order Barcode</h3>'+bar('gzInvoiceOrderBarcode',orderNo)+'</div><div><h3>Tracking ID Barcode</h3>'+bar('gzInvoiceTrackingBarcode',tracking)+'</div></section>'+
      '<section class="gz-invoice-thanks"><div class="gz-invoice-signoff"><strong>Thank You <span>♡</span></strong><em>for shopping with GrabZone!</em></div><div class="gz-invoice-bangla"><b>আপনার অর্ডারের জন্য ধন্যবাদ!</b><p>আপনার সমর্থন আমাদের আরও ভালো পণ্য এবং সেবা দেওয়ার অনুপ্রেরণা দেয়।</p></div></section>'+
-     '<section class="gz-invoice-grabpoints"><div class="gz-invoice-gp-brand"><div class="gz-invoice-gp-icon">GP</div><div><strong>Grab<span>Points</span></strong><h3>কেনাকাটায় আরও বেশি সুবিধা পান!</h3><p>প্রতিটি অর্ডারে GrabPoints সংগ্রহ করুন এবং ভবিষ্যতে ব্যবহার করে ডিসকাউন্ট পান।</p></div></div><div class="gz-invoice-gp-rewards"><span>🛒 অর্ডার করুন<br>সুবিধা নিন</span><span>🎁 পয়েন্ট দিয়ে<br>ডিসকাউন্ট পান</span><span>⭐ বিশেষ অফার<br>ও রিওয়ার্ড পান</span></div><a class="gz-invoice-gp-qr" href="'+esc(pointsUrl)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(qrUrl)+'" alt="GrabPoints QR code"><b>এখানে GrabPoints দেখুন</b><small>স্ক্যান করুন অথবা ভিজিট করুন</small><strong>grab-zone-ten.vercel.app/grabpoints.html</strong></a></section>'+
-     '<footer class="gz-invoice-footer"><div><b>🛟 Need Help?</b><a href="mailto:grabzonesupport@gmail.com">grabzonesupport@gmail.com</a></div><div><b>🌐 Visit Our Store</b><a href="https://grab-zone-ten.vercel.app/" target="_blank" rel="noopener noreferrer">grab-zone-ten.vercel.app</a></div><div><b>📲 Follow @GrabZone</b><span class="gz-invoice-social-links">'+(socialFooter||'<small>Social links are not configured.</small>')+'</span></div><small>© '+new Date().getFullYear()+' GrabZone. All rights reserved.</small></footer>';
+     '<section class="gz-invoice-grabpoints"><div class="gz-invoice-gp-brand"><div class="gz-invoice-gp-icon">GP</div><div><strong>Grab<span>Points</span></strong><h3>কেনাকাটায় আরও বেশি সুবিধা পান!</h3><p>প্রতিটি অর্ডারে GrabPoints সংগ্রহ করুন এবং ভবিষ্যতে ব্যবহার করে ডিসকাউন্ট পান।</p></div></div><div class="gz-invoice-gp-rewards"><span>🛒 অর্ডার করুন<br>সুবিধা নিন</span><span>🎁 পয়েন্ট দিয়ে<br>ডিসকাউন্ট পান</span><span>⭐ বিশেষ অফার<br>ও রিওয়ার্ড পান</span></div><a class="gz-invoice-gp-qr" href="'+esc(pointsUrl)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(qrUrl)+'" alt="GrabPoints QR code"><b>এখানে GrabPoints দেখুন</b><small>স্ক্যান করুন অথবা ভিজিট করুন</small><strong>grabzone.tech/grabpoints.html</strong></a></section>'+
+     '<footer class="gz-invoice-footer"><div><b>🛟 Need Help?</b><a href="mailto:grabzonesupport@gmail.com">grabzonesupport@gmail.com</a></div><div><b>🌐 Visit Our Store</b><a href="https://grabzone.tech/" target="_blank" rel="noopener noreferrer">grabzone.tech</a></div><div><b>📲 Follow @GrabZone</b><span class="gz-invoice-social-links">'+(socialFooter||'<small>Social links are not configured.</small>')+'</span></div><small>© '+new Date().getFullYear()+' GrabZone. All rights reserved.</small></footer>';
    const receiptPaper=modal.querySelector('.receipt-paper');
    if(receiptPaper){
      receiptPaper.innerHTML='<div class="receipt-lines"><strong>GRABZONE</strong><b>ORDER RECEIPT</b><hr><span>Order: '+esc(orderNo)+'</span><span>Tracking: '+esc(tracking)+'</span><span>Customer: '+esc(customer)+'</span><b class="receipt-mini-total">TOTAL: '+money(total)+'</b><i></i><i></i></div>';
@@ -141,10 +143,20 @@
      }catch(err){console.error('Invoice PDF download failed:',err);alert('Invoice PDF তৈরি করা যায়নি। পেজটি রিফ্রেশ করে আবার চেষ্টা করুন।');}
      finally{if(pdfRoot)pdfRoot.remove();downloadBtn.disabled=false;downloadBtn.innerHTML=old;}
    };
+   const setPrinterStage=stage=>{
+     modal.dataset.printerStage=stage;
+     const statusLabel=$('printerScreenStatus');
+     const printerLabel=modal.querySelector('.printer-printing-label');
+     const labels={processing:['Processing your order','Preparing your receipt…'],printing:['Printing your receipt','Receipt is being printed…'],complete:['Order complete','Your invoice is ready']};
+     const copy=labels[stage]||labels.processing;
+     if(statusLabel)statusLabel.textContent=copy[0];
+     if(printerLabel)printerLabel.textContent=copy[1];
+   };
+   setPrinterStage('processing');
    modal.classList.add('open','printing','printer-phase');
-   window.__gzInvoicePrintTimers.push(setTimeout(()=>modal.classList.add('paper-feeding'),250));
-   window.__gzInvoicePrintTimers.push(setTimeout(()=>modal.classList.add('invoice-reveal'),3000));
-   window.__gzInvoicePrintTimers.push(setTimeout(()=>{modal.classList.remove('printing','printer-phase','paper-feeding','invoice-reveal');modal.classList.add('printed');delete modal.dataset.opening},4300));
+   window.__gzInvoicePrintTimers.push(setTimeout(()=>{setPrinterStage('printing');modal.classList.add('paper-feeding')},520));
+   window.__gzInvoicePrintTimers.push(setTimeout(()=>{setPrinterStage('complete');modal.classList.add('invoice-reveal')},3000));
+   window.__gzInvoicePrintTimers.push(setTimeout(()=>{modal.classList.remove('printing','printer-phase','paper-feeding','invoice-reveal');modal.classList.add('printed');delete modal.dataset.opening},4100));
  }
  const shipmentMarkup=vendors.length?vendors.map(v=>{
      const products=(v.items||[]).map(i=>esc(i.product_name||'Product')+' × '+Number(i.quantity||1)).join(' · ')||'Product';
@@ -163,7 +175,7 @@
    const copyBtn=$('copyTrackingBtn');if(copyBtn)copyBtn.onclick=async()=>{const value=String(o.tracking_id||o.orderNumber||'').trim();try{await navigator.clipboard.writeText(value);copyBtn.innerHTML='<span class="gz-action-icon">✅</span> Copied!';setTimeout(()=>{copyBtn.innerHTML='<span class="gz-action-icon">📋</span> Copy Tracking ID'},1600)}catch{copyBtn.innerHTML='<span class="gz-action-icon">⚠️</span> Copy unavailable';setTimeout(()=>{copyBtn.innerHTML='<span class="gz-action-icon">📋</span> Copy Tracking ID'},1600)}};
    const refreshBtn=$('refreshOrderBtn');if(refreshBtn)refreshBtn.onclick=async()=>{refreshBtn.disabled=true;refreshBtn.innerHTML='<span class="gz-action-icon">⏳</span> Updating...';try{const d=await getOrder(o.tracking_id||o.orderNumber);if(d?.order){render(d.order);$('msg').innerHTML='<span class="live-dot"></span> Status updated just now';}}catch(e){$('msg').textContent=e.message||'Could not refresh order.'}finally{if($('refreshOrderBtn'))$('refreshOrderBtn').disabled=false}};
    const storeBtn=$('storeActionBtn');if(storeBtn)storeBtn.onclick=()=>{location.href='index.html'};
-   const closeInvoice=()=>{(window.__gzInvoicePrintTimers||[]).forEach(clearTimeout);window.__gzInvoicePrintTimers=[];const m=$('invoiceModal');if(m){m.classList.remove('open','printing','printed','printer-phase','paper-feeding','invoice-reveal');delete m.dataset.opening}};const invClose=$('invoiceClose');if(invClose)invClose.onclick=closeInvoice;const invModal=$('invoiceModal');if(invModal)invModal.onclick=e=>{if(e.target===invModal)closeInvoice()};
+   const closeInvoice=()=>{(window.__gzInvoicePrintTimers||[]).forEach(clearTimeout);window.__gzInvoicePrintTimers=[];const m=$('invoiceModal');if(m){m.classList.remove('open','printing','printed','printer-phase','paper-feeding','invoice-reveal');delete m.dataset.opening;delete m.dataset.printerStage}};const invClose=$('invoiceClose');if(invClose)invClose.onclick=closeInvoice;const invModal=$('invoiceModal');if(invModal)invModal.onclick=e=>{if(e.target===invModal)closeInvoice()};
  }
 
  async function getOrder(id){
@@ -172,11 +184,12 @@
    const marketplace=await fetch('/api/marketplace/track?tracking_id='+encodeURIComponent(clean),{cache:'no-store'});
    let md={}; try{md=await marketplace.json()}catch{}
    if(marketplace.ok&&md.order)return {success:true,order:{...md.order,orderNumber:md.order.order_number,items:[],vendors:md.vendors||[]}};
-   if(!window.grabzoneD1) throw new Error(md.error||'Tracking service is not configured.');
-   const sb=window.grabzoneD1;
-   const {data,error}=await sb.rpc('track_public_order',{p_tracking_id:clean});
-   if(!error&&data) return {success:true,order:data};
-   console.warn('Direct tracking RPC failed:',error);
+   /*
+     Customer tracking goes through the Worker route. The direct D1 RPC call
+     that ran first is removed: the anon key is refused by track_public_order,
+     so it produced a warning plus a console error on every lookup and then
+     fell through to this route anyway.
+   */
    const response=await fetch('/api/track-order?trackingId='+encodeURIComponent(clean),{cache:'no-store'});
    let body={}; try{body=await response.json()}catch{}
    if(!response.ok) throw new Error(body.error||'Order not found. Please check your Order ID.');

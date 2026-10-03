@@ -4,7 +4,7 @@ const MAX_BYTES=1024*1024;
 const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate'}});
 const UPLOAD_AUTH_FIX=`<script data-gz-vendor-upload-auth-fix>(()=>{if(window.__gzVendorUploadAuthFix)return;window.__gzVendorUploadAuthFix=1;const originalFetch=window.fetch.bind(window);const getToken=()=>{try{return window.getToken?.()||localStorage.getItem('gz_d1_admin_token')||sessionStorage.getItem('gz_d1_admin_token')||''}catch{return''}};const authHeaders=()=>{const t=getToken(),h=new Headers();if(t){h.set('Authorization','Bearer '+t);h.set('X-GrabZone-Token',t)}return h};window.fetch=async(input,init={})=>{let path='';try{path=new URL(typeof input==='string'?input:input?.url||'',location.href).pathname}catch{}if(path!=='/api/vendor/upload')return originalFetch(input,init);try{const h=authHeaders();await originalFetch('/api/admin-auth',{method:'GET',headers:h,credentials:'include',cache:'no-store'}).catch(()=>{});const headers=new Headers(init.headers||(input instanceof Request?input.headers:undefined));const t=getToken();if(t){if(!headers.has('Authorization'))headers.set('Authorization','Bearer '+t);if(!headers.has('X-GrabZone-Token'))headers.set('X-GrabZone-Token',t)}return originalFetch(input,{...init,credentials:init.credentials||'include',headers})}catch{return originalFetch(input,{...init,credentials:init.credentials||'include'})}}})();</script>`;
 const VENDOR_PRODUCT_EDITOR='<script src="/vendor-control-product-editor.js?v=20260921-v18" data-gz-vendor-product-editor></script>';
-const NOTICE_SYNC=`<script data-gz-notice-sync-loader src="/grabzone-notice-sync.js?v=20260916-home3" defer></script>`;
+const NOTICE_SYNC='';
 
 async function one(env,sql,p=[]){return (await env.DB.prepare(sql).bind(...p).all()).results?.[0]||null}
 async function all(env,sql,p=[]){return (await env.DB.prepare(sql).bind(...p).all()).results||[]}
@@ -115,17 +115,22 @@ export default{fetch:async(req,env,ctx)=>{try{
   if(direct)return direct;
   const response=await gateway.fetch(req,env,ctx);
   const type=response.headers.get('content-type')||'';
-  if(response.ok&&type.includes('text/html')&&(p==='/'||p==='/index.html')){
+  if(response.ok&&type.includes('text/html')){
     const body=await response.text();
-    const html=body.replace(/<head[^>]*>/i,m=>m+'\n'+NOTICE_SYNC);
+    const isHome=(p==='/'||p==='/index.html');
+    const isVendorPanel=(p==='/marketplace-vendor-control-v2'||p==='/marketplace-vendor-control-v2.html'||p==='/vendor-admin'||p==='/vendor-admin.html');
+    const extra=[
+      '<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20261001-favicon-final">',
+      '<link rel="apple-touch-icon" href="/favicon.svg?v=20261001">',
+      isHome?NOTICE_SYNC:'',
+      isVendorPanel?(p.startsWith('/marketplace-vendor-control-v2')?UPLOAD_AUTH_FIX+'\n'+VENDOR_PRODUCT_EDITOR:UPLOAD_AUTH_FIX):''
+    ].filter(Boolean).join('\n');
+    const html=body.replace(/<head[^>]*>/i,m=>m+'\n'+extra);
     const h=new Headers(response.headers);
     h.delete('Content-Length');
     h.set('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');
     h.set('Pragma','no-cache');
     return new Response(html,{status:response.status,statusText:response.statusText,headers:h});
-  }
-  if((p==='/marketplace-vendor-control-v2'||p==='/marketplace-vendor-control-v2.html'||p==='/vendor-admin'||p==='/vendor-admin.html')){
-    if(type.includes('text/html')){const body=await response.text();const extra=p.startsWith('/marketplace-vendor-control-v2')?UPLOAD_AUTH_FIX+'\n'+VENDOR_PRODUCT_EDITOR:UPLOAD_AUTH_FIX;const html=body.replace(/<head[^>]*>/i,m=>m+'\n'+extra);const h=new Headers(response.headers);h.delete('Content-Length');h.set('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');h.set('Pragma','no-cache');return new Response(html,{status:response.status,statusText:response.statusText,headers:h})}
   }
   return response;
 }catch(err){return json({error:err?.message||'Vendor preview failed'},500)}}};

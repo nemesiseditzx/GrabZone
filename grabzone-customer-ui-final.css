@@ -1,0 +1,162 @@
+/* =========================================================
+   GrabZone Customer UI — final cross-page visual system
+   Scope: public/customer pages only. No admin/vendor selectors.
+========================================================= */
+:root{
+  --gz-orange:#f65b0a;
+  --gz-ink:#151a20;
+  --gz-muted:#69727d;
+  --gz-line:#e7eaee;
+  --gz-soft:#f7f8fa;
+  --gz-radius:18px;
+}
+html{scroll-behavior:smooth}
+body{color:var(--gz-ink)}
+a{transition:color .18s ease,opacity .18s ease}
+button,input,select,textarea{font-family:inherit}
+button{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background .18s ease}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid rgba(246,91,10,.22)!important;outline-offset:2px!important;
+}
+
+/* Public marketplace header */
+.header .brand{text-decoration:none!important;min-width:0}
+.header .brand-mark{background:transparent!important;border:0!important;box-shadow:none!important}
+.header .brand-mark img{object-fit:contain!important}
+.header .brand-name{font-weight:900!important;color:#151a20!important;white-space:nowrap!important}
+.header .header-actions{min-width:0}
+.header .header-actions .btn{white-space:nowrap}
+.header nav a{font-weight:800!important;text-decoration:none!important}
+.header nav a:hover{color:var(--gz-orange)!important}
+.notice-wrap{z-index:50!important}
+.notice-label{font-weight:950!important;letter-spacing:.04em!important}
+
+/* Product/detail */
+.detail{scroll-margin-top:90px}
+.detail .product-image,.detail .detail-image{background:#fafafa;border-radius:20px}
+.detail img{border-radius:inherit}
+.detail h1{letter-spacing:-.04em}
+.detail .price,.detail-price{font-weight:950!important}
+.detail .btn,.detail button{border-radius:12px}
+.detail .dm-box{border:1px solid var(--gz-line)!important;border-radius:18px!important;box-shadow:0 8px 30px rgba(17,25,35,.05)!important}
+
+/* Product grid */
+.product-card{border:1px solid #e8ebee!important;background:#fff!important;border-radius:16px!important;overflow:hidden}
+.product-card:hover{box-shadow:0 14px 34px rgba(17,25,35,.09)!important}
+.product-card img{background:#fafafa}
+.product-card .product-name{font-weight:800!important;line-height:1.4!important}
+.product-card .price{font-weight:950!important}
+
+/* Generic customer sections */
+.section,.shop-section,.track-page,.policy-page,.wrap{scroll-margin-top:90px}
+.section-head h2{letter-spacing:-.035em}
+.card,.section-card,.faq-item,.security>div{
+  border-color:#e7eaee!important;
+  box-shadow:0 8px 28px rgba(17,25,35,.045)!important;
+}
+.card:hover{border-color:#d9dde2}
+
+/* Checkout */
+.checkout-header{
+  min-height:68px!important;
+  border-bottom:1px solid var(--gz-line)!important;
+  box-shadow:0 4px 18px rgba(17,25,35,.045)!important;
+}
+.checkout-brand{text-decoration:none!important}
+.checkout-brand img{object-fit:contain!important}
+.checkout-shell{max-width:1240px!important}
+.checkout-heading h1{letter-spacing:-.045em}
+.checkout-card,.summary-card{
+  border:1px solid #e7eaee!important;
+  box-shadow:0 12px 38px rgba(17,25,35,.055)!important;
+  border-radius:20px!important;
+}
+.field input,.field select,.field textarea,
+.location-trigger,.location-menu-search{
+  border-color:#dfe4e8!important;
+  border-radius:12px!important;
+  min-height:46px;
+}
+.field input:focus,.field select:focus,.field textarea:focus,.location-trigger:focus{
+  border-color:#ffb17f!important;
+  box-shadow:0 0 0 3px rgba(246,91,10,.08)!important;
+}
+.confirm-btn,.success-shop-btn,.success-track-btn,.success-download-btn{
+  border-radius:12px!important;
+}
+.summary-total{border-top:1px solid #e7eaee!important}
+
+/* Track order */
+.track-page .track-shell,.track-page .track-card,.track-page .lookup-card{
+  border-radius:20px!important;
+  border-color:#e7eaee!important;
+  box-shadow:0 12px 36px rgba(17,25,35,.055)!important;
+}
+.track-page input,.track-page select,.track-page button{border-radius:12px}
+.track-page .status-step{border-radius:14px!important}
+.track-page .track-status{border-radius:16px!important}
+
+/* Policies */
+.policy-page .policy-hero,.policy-page .policy-card,.policy-page .policy-toc,
+.policy-shell .policy-card{
+  border-radius:20px!important;
+  border-color:#e7eaee!important;
+  box-shadow:0 10px 32px rgba(17,25,35,.045)!important;
+}
+.policy-page h1,.policy-shell h1{letter-spacing:-.045em}
+
+/* Payment page */
+.payment-page .payment-card,.payment-shell .payment-card,
+.payment-page .method-card,.payment-shell .method-card{
+  border-radius:18px!important;
+  border:1px solid #e7eaee!important;
+  box-shadow:0 10px 32px rgba(17,25,35,.05)!important;
+}
+
+/* GrabPoints */
+.top{
+  border-bottom:1px solid var(--gz-line)!important;
+  box-shadow:0 4px 20px rgba(17,25,35,.045)!important;
+}
+.top .brand{text-decoration:none!important}
+.top .brand-mark{background:transparent!important}
+.top .brand-mark img{object-fit:contain!important}
+.rewards-shell,.app-card,.membership-cta,.tier,.section .card,.security .card,.faq-item{
+  border-color:#e7eaee!important;
+  box-shadow:0 10px 32px rgba(17,25,35,.045)!important;
+  border-radius:20px!important;
+}
+.rewards-head h1{letter-spacing:-.045em}
+.tier{transition:transform .18s ease,box-shadow .18s ease}
+.tier:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(17,25,35,.08)!important}
+
+/* Mobile */
+@media(max-width:760px){
+  html{scroll-padding-top:70px}
+  .header{min-height:58px!important}
+  .header .brand-name{font-size:15px!important}
+  .header nav{display:none!important}
+  .product-card{border-radius:13px!important}
+  .detail{width:min(100% - 24px,1200px)!important}
+  .detail h1{font-size:clamp(28px,8vw,42px)!important}
+  .checkout-header{padding:10px 14px!important}
+  .checkout-shell{width:min(100% - 20px,1240px)!important}
+  .checkout-card,.summary-card{border-radius:16px!important}
+  .checkout-layout{grid-template-columns:1fr!important}
+  .summary-card{position:static!important}
+  .track-page,.policy-page,.policy-shell{width:min(100% - 20px,1200px)!important}
+  .track-page .track-shell,.track-page .track-card,.track-page .lookup-card,
+  .policy-page .policy-card,.policy-shell .policy-card{border-radius:16px!important}
+  .top{padding:10px 14px!important}
+  .top .brand{min-width:0!important}
+  .top .brand-mark{width:38px!important;height:38px!important}
+  .top .brand-mark img{width:38px!important;height:38px!important}
+  .rewards-shell{border-radius:16px!important}
+  .section{padding-inline:14px!important}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.tier{transition:none}}
+
+
+/* Single-source navigation: disable the retired legacy bottom app shell. */
+#gzMobileAppNav{display:none!important}
+html body{padding-bottom:0!important}

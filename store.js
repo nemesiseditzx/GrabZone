@@ -151,45 +151,29 @@ function getSocialUrl(type) {
 ========================================================= */
 
 function applyFavicon() {
-  const logo =
-    SITE.logo_url ||
-    C?.logoUrl ||
-    "";
+  /*
+    The Admin Panel Website Design logo is the source of truth.
+    Use it for the browser favicon too, with the built-in GrabZone mark
+    only as a fallback when no admin logo has been configured.
+  */
+  const logoUrl = String(SITE.logo_url || "").trim();
+  const iconUrl = logoUrl || "/favicon.svg?v=20261001-favicon-final";
 
-  if (!logo) return;
+  document
+    .querySelectorAll('link[rel~="icon"], link[data-grabzone-favicon], link[data-grabzone-apple-icon]')
+    .forEach(link => link.remove());
 
-  let favicon =
-    document.querySelector('link[data-grabzone-favicon]');
+  const favicon = document.createElement("link");
+  favicon.rel = "icon";
+  favicon.href = iconUrl;
+  favicon.setAttribute("data-grabzone-favicon", "true");
+  document.head.appendChild(favicon);
 
-  if (!favicon) {
-    favicon = document.createElement("link");
-    favicon.rel = "icon";
-    favicon.type = "image/png";
-    favicon.setAttribute(
-      "data-grabzone-favicon",
-      "true"
-    );
-    document.head.appendChild(favicon);
-  }
-
-  favicon.href = logo;
-
-  let appleIcon =
-    document.querySelector(
-      'link[data-grabzone-apple-icon]'
-    );
-
-  if (!appleIcon) {
-    appleIcon = document.createElement("link");
-    appleIcon.rel = "apple-touch-icon";
-    appleIcon.setAttribute(
-      "data-grabzone-apple-icon",
-      "true"
-    );
-    document.head.appendChild(appleIcon);
-  }
-
-  appleIcon.href = logo;
+  const appleIcon = document.createElement("link");
+  appleIcon.rel = "apple-touch-icon";
+  appleIcon.href = iconUrl;
+  appleIcon.setAttribute("data-grabzone-apple-icon", "true");
+  document.head.appendChild(appleIcon);
 }
 
 /* =========================================================
@@ -604,12 +588,19 @@ async function load() {
     await loadSettings();
     applySiteSettings();
 
-    await Promise.all([
-      loadProducts(),
-      loadNotices()
-    ]);
-
+    /*
+      Render the catalogue and the product detail FIRST.
+      loadNotices() animates the marquee and waits on requestAnimationFrame,
+      which never fires in a backgrounded/hidden tab — sequencing it ahead of
+      renderDetail() left every product page stuck on "Loading product...".
+      Notices are cosmetic, so they now run last and never block.
+    */
+    await loadProducts();
     await renderDetail();
+
+    loadNotices().catch(error => {
+      console.warn("Notice load skipped:", error);
+    });
   } catch (error) {
     console.error("Website loading error:", error);
   }
@@ -650,6 +641,25 @@ function setText(id, value) {
   ) {
     element.textContent = value;
   }
+}
+
+/*
+  site_settings stores the header links as bare in-page anchors ("#shop").
+  Those anchors only exist on index.html, so on every other page the link did
+  nothing. Prefix the homepage when the anchor is not present in this document.
+*/
+function gzResolveHeaderLink(value) {
+  const url = String(value || "").trim();
+
+  if (!url) return url;
+
+  const anchor = url.match(/^#([A-Za-z0-9_-]+)$/);
+
+  if (anchor && !document.getElementById(anchor[1])) {
+    return "index.html" + url;
+  }
+
+  return url;
 }
 
 function setHref(id, value) {
@@ -708,8 +718,8 @@ function applySiteSettings() {
   setText("nav2", SITE.header_link2_label);
   setText("nav3", SITE.header_link3_label);
 
-  setHref("nav1", SITE.header_link1_url);
-  setHref("nav2", SITE.header_link2_url);
+  setHref("nav1", gzResolveHeaderLink(SITE.header_link1_url));
+  setHref("nav2", gzResolveHeaderLink(SITE.header_link2_url));
   setHref("nav3", SITE.header_link3_url);
 
   setText("heroButton", SITE.hero_button_text);
@@ -718,36 +728,33 @@ function applySiteSettings() {
   setText("howButton", SITE.how_button_text);
   setHref("howButton", SITE.how_button_link);
 
-  if (SITE.logo_url) {
-    ["brandMark", "footerMark"].forEach(id => {
-      const element = document.getElementById(id);
+  /*
+    Website Design -> Logo in the Admin Panel is the storefront logo source.
+    Fall back to the bundled GrabZone header mark only when no admin logo exists.
+  */
+  const brandLogo = String(SITE.logo_url || "").trim() ||
+    "/grabzone-header.svg?v=20261001-logo-final";
 
-      if (!element) return;
+  ["brandMark", "footerMark"].forEach(id => {
+    const element = document.getElementById(id);
+    if (!element) return;
 
-      element.innerHTML = `
-        <img
-          src="${escAttr(SITE.logo_url)}"
-          alt="${escAttr(storeName)}"
-          style="
-            width:100%;
-            height:100%;
-            object-fit:contain;
-            border-radius:inherit;
-          "
-        >
-      `;
-      const logoImg = element.querySelector("img");
-      if (logoImg) {
-        logoImg.addEventListener("error",()=>{
-          logoImg.remove();
-          element.textContent = "GZ";
-          element.style.fontWeight = "900";
-          element.style.fontSize = "14px";
-          element.style.color = "#fff";
-          element.style.background = "#111";
-        },{once:true});
-      }
-    });
+    element.innerHTML =
+      '<img src="' + escAttr(brandLogo) + '" alt="' + escAttr(storeName) +
+      '" width="190" height="48" decoding="async" ' +
+      'style="width:100%;height:100%;max-width:none;object-fit:contain;object-position:left center;border-radius:0;display:block">';
+  });
+
+  const storeNameEl = document.getElementById("storeName");
+  if (storeNameEl) {
+    /*
+      Keep the store name beside the uploaded Admin Panel logo. The uploaded
+      asset is the mark/icon, while the store name provides the readable
+      GrabZone wordmark in the product header.
+    */
+    storeNameEl.textContent = storeName;
+    storeNameEl.style.display = "inline-flex";
+    storeNameEl.removeAttribute("aria-hidden");
   }
 
   /*
@@ -950,6 +957,91 @@ function renderProducts() {
       .trim()
       .toLowerCase();
 
+  /*
+    Bangla search.
+    The catalogue is named in English, so a Bangla query used to match nothing.
+    Each Bangla term below maps to the English words the products actually use;
+    a query token matches when any of its synonyms appears in the searchable
+    text. English queries are untouched — they still go through the exact same
+    substring test first.
+  */
+  const GZ_BN_SYNONYMS = {
+    "ঘড়ি": ["watch", "smartwatch", "tissot", "combo"],
+    "জুতা": ["shoe", "shoes", "sneaker", "sandal", "keds"],
+    "শার্ট": ["shirt", "polo", "tshirt"],
+    "পাঞ্জাবি": ["panjabi", "punjabi", "kurta"],
+    "বোরকা": ["borkha", "burqa", "abaya", "koti", "gown", "hijab"],
+    "বুর্কা": ["borkha", "burqa", "abaya", "koti", "gown", "hijab"],
+    "হিজাব": ["hijab", "borkha", "abaya"],
+    "ইয়ারফোন": ["earbuds", "earphone", "headphone", "buds", "plextone"],
+    "ইয়ারফোনস": ["earbuds", "earphone", "headphone", "buds"],
+    "হেডফোন": ["headphone", "headset", "earphone"],
+    "স্পিকার": ["speaker", "sound", "boombox", "subwoofer"],
+    "পাওয়ার ব্যাংক": ["power bank", "powerbank", "power", "baseus"],
+    "পাওয়ারব্যাংক": ["power bank", "powerbank", "power"],
+    "চার্জার": ["charger", "charging", "adapter"],
+    "ফ্যান": ["fan", "cooler"],
+    "কুলার": ["cooler", "fan"],
+    "লাইট": ["light", "lamp", "led", "bulb"],
+    "বাতি": ["light", "lamp", "led", "bulb"],
+    "লাইটিং": ["light", "lamp", "led"],
+    "সোলার": ["solar", "panel"],
+    "কেটলি": ["kettle", "heater"],
+    "গিমবাল": ["gimbal", "stabilizer"],
+    "মাউস": ["mouse"],
+    "কীবোর্ড": ["keyboard"],
+    "ক্যামেরা": ["camera"],
+    "পারফিউম": ["perfume", "attar"],
+    "ব্যাগ": ["bag", "backpack"],
+    "মোবাইল": ["mobile", "phone", "smartphone"],
+    "ফোন": ["phone", "mobile", "smartphone"],
+    "ল্যাপটপ": ["laptop", "notebook"],
+    "স্ট্যান্ড": ["stand", "holder", "mount"],
+    "চশমা": ["sunglasses", "sunglass", "glasses", "glass"],
+    "ছাতা": ["umbrella"],
+    "রাউটার": ["router", "hotspot", "wifi", "modem"],
+    "ঘড়ির": ["watch", "smartwatch"],
+    "পাওয়ার": ["power", "powerbank"],
+    "ঘড়ি-ব্যান্ড": ["watch", "strap"],
+    "খেলনা": ["toy", "toys"],
+    "গেমিং": ["gaming", "game", "gamer"],
+    "ইলেকট্রনিক্স": ["electronics"],
+    "ফ্যাশন": ["fashion"],
+    "এক্সেসরিজ": ["accessories", "accessory"],
+    "বিউটি": ["beauty"],
+    "কিচেন": ["kitchen"],
+    "রান্নাঘর": ["kitchen"],
+    "ডেকোরেটিং": ["decorating", "decor", "decoration"],
+    "হোম": ["home", "household"],
+    "অফার": ["offer", "sale", "discount"],
+    "ছাড়": ["discount", "offer", "sale"]
+  };
+
+  const gzQueryTokens = query.split(/\s+/).filter(Boolean);
+
+  /*
+    English synonyms must match as whole words: a plain substring test made
+    "light" hit "lightweight" and "power" hit "powerful", so a Bangla query for
+    a lamp returned half the catalogue.
+  */
+  const gzWordPattern = (word) => {
+    const escaped = String(word).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const isAscii = /^[a-z0-9]+$/i.test(word);
+
+    return isAscii
+      ? new RegExp("(^|[^a-z0-9])" + escaped + "([^a-z0-9]|$)", "i")
+      : new RegExp(escaped, "i");
+  };
+
+  const gzBanglaMatch = (haystack) =>
+    gzQueryTokens.some(token => {
+      const synonyms = GZ_BN_SYNONYMS[token];
+
+      if (!synonyms) return false;
+
+      return synonyms.some(word => gzWordPattern(word).test(haystack));
+    });
+
   const filtered = allProducts.filter(product => {
     const category =
       String(product.category || "")
@@ -969,7 +1061,7 @@ function renderProducts() {
 
     return (
       categoryMatches &&
-      searchableText.includes(query)
+      (searchableText.includes(query) || gzBanglaMatch(searchableText))
     );
   });
 
@@ -1003,6 +1095,7 @@ function renderProducts() {
             src="${escAttr(product.image_url)}"
             alt="${escAttr(product.name)}"
             loading="lazy"
+            decoding="async"
           >
         </div>
 
@@ -1128,26 +1221,79 @@ function setupSearch() {
 ========================================================= */
 
 async function loadNotices() {
-  const track = document.getElementById("noticeTrack");
 
-  if (!track || !sb) return;
+  let section = document.getElementById("noticeSection");
+  if (!section) {
+    section = document.createElement("div");
+    section.id = "noticeSection";
+    section.className = "notice-wrap";
+    const header = document.querySelector("header.header,.header,header");
+    if (header?.parentNode) header.parentNode.insertBefore(section, header.nextSibling);
+    else document.body.prepend(section);
+  }
 
-  const { data, error } = await sb
-    .from("notices")
-    .select("*")
-    .eq("active", true)
-    .order("sort_order");
+  let track = section.querySelector("#noticeTrack");
+  if (!track) {
+    section.innerHTML = '<div class="notice-label" data-i18n="noticeLabel">NOTICE</div><div id="noticeTrack" class="notice-track"></div>';
+    track = section.querySelector("#noticeTrack");
+  }
 
-  if (error) {
-    console.error("Notice error:", error);
-    track.innerHTML = "";
+  if (!track) return;
+
+  /*
+    Read notices through the public D1 marketplace endpoint first.
+    The storefront is public, so notice rendering must not depend on an
+    authenticated Supabase-compatible client or its initialization timing.
+    A D1-client fallback is retained for older deployments.
+  */
+  let notices = [];
+  let showNotice = true;
+
+  try {
+    const response = await fetch(
+      "/api/marketplace/notices?v=20261001",
+      {
+        method: "GET",
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json" }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Notice endpoint returned " + response.status);
+    }
+
+    const payload = await response.json();
+    showNotice = payload?.show_notice !== false;
+    notices = Array.isArray(payload?.notices) ? payload.notices : [];
+  } catch (endpointError) {
+    console.warn("Public notice endpoint failed; using D1 fallback.", endpointError);
+
+    if (sb) {
+      const fallback = await sb
+        .from("notices")
+        .select("*")
+        .eq("active", true)
+        .order("sort_order");
+
+      if (fallback.error) {
+        console.error("Notice fallback error:", fallback.error);
+      } else {
+        notices = fallback.data || [];
+      }
+    }
+  }
+
+  if (!showNotice) {
+    section.style.display = "none";
     return;
   }
 
-  const notices = data || [];
+  section.style.display = "";
 
   if (!notices.length) {
-    track.innerHTML = "";
+    track.innerHTML = '<div style="height:100%;display:flex;align-items:center;padding:0 18px;color:#aeb4bb;font-size:12px;font-weight:700;white-space:nowrap">No active notices</div>';
     return;
   }
 
@@ -1287,9 +1433,16 @@ async function loadNotices() {
     Wait for layout so the real rendered width can be measured.
   */
   await new Promise(resolve => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(resolve);
-    });
+    /*
+      requestAnimationFrame does not fire in a backgrounded tab, so never
+      wait on it without a fallback timer.
+    */
+    const finish = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(finish, 150);
+    requestAnimationFrame(() => requestAnimationFrame(finish));
   });
 
   const trackWidth = track.getBoundingClientRect().width;
@@ -1620,6 +1773,8 @@ async function renderDetail() {
 
     </div>
   `;
+
+  try{const er=await fetch('/api/rewards/eligibility?product_id='+encodeURIComponent(product.id),{cache:'no-store'});if(er.ok){const eligibility=await er.json();const badges=[];if(eligibility.rewards_eligible)badges.push('Rewards Eligible');if(eligibility.referral_eligible)badges.push('Referral Eligible');if(badges.length){const priceEl=element.querySelector('.detail-price');if(priceEl){const wrap=document.createElement('div');wrap.className='gz-product-benefit-badges';wrap.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:12px 0';wrap.innerHTML=badges.map(x=>'<span style="display:inline-flex;background:#e4f7ea;color:#16723b;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:900">'+x+'</span>').join('');priceEl.parentNode.insertBefore(wrap,priceEl)}}}}catch(e){console.warn('Rewards eligibility unavailable',e)}
 
   window.__gallery =
     gallery;

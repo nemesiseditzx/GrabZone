@@ -4,6 +4,7 @@ import {handleVendorAdminApi} from './vendor-admin-api-compat.mjs';
 import capabilities from './admin-vendor-capabilities-wrapper.mjs';
 import adminVariations from './marketplace-admin-variations.mjs';
 import marketplaceComplete from './vendor-marketplace-complete.mjs';
+import vendorSystemV2 from './vendor-system-v2.mjs';
 const now=()=>new Date().toISOString();
 const json=(x,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 async function one(e,sql,p=[]){return (await e.DB.prepare(sql).bind(...p).all()).results?.[0]||null}
@@ -140,6 +141,9 @@ export default{async fetch(req,env,ctx){try{const rawPath=new URL(req.url).pathn
   const rawP=new URL(a.url).pathname;
   if(rawP==='/api/vendor-auth'){const va=await marketplaceComplete.fetch(a,env,ctx);if(va)return va;}
   const r=await normalizeVendor(a,env),p=new URL(r.url).pathname;
+  if(p==='/api/vendor/coupons'||p==='/api/vendor/coupons/validate'){
+    const vc=await vendorSystemV2.fetch(r,env,ctx);if(vc)return vc;
+  }
   if(p==='/api/vendor/settings'||p==='/api/vendor/account/password'){const va=await marketplaceComplete.fetch(r,env,ctx);if(va)return va;}
   // Vendor portal data APIs must go to the authenticated vendor controller. These were previously falling through to the legacy/stable worker, which made login succeed while dashboard/products/orders/profile returned empty or unrelated data.
   if(p==='/api/vendor/dashboard'||p==='/api/vendor/products'||p==='/api/vendor/orders'||p==='/api/vendor/profile'||p==='/api/vendor/sections'||p==='/api/vendor/shipments'||p==='/api/vendor/order-status'||p==='/api/vendor/variations'){

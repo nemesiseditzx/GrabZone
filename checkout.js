@@ -39,7 +39,7 @@ async function loadMarketplaceShipping(){
 }
 async function loadGlobalShipping(){ return loadMarketplaceShipping(); }
 
-let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0},grabPointsState={balance:0,use:0,discount:0},mysteryState={token:'',discount:0},grabPointsEnabled=true,grabPointsEarnRate=10,grabPointsValue=0.1;
+let checkoutItems=[],site={},locationTree=[],referralState={code:'',discount:0},vendorCouponState={code:'',vendor_id:'',discount:0,label:'',vendor_name:''},rewardsVoucherState={code:'',discount:0,value:0,expires_at:'',points_redeemed:0},grabPointsState={balance:0,use:0,discount:0},mysteryState={token:'',discount:0},grabPointsEnabled=true,grabPointsEarnRate=10,grabPointsValue=0.1;
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const read=(key,fallback)=>{try{const v=JSON.parse(localStorage.getItem(key)||'null');return v??fallback}catch{return fallback}};
@@ -49,6 +49,13 @@ async function loadGrabPointsSettings(){try{const{data,error}=await d1.from('sit
 function loadMystery(){const x=read('grabzone_mystery_v1',null);if(x?.token&&x?.expires_at&&Date.parse(x.expires_at)>Date.now())mysteryState={token:String(x.token),discount:Number(x.discount||0)};else{mysteryState={token:'',discount:0};try{localStorage.removeItem('grabzone_mystery_v1')}catch{}}}
 const msg=(t,error=false)=>{const e=$('checkoutMessage');if(e){e.textContent=t||'';e.className='checkout-message'+(error?' error':'')}};
 const subtotal=()=>checkoutItems.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0);
+/*
+  Delivery charge = the sum of each vendor's configured shipping fee, for every
+  customer location. There is deliberately no Dhaka / outside-Dhaka branch: the
+  same vendor rate applies everywhere in Bangladesh. The server recalculates
+  this from the vendor records when the order is created, so a tampered client
+  value cannot change what the customer is charged.
+*/
 const shippingForLocation=()=>marketplaceShipping;
 function deliveryEtaForLocation(division,district){
   const d=String(district||'').toLowerCase(),v=String(division||'').toLowerCase();
@@ -255,6 +262,7 @@ function formData(){
     upazila:$('upazila').value.trim(),
     address:$('address').value.trim(),
     referral_code:$('referralCode').value.trim().toUpperCase(),
+    vendor_coupon_code:$('vendorCouponCode')?.value.trim().toUpperCase()||'',
     rewards_voucher_code:$('rewardsVoucherCode')?.value.trim().toUpperCase()||'',
     grabpoints_opt_in:1,
     mystery_token:mysteryState.token
@@ -287,7 +295,7 @@ function render(){
     <div><strong>${esc(i.name)}</strong><span>Qty ${i.quantity}${i.variation_options&&typeof i.variation_options==='object'?' · '+Object.entries(i.variation_options).map(([k,v])=>esc(k)+': '+esc(v)).join(' · '):''}</span></div>
     <b>${money(i.price*i.quantity)}</b>
   </div>`).join('');
-  const sub=subtotal(),shipping=shippingForLocation(),discount=Number(referralState.discount||0),pointsDiscount=Number(rewardsVoucherState.discount||0),mysteryDiscount=Math.min(sub,sub*Number(mysteryState.discount||0)/100);
+  const sub=subtotal(),shipping=shippingForLocation(),discount=Number(referralState.discount||0),vendorCouponDiscount=Number(vendorCouponState.discount||0),pointsDiscount=Number(rewardsVoucherState.discount||0),mysteryDiscount=Math.min(sub,sub*Number(mysteryState.discount||0)/100);
   $('checkoutSubtotal').textContent=money(sub);
   $('checkoutShipping').textContent=money(shipping);
   const breakdown=$('checkoutShippingBreakdown');
@@ -297,10 +305,40 @@ function render(){
   }
   $('checkoutDiscount').textContent='-'+money(discount);
   $('checkoutDiscountRow').hidden=discount<=0;
+  const couponRow=$('checkoutVendorCouponRow');if(couponRow)couponRow.hidden=vendorCouponDiscount<=0;const couponEl=$('checkoutVendorCouponDiscount');if(couponEl)couponEl.textContent='-'+money(vendorCouponDiscount);
   const pointsRow=$('checkoutPointsRow');if(pointsRow)pointsRow.hidden=pointsDiscount<=0;const pointsEl=$('checkoutPointsDiscount');if(pointsEl)pointsEl.textContent='-'+money(pointsDiscount);
   const mysteryRow=$('checkoutMysteryRow');if(mysteryRow)mysteryRow.hidden=mysteryDiscount<=0;const mysteryEl=$('checkoutMysteryDiscount');if(mysteryEl)mysteryEl.textContent='-'+money(mysteryDiscount);
-  $('checkoutTotal').textContent=money(Math.max(0,sub+shipping-discount-pointsDiscount-mysteryDiscount));
+  $('checkoutTotal').textContent=money(Math.max(0,sub+shipping-discount-vendorCouponDiscount-pointsDiscount-mysteryDiscount));
   renderDeliveryEta();
+}
+async function applyVendorCoupon(){
+ const input=$('vendorCouponCode'),button=$('applyVendorCouponBtn'),note=$('vendorCouponMessage');
+ const code=input?.value.trim().toUpperCase()||'';
+ if(!code){vendorCouponState={code:'',vendor_id:'',discount:0,label:'',vendor_name:''};if(note)note.textContent='Vendor coupon cleared.';render();return;}
+ const vendors=[...new Map(checkoutItems.map(i=>[String(i.vendor_id||''),i]).filter(x=>x[0]).map(([id,i])=>[id,i])).values()];
+ if(!vendors.length){if(note)note.textContent='No vendor products found in this order.';return;}
+ if(button){button.disabled=true;button.textContent='Checking…';}
+ try{
+   let found=null;
+   for(const item of vendors){
+     const vid=String(item.vendor_id||'');if(!vid)continue;
+     const vendorSubtotal=checkoutItems.filter(x=>String(x.vendor_id||'')===vid).reduce((s,x)=>s+Number(x.price||0)*Number(x.quantity||0),0);
+     const r=await fetch('/api/vendor/coupons/validate?code='+encodeURIComponent(code)+'&vendor_id='+encodeURIComponent(vid)+'&subtotal='+encodeURIComponent(vendorSubtotal),{credentials:'include',cache:'no-store'});
+     const d=await r.json().catch(()=>({}));
+     if(d?.valid){found={...d,vendor_name:item.vendor_name||item.brand_name||'Vendor'};break;}
+   }
+   if(!found){
+     vendorCouponState={code:'',vendor_id:'',discount:0,label:'',vendor_name:''};
+     if(note){note.textContent='This coupon is not valid for any store in your cart.';note.style.color='#b42318';}
+   }else{
+     vendorCouponState={code:found.code,vendor_id:found.vendor_id,discount:Number(found.discount||0),label:found.label||'',vendor_name:found.vendor_name||'Vendor'};
+     if(note){note.textContent='✓ '+found.label+' — '+money(found.discount)+' off '+found.vendor_name+' products only.';note.style.color='#08704f';}
+   }
+   render();
+ }catch(e){
+   vendorCouponState={code:'',vendor_id:'',discount:0,label:'',vendor_name:''};
+   if(note){note.textContent='Could not verify this vendor coupon.';note.style.color='#b42318';}
+ }finally{if(button){button.disabled=false;button.textContent='Apply Coupon';}}
 }
 async function applyReferral(){
   const input=$('referralCode'),button=$('applyReferralBtn'),note=$('referralMessage');
@@ -456,14 +494,14 @@ async function submit(e){
   const confirmed=await openOrderConfirm(d);
   if(!confirmed)return;
   const b=$('placeOrderBtn');b.disabled=true;b.textContent='Placing order…';msg('');
-  const shipping=shippingForLocation(d.division);
+  const shipping=shippingForLocation();
   const payload={
     customer_name:d.customer_name,email:d.email,phone:d.phone,division:d.division,
     district:d.district,upazila:d.upazila,address:d.address,
-    referral_code:d.referral_code||null,rewards_voucher_code:d.rewards_voucher_code||null,payment_method:'Cash on Delivery',
+    referral_code:d.referral_code||null,vendor_coupon_code:vendorCouponState.code||null,rewards_voucher_code:d.rewards_voucher_code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
     items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price),variation_id:i.variation_id||null,variation_options:i.variation_options||{} ,variation_sku:i.variation_sku||i.sku||''})),
-    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:1,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
+    subtotal:subtotal(),referral_discount:Number(referralState.discount||0),vendor_coupon_discount:Number(vendorCouponState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:1,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(vendorCouponState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
   };
   try{
     if(!d1)throw new Error('Order service is not configured.');
@@ -489,7 +527,7 @@ async function submit(e){
     $('successOrderNumber').textContent=order.order_number;
     $('successTrackingId').textContent=privateTrackingId;
     const trackLink=$('successTrackLink');
-    if(trackLink) trackLink.href='track-order.html?tracking='+encodeURIComponent(privateTrackingId);
+    if(trackLink) trackLink.href='https://grabzone.tech/track-order.html?tracking='+encodeURIComponent(privateTrackingId);
     const emailSent=await sendOrderEmail(
       order.order_number,
       'order_created',
@@ -506,6 +544,8 @@ async function submit(e){
         shipping_charge:shipping,
         subtotal:subtotal(),
         referral_discount:Number(referralState.discount||0),
+        vendor_coupon_code:String(order.vendor_coupon_code||vendorCouponState.code||''),
+        vendor_coupon_discount:Number(order.vendor_coupon_discount||vendorCouponState.discount||0),
         rewards_voucher_code:String(order.rewards_voucher_code||rewardsVoucherState.code||''),
         rewards_voucher_discount:Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0),
         mystery_discount:Number(order.mystery_discount||0),
@@ -529,9 +569,10 @@ async function submit(e){
     if(invoiceBox){
       const invoiceSubtotal=subtotal();
       const invoiceReferral=Number(referralState.discount||0);
+      const invoiceVendorCoupon=Number(order.vendor_coupon_discount||vendorCouponState.discount||0);
       const invoiceVoucher=Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0);
       const invoiceMystery=Number(order.mystery_discount||Math.min(invoiceSubtotal,invoiceSubtotal*Number(mysteryState.discount||0)/100));
-      const invoiceDiscount=invoiceReferral+invoiceVoucher+invoiceMystery;
+      const invoiceDiscount=invoiceReferral+invoiceVendorCoupon+invoiceVoucher+invoiceMystery;
       const invoiceTotal=Math.max(0,invoiceSubtotal+shipping-invoiceDiscount);
       const invoiceDate=new Date().toLocaleString('en-BD',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Dhaka'});
       const invoiceItems=checkoutItems.map((item,index)=>'<tr><td class="success-invoice-product"><span class="success-invoice-index">'+(index+1)+'</span>'+(item.image_url?'<img src="'+esc(item.image_url)+'" alt="">':'')+'<div><strong>'+esc(item.name)+'</strong><small>🏬 Store: '+esc(item.vendor_name||item.brand_name||'GrabZone')+'</small><small>SKU: '+esc(item.variation_sku||item.sku||'—')+(item.variation_options&&typeof item.variation_options==='object'?' · '+Object.entries(item.variation_options).map(([k,v])=>esc(k)+': '+esc(v)).join(' · '):'')+'</small></div></td><td>'+money(item.price)+'</td><td>'+Number(item.quantity||1)+'</td><td><b>'+money(Number(item.price||0)*Number(item.quantity||1))+'</b></td></tr>').join('');
@@ -542,8 +583,8 @@ async function submit(e){
         '<div class="success-invoice-summary"><div><span>Subtotal</span><b>'+money(invoiceSubtotal)+'</b></div><div><span>Shipping</span><b>'+money(shipping)+'</b></div>'+(invoiceDiscount?'<div><span>Discount</span><b>−'+money(invoiceDiscount)+'</b></div>':'')+'<div class="success-invoice-grand"><span>Total to Pay (Cash on Delivery)</span><b>'+money(invoiceTotal)+'</b></div></div>'+
         '<div class="success-invoice-thanks"><b>আপনার অর্ডারের জন্য ধন্যবাদ! 💚</b><span>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</span></div>'+
         '<section class="success-invoice-barcodes"><div><h3>GrabZone Order Barcode</h3><svg id="successOrderBarcode" role="img" aria-label="Order barcode"></svg><small>'+esc(order.order_number)+'</small></div><div><h3>Tracking ID Barcode</h3><svg id="successTrackingBarcode" role="img" aria-label="Tracking ID barcode"></svg><small>'+esc(privateTrackingId)+'</small></div></section>'+
-        '<section class="success-invoice-rewards"><div class="success-rewards-mark">GP</div><div class="success-rewards-copy"><strong>Grab<span>Points</span></strong><h3>কেনাকাটায় আরও বেশি সুবিধা পান!</h3><p>GrabPoints সংগ্রহ করুন এবং ভবিষ্যতের অর্ডারে রিওয়ার্ড ও সুবিধা উপভোগ করুন।</p><a href="https://grab-zone-ten.vercel.app/grabpoints.html" target="_blank" rel="noopener noreferrer">🎁 Explore GrabPoints <span>→</span></a></div></section>'+
-        '<footer class="success-invoice-footer"><div><b>🛟 Need Help?</b><a href="mailto:grabzonesupport@gmail.com">grabzonesupport@gmail.com</a></div><div><b>🌐 Visit Our Store</b><a href="https://grab-zone-ten.vercel.app/" target="_blank" rel="noopener noreferrer">grab-zone-ten.vercel.app</a></div><div><b>📲 Follow GrabZone</b><span class="success-social-links"><a href="https://www.facebook.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Facebook"><span class="success-social-icon facebook">f</span> Facebook</a><a href="https://www.instagram.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Instagram"><span class="success-social-icon instagram">◎</span> Instagram</a></span></div><small>© '+new Date().getFullYear()+' GrabZone. All rights reserved.</small></footer>';
+        '<section class="success-invoice-rewards"><div class="success-rewards-mark">GP</div><div class="success-rewards-copy"><strong>Grab<span>Points</span></strong><h3>কেনাকাটায় আরও বেশি সুবিধা পান!</h3><p>GrabPoints সংগ্রহ করুন এবং ভবিষ্যতের অর্ডারে রিওয়ার্ড ও সুবিধা উপভোগ করুন।</p><a href="https://grabzone.tech/grabpoints.html" target="_blank" rel="noopener noreferrer">🎁 Explore GrabPoints <span>→</span></a></div></section>'+
+        '<footer class="success-invoice-footer"><div><b>🛟 Need Help?</b><a href="mailto:grabzonesupport@gmail.com">grabzonesupport@gmail.com</a></div><div><b>🌐 Visit Our Store</b><a href="https://grabzone.tech/" target="_blank" rel="noopener noreferrer">grabzone.tech</a></div><div><b>📲 Follow GrabZone</b><span class="success-social-links"><a href="https://www.facebook.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Facebook"><span class="success-social-icon facebook">f</span> Facebook</a><a href="https://www.instagram.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Instagram"><span class="success-social-icon instagram">◎</span> Instagram</a></span></div><small>© '+new Date().getFullYear()+' GrabZone. All rights reserved.</small></footer>';
     }
     if(window.JsBarcode){
       try{
@@ -564,9 +605,12 @@ loadGlobalShipping().then(()=>{try{render();renderDeliveryEta()}catch{}}).catch(
 document.addEventListener('DOMContentLoaded',async()=>{
   $('checkoutForm')?.addEventListener('submit',submit);
   $('division')?.addEventListener('change',onDivisionChange);
+  $('applyReferralBtn')?.addEventListener('click',applyReferral);
+  $('applyVendorCouponBtn')?.addEventListener('click',applyVendorCoupon);
+  $('vendorCouponCode')?.addEventListener('input',()=>{vendorCouponState={code:'',vendor_id:'',discount:0,label:'',vendor_name:''};const m=$('vendorCouponMessage');if(m){m.textContent='Enter the code and press Apply Coupon.';m.style.color='#777'}render()});
+
   $('district')?.addEventListener('change',onDistrictChange);
   bindLocationPickers();
-  $('applyReferralBtn')?.addEventListener('click',applyReferral);
   async function applyRewardsVoucher(){
     const input=$('rewardsVoucherCode'),msgp=$('grabpointsMsg');
     const code=String(input?.value||'').trim().toUpperCase(),phone=String($('customerPhone')?.value||'').replace(/\D/g,'');

@@ -1,4 +1,5 @@
 import legacy from './worker.mjs';
+import { gzApplyCors, gzPreflight } from './cors-policy.mjs';
 
 const now=()=>new Date().toISOString();
 const clean=(v,n=10000)=>String(v??'').trim().slice(0,n);
@@ -63,6 +64,13 @@ const products=(await q(e,'SELECT p.*,v.brand_name vendor_name FROM products p L
 const orders=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.division,o.district,o.upazila,o.address,o.payment_method,o.subtotal order_subtotal,o.shipping_charge,o.total,o.status order_status,o.created_at order_created_at,v.brand_name FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id JOIN vendors v ON v.id=vo.vendor_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC`,[vid])).results||[];
 for(const o of orders){
 await parentStatus(e,o.order_id);
+const coupon=await one(e,'SELECT vendor_coupon_code,vendor_coupon_vendor_id,vendor_coupon_discount FROM orders WHERE id=? LIMIT 1',[o.order_id]);
+const couponDiscount=String(coupon?.vendor_coupon_vendor_id||"")===String(vid)?Math.min(Number(o.subtotal||0),Math.max(0,Number(coupon?.vendor_coupon_discount||0))):0;
+const currentCommission=Math.max(0,Number(o.commission_amount||0));
+if(couponDiscount>0||Number(o.discount_amount||0)>0){
+ await e.DB.prepare("UPDATE vendor_orders SET discount_amount=?,coupon_code=?,vendor_earnings=?,updated_at=? WHERE id=? AND vendor_id=?").bind(couponDiscount,couponDiscount?String(coupon?.vendor_coupon_code||""):null,Math.max(0,Number(o.subtotal||0)-couponDiscount-currentCommission),now(),o.id,vid).run().catch(()=>{});
+}
+o.discount_amount=couponDiscount;o.coupon_code=couponDiscount?String(coupon?.vendor_coupon_code||""):null;o.vendor_total=Math.max(0,Number(o.subtotal||0)-couponDiscount)+Number(o.delivery_charge??o.shipping_fee??o.shipping_charge??0);
 const canonical=await one(e,'SELECT status FROM orders WHERE id=?',[o.order_id]);if(canonical)o.order_status=canonical.status;o.status=o.order_status||o.status;
 let items=(await q(e,`SELECT voi.*,oi.product_name,oi.image_url,oi.variation_id oi_variation_id,oi.variation_options oi_variation_options,oi.variation_sku oi_variation_sku,p.name product_name_current,p.image_url product_image,p.sku product_sku,COALESCE(NULLIF(voi.variation_sku,''),NULLIF(oi.variation_sku,''),NULLIF(pv.sku,''),NULLIF(p.sku,'')) sku,COALESCE(voi.variation_options,oi.variation_options) options_json,pv.image_url variation_image FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id LEFT JOIN products p ON p.id=voi.product_id LEFT JOIN product_variations pv ON pv.id=COALESCE(voi.variation_id,oi.variation_id) WHERE voi.vendor_order_id=? ORDER BY voi.rowid`,[o.id])).results||[];
 for(const x of items){try{x.variation_options=x.options_json?JSON.parse(x.options_json):{}}catch{x.variation_options={}}x.sku=x.sku||'';x.product_details={name:x.product_name_current||x.product_name||'Product',image_url:x.variation_image||x.image_url||x.product_image||null,sku:x.sku||x.product_sku||null};delete x.options_json}
@@ -167,7 +175,7 @@ const oid=clean(b.order_id||b.vendor_order_id,100),st=clean(b.status,40);
 const allowed=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];if(!allowed.includes(st))return json({error:'Invalid status'},400);
 const vo=await one(e,'SELECT id,order_id,vendor_id FROM vendor_orders WHERE id=? OR order_id=? LIMIT 1',[oid,oid]);if(!vo)return json({error:'Vendor order not found'},404);
 const t=now();
-await parentStatus(e,vo.order_id,st);
+await parentStatus(e,vo.order_id,st,vo.vendor_id);
 return json({ok:true,order_id:vo.order_id,status:st});
 }
 if(p==='/api/vendor/admin/shipment'&&(req.method==='POST'||req.method==='PATCH')){
@@ -176,7 +184,7 @@ const vo=await one(e,'SELECT vo.*,ord.order_number FROM vendor_orders vo JOIN or
 if(!vo)return json({error:'Vendor order not found'},404);
 const allowed=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];const st=clean(b.status,40)||'Processing';if(!allowed.includes(st))return json({error:'Invalid shipment status'},400);
 const courier=clean(b.courier,100),tracking=clean(b.tracking_id,200);if(!courier||!tracking)return json({error:'Courier and tracking ID required'},400);
-if(req.method==='POST'){const id=crypto.randomUUID(),t=now();await e.DB.prepare('INSERT INTO shipments(id,order_id,vendor_id,courier,tracking_id,tracking_url,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(id,vo.order_id,vo.vendor_id,courier,tracking,clean(b.tracking_url,1000),st,clean(b.note,1000),t,t).run();await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(st,t,vo.id).run();await parentStatus(e,vo.order_id,st);const parent=await one(e,'SELECT status FROM orders WHERE id=?',[vo.order_id]);await e.DB.prepare('UPDATE orders SET tracking_provider=?,tracking_number=?,tracking_url=?,updated_at=? WHERE id=?').bind(courier,tracking,clean(b.tracking_url,1000),now(),vo.order_id).run().catch(()=>{});await email(e,vo.order_number);return json({ok:true,shipment_id:id,parent_status:parent?.status||st},201)}
+if(req.method==='POST'){await e.DB.prepare('ALTER TABLE shipments ADD COLUMN vendor_order_id TEXT').run().catch(()=>{});const id=crypto.randomUUID(),t=now();await e.DB.prepare('INSERT INTO shipments(id,order_id,vendor_id,vendor_order_id,courier,shipment_tracking_id,tracking_id,tracking_url,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,vo.order_id,vo.vendor_id,vo.id,courier,tracking,tracking,clean(b.tracking_url,1000),st,clean(b.note,1000),t,t).run();await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(st,t,vo.id).run();await parentStatus(e,vo.order_id,st);const parent=await one(e,'SELECT status FROM orders WHERE id=?',[vo.order_id]);await e.DB.prepare('UPDATE orders SET tracking_provider=?,tracking_number=?,tracking_url=?,updated_at=? WHERE id=?').bind(courier,tracking,clean(b.tracking_url,1000),now(),vo.order_id).run().catch(()=>{});await email(e,vo.order_number);return json({ok:true,shipment_id:id,parent_status:parent?.status||st},201)}
 const sid=clean(b.shipment_id,100);const sh=await one(e,'SELECT * FROM shipments WHERE id=? AND vendor_id=? AND order_id=?',[sid,vo.vendor_id,vo.order_id]);if(!sh)return json({error:'Shipment not found'},404);await e.DB.prepare('UPDATE shipments SET courier=?,tracking_id=?,tracking_url=?,status=?,note=?,updated_at=? WHERE id=?').bind(courier,tracking,clean(b.tracking_url,1000),st,clean(b.note,1000),now(),sid).run();await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(st,now(),vo.id).run();await parentStatus(e,vo.order_id,st);const parent=await one(e,'SELECT status FROM orders WHERE id=?',[vo.order_id]);await e.DB.prepare('UPDATE orders SET tracking_provider=?,tracking_number=?,tracking_url=?,updated_at=? WHERE id=?').bind(courier,tracking,clean(b.tracking_url,1000),now(),vo.order_id).run().catch(()=>{});await email(e,vo.order_number);return json({ok:true,parent_status:parent?.status||st});
 }
 if(p==='/api/vendor/admin/store-sections'&&(req.method==='GET'||req.method==='POST'||req.method==='PATCH'||req.method==='DELETE')){
@@ -186,6 +194,25 @@ let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
 if(req.method==='POST'){const id=crypto.randomUUID(),t=now();await e.DB.prepare('INSERT INTO vendor_store_sections(id,vendor_id,section_type,title,body,sort_order,enabled,data_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(id,vid,clean(b.section_type,50)||'custom',clean(b.title,300),clean(b.body,10000),Number(b.sort_order||0),b.enabled===false?0:1,JSON.stringify(b.data_json||{}),t,t).run();return json({ok:true,id})}
 const id=clean(b.id,100);if(req.method==='PATCH'){await e.DB.prepare('UPDATE vendor_store_sections SET section_type=?,title=?,body=?,sort_order=?,enabled=?,data_json=?,updated_at=? WHERE id=? AND vendor_id=?').bind(clean(b.section_type,50)||'custom',clean(b.title,300),clean(b.body,10000),Number(b.sort_order||0),b.enabled?1:0,JSON.stringify(b.data_json||{}),now(),id,vid).run();return json({ok:true})}
 await e.DB.prepare('DELETE FROM vendor_store_sections WHERE id=? AND vendor_id=?').bind(id,vid).run();return json({ok:true});
+}
+if(p==='/api/vendor/admin/product-images'&&req.method==='GET'){
+ const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+ const vid=clean(new URL(req.url).searchParams.get('vendor_id'),100),pid=clean(new URL(req.url).searchParams.get('product_id'),100);
+ if(!vid||!pid)return json({error:'vendor_id and product_id are required'},400);
+ const owner=await one(e,'SELECT id FROM products WHERE id=? AND vendor_id=?',[pid,vid]);if(!owner)return json({error:'Product not found'},404);
+ const urls=[];
+ try{const rows=(await q(e,'SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order,id',[pid])).results||[];urls.push(...rows.map(x=>x.image_url))}catch{}
+ try{const rows=(await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? AND vendor_id=? ORDER BY sort_order,id',[pid,vid])).results||[];urls.push(...rows.map(x=>x.image_url))}catch{}
+ const p0=await one(e,'SELECT image_url FROM products WHERE id=?',[pid]);
+ let legacy=[];try{legacy=Array.isArray(p0?.image_urls)?p0.image_urls:(typeof p0?.image_urls==='string'?JSON.parse(p0.image_urls||'[]'):[])}catch{}
+ return json({images:[...new Set([...urls,...legacy,p0?.image_url||''].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10)});
+}
+if(p==='/api/vendor/admin/reset-password'&&req.method==='GET'){
+const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+const vidGet=clean(new URL(req.url).searchParams.get('vendor_id'),100);if(!vidGet)return json({error:'Vendor ID required'},400);
+const vGet=await one(e,'SELECT id FROM vendors WHERE id=? OR slug=? LIMIT 1',[vidGet,vidGet]);if(!vGet)return json({error:'Vendor not found'},404);
+const uGet=await one(e,'SELECT email,status,role FROM vendor_users WHERE vendor_id=? ORDER BY created_at LIMIT 1',[vGet.id]);
+return json({email:uGet?.email||'',status:uGet?.status||'',role:uGet?.role||'vendor_admin'});
 }
 if(p==='/api/vendor/admin/reset-password'&&req.method==='POST'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
@@ -441,23 +468,124 @@ if(p==='/api/vendor/categories'){
 }
 if(p==='/api/vendor/dashboard')return json({vendor:{id:vid,brand_name:u.brand_name,slug:u.slug},metrics:{products:Number((await one(e,'SELECT COUNT(*) n FROM products WHERE vendor_id=?',[vid]))?.n||0),orders:Number((await one(e,'SELECT COUNT(DISTINCT vo.order_id) n FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=?',[vid]))?.n||0),sales:Number((await one(e,'SELECT COALESCE(SUM(vo.subtotal),0) n FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=?',[vid]))?.n||0),earnings:Number((await one(e,'SELECT COALESCE(SUM(vo.vendor_earnings),0) n FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=?',[vid]))?.n||0),commission:Number((await one(e,'SELECT COALESCE(SUM(vo.commission_amount),0) n FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=?',[vid]))?.n||0),low_stock:Number((await one(e,'SELECT COUNT(*) n FROM products WHERE vendor_id=? AND stock<=5',[vid]))?.n||0)}});
 if(p==='/api/vendor/products'){await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});await e.DB.prepare('ALTER TABLE products ADD COLUMN category_id TEXT').run().catch(()=>{});await e.DB.prepare("CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT UNIQUE NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});await e.DB.prepare('ALTER TABLE products ADD COLUMN sale_price REAL').run().catch(()=>{});await e.DB.prepare('ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 5').run().catch(()=>{});await e.DB.prepare('ALTER TABLE products ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1').run().catch(()=>{});await e.DB.prepare('ALTER TABLE products ADD COLUMN max_qty INTEGER').run().catch(()=>{});await e.DB.prepare("ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'simple'").run().catch(()=>{});if(req.method==='GET'){const rows=(await q(e,'SELECT p.*,v.brand_name vendor_name FROM products p JOIN vendors v ON v.id=p.vendor_id WHERE p.vendor_id=? ORDER BY p.created_at DESC',[vid])).results||[];for(const p of rows){p.image_urls=(await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? AND vendor_id=? ORDER BY sort_order,id',[p.id,vid])).results?.map(x=>x.image_url)||[];if(!p.image_urls.length&&p.image_url)p.image_urls=[p.image_url]}return json({products:rows})}let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}const validate=async(base={})=>{const categoryId=String(b.category_id||base.category_id||'').trim();if(!categoryId)return'Please select a marketplace category.';const category=await one(e,'SELECT id,name FROM marketplace_categories WHERE id=? LIMIT 1',[categoryId]);if(!category)return'Selected category is not available.';const regular=b.price===undefined?Number(base.price||0):Number(b.price);if(!Number.isFinite(regular)||regular<0)return'Valid regular price is required.';const sale=b.sale_price===undefined||b.sale_price===null||b.sale_price===''?null:Number(b.sale_price);if(sale!==null&&(!Number.isFinite(sale)||sale<0))return'Valid sale price is required.';const min=Math.max(1,Math.floor(Number(b.min_qty??1))),max=b.max_qty===null||b.max_qty===''?null:Math.max(1,Math.floor(Number(b.max_qty)));if(max!==null&&max<min)return'Maximum quantity cannot be below minimum quantity.';return null};if(req.method==='POST'){const err=await validate();if(err)return json({error:err},400);const id=crypto.randomUUID(),t=now(),regular=Number(b.price),sale=b.sale_price===null||b.sale_price===''?null:Number(b.sale_price),min=Math.max(1,Math.floor(Number(b.min_qty??1))),max=b.max_qty===null||b.max_qty===''?null:Math.max(1,Math.floor(Number(b.max_qty)));await e.DB.prepare('INSERT INTO products(id,name,category,category_id,price,sale_price,old_price,image_url,tag,description,published,vendor_id,stock,sku,low_stock_threshold,min_qty,max_qty,product_type,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,clean(b.name,300),clean(b.category,120)||'General',String(b.category_id||''),regular,sale,b.old_price===''?null:Number(b.old_price??null),clean(b.image_url,2000),clean(b.tag,100),clean(b.description,10000),b.published===false?0:1,vid,Math.max(0,Math.floor(Number(b.stock||0))),clean(b.sku,100),Math.max(0,Math.floor(Number(b.low_stock_threshold??5))),min,max,b.product_type==='variable'?'variable':'simple',t,t).run();const imageUrls=[...new Set((Array.isArray(b.image_urls)?b.image_urls:[]).map(x=>clean(x,2000)).filter(Boolean))].slice(0,10);if(imageUrls.length){await e.DB.prepare('DELETE FROM vendor_product_images WHERE product_id=? AND vendor_id=?').bind(id,vid).run();for(let i=0;i<imageUrls.length;i++)await e.DB.prepare('INSERT INTO vendor_product_images(id,product_id,vendor_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),id,vid,imageUrls[i],i,t).run()}return json({ok:true,id,product:await one(e,'SELECT * FROM products WHERE id=?',[id])},201)}if(req.method==='PATCH'){const id=clean(b.id,100),p0=await one(e,'SELECT * FROM products WHERE id=? AND vendor_id=?',[id,vid]);if(!p0)return json({error:'Product not found'},404);const err=await validate(p0);if(err)return json({error:err},400);const f=['name','category','category_id','price','sale_price','old_price','image_url','tag','description','published','stock','sku','low_stock_threshold','min_qty','max_qty','product_type'],ss=[],pp=[];for(const k of f)if(b[k]!==undefined){let v=b[k];if(['price','sale_price','old_price'].includes(k))v=v===null||v===''?null:Number(v);if(['stock','low_stock_threshold'].includes(k))v=Math.max(0,Math.floor(Number(v||0)));if(k==='min_qty')v=Math.max(1,Math.floor(Number(v||1)));if(k==='max_qty')v=v===null||v===''?null:Math.max(1,Math.floor(Number(v)));if(k==='published')v=b[k]?1:0;if(k==='product_type')v=v==='variable'?'variable':'simple';if(k==='category'&&!String(v||'').trim())v='General';ss.push(k+'=?');pp.push(v)}if(!ss.length)return json({error:'No changes supplied'},400);ss.push('updated_at=?');pp.push(now(),id,vid);await e.DB.prepare('UPDATE products SET '+ss.join(',')+' WHERE id=? AND vendor_id=?').bind(...pp).run();if(Array.isArray(b.image_urls)){const imageUrls=[...new Set(b.image_urls.map(x=>clean(x,2000)).filter(Boolean))].slice(0,10);await e.DB.prepare('DELETE FROM vendor_product_images WHERE product_id=? AND vendor_id=?').bind(id,vid).run();for(let i=0;i<imageUrls.length;i++)await e.DB.prepare('INSERT INTO vendor_product_images(id,product_id,vendor_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),id,vid,imageUrls[i],i,now()).run()}return json({ok:true,product:await one(e,'SELECT * FROM products WHERE id=?',[id])})}return json({error:'Method not allowed'},405)}
-if(p==='/api/vendor/profile'){let b={};if(req.method==='GET')return json({vendor:await one(e,'SELECT * FROM vendors WHERE id=?',[vid])});try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}const allowed=['business_name','brand_name','phone','logo_url','banner_url','description','tagline','accent_color','announcement','social_links','contact_info'];const ss=[],pp=[];for(const k of allowed)if(b[k]!==undefined){ss.push(k+'=?');pp.push(['social_links','contact_info'].includes(k)?JSON.stringify(b[k]||{}):clean(b[k],10000))}if(ss.length){ss.push('updated_at=?');pp.push(now(),vid);await e.DB.prepare('UPDATE vendors SET '+ss.join(',')+' WHERE id=?').bind(...pp,vid).run()}return json({ok:true})}
+if(p==='/api/vendor/profile'){let b={};if(req.method==='GET')return json({vendor:await one(e,'SELECT * FROM vendors WHERE id=?',[vid])});try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}const allowed=['business_name','brand_name','phone','logo_url','banner_url','description','tagline','accent_color','announcement','social_links','contact_info'];const ss=[],pp=[];for(const k of allowed)if(b[k]!==undefined){ss.push(k+'=?');pp.push(['social_links','contact_info'].includes(k)?JSON.stringify(b[k]||{}):clean(b[k],10000))}if(ss.length){ss.push('updated_at=?');pp.push(now(),vid);await e.DB.prepare('UPDATE vendors SET '+ss.join(',')+' WHERE id=?').bind(...pp).run()}return json({ok:true})}
 if(p==='/api/vendor/sections'){if(req.method==='GET')return json({sections:(await q(e,'SELECT * FROM vendor_store_sections WHERE vendor_id=? ORDER BY sort_order',[vid])).results||[]});let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)};if(req.method==='POST'){const id=crypto.randomUUID(),t=now();await e.DB.prepare('INSERT INTO vendor_store_sections(id,vendor_id,section_type,title,body,sort_order,enabled,data_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(id,vid,clean(b.section_type,50),clean(b.title,300),clean(b.body,10000),Number(b.sort_order||0),b.enabled===false?0:1,JSON.stringify(b.data_json||{}),t,t).run();return json({ok:true,id})}if(req.method==='DELETE'){const id=clean(b.id,100);if(!id)return json({error:'Section ID required.'},400);await e.DB.prepare('DELETE FROM vendor_store_sections WHERE id=? AND vendor_id=?').bind(id,vid).run();return json({ok:true})}if(req.method==='PATCH'){const id=clean(b.id,100);await e.DB.prepare('UPDATE vendor_store_sections SET title=?,body=?,sort_order=?,enabled=?,data_json=?,updated_at=? WHERE id=? AND vendor_id=?').bind(clean(b.title,300),clean(b.body,10000),Number(b.sort_order||0),b.enabled?1:0,JSON.stringify(b.data_json||{}),now(),id,vid).run();return json({ok:true})}}
 if(p==='/api/vendor/orders'){const orders=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.division,o.district,o.upazila,o.address,o.payment_method,o.subtotal order_subtotal,o.shipping_charge,o.total,o.status order_status,o.created_at order_created_at,v.brand_name FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id JOIN vendors v ON v.id=vo.vendor_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC`,[vid])).results||[];for(const o of orders){let items=(await q(e,`SELECT voi.*,oi.product_name,oi.image_url,oi.variation_id oi_variation_id,oi.variation_options oi_variation_options,oi.variation_sku oi_variation_sku,p.name product_name_current,p.image_url product_image,p.sku product_sku,COALESCE(NULLIF(voi.variation_sku,''),NULLIF(oi.variation_sku,''),NULLIF(pv.sku,''),NULLIF(p.sku,'')) sku,COALESCE(voi.variation_options,oi.variation_options) options_json,pv.image_url variation_image FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id LEFT JOIN products p ON p.id=voi.product_id LEFT JOIN product_variations pv ON pv.id=COALESCE(voi.variation_id,oi.variation_id) WHERE voi.vendor_order_id=? ORDER BY voi.rowid`,[o.id])).results||[];if(!items.length)items=(await q(e,`SELECT oi.*,p.vendor_id,p.image_url product_image,p.sku product_sku,COALESCE(NULLIF(oi.variation_sku,''),NULLIF(pv.sku,''),NULLIF(p.sku,'')) sku,oi.variation_options options_json,pv.image_url variation_image FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN product_variations pv ON pv.id=oi.variation_id WHERE oi.order_id=? AND p.vendor_id=? ORDER BY oi.rowid`,[o.order_id,vid])).results||[];for(const i of items){try{i.variation_options=i.options_json?JSON.parse(i.options_json):{}}catch{i.variation_options={}}i.sku=i.sku||'';i.product_details={name:i.product_name_current||i.product_name||'Product',image_url:i.variation_image||i.image_url||i.product_image||null,sku:i.sku||i.product_sku||null};delete i.options_json}o.items=items;o.item_count=items.reduce((n,i)=>n+Number(i.quantity||1),0);o.shipments=(await q(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[o.order_id,vid])).results||[]}return json({orders})}
-if(p==='/api/vendor/order-status'&&req.method==='PATCH'){let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)};const allowed=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];if(!allowed.includes(b.status))return json({error:'Invalid status'},400);const o=await one(e,'SELECT * FROM vendor_orders WHERE id=? AND vendor_id=?',[clean(b.vendor_order_id,100),vid]);if(!o)return json({error:'Order not found'},404);await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(b.status,now(),o.id).run();await parentStatus(e,o.order_id,b.status);await email(e,(await one(e,'SELECT order_number FROM orders WHERE id=?',[o.order_id]))?.order_number);return json({ok:true})}
-if(p==='/api/vendor/shipments'&&req.method==='POST'){let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)};const o=await one(e,'SELECT vo.*,ord.order_number FROM vendor_orders vo JOIN orders ord ON ord.id=vo.order_id WHERE vo.id=? AND vo.vendor_id=?',[clean(b.vendor_order_id,100),vid]);if(!o)return json({error:'Vendor order not found'},404);if(!clean(b.courier,100)||!clean(b.tracking_id,200))return json({error:'Courier and tracking ID required'},400);const id=crypto.randomUUID(),t=now(),st=clean(b.status,40)||'Processing';if(!['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'].includes(st))return json({error:'Invalid shipment status'},400);await e.DB.prepare('INSERT INTO shipments(id,order_id,vendor_id,courier,tracking_id,tracking_url,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(id,o.order_id,vid,clean(b.courier,100),clean(b.tracking_id,200),clean(b.tracking_url,1000),st,clean(b.note,1000),t,t).run();await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(st,t,o.id).run();await parentStatus(e,o.order_id,st);await e.DB.prepare('UPDATE orders SET tracking_provider=?,tracking_number=?,tracking_url=?,updated_at=? WHERE id=?').bind(clean(b.courier,100),clean(b.tracking_id,200),clean(b.tracking_url,1000),now(),o.order_id).run().catch(()=>{});await email(e,o.order_number);return json({ok:true,shipment_id:id})}}
+if(p==='/api/vendor/order-status'&&req.method==='PATCH'){let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)};const allowed=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];if(!allowed.includes(b.status))return json({error:'Invalid status'},400);const o=await one(e,'SELECT * FROM vendor_orders WHERE id=? AND vendor_id=?',[clean(b.vendor_order_id,100),vid]);if(!o)return json({error:'Order not found'},404);await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(b.status,now(),o.id).run();await parentStatus(e,o.order_id,b.status,vid);await email(e,(await one(e,'SELECT order_number FROM orders WHERE id=?',[o.order_id]))?.order_number);return json({ok:true})}
+if(p==='/api/vendor/shipments'&&(req.method==='POST'||req.method==='PATCH'||req.method==='DELETE')){
+await e.DB.prepare('ALTER TABLE shipments ADD COLUMN vendor_order_id TEXT').run().catch(()=>{});
+let b={};try{b=await req.json()}catch{b={}};
+const voId=clean(b.vendor_order_id||b.vendorOrderId,100);
+const o=await one(e,'SELECT vo.*,ord.order_number FROM vendor_orders vo JOIN orders ord ON ord.id=vo.order_id WHERE vo.id=? AND vo.vendor_id=?',[voId,vid]);
+if(!o)return json({error:'Vendor order not found'},404);
+const t=now();
+if(req.method==='POST'){
+ if(!clean(b.courier,100)||!clean(b.tracking_id,200))return json({error:'Courier and tracking ID required'},400);
+ const st=clean(b.status,40)||'Processing';
+ const allowed=['New','Contacting','Confirmed','Processing','Picked Up','Shipped','In Transit','Out for Delivery','Delivered','Failed','Returned','Cancelled'];
+ if(!allowed.includes(st))return json({error:'Invalid shipment status'},400);
+ const id=crypto.randomUUID();
+ await e.DB.prepare('INSERT INTO shipments(id,order_id,vendor_id,vendor_order_id,courier,shipment_tracking_id,tracking_id,tracking_url,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,o.order_id,vid,o.id,clean(b.courier,100),clean(b.tracking_id,200),clean(b.tracking_id,200),clean(b.tracking_url,1000),st,clean(b.note,1000),t,t).run();
+ const items=Array.isArray(b.items)?b.items:[];
+ for(const item of items){
+   const oi=await one(e,'SELECT oi.id,oi.quantity FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.id=? AND oi.order_id=? AND p.vendor_id=? LIMIT 1',[clean(item.order_item_id,120),o.order_id,vid]);
+   if(!oi)continue;
+   const qty=Math.max(1,Math.min(Number(oi.quantity||1),Math.floor(Number(item.quantity||oi.quantity||1))));
+   await e.DB.prepare('INSERT INTO shipment_items(id,shipment_id,order_item_id,quantity) VALUES(?,?,?,?)').bind(crypto.randomUUID(),id,oi.id,qty).run();
+ }
+ await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(st,t,o.id).run();
+ await parentStatus(e,o.order_id,st,vid);
+ await e.DB.prepare('UPDATE orders SET tracking_provider=?,tracking_number=?,tracking_url=?,updated_at=? WHERE id=?').bind(clean(b.courier,100),clean(b.tracking_id,200),clean(b.tracking_url,1000),t,o.order_id).run().catch(()=>{});
+ await email(e,o.order_number);
+ return json({ok:true,shipment_id:id},201);
+}
+const sid=clean(b.shipment_id||b.id,100);
+const sh=await one(e,'SELECT * FROM shipments WHERE id=? AND vendor_id=? AND order_id=? AND vendor_order_id=?',[sid,vid,o.order_id,o.id]);
+if(!sh)return json({error:'Shipment not found'},404);
+if(req.method==='PATCH'){
+ const courier=clean(b.courier??sh.courier,100),tracking=clean(b.tracking_id??sh.tracking_id??sh.shipment_tracking_id,200);
+ const st=clean(b.status??sh.status,40);
+ const allowed=['New','Contacting','Confirmed','Processing','Picked Up','Shipped','In Transit','Out for Delivery','Delivered','Failed','Returned','Cancelled'];
+ if(!courier||!tracking)return json({error:'Courier and tracking ID required'},400);
+ if(!allowed.includes(st))return json({error:'Invalid shipment status'},400);
+ await e.DB.prepare('UPDATE shipments SET courier=?,shipment_tracking_id=?,tracking_id=?,tracking_url=?,status=?,note=?,updated_at=? WHERE id=? AND vendor_id=?').bind(courier,tracking,tracking,clean(b.tracking_url??sh.tracking_url,1000),st,clean(b.note??sh.note,1000),t,sid,vid).run();
+ await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(st,t,o.id).run();
+ await parentStatus(e,o.order_id,st,vid);
+ await e.DB.prepare('UPDATE orders SET tracking_provider=?,tracking_number=?,tracking_url=?,updated_at=? WHERE id=?').bind(courier,tracking,clean(b.tracking_url??sh.tracking_url,1000),t,o.order_id).run().catch(()=>{});
+ await email(e,o.order_number);
+ return json({ok:true});
+}
+await e.DB.prepare('DELETE FROM shipment_items WHERE shipment_id=?').bind(sid).run();
+await e.DB.prepare('DELETE FROM shipments WHERE id=? AND vendor_id=? AND order_id=?').bind(sid,vid,o.order_id).run();
+const remaining=(await q(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC LIMIT 1',[o.order_id,vid])).results||[];
+const latest=remaining[0];
+if(latest){
+ await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(latest.status,t,o.id).run();
+ await parentStatus(e,o.order_id,latest.status,vid);
+ await e.DB.prepare('UPDATE orders SET tracking_provider=?,tracking_number=?,tracking_url=?,updated_at=? WHERE id=?').bind(latest.courier,latest.tracking_id,latest.tracking_url,t,o.order_id).run().catch(()=>{});
+}else{
+ await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind('Processing',t,o.id).run();
+ await parentStatus(e,o.order_id,'Processing',vid);
+ await e.DB.prepare('UPDATE orders SET tracking_provider=NULL,tracking_number=NULL,tracking_url=NULL,updated_at=? WHERE id=?').bind(t,o.order_id).run().catch(()=>{});
+}
+await email(e,o.order_number);
+return json({ok:true,deleted:true});
+}}
 if(p==='/api/marketplace/brands'){const u=new URL(req.url),all=u.searchParams.get('all')==='1';const a=(await q(e,`SELECT id,slug,business_name,brand_name,logo_url,banner_url,description,tagline,accent_color,featured FROM vendors WHERE status='Active' ${all?'':'AND homepage_visible=1'} ORDER BY featured DESC,brand_name`)).results||[];return json({brands:a})}
-if(p==='/api/marketplace/products'){const u=new URL(req.url),v=clean(u.searchParams.get('vendor'),100),rawIds=String(u.searchParams.get('ids')||'').split(',').map(x=>clean(x,120)).filter(Boolean).slice(0,500);let sql="SELECT p.*,v.brand_name vendor_name,v.slug vendor_slug,v.logo_url vendor_logo,v.accent_color vendor_accent,v.shipping_fee vendor_shipping_fee FROM products p JOIN vendors v ON v.id=p.vendor_id WHERE p.published=1",ps=[];if(rawIds.length){sql+=' AND p.id IN ('+rawIds.map(()=>'?').join(',')+')';ps.push(...rawIds)}else{sql+=" AND v.status='Active'";if(v){sql+=' AND (v.slug=? OR v.id=?)';ps.push(v,v)}}return json({products:(await q(e,sql+' ORDER BY p.created_at DESC',ps)).results||[]})}
+if(p==='/api/marketplace/products'){
+ const u=new URL(req.url),v=clean(u.searchParams.get('vendor'),100),rawIds=String(u.searchParams.get('ids')||'').split(',').map(x=>clean(x,120)).filter(Boolean).slice(0,500);
+ /*
+   Pagination. The defaults keep every existing caller working unchanged: the
+   storefront asks for limit=500 and still receives the whole catalogue, while a
+   caller that asks for one page now gets exactly that page, the total and a
+   has_more flag instead of the entire feed every time.
+ */
+ const MAX_LIMIT=500;
+ const askedLimit=Number(u.searchParams.get('limit'));
+ const limit=Number.isFinite(askedLimit)&&askedLimit>0?Math.min(MAX_LIMIT,Math.floor(askedLimit)):MAX_LIMIT;
+ const askedPage=Number(u.searchParams.get('page'));
+ const page=Number.isFinite(askedPage)&&askedPage>0?Math.floor(askedPage):1;
+ const rawOffset=u.searchParams.get('offset');
+ const askedOffset=rawOffset===null||rawOffset===''?NaN:Number(rawOffset);
+ const offset=Number.isFinite(askedOffset)&&askedOffset>=0?Math.floor(askedOffset):(page-1)*limit;
+ let where=" FROM products p JOIN vendors v ON v.id=p.vendor_id WHERE p.published=1",ps=[];
+ if(rawIds.length){where+=' AND p.id IN ('+rawIds.map(()=>'?').join(',')+')';ps.push(...rawIds)}
+ else{where+=" AND v.status='Active'";if(v){where+=' AND (v.slug=? OR v.id=?)';ps.push(v,v)}}
+ const select="SELECT p.*,v.brand_name vendor_name,v.slug vendor_slug,v.logo_url vendor_logo,v.accent_color vendor_accent,v.shipping_fee vendor_shipping_fee";
+ const totalRow=(await q(e,'SELECT COUNT(*) n'+where,ps)).results?.[0];
+ const total=Number(totalRow?.n||0);
+ const rows=(await q(e,select+where+' ORDER BY p.created_at DESC LIMIT ? OFFSET ?',[...ps,limit,offset])).results||[];
+ const pagination={limit,page,offset,total,pages:Math.max(1,Math.ceil(total/limit)),has_more:offset+rows.length<total,count:rows.length};
+/*
+  Admin console feed vs public catalogue feed.
+  The admin table (marketplace-products.html) asks for scope=admin and must carry
+  an admin session; it gets the full row set including SKU, stock and the
+  supplier reference. Every public caller (storefront, brand stores, home
+  brand cards, checkout) keeps working but only receives the public columns —
+  supplier reference, SKU and inventory internals are never returned.
+*/
+const adminScope=u.searchParams.get('scope')==='admin';
+if(adminScope){
+ if(!await admin(req,e))return json({error:'Unauthorized'},401);
+ return json({products:rows,pagination});
+}
+const PRIVATE_FIELDS=new Set(['business_koro_product_id','sku','stock','stock_mode','low_stock_threshold','vendor_featured']);
+return json({products:rows.map(row=>{const out={};for(const k of Object.keys(row)){if(!PRIVATE_FIELDS.has(k))out[k]=row[k]}return out}),pagination})}
 if(p==='/api/marketplace/store'){const s=clean(new URL(req.url).searchParams.get('slug'),100),v=await one(e,"SELECT * FROM vendors WHERE slug=? AND status='Active'",[s]);if(!v)return json({error:'Store not found'},404);return json({vendor:v,products:(await q(e,'SELECT * FROM products WHERE vendor_id=? AND published=1 ORDER BY created_at DESC',[v.id])).results||[],sections:(await q(e,'SELECT * FROM vendor_store_sections WHERE vendor_id=? AND enabled=1 ORDER BY sort_order',[v.id])).results||[]})}
 if(p==='/api/marketplace/track'){return track(req,e,clean(new URL(req.url).searchParams.get('tracking_id'),120))}
 if(p==='/api/marketplace/order'&&req.method==='POST'){return json({error:'Use the existing checkout.'},400)}
 return null}
-async function parentStatus(e,id,forcedStatus){
+async function parentStatus(e,id,forcedStatus,vendorId){
   const t=now();
   let status=forcedStatus;
   if(status){
-    await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE order_id=?').bind(status,t,id).run();
-    await e.DB.prepare('UPDATE shipments SET status=?,updated_at=? WHERE order_id=?').bind(status,t,id).run().catch(()=>{});
+    if(vendorId){
+      await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE order_id=? AND vendor_id=?').bind(status,t,id,vendorId).run();
+      await e.DB.prepare('UPDATE shipments SET status=?,updated_at=? WHERE order_id=? AND vendor_id=?').bind(status,t,id,vendorId).run().catch(()=>{});
+    }else{
+      await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE order_id=?').bind(status,t,id).run();
+      await e.DB.prepare('UPDATE shipments SET status=?,updated_at=? WHERE order_id=?').bind(status,t,id).run().catch(()=>{});
+    }
   }else{
     const s=(await q(e,'SELECT status FROM vendor_orders WHERE order_id=?',[id])).results?.map(x=>String(x.status||''))||[];
     status='New';
@@ -498,5 +626,5 @@ async function track(req,e,id){const o=await one(e,'SELECT * FROM orders WHERE u
     o.total=Math.max(0,subtotal+resolvedShipping-discounts);
   }
   const statuses=vs.map(v=>String(v.status||'New'));let canonical=o.status||'New';if(statuses.length){if(statuses.every(s=>s==='Delivered'))canonical='Delivered';else if(statuses.every(s=>s==='Cancelled'))canonical='Cancelled';else if(statuses.every(s=>s==='Shipped'))canonical='Shipped';else if(statuses.every(s=>s==='Processing'))canonical='Processing';else if(statuses.every(s=>s==='Confirmed'))canonical='Confirmed';else if(statuses.every(s=>s==='Contacting'))canonical='Contacting';else if(statuses.some(s=>s==='Shipped'))canonical='Shipped';else if(statuses.some(s=>s==='Processing'))canonical='Processing';else if(statuses.some(s=>s==='Confirmed'))canonical='Confirmed';else if(statuses.some(s=>s==='Contacting'))canonical='Contacting';}return json({order:{...o,order_number:o.order_number,tracking_id:o.public_tracking_id,status:canonical},vendors:vs})}
-async function handle(req,e){try{if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':req.headers.get('Origin')||'*','Access-Control-Allow-Credentials':'true','Access-Control-Allow-Headers':'Content-Type,Authorization','Access-Control-Allow-Methods':'GET,POST,PATCH,OPTIONS'}});const r=await api(req,e);if(r){const h=new Headers(r.headers);h.set('Access-Control-Allow-Origin',req.headers.get('Origin')||'*');h.set('Access-Control-Allow-Credentials','true');return new Response(r.body,{status:r.status,headers:h})}return legacy.fetch(req,e)}catch(err){console.error(err);return json({error:err.message||'Internal server error'},500)}}
+async function handle(req,e){try{if(req.method==='OPTIONS')return gzPreflight(req,e);const r=await api(req,e);if(r)return gzApplyCors(r,req,e);return legacy.fetch(req,e)}catch(err){console.error(err);return gzApplyCors(json({error:err.message||'Internal server error'},500),req,e)}}
 export default {fetch:handle};
