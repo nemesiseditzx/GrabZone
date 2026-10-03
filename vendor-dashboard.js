@@ -33,11 +33,11 @@ function renderProducts(){const q=($('#productSearch')?.value||'').trim().toLowe
 async function loadOrders(){try{const d=await api('/api/vendor/orders');state.orders=d.orders||[];renderOrders()}catch(e){$('#orderList').innerHTML='<div class="gz-card" style="color:#a11;font-weight:800">'+esc(e.message)+'</div>'}}
 function customerCollection(o){
   const subtotal=Number(o?.subtotal??o?.order_subtotal??0);
-  const delivery=Number(o?.delivery_charge??o?.shipping_charge??0);
-  // Vendor orders must show only this vendor's collectible amount, never the full marketplace order total.
-  const vendorTotal=Number(o?.vendor_total);
-  if(Number.isFinite(vendorTotal)&&o?.vendor_total!==null&&o?.vendor_total!==undefined&&o?.vendor_total!=='')return vendorTotal;
-  return subtotal+delivery;
+  const discount=Number(o?.discount_amount??0);
+  const delivery=Number(o?.delivery_charge??o?.shipping_fee??o?.shipping_charge??0);
+  // Customer collection must always reflect this vendor's own subtotal,
+  // minus its store coupon, plus its delivery charge.
+  return Math.max(0,subtotal-discount)+delivery;
 }
 function renderOrders(){
   const q=($('#orderSearch')?.value||'').trim().toLowerCase(),f=$('#orderFilter')?.value||'all';
