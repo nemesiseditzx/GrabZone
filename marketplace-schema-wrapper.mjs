@@ -6,7 +6,10 @@ const json=(x,s=200,h={})=>new Response(JSON.stringify(x),{status:s,headers:{'Co
 async function sha(v){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function cookie(req,n){for(const p of(req.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}
 
+let migrationPromise=null;
 async function migrate(env){
+  if(migrationPromise)return migrationPromise;
+  migrationPromise=(async()=>{
   const migrations=[
     ['vendors','name','TEXT'],['vendors','order_notification_email','TEXT'],['vendors','support_email','TEXT'],['vendors','business_email','TEXT'],
     ['vendor_users','password_salt','TEXT'],['vendor_users','role',"TEXT DEFAULT 'vendor_admin'"],['vendor_users','status',"TEXT DEFAULT 'Active'"],['vendor_users','created_at','TEXT'],['vendor_users','updated_at','TEXT'],
@@ -28,6 +31,8 @@ async function migrate(env){
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT UNIQUE NOT NULL,slug TEXT UNIQUE NOT NULL,parent_id TEXT,active INTEGER DEFAULT 1,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketplace_settings(id INTEGER PRIMARY KEY,enabled INTEGER DEFAULT 1,default_shipping REAL DEFAULT 130,show_brands INTEGER DEFAULT 1,show_vendor_badges INTEGER DEFAULT 1,updated_at TEXT NOT NULL)").run().catch(()=>{});
   for(const sql of ['CREATE INDEX IF NOT EXISTS idx_products_vendor ON products(vendor_id)','CREATE INDEX IF NOT EXISTS idx_order_items_vendor ON order_items(vendor_id)','CREATE INDEX IF NOT EXISTS idx_vendor_orders_order_vendor ON vendor_orders(order_id,vendor_id)','CREATE INDEX IF NOT EXISTS idx_vendor_order_items_order_item ON vendor_order_items(vendor_order_id,order_item_id)','CREATE INDEX IF NOT EXISTS idx_shipments_order_vendor ON shipments(order_id,vendor_id)','CREATE INDEX IF NOT EXISTS idx_shipment_items_ship_item ON shipment_items(shipment_id,order_item_id)','CREATE INDEX IF NOT EXISTS idx_shipment_items_order_item ON shipment_items(order_item_id)'])await env.DB.prepare(sql).run().catch(()=>{});
+  })().catch(err=>{migrationPromise=null;throw err;});
+  return migrationPromise;
 }
 
 async function adminOK(request,env,ctx){const r=await app.fetch(new Request(new URL('/api/admin-auth',request.url),{method:'GET',headers:new Headers(request.headers)}),env,ctx);if(!r.ok)return false;return !!(await r.json().catch(()=>({}))).authenticated}
