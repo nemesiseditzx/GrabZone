@@ -512,7 +512,8 @@ if(latest){
 }
 await email(e,o.order_number);
 return json({ok:true,deleted:true});
-}if(p==='/api/marketplace/brands'){const u=new URL(req.url),all=u.searchParams.get('all')==='1';const a=(await q(e,`SELECT id,slug,business_name,brand_name,logo_url,banner_url,description,tagline,accent_color,featured FROM vendors WHERE status='Active' ${all?'':'AND homepage_visible=1'} ORDER BY featured DESC,brand_name`)).results||[];return json({brands:a})}
+}}
+if(p==='/api/marketplace/brands'){const u=new URL(req.url),all=u.searchParams.get('all')==='1';const a=(await q(e,`SELECT id,slug,business_name,brand_name,logo_url,banner_url,description,tagline,accent_color,featured FROM vendors WHERE status='Active' ${all?'':'AND homepage_visible=1'} ORDER BY featured DESC,brand_name`)).results||[];return json({brands:a})}
 if(p==='/api/marketplace/products'){
  const u=new URL(req.url),v=clean(u.searchParams.get('vendor'),100),rawIds=String(u.searchParams.get('ids')||'').split(',').map(x=>clean(x,120)).filter(Boolean).slice(0,500);
  /*
