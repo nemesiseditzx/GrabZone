@@ -42,6 +42,87 @@ if(req.method==='PATCH'){const rawTail=url.pathname.split('/').pop()||'';
 const id=clean(rawTail.startsWith('variation_')?rawTail.slice(10):rawTail,120),v=await one(e,'SELECT * FROM product_variations WHERE id=? AND product_id=?',[id,pid]);if(!v)return json({error:'Variation not found.'},404);const status=['Available','Out of Stock','Disabled'].includes(b.status)?b.status:v.status;await e.DB.prepare('UPDATE product_variations SET sku=?,regular_price=?,old_price=?,image_url=?,status=?,updated_at=? WHERE id=?').bind(clean(b.sku??v.sku,120),Math.max(0,Number(b.regular_price??v.regular_price)),b.old_price===null||b.old_price===''?null:Math.max(0,Number(b.old_price)),clean(b.image_url??v.image_url,2000),status,now(),id).run();if(Array.isArray(b.images)){await e.DB.prepare('DELETE FROM variation_images WHERE variation_id=?').bind(id).run();for(let i=0;i<Math.min(10,b.images.length);i++)await e.DB.prepare('INSERT INTO variation_images(id,variation_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),id,clean(b.images[i],2000),i,now()).run()}await audit(e,'vendor',u.id,'VARIATION_UPDATED',u.vendor_id,{product_id:pid,variation_id:id});return json({ok:true,variation:await loadVariation(e,id)})}return json({error:'Method not allowed'},405)}
 async function profile(req,e){if(new URL(req.url).pathname!=='/api/vendor/profile')return null;const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);if(req.method==='GET')return json({vendor:await one(e,'SELECT * FROM vendors WHERE id=?',[u.vendor_id])});if(req.method==='PATCH'){const b=await req.json().catch(()=>({})),fields=['business_name','brand_name','phone','logo_url','banner_url','description','tagline','accent_color','announcement','social_links','contact_info','business_email','order_notification_email','support_email'],set=[],ps=[];for(const k of fields)if(b[k]!==undefined){set.push(k+'=?');ps.push(['social_links','contact_info'].includes(k)?JSON.stringify(b[k]||{}):clean(b[k],10000))}if(set.length){set.push('updated_at=?');ps.push(now(),u.vendor_id);await e.DB.prepare('UPDATE vendors SET '+set.join(',')+' WHERE id=?').bind(...ps).run()}return json({ok:true,vendor:await one(e,'SELECT * FROM vendors WHERE id=?',[u.vendor_id])})}return json({error:'Method not allowed'},405)}
 async function sales(req,e){if(new URL(req.url).pathname!=='/api/vendor/sales')return null;const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);const rows=(await q(e,'SELECT substr(vo.created_at,1,10) day,COUNT(DISTINCT vo.order_id) orders,COALESCE(SUM(vo.subtotal),0) gross,COALESCE(SUM(vo.commission_amount),0) commission,COALESCE(SUM(vo.vendor_earnings),0) earnings FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? GROUP BY substr(vo.created_at,1,10) ORDER BY day DESC LIMIT 90',[u.vendor_id])).results||[];const totals=(await one(e,'SELECT COUNT(DISTINCT vo.order_id) orders,COALESCE(SUM(vo.subtotal),0) gross,COALESCE(SUM(vo.commission_amount),0) commission,COALESCE(SUM(vo.vendor_earnings),0) earnings FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=?',[u.vendor_id]))||{};const best=(await q(e,'SELECT p.name,voi.product_id,SUM(voi.quantity) units,SUM(voi.line_total) revenue FROM vendor_order_items voi LEFT JOIN products p ON p.id=voi.product_id JOIN vendor_orders vo ON vo.id=voi.vendor_order_id JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? GROUP BY voi.product_id,p.name ORDER BY units DESC LIMIT 10',[u.vendor_id])).results||[];return json({daily:rows,totals,best_sellers:best})}
+async function couponSchema(e){
+ await e.DB.prepare(`CREATE TABLE IF NOT EXISTS vendor_coupons(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,code TEXT NOT NULL,discount_type TEXT NOT NULL DEFAULT 'fixed',discount_value REAL NOT NULL DEFAULT 0,min_order_amount REAL NOT NULL DEFAULT 0,max_discount_amount REAL,usage_limit INTEGER,used_count INTEGER NOT NULL DEFAULT 0,starts_at TEXT,expires_at TEXT,active INTEGER NOT NULL DEFAULT 1,note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});
+ await e.DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS vendor_coupons_code_uq ON vendor_coupons(upper(code))').run().catch(()=>{});
+ await e.DB.prepare('CREATE INDEX IF NOT EXISTS vendor_coupons_vendor_idx ON vendor_coupons(vendor_id,active,created_at DESC)').run().catch(()=>{});
+ await e.DB.prepare('ALTER TABLE orders ADD COLUMN vendor_coupon_code TEXT').run().catch(()=>{});
+ await e.DB.prepare('ALTER TABLE orders ADD COLUMN vendor_coupon_vendor_id TEXT').run().catch(()=>{});
+ await e.DB.prepare('ALTER TABLE orders ADD COLUMN vendor_coupon_discount REAL NOT NULL DEFAULT 0').run().catch(()=>{});
+ await e.DB.prepare('ALTER TABLE vendor_orders ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0').run().catch(()=>{});
+ await e.DB.prepare('ALTER TABLE vendor_orders ADD COLUMN coupon_code TEXT').run().catch(()=>{});
+}
+function couponCode(v){return clean(v,40).toUpperCase().replace(/[^A-Z0-9_-]/g,'')}
+function couponDiscount(row,subtotal){
+ let d=row.discount_type==='percentage'?Math.round(subtotal*Number(row.discount_value||0)/100*100)/100:Number(row.discount_value||0);
+ if(row.max_discount_amount!==null&&row.max_discount_amount!==undefined)d=Math.min(d,Number(row.max_discount_amount));
+ return Math.max(0,Math.min(d,subtotal));
+}
+async function coupons(req,e){
+ const p=new URL(req.url).pathname;
+ if(p==='/api/vendor/coupons'){
+   const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);
+   await couponSchema(e);
+   if(req.method==='GET'){
+     const rows=(await q(e,'SELECT * FROM vendor_coupons WHERE vendor_id=? ORDER BY created_at DESC',[u.vendor_id])).results||[];
+     return json({coupons:rows});
+   }
+   if(req.method==='POST'){
+     const b=await req.json().catch(()=>({})),code=couponCode(b.code);
+     if(!/^[A-Z0-9][A-Z0-9_-]{2,39}$/.test(code))return json({error:'Coupon code must be 3-40 characters using letters, numbers, - or _.'},400);
+     const type=b.discount_type==='percentage'?'percentage':'fixed',value=Number(b.discount_value);
+     if(!Number.isFinite(value)||value<=0||(type==='percentage'&&value>100))return json({error:type==='percentage'?'Percentage must be between 0 and 100.':'Discount must be greater than 0.'},400);
+     const min=Math.max(0,Number(b.min_order_amount||0)),max=b.max_discount_amount===''||b.max_discount_amount==null?null:Math.max(0,Number(b.max_discount_amount));
+     const limit=b.usage_limit===''||b.usage_limit==null?null:Math.max(1,Math.floor(Number(b.usage_limit)));
+     const starts=b.starts_at?String(b.starts_at):null,expires=b.expires_at?String(b.expires_at):null;
+     if(expires&&starts&&new Date(expires)<=new Date(starts))return json({error:'Expiry must be after the start time.'},400);
+     const t=now(),id=crypto.randomUUID();
+     try{
+       await e.DB.prepare('INSERT INTO vendor_coupons(id,vendor_id,code,discount_type,discount_value,min_order_amount,max_discount_amount,usage_limit,used_count,starts_at,expires_at,active,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,u.vendor_id,code,type,value,min,max,limit,0,starts,expires,Number(b.active??1)?1:0,clean(b.note,500),t,t).run();
+     }catch(err){return json({error:/unique/i.test(err?.message||'')?'That coupon code is already in use.':err?.message||'Could not create coupon.'},400)}
+     await audit(e,'vendor',u.id,'COUPON_CREATED',u.vendor_id,{coupon_id:id,code});
+     return json({ok:true,coupon:await one(e,'SELECT * FROM vendor_coupons WHERE id=?',[id])},201);
+   }
+   if(req.method==='PATCH'){
+     const b=await req.json().catch(()=>({})),id=clean(b.id,120),old=await one(e,'SELECT * FROM vendor_coupons WHERE id=? AND vendor_id=?',[id,u.vendor_id]);
+     if(!old)return json({error:'Coupon not found.'},404);
+     const code=couponCode(b.code??old.code),type=b.discount_type==='percentage'?'percentage':(b.discount_type??old.discount_type),value=Number(b.discount_value??old.discount_value);
+     if(!/^[A-Z0-9][A-Z0-9_-]{2,39}$/.test(code))return json({error:'Invalid coupon code.'},400);
+     if(!Number.isFinite(value)||value<=0||(type==='percentage'&&value>100))return json({error:'Invalid discount.'},400);
+     const min=Math.max(0,Number(b.min_order_amount??old.min_order_amount)),max=b.max_discount_amount===''||b.max_discount_amount==null?null:Math.max(0,Number(b.max_discount_amount??old.max_discount_amount));
+     const limit=b.usage_limit===''||b.usage_limit==null?null:Math.max(1,Math.floor(Number(b.usage_limit??old.usage_limit)));
+     const starts=b.starts_at===undefined?old.starts_at:(b.starts_at?String(b.starts_at):null),expires=b.expires_at===undefined?old.expires_at:(b.expires_at?String(b.expires_at):null);
+     if(expires&&starts&&new Date(expires)<=new Date(starts))return json({error:'Expiry must be after the start time.'},400);
+     try{
+       await e.DB.prepare('UPDATE vendor_coupons SET code=?,discount_type=?,discount_value=?,min_order_amount=?,max_discount_amount=?,usage_limit=?,starts_at=?,expires_at=?,active=?,note=?,updated_at=? WHERE id=? AND vendor_id=?').bind(code,type,value,min,max,limit,starts,expires,Number(b.active??old.active)?1:0,clean(b.note??old.note,500),now(),id,u.vendor_id).run();
+     }catch(err){return json({error:/unique/i.test(err?.message||'')?'That coupon code is already in use.':err?.message||'Could not update coupon.'},400)}
+     await audit(e,'vendor',u.id,'COUPON_UPDATED',u.vendor_id,{coupon_id:id,code});
+     return json({ok:true,coupon:await one(e,'SELECT * FROM vendor_coupons WHERE id=?',[id])});
+   }
+   if(req.method==='DELETE'){
+     const id=clean(new URL(req.url).searchParams.get('id'),120),old=await one(e,'SELECT * FROM vendor_coupons WHERE id=? AND vendor_id=?',[id,u.vendor_id]);
+     if(!old)return json({error:'Coupon not found.'},404);
+     await e.DB.prepare('UPDATE vendor_coupons SET active=0,updated_at=? WHERE id=? AND vendor_id=?').bind(now(),id,u.vendor_id).run();
+     await audit(e,'vendor',u.id,'COUPON_DISABLED',u.vendor_id,{coupon_id:id,code:old.code});
+     return json({ok:true});
+   }
+ }
+ if(p==='/api/vendor/coupons/validate'){
+   await couponSchema(e);
+   const url=new URL(req.url),code=couponCode(url.searchParams.get('code')),vendorId=clean(url.searchParams.get('vendor_id'),120),subtotal=Math.max(0,Number(url.searchParams.get('subtotal')||0));
+   if(!code||!vendorId)return json({valid:false,discount:0,message:'Enter a coupon code.'},400);
+   const row=await one(e,'SELECT c.*,v.status vendor_status FROM vendor_coupons c JOIN vendors v ON v.id=c.vendor_id WHERE upper(c.code)=upper(?) AND c.vendor_id=? AND c.active=1 LIMIT 1',[code,vendorId]);
+   if(!row||String(row.vendor_status||'Active')!=='Active')return json({valid:false,discount:0,message:'This coupon is not valid for this store.'});
+   if(row.starts_at&&new Date(row.starts_at)>new Date())return json({valid:false,discount:0,message:'This coupon is not active yet.'});
+   if(row.expires_at&&new Date(row.expires_at)<=new Date())return json({valid:false,discount:0,message:'This coupon has expired.'});
+   if(row.usage_limit!==null&&Number(row.used_count||0)>=Number(row.usage_limit))return json({valid:false,discount:0,message:'This coupon has reached its usage limit.'});
+   if(subtotal<Number(row.min_order_amount||0))return json({valid:false,discount:0,message:'Minimum order for this store is ৳'+Number(row.min_order_amount||0).toLocaleString('en-BD')+'.'});
+   const discount=couponDiscount(row,subtotal);
+   if(discount<=0)return json({valid:false,discount:0,message:'This coupon cannot be applied to this store.'});
+   return json({valid:true,code:String(row.code).toUpperCase(),vendor_id:vendorId,discount,discount_type:row.discount_type,discount_value:Number(row.discount_value||0),label:row.discount_type==='percentage'?Number(row.discount_value||0)+'% off':'৳'+Number(row.discount_value||0)+' off'});
+ }
+ return null;
+}
 async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marketplace/variations')return null;await schema(e);const id=clean(new URL(req.url).searchParams.get('product_id'),120);if(!id)return json({error:'product_id is required.'},400);const product=await one(e,'SELECT * FROM products WHERE id=?',[id]);if(!product||!product.published)return json({error:'Product not found.'},404);
  await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
  product.image_urls=((await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? AND vendor_id=? ORDER BY sort_order,id',[id,product.vendor_id])).results||[]).map(x=>x.image_url).filter(Boolean);
@@ -122,5 +203,5 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
  return json({product,options:opts,variations:vs})}
 async function orderGuard(req,e,next){if(new URL(req.url).pathname!=='/api/d1'||req.method!=='POST')return null;const b=await req.clone().json().catch(()=>null);if(b?.fn!=='create_public_order')return null;const payload=b.args?.payload||b.payload||{},items=Array.isArray(payload.items)?payload.items:[];if(!items.length)return null;await schema(e);const nextItems=[];for(const raw of items){const item={...raw},qty=Math.max(1,Math.floor(Number(item.quantity||1)));if(item.variation_id){const v=await one(e,"SELECT pv.id,pv.product_id,pv.sku,pv.regular_price,pv.old_price,pv.image_url,pv.status,p.name,p.sku product_sku,p.published,p.vendor_id,ven.status vendor_status FROM product_variations pv JOIN products p ON p.id=pv.product_id LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE pv.id=?",[clean(item.variation_id,120)]);if(!v||!v.published||v.status!=='Available'||v.vendor_status&&v.vendor_status!=='Active')return json({error:'One selected variation is no longer available.'},409);const unit=Math.max(0,Number(v.regular_price||0));item.product_id=v.product_id;item.unit_price=unit;item.price=unit;item.line_total=unit*qty;item.product_name=v.name;item.image_url=v.image_url||item.image_url;item.sku=v.sku||v.product_sku||item.sku;const optionRows=(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[v.id])).results||[];const resolvedOptions={};for(const x of optionRows)resolvedOptions[x.name]=x.value;item.variation_options=Object.keys(resolvedOptions).length?resolvedOptions:(item.variation_options&&typeof item.variation_options==='object'?item.variation_options:{});}else{const p=await one(e,"SELECT p.*,ven.status vendor_status FROM products p LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE p.id=?",[clean(item.product_id||item.id,120)]);if(!p||!p.published||p.vendor_status&&p.vendor_status!=='Active')return json({error:'One selected product is no longer available.'},409);if(p.product_type==='variable')return json({error:p.name+' requires a variation selection.'},409);if(!Number.isFinite(Number(p.price))||Number(p.price)<0)return json({error:'Invalid price for '+p.name+'.'},409);const unit=Number(p.price||0);item.product_id=p.id;item.unit_price=unit;item.price=unit;item.line_total=unit*qty;item.product_name=p.name;item.image_url=p.image_url||item.image_url;item.sku=p.sku||item.sku;}nextItems.push(item)}
 const nb={...b,args:{...(b.args||{}),payload:{...payload,items:nextItems}}};const h=new Headers(req.headers);h.delete('content-length');const r=await next(new Request(req.url,{method:'POST',headers:h,body:JSON.stringify(nb)}));return r}
-async function route(req,e,ctx,next){await schema(e);const p=new URL(req.url).pathname;if(p==='/api/vendor/variations'||p.startsWith('/api/vendor/variations/')||p.startsWith('/api/vendor/variation/')||/^\/api\/vendor\/variation_[^/]+$/.test(p))return variations(req,e);if(p==='/api/vendor/profile')return profile(req,e);if(p==='/api/vendor/sales')return sales(req,e);if(p==='/api/marketplace/variations')return publicVariation(req,e);if(p==='/api/vendor/admin/audit'){if(!await admin(req,e))return json({error:'Unauthorized'},401);const id=clean(new URL(req.url).searchParams.get('vendor_id'),120);return json({logs:(await q(e,`SELECT * FROM marketplace_audit_log WHERE (?='' OR vendor_id=?) ORDER BY created_at DESC LIMIT 300`,[id,id])).results||[]})}if(p==='/api/vendor/admin/payouts'){if(!await admin(req,e))return json({error:'Unauthorized'},401);return json({payouts:(await q(e,'SELECT v.id,v.brand_name,COALESCE(SUM(vo.vendor_earnings),0) earnings,COUNT(vo.id) orders FROM vendors v LEFT JOIN vendor_orders vo ON vo.vendor_id=v.id GROUP BY v.id ORDER BY earnings DESC')).results||[]})}if(p==='/api/d1'&&req.method==='POST')return orderGuard(req,e,ctx,next);return null}
+async function route(req,e,ctx,next){await schema(e);const p=new URL(req.url).pathname;const couponResult=await coupons(req,e);if(couponResult)return couponResult;if(p==='/api/vendor/variations'||p.startsWith('/api/vendor/variations/')||p.startsWith('/api/vendor/variation/')||/^\/api\/vendor\/variation_[^/]+$/.test(p))return variations(req,e);if(p==='/api/vendor/profile')return profile(req,e);if(p==='/api/vendor/sales')return sales(req,e);if(p==='/api/marketplace/variations')return publicVariation(req,e);if(p==='/api/vendor/admin/audit'){if(!await admin(req,e))return json({error:'Unauthorized'},401);const id=clean(new URL(req.url).searchParams.get('vendor_id'),120);return json({logs:(await q(e,`SELECT * FROM marketplace_audit_log WHERE (?='' OR vendor_id=?) ORDER BY created_at DESC LIMIT 300`,[id,id])).results||[]})}if(p==='/api/vendor/admin/payouts'){if(!await admin(req,e))return json({error:'Unauthorized'},401);return json({payouts:(await q(e,'SELECT v.id,v.brand_name,COALESCE(SUM(vo.vendor_earnings),0) earnings,COUNT(vo.id) orders FROM vendors v LEFT JOIN vendor_orders vo ON vo.vendor_id=v.id GROUP BY v.id ORDER BY earnings DESC')).results||[]})}if(p==='/api/d1'&&req.method==='POST')return orderGuard(req,e,ctx,next);return null}
 export default{fetch:async(req,e,ctx,next)=>{try{const x=await route(req,e,ctx,next);return x||next(req)}catch(err){return json({error:err?.message||'Vendor system failed'},500)}}};
