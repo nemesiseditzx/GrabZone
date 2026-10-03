@@ -494,7 +494,8 @@ try{
   const vendor=(await q(env,"SELECT COALESCE(brand_name,business_name,slug,'GrabZone Vendor') vendor_name,COALESCE(order_notification_email,'') notify_email,COALESCE(email,'') email,COALESCE(shipping_fee,130) shipping_fee FROM vendors WHERE id=? LIMIT 1",[vendorId])).results?.[0];
   const vendorSubtotal=vendorItems.reduce((sum,item)=>sum+Number(item.line_total||0),0);
   const vendorShipping=Math.max(0,Number(vendor?.shipping_fee??130));
-  vendorNotices.push({vendorId,vendorName:vendor?.vendor_name||"GrabZone Vendor",recipient:String(vendor?.notify_email||vendor?.email||"").trim(),items:vendorItems,subtotal:vendorSubtotal,shipping:vendorShipping,total:vendorSubtotal+vendorShipping});
+  const vendorDiscount=String(vendorCoupon.vendor_id||"")===vendorId?Math.min(vendorSubtotal,Math.max(0,Number(vendorCoupon.discount||0))):0;
+  vendorNotices.push({vendorId,vendorName:vendor?.vendor_name||"GrabZone Vendor",recipient:String(vendor?.notify_email||vendor?.email||"").trim(),items:vendorItems,subtotal:vendorSubtotal,discount:vendorDiscount,shipping:vendorShipping,total:Math.max(0,vendorSubtotal-vendorDiscount)+vendorShipping});
  }
  if(vendorNotices.length)await notifyVendorsForOrder(env,{orderId:id,orderNumber,placedAt:now(),orderStatus:"New",customerName:String(p.customer_name||"").trim(),vendors:vendorNotices});
 }catch(e){console.error("Vendor new-order notification failed:",e)}
