@@ -119,8 +119,8 @@ function viewOrder(id){
       <div class="gz-order-actions"><button class="gz-btn primary" onclick="addShipment('${esc(o.id)}')">+ Add Shipment</button><button class="gz-btn light" onclick="closeModal()">Close</button></div>
     </div>`;
   openModal();
-  $('#orderBody [data-shipment-edit]').forEach(btn=>btn.addEventListener('click',()=>{const [voId,sid]=btn.dataset.shipmentEdit.split(':');editShipment(voId,sid)}));
-  $('#orderBody [data-shipment-delete]').forEach(btn=>btn.addEventListener('click',()=>{const [voId,sid]=btn.dataset.shipmentDelete.split(':');deleteShipment(voId,sid)}));
+  document.querySelectorAll('#orderBody [data-shipment-edit]').forEach(btn=>btn.addEventListener('click',()=>{const [voId,sid]=btn.dataset.shipmentEdit.split(':');editShipment(voId,sid)}));
+  document.querySelectorAll('#orderBody [data-shipment-delete]').forEach(btn=>btn.addEventListener('click',()=>{const [voId,sid]=btn.dataset.shipmentDelete.split(':');deleteShipment(voId,sid)}));
 }
 async function editShipment(voId,sid){
  const o=state.orders.find(x=>x.id===voId),s=(o?.shipments||[]).find(x=>x.id===sid);if(!o||!s)return;
