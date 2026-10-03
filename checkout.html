@@ -29,6 +29,10 @@
 .grabpoints-open-btn:hover{background:#f5f8f7;border-color:#c7cfcb}
 .points-discount{color:#16803a}
 @media(max-width:560px){.grabpoints-head{align-items:flex-start;flex-direction:column;gap:6px}.grabpoints-balance{align-self:flex-start}.grabpoints-box{padding:15px}}
+</style><style>
+.vendor-coupon-box{margin-top:18px;padding:16px;border:1px solid #e7e1d8;border-radius:18px;background:linear-gradient(180deg,#fff,#fffaf4);box-shadow:0 6px 18px rgba(60,45,20,.035)}
+.vendor-coupon-head{display:flex;gap:11px;align-items:flex-start}.vendor-coupon-icon{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:#111;color:#fff;font-size:18px}.vendor-coupon-head b{font-size:14px}.vendor-coupon-head p{margin:4px 0 0;color:#777;font-size:11px;line-height:1.45}.vendor-coupon-row{display:flex;gap:8px;margin-top:13px}.vendor-coupon-row input{flex:1;min-width:0;border:1px solid #d7ddda;border-radius:11px;padding:12px 13px;background:#fff;color:#111;font:inherit;font-size:13px;outline:none}.vendor-coupon-row button{width:auto;min-width:112px;margin:0;padding:12px 14px;border-radius:11px}.vendor-coupon-box small{display:block;margin-top:7px;color:#777;font-size:10px;line-height:1.45}.vendor-coupon-box small:has(+*){color:#777}
+@media(max-width:560px){.vendor-coupon-row{flex-direction:column}.vendor-coupon-row button{width:100%}}
 </style><style>.grabpoints-optin{margin-top:14px;padding:13px 14px;border:1px solid #dcefe6;border-radius:15px;background:#f5fbf8}.grabpoints-check{display:flex;gap:10px;align-items:flex-start;cursor:pointer}.grabpoints-check input{margin-top:3px;accent-color:#08a878}.grabpoints-check span{display:flex;flex-direction:column;gap:3px}.grabpoints-check b{font-size:13px}.grabpoints-check small{color:#777;font-size:10px;line-height:1.45}</style><link rel="stylesheet" href="grabzone-mobile-global.css?v=20260922mobileglobal2">
 <script src="/grabzone-animation-controller.js?v=20260922full-animation1"></script>
   <link rel="stylesheet" href="grabzone-ui-consistency.css?v=20260923ui">
@@ -142,6 +146,11 @@
           </div>
           <small id="referralMessage">Have a referral code? Enter it to check your benefit.</small>
         </div>
+        <div class="vendor-coupon-box">
+          <div class="vendor-coupon-head"><span class="vendor-coupon-icon">🏷️</span><div><b>Store Coupon</b><p>Use a vendor's coupon. It only discounts products from that vendor's store.</p></div></div>
+          <div class="vendor-coupon-row"><input id="vendorCouponCode" type="text" placeholder="ENTER STORE COUPON CODE" autocomplete="off" maxlength="40" style="text-transform:uppercase"><button id="applyVendorCouponBtn" type="button" class="dark-btn">Apply Coupon</button></div>
+          <small id="vendorCouponMessage">If your cart has multiple stores, only the matching store's products will receive this coupon.</small>
+        </div>
 
         <div class="grabpoints-box">
           <div class="grabpoints-top">
@@ -214,7 +223,7 @@
       <div id="checkoutItemsSide" class="summary-products"></div>
       <div class="summary-line"><span>Subtotal</span><b id="checkoutSubtotal">৳0</b></div>
       <div class="summary-line"><span>Shipping Charge</span><b id="checkoutShipping">৳0</b></div><div id="checkoutShippingBreakdown" hidden style="padding:0 0 4px"></div>
-      <div class="summary-line" id="checkoutDiscountRow" hidden><span>Referral Discount</span><b id="checkoutDiscount">-৳0</b></div>
+      <div class="summary-line" id="checkoutDiscountRow" hidden><span>Referral Discount</span><b id="checkoutDiscount">-৳0</b></div><div class="summary-line points-discount" id="checkoutVendorCouponRow" hidden><span>Store Coupon</span><b id="checkoutVendorCouponDiscount">-৳0</b></div>
       <div class="summary-line points-discount" id="checkoutPointsRow" hidden><span>GrabPoints Discount</span><b id="checkoutPointsDiscount">-৳0</b></div>
       <div class="summary-line points-discount" id="checkoutMysteryRow" hidden><span>🎁 Mystery Deal</span><b id="checkoutMysteryDiscount">-৳0</b></div>
       <div class="summary-total"><span>Total Bill</span><b id="checkoutTotal">৳0</b></div>
