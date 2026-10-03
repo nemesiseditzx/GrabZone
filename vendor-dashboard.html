@@ -54,6 +54,7 @@
   <button data-section="dashboard" class="active">Dashboard</button>
   <button data-section="products">Products</button>
   <button data-section="orders">Orders</button>
+  <button data-section="coupons">Coupons</button>
   <button data-section="store">Store</button>
   <button data-section="settings">Settings</button>
 </nav></aside>
@@ -79,6 +80,27 @@
   <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">FULFILLMENT</div><h1 style="margin:4px 0">Orders</h1><p>When a customer orders your product, the vendor order appears here.</p></div><button class="gz-btn light" onclick="loadOrders()">Refresh</button></div>
   <div class="gz-toolbar"><input id="orderSearch" placeholder="Search order, customer or phone…" oninput="renderOrders()"><select id="orderFilter" onchange="renderOrders()"><option value="all">All statuses</option><option>Processing</option><option>Picked Up</option><option>In Transit</option><option>Out for Delivery</option><option>Delivered</option><option>Failed</option><option>Returned</option><option>Cancelled</option></select></div>
   <div id="orderList"></div>
+</section>
+<section id="coupons" class="gz-section">
+  <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">STORE PROMOTIONS</div><h1 style="margin:4px 0">Coupons</h1><p>Create coupon codes that work only on your store's products.</p></div><button class="gz-btn primary" onclick="openCouponForm()">+ Create Coupon</button></div>
+  <div id="couponFormPanel" class="gz-card" hidden style="margin-bottom:14px">
+    <form id="couponForm" class="gz-form">
+      <div class="gz-two">
+        <div class="gz-field"><label>Coupon Code *</label><input id="c_code" maxlength="40" placeholder="e.g. STORE20" required></div>
+        <div class="gz-field"><label>Discount Type</label><select id="c_type"><option value="fixed">Fixed amount (৳)</option><option value="percentage">Percentage (%)</option></select></div>
+        <div class="gz-field"><label>Discount Value *</label><input id="c_value" type="number" min="0.01" step="0.01" required></div>
+        <div class="gz-field"><label>Minimum Store Order</label><input id="c_min" type="number" min="0" step="0.01" value="0"></div>
+        <div class="gz-field"><label>Maximum Discount <span style="font-weight:500;color:#777">(optional)</span></label><input id="c_max" type="number" min="0" step="0.01" placeholder="No limit"></div>
+        <div class="gz-field"><label>Usage Limit <span style="font-weight:500;color:#777">(optional)</span></label><input id="c_limit" type="number" min="1" step="1" placeholder="Unlimited"></div>
+        <div class="gz-field"><label>Starts At <span style="font-weight:500;color:#777">(optional)</span></label><input id="c_start" type="datetime-local"></div>
+        <div class="gz-field"><label>Expires At <span style="font-weight:500;color:#777">(optional)</span></label><input id="c_end" type="datetime-local"></div>
+      </div>
+      <div class="gz-field"><label>Note <span style="font-weight:500;color:#777">(optional)</span></label><input id="c_note" maxlength="500" placeholder="Internal note"></div>
+      <div class="gz-actions"><button class="gz-btn primary">Save Coupon</button><button type="button" class="gz-btn light" onclick="closeCouponForm()">Cancel</button></div>
+      <div id="couponFormMsg"></div>
+    </form>
+  </div>
+  <div id="couponList" class="gz-card"><div class="gz-empty">Loading coupons…</div></div>
 </section>
 <section id="store" class="gz-section">
 <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">STOREFRONT BUILDER</div><h1>Your Store</h1><p>Customize your storefront, branding, contact details and content.</p></div><a id="storeLink" class="gz-btn light" href="#" target="_blank" rel="noopener">View Store ↗</a></div>
