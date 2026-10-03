@@ -606,6 +606,9 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('checkoutForm')?.addEventListener('submit',submit);
   $('division')?.addEventListener('change',onDivisionChange);
   $('applyReferralBtn')?.addEventListener('click',applyReferral);
+  $('applyVendorCouponBtn')?.addEventListener('click',applyVendorCoupon);
+  $('vendorCouponCode')?.addEventListener('input',()=>{vendorCouponState={code:'',vendor_id:'',discount:0,label:'',vendor_name:''};const m=$('vendorCouponMessage');if(m){m.textContent='Enter the code and press Apply Coupon.';m.style.color='#777'}render()});
+
   $('district')?.addEventListener('change',onDistrictChange);
   bindLocationPickers();
   async function applyRewardsVoucher(){
