@@ -62,6 +62,7 @@ function renderOrders(){
       </div>
       <div class="gz-detail">
         <div class="gz-order-summary-row"><span>Products subtotal</span><b>${money(o.subtotal)}</b></div>
+        ${Number(o.discount_amount||0)>0?`<div class="gz-order-summary-row"><span>Store coupon</span><b>-${money(o.discount_amount)}</b></div>`:""}
         <div class="gz-order-summary-row"><span>Delivery charge</span><b>+${money(delivery)}</b></div>
         <div class="gz-order-summary-total"><span>Collect from customer</span><strong>${money(collect)}</strong></div>
       </div>
