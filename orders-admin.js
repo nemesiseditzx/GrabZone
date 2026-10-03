@@ -262,7 +262,7 @@ async function loadOrders(){
    }
    const {data,error}=await sb
      .from('orders')
-     .select('id,order_no,order_number,public_tracking_id,customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,subtotal,total,status,admin_note,created_at,updated_at,referral_discount,discount_amount,rewards_voucher_code,rewards_voucher_discount,mystery_discount,business_koro_sent_at,tracking_number,tracking_url,tracking_provider')
+     .select('id,order_no,order_number,public_tracking_id,customer_name,email,phone,division,district,upazila,address,referral_code,payment_method,shipping_charge,subtotal,total,status,admin_note,created_at,updated_at,referral_discount,discount_amount,rewards_voucher_code,rewards_voucher_discount,mystery_discount,vendor_coupon_code,vendor_coupon_discount,business_koro_sent_at,tracking_number,tracking_url,tracking_provider')
      .order('created_at',{ascending:false});
    if(error){
      console.error('GrabZone orders load failed:',error);
@@ -277,8 +277,8 @@ async function loadOrders(){
      const sub=Number(order.subtotal||0);
      const f=orderFinancialMap.get(String(order.id));
      const ship=Number(f?.shipping??order.shipping_charge??globalShippingFee);
-     const referral=Number(order.referral_discount||0), gp=Number(order.rewards_voucher_discount||0), mystery=Number(order.mystery_discount||0);
-     const correctDiscount=Math.max(0,referral+gp+mystery);
+     const referral=Number(order.referral_discount||0), gp=Number(order.rewards_voucher_discount||0), mystery=Number(order.mystery_discount||0), vendorCoupon=Number(order.vendor_coupon_discount||0);
+     const correctDiscount=Math.max(0,referral+gp+mystery+vendorCoupon);
      const correctTotal=Math.max(0,sub+ship-correctDiscount);
      const shippingChanged=Math.abs(Number(order.shipping_charge??0)-ship)>0.009;
      const totalChanged=Math.abs(Number(order.total||0)-correctTotal)>0.009;
@@ -305,7 +305,7 @@ function renderOrders(){
  const q=($('gzOrderSearch')?.value||'').trim().toLowerCase(), st=$('gzOrderStatusFilter')?.value||'';
  const list=orders.filter(o=>(!q||`${o.order_number} ${o.public_tracking_id||''} ${o.customer_name} ${o.phone} ${o.email} ${o.referral_code||''} ${o.rewards_voucher_code||''}`.toLowerCase().includes(q))&&(!st||o.status===st));
  if(!list.length){panel.innerHTML='<div class="gz-empty-orders">No orders found.</div>';return}
- panel.innerHTML=`<div class="gz-orders-wrap"><table class="gz-orders-table"><thead><tr><th>Order / Tracking ID</th><th>Customer</th><th>Products / Vendor</th><th>Phone</th><th>Email</th><th>Referral</th><th>GrabPoints Reward</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>${list.map(o=>`<tr>
+ panel.innerHTML=`<div class="gz-orders-wrap"><table class="gz-orders-table"><thead><tr><th>Order / Tracking ID</th><th>Customer</th><th>Products / Vendor</th><th>Phone</th><th>Email</th><th>Referral</th><th>GrabPoints Reward</th><th>Store Coupon</th><th>Total</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>${list.map(o=>`<tr>
  <td><button class="gz-order-link" data-order="${esc(o.id)}">${esc(o.order_number)}</button><div class="gz-public-track-id">${o.public_tracking_id?`Private Tracking ID: <b>${esc(o.public_tracking_id)}</b>`:'Private Tracking ID: generating…'}</div></td>
  <td>${esc(o.customer_name)}</td>
  <td><div class="gz-vendor-cell">${vendorSummaryHtml(o)}</div></td>
@@ -313,7 +313,8 @@ function renderOrders(){
  <td class="gz-order-email" title="${esc(o.email)}">${esc(o.email)}</td>
  <td><div class="gz-discount-box referral"><b>Referral Code</b><span>${esc(o.referral_code||'—')}</span><small>${Number(o.referral_discount||0)>0?'Discount: -'+money(o.referral_discount):'No referral discount'}</small></div></td>
  <td><div class="gz-discount-box grabpoints"><b>GrabPoints Code</b><span>${esc(o.rewards_voucher_code||'—')}</span><small>${Number(o.rewards_voucher_discount||0)>0?'Discount: -'+money(o.rewards_voucher_discount):'No GrabPoints discount'}</small></div></td>
- <td><b>${money(Math.max(0,Number(o.subtotal||0)+Number(o.shipping_charge??0)-Number(o.referral_discount||0)-Number(o.rewards_voucher_discount||0)-Number(o.mystery_discount||0)))}</b></td>
+ <td><div class="gz-discount-box" style="background:#fff7f2;border-color:#f0d9ca"><b>Store Coupon</b><span>${esc(o.vendor_coupon_code||'—')}</span><small>${Number(o.vendor_coupon_discount||0)>0?'Discount: -'+money(o.vendor_coupon_discount):'No store coupon'}</small></div></td>
+ <td><b>${money(Math.max(0,Number(o.subtotal||0)+Number(o.shipping_charge??0)-Number(o.referral_discount||0)-Number(o.rewards_voucher_discount||0)-Number(o.mystery_discount||0)-Number(o.vendor_coupon_discount||0)))}</b></td>
  <td><select class="gz-status-select" data-status-order="${esc(o.id)}" aria-label="Change order status">${statuses.map(s=>`<option value="${esc(s)}" ${s===o.status?'selected':''}>${esc(s)}</option>`).join('')}</select></td>
  <td>${o.created_at?formatBdDateTime(o.created_at):'—'}</td>
  <td><div class="gz-order-actions-cell"><button class="gz-order-action edit" data-edit-order="${esc(o.id)}">Edit</button><button class="gz-order-action" data-send-bk="${esc(o.id)}" ${o.status!=='Confirmed'||o.business_koro_sent_at?'disabled':''}>${o.business_koro_sent_at?'Sent ✓':o.status==='Confirmed'?'Send to Business Koro':'Confirm order first'}</button><button class="gz-order-action delete" data-delete-order="${esc(o.id)}">Delete</button></div></td>
