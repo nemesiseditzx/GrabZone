@@ -111,7 +111,7 @@ if(table==="orders"&&inputValues.status!==undefined){
   if(inputValues.status==="Confirmed"){
     for(const row of ids){
       const existing=(await q(env,"SELECT id FROM vendor_orders WHERE order_id=? LIMIT 1",[row.id])).results||[];
-      if(!existing.length){
+      {
         const oi=(await q(env,"SELECT id,product_id,product_name,image_url,quantity,unit_price,line_total,variation_id,variation_options,variation_sku,vendor_id FROM order_items WHERE order_id=? ORDER BY id",[row.id])).results||[];
         if(oi.length){
           try{await routeOrderToVendors(env,row.id,oi)}
@@ -126,9 +126,9 @@ if(table==="orders"){
   for(const row of ids){
     const agg=(await q(env,"SELECT COUNT(*) n,COALESCE(SUM(COALESCE(NULLIF(shipping_fee,0),delivery_charge,0)),0) shipping FROM vendor_orders WHERE order_id=?",[row.id])).results?.[0];
     if(Number(agg?.n||0)>0){
-      const fresh=(await q(env,"SELECT subtotal,referral_discount,grabpoints_discount,mystery_discount,rewards_voucher_discount FROM orders WHERE id=?",[row.id])).results?.[0]||{};
+      const fresh=(await q(env,"SELECT subtotal,referral_discount,grabpoints_discount,mystery_discount,rewards_voucher_discount,vendor_coupon_discount FROM orders WHERE id=?",[row.id])).results?.[0]||{};
       const ship=Math.max(0,Number(agg.shipping||0));
-      const total=Math.max(0,Number(fresh.subtotal||0)+ship-Number(fresh.referral_discount||0)-Number(fresh.grabpoints_discount||0)-Number(fresh.mystery_discount||0)-Number(fresh.rewards_voucher_discount||0));
+      const total=Math.max(0,Number(fresh.subtotal||0)+ship-Number(fresh.referral_discount||0)-Number(fresh.grabpoints_discount||0)-Number(fresh.mystery_discount||0)-Number(fresh.rewards_voucher_discount||0)-Number(fresh.vendor_coupon_discount||0));
       await env.DB.prepare("UPDATE orders SET shipping_charge=?,total=?,updated_at=? WHERE id=?").bind(ship,total,now(),row.id).run();
     }
   }
@@ -331,7 +331,13 @@ async function routeOrderToVendors(env,orderId,items){
       // notification log keeps a vendor who already received it from getting two.
       const known=g.items.reduce((n,x)=>n+Number(x.line_total??Number(x.unit_price||0)*Number(x.quantity||1)),0);
       const knownShip=Math.max(0,Number(g.shipping_fee??130));
-      notifyList.push({vendorId:g.vendor_id,vendorName:g.vendor_name,recipient:String(g.notify_email||g.vendor_email||"").trim(),vendorOrderId:existing.results[0].id,items:g.items,subtotal:known,shipping:knownShip,total:known+knownShip});
+      const existingId=existing.results[0].id;
+      const discountAmount=String(orderCoupon.vendor_coupon_vendor_id||'')===String(g.vendor_id)?Math.min(known,Math.max(0,Number(orderCoupon.vendor_coupon_discount||0))):0;
+      const existingRow=await one(env,"SELECT commission_amount FROM vendor_orders WHERE id=? LIMIT 1",[existingId]);
+      const existingCommission=Number(existingRow?.commission_amount||0);
+      await env.DB.prepare("UPDATE vendor_orders SET discount_amount=?,coupon_code=?,vendor_earnings=?,delivery_charge=?,shipping_fee=?,updated_at=? WHERE id=?")
+        .bind(discountAmount,discountAmount?String(orderCoupon.vendor_coupon_code||""):null,Math.max(0,known-discountAmount-existingCommission),knownShip,knownShip,now(),existingId).run();
+      notifyList.push({vendorId:g.vendor_id,vendorName:g.vendor_name,recipient:String(g.notify_email||g.vendor_email||"").trim(),vendorOrderId:existingId,items:g.items,subtotal:known,discount:discountAmount,shipping:knownShip,total:Math.max(0,known-discountAmount)+knownShip});
       continue;
     }
     const subtotal=g.items.reduce((n,x)=>n+Number(x.line_total??Number(x.unit_price||0)*Number(x.quantity||1)),0);
