@@ -276,6 +276,37 @@ async function ensureVendorOrderTables(env){
   await env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0").run().catch(()=>{});
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT)").run().catch(()=>{});
 }
+async function ensureVendorCouponSchema(env){
+ await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_coupons(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,code TEXT NOT NULL,discount_type TEXT NOT NULL DEFAULT 'fixed',discount_value REAL NOT NULL DEFAULT 0,min_order_amount REAL NOT NULL DEFAULT 0,max_discount_amount REAL,usage_limit INTEGER,used_count INTEGER NOT NULL DEFAULT 0,starts_at TEXT,expires_at TEXT,active INTEGER NOT NULL DEFAULT 1,note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
+ await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS vendor_coupons_code_uq ON vendor_coupons(upper(code))").run().catch(()=>{});
+ await env.DB.prepare("ALTER TABLE orders ADD COLUMN vendor_coupon_code TEXT").run().catch(()=>{});
+ await env.DB.prepare("ALTER TABLE orders ADD COLUMN vendor_coupon_vendor_id TEXT").run().catch(()=>{});
+ await env.DB.prepare("ALTER TABLE orders ADD COLUMN vendor_coupon_discount REAL NOT NULL DEFAULT 0").run().catch(()=>{});
+ await env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0").run().catch(()=>{});
+ await env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN coupon_code TEXT").run().catch(()=>{});
+}
+function vendorCouponCode(v){return String(v??'').trim().toUpperCase().slice(0,40).replace(/[^A-Z0-9_-]/g,'')}
+function vendorCouponDiscount(row,subtotal){
+ let d=row.discount_type==='percentage'?Math.round(subtotal*Number(row.discount_value||0)/100*100)/100:Number(row.discount_value||0);
+ if(row.max_discount_amount!==null&&row.max_discount_amount!==undefined)d=Math.min(d,Number(row.max_discount_amount));
+ return Math.max(0,Math.min(d,subtotal));
+}
+async function resolveVendorCoupon(env,code,items){
+ const normalized=vendorCouponCode(code);
+ if(!normalized)return{code:null,vendor_id:null,discount:0};
+ const row=await one(env,"SELECT c.*,v.status vendor_status FROM vendor_coupons c JOIN vendors v ON v.id=c.vendor_id WHERE upper(c.code)=upper(?) AND c.active=1 LIMIT 1",[normalized]);
+ if(!row||String(row.vendor_status||'Active')!=='Active')throw new Error("Invalid or inactive vendor coupon.");
+ if(row.starts_at&&new Date(row.starts_at)>new Date())throw new Error("This vendor coupon is not active yet.");
+ if(row.expires_at&&new Date(row.expires_at)<=new Date())throw new Error("This vendor coupon has expired.");
+ if(row.usage_limit!==null&&Number(row.used_count||0)>=Number(row.usage_limit))throw new Error("This vendor coupon has reached its usage limit.");
+ const vendorItems=(items||[]).filter(x=>String(x.vendor_id||'')===String(row.vendor_id));
+ const vendorSubtotal=vendorItems.reduce((sum,x)=>sum+Number(x.line_total||0),0);
+ if(vendorSubtotal<=0)throw new Error("This coupon only works on products from its own store.");
+ if(vendorSubtotal<Number(row.min_order_amount||0))throw new Error("Minimum order amount for this store is ৳"+Number(row.min_order_amount||0).toLocaleString('en-BD')+".");
+ const discount=vendorCouponDiscount(row,vendorSubtotal);
+ if(discount<=0)throw new Error("This vendor coupon cannot be applied to this store.");
+ return{code:String(row.code).toUpperCase(),vendor_id:String(row.vendor_id),discount,vendor_subtotal:vendorSubtotal};
+}
 async function routeOrderToVendors(env,orderId,items){
   await ensureVendorOrderTables(env);
   const groups=new Map();
@@ -288,6 +319,7 @@ async function routeOrderToVendors(env,orderId,items){
     groups.get(vid).items.push(item);
   }
   const orderNumber=(await q(env,"SELECT order_number FROM orders WHERE id=? LIMIT 1",[orderId])).results?.[0]?.order_number||orderId;
+  const orderCoupon=(await q(env,"SELECT vendor_coupon_code,vendor_coupon_vendor_id,vendor_coupon_discount FROM orders WHERE id=? LIMIT 1",[orderId])).results?.[0]||{};
   const notifyList=[];
    const voCols=new Set(((await q(env,"PRAGMA table_info(vendor_orders)")).results||[]).map(x=>x.name));
   const viCols=new Set(((await q(env,"PRAGMA table_info(vendor_order_items)")).results||[]).map(x=>x.name));
@@ -303,9 +335,10 @@ async function routeOrderToVendors(env,orderId,items){
       continue;
     }
     const subtotal=g.items.reduce((n,x)=>n+Number(x.line_total??Number(x.unit_price||0)*Number(x.quantity||1)),0);
+    const discountAmount=String(orderCoupon.vendor_coupon_vendor_id||'')===String(g.vendor_id)?Math.min(subtotal,Math.max(0,Number(orderCoupon.vendor_coupon_discount||0))):0;
     const commission=g.commission_type==="percentage"?Math.round(subtotal*Math.max(0,g.commission_value)/100*100)/100:Math.min(subtotal,Math.max(0,g.commission_value));
     const vendorShipping=Math.max(0,Number(g.shipping_fee??130));
-    const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,commission_amount:commission,vendor_earnings:Math.max(0,subtotal-commission),shipping_fee:vendorShipping,delivery_charge:vendorShipping,status:"Processing",created_at:now(),updated_at:now()};
+    const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,discount_amount:discountAmount,coupon_code:discountAmount?String(orderCoupon.vendor_coupon_code||""):null,commission_amount:commission,vendor_earnings:Math.max(0,subtotal-discountAmount-commission),shipping_fee:vendorShipping,delivery_charge:vendorShipping,status:"Processing",created_at:now(),updated_at:now()};
     const fields=Object.keys(vo).filter(k=>voCols.has(k));
     if(!fields.includes("id")||!fields.includes("order_id")||!fields.includes("vendor_id"))continue;
     await env.DB.prepare("INSERT INTO vendor_orders("+fields.join(",")+") VALUES("+fields.map(()=>"?").join(",")+")").bind(...fields.map(k=>vo[k])).run();
@@ -315,7 +348,7 @@ async function routeOrderToVendors(env,orderId,items){
       if(!fields2.includes("id")||!fields2.includes("vendor_order_id")||!fields2.includes("order_item_id"))continue;
       await env.DB.prepare("INSERT INTO vendor_order_items("+fields2.join(",")+") VALUES("+fields2.map(()=>"?").join(",")+")").bind(...fields2.map(k=>vi[k])).run();
     }
-    notifyList.push({vendorId:g.vendor_id,vendorName:g.vendor_name,recipient:String(g.notify_email||g.vendor_email||"").trim(),vendorOrderId:vo.id,items:g.items,subtotal,shipping:vendorShipping,total:subtotal+vendorShipping});
+    notifyList.push({vendorId:g.vendor_id,vendorName:g.vendor_name,recipient:String(g.notify_email||g.vendor_email||"").trim(),vendorOrderId:vo.id,items:g.items,subtotal,discount:discountAmount,shipping:vendorShipping,total:Math.max(0,subtotal-discountAmount)+vendorShipping});
   }
   if(notifyList.length){
    const meta=(await q(env,"SELECT order_number,created_at,status,customer_name FROM orders WHERE id=? LIMIT 1",[orderId])).results?.[0]||{};
@@ -363,16 +396,18 @@ if(x.variation_id){
  const regular=Number(vv.regular_price||0),sale=Number(vv.sale_price||0);
  unit=sale>0&&sale<regular?sale:regular;
 }
-const line=unit*qty;subtotal+=line;items.push({id:crypto.randomUUID(),product_id:pr.id,product_name:pr.name,image_url:pr.image_url,quantity:qty,unit_price:unit,line_total:line,variation_id:x.variation_id||null,variation_options:x.variation_options||{},variation_sku:x.variation_sku||x.sku||null,vendor_id:pr.vendor_id||null})}const code=String(p.referral_code||"").trim().toUpperCase()||null;let discount=0,admin=null;if(code){const r=(await q(env,"SELECT * FROM referral_codes WHERE upper(code)=upper(?) AND active=1 LIMIT 1",[code])).results?.[0];if(!r)throw new Error("Invalid or inactive referral code.");if(r.starts_at&&new Date(r.starts_at)>new Date())throw new Error("This referral code is not active yet.");if(r.expires_at&&new Date(r.expires_at)<new Date())throw new Error("This referral code has expired.");if(r.usage_limit!==null&&Number(r.used_count||0)>=Number(r.usage_limit))throw new Error("This referral code has reached its usage limit.");if(subtotal<Number(r.min_order_amount||0))throw new Error("Minimum order amount for this referral code is ৳"+Number(r.min_order_amount||0)+".");discount=r.benefit_type==="percentage"?Math.round(subtotal*Number(r.benefit_value||0)/100*100)/100:Number(r.benefit_value||0);if(r.max_discount_amount!==null)discount=Math.min(discount,Number(r.max_discount_amount));discount=Math.max(0,Math.min(discount,subtotal));admin=r.admin_name||null}const mysteryToken=String(p.mystery_token||"").trim().toUpperCase();let mysteryDiscount=0;if(mysteryToken){const mr=(await q(env,"SELECT discount,expires_at,used FROM mystery_claims WHERE token=? LIMIT 1",[mysteryToken])).results?.[0];if(!mr||Number(mr.used)!==0||new Date(mr.expires_at)<=new Date())throw new Error("Your Mystery Deal has expired or was already used.");mysteryDiscount=Math.min(subtotal,subtotal*Number(mr.discount||0)/100);}const voucherCode=String(p.rewards_voucher_code||"").trim().toUpperCase();let voucherDiscount=0,voucher=null;if(String(p.grabpoints_redeem||"").trim())throw new Error("Direct GrabPoints checkout redemption is no longer supported. Redeem GP on the Rewards page first.");if(voucherCode){const phone=normalizeRewardPhone(p.phone);voucher=(await q(env,"SELECT * FROM rewards_vouchers WHERE code=? LIMIT 1",[voucherCode])).results?.[0];if(!voucher)throw new Error("Reward voucher not found.");if(String(voucher.phone)!==phone)throw new Error("This reward voucher belongs to a different Rewards account.");if(voucher.status!=="UNUSED")throw new Error("This reward voucher has already been used.");if(voucher.expires_at&&new Date(voucher.expires_at)<=new Date())throw new Error("This reward voucher has expired.");voucherDiscount=Math.min(subtotal,Number(voucher.value||0));if(voucherDiscount<=0)throw new Error("This reward voucher has no usable value.");}
-let shipping=0;if(vendorIds.size){const ids=[...vendorIds],marks=ids.map(()=>'?').join(',');const vs=(await q(env,`SELECT id,shipping_fee FROM vendors WHERE id IN (${marks})`,ids)).results||[];const feeMap=new Map(vs.map(v=>[String(v.id),v.shipping_fee]));for(const id of ids)shipping+=Number(feeMap.get(String(id))??shippingFallback);}else shipping=shippingFallback;const total=Math.max(0,subtotal+shipping-discount-voucherDiscount-mysteryDiscount);// Persist the order without relying on D1 batch() for this public checkout path.
+const line=unit*qty;subtotal+=line;items.push({id:crypto.randomUUID(),product_id:pr.id,product_name:pr.name,image_url:pr.image_url,quantity:qty,unit_price:unit,line_total:line,variation_id:x.variation_id||null,variation_options:x.variation_options||{},variation_sku:x.variation_sku||x.sku||null,vendor_id:pr.vendor_id||null})}await ensureVendorCouponSchema(env);
+const vendorCoupon=await resolveVendorCoupon(env,p.vendor_coupon_code,items);
+const code=String(p.referral_code||"").trim().toUpperCase()||null;let discount=0,admin=null;if(code){const r=(await q(env,"SELECT * FROM referral_codes WHERE upper(code)=upper(?) AND active=1 LIMIT 1",[code])).results?.[0];if(!r)throw new Error("Invalid or inactive referral code.");if(r.starts_at&&new Date(r.starts_at)>new Date())throw new Error("This referral code is not active yet.");if(r.expires_at&&new Date(r.expires_at)<new Date())throw new Error("This referral code has expired.");if(r.usage_limit!==null&&Number(r.used_count||0)>=Number(r.usage_limit))throw new Error("This referral code has reached its usage limit.");if(subtotal<Number(r.min_order_amount||0))throw new Error("Minimum order amount for this referral code is ৳"+Number(r.min_order_amount||0)+".");discount=r.benefit_type==="percentage"?Math.round(subtotal*Number(r.benefit_value||0)/100*100)/100:Number(r.benefit_value||0);if(r.max_discount_amount!==null)discount=Math.min(discount,Number(r.max_discount_amount));discount=Math.max(0,Math.min(discount,subtotal));admin=r.admin_name||null}const mysteryToken=String(p.mystery_token||"").trim().toUpperCase();let mysteryDiscount=0;if(mysteryToken){const mr=(await q(env,"SELECT discount,expires_at,used FROM mystery_claims WHERE token=? LIMIT 1",[mysteryToken])).results?.[0];if(!mr||Number(mr.used)!==0||new Date(mr.expires_at)<=new Date())throw new Error("Your Mystery Deal has expired or was already used.");mysteryDiscount=Math.min(subtotal,subtotal*Number(mr.discount||0)/100);}const voucherCode=String(p.rewards_voucher_code||"").trim().toUpperCase();let voucherDiscount=0,voucher=null;if(String(p.grabpoints_redeem||"").trim())throw new Error("Direct GrabPoints checkout redemption is no longer supported. Redeem GP on the Rewards page first.");if(voucherCode){const phone=normalizeRewardPhone(p.phone);voucher=(await q(env,"SELECT * FROM rewards_vouchers WHERE code=? LIMIT 1",[voucherCode])).results?.[0];if(!voucher)throw new Error("Reward voucher not found.");if(String(voucher.phone)!==phone)throw new Error("This reward voucher belongs to a different Rewards account.");if(voucher.status!=="UNUSED")throw new Error("This reward voucher has already been used.");if(voucher.expires_at&&new Date(voucher.expires_at)<=new Date())throw new Error("This reward voucher has expired.");voucherDiscount=Math.min(subtotal,Number(voucher.value||0));if(voucherDiscount<=0)throw new Error("This reward voucher has no usable value.");}
+let shipping=0;if(vendorIds.size){const ids=[...vendorIds],marks=ids.map(()=>'?').join(',');const vs=(await q(env,`SELECT id,shipping_fee FROM vendors WHERE id IN (${marks})`,ids)).results||[];const feeMap=new Map(vs.map(v=>[String(v.id),v.shipping_fee]));for(const id of ids)shipping+=Number(feeMap.get(String(id))??shippingFallback);}else shipping=shippingFallback;const total=Math.max(0,subtotal+shipping-discount-voucherDiscount-mysteryDiscount-vendorCoupon.discount);// Persist the order without relying on D1 batch() for this public checkout path.
 // Some preview/runtime combinations can throw an opaque "next is not a function"
 // from batch(), which leaves checkout unable to complete.
 const orderFields=[
  "id","order_no","order_number","customer_name","email","phone","division","district","upazila","address",
  "referral_code","referral_discount","discount_amount","referral_admin_name","payment_method","shipping_charge","subtotal","total","status","public_tracking_id",
- "grabpoints_opt_in","grabpoints_redeemed","grabpoints_discount","rewards_voucher_code","rewards_voucher_discount","mystery_discount","created_at","updated_at"
+ "grabpoints_opt_in","grabpoints_redeemed","grabpoints_discount","rewards_voucher_code","rewards_voucher_discount","mystery_discount","vendor_coupon_code","vendor_coupon_vendor_id","vendor_coupon_discount","created_at","updated_at"
 ];
-const orderValues=[id,n,orderNumber,String(p.customer_name).trim(),String(p.email||"").trim().toLowerCase(),normalizedPhone,String(p.division).trim(),String(p.district).trim(),String(p.upazila).trim(),String(p.address).trim(),code,discount,discount+voucherDiscount+mysteryDiscount,admin,"Cash on Delivery",shipping,subtotal,total,"New",tracking,Number(p.grabpoints_opt_in||0)===1?1:0,0,0,voucherCode||null,voucherDiscount,mysteryDiscount,t,t];
+const orderValues=[id,n,orderNumber,String(p.customer_name).trim(),String(p.email||"").trim().toLowerCase(),normalizedPhone,String(p.division).trim(),String(p.district).trim(),String(p.upazila).trim(),String(p.address).trim(),code,discount,discount+voucherDiscount+mysteryDiscount+vendorCoupon.discount,admin,"Cash on Delivery",shipping,subtotal,total,"New",tracking,Number(p.grabpoints_opt_in||0)===1?1:0,0,0,voucherCode||null,voucherDiscount,mysteryDiscount,vendorCoupon.code,vendorCoupon.vendor_id,vendorCoupon.discount,t,t];
 await env.DB.prepare("INSERT INTO orders("+orderFields.join(",")+") VALUES("+orderFields.map(()=>"?" ).join(",")+")").bind(...orderValues).run();
 
 const itemCols=new Set(((await q(env,"PRAGMA table_info(order_items)")).results||[]).map(x=>String(x.name)));
@@ -417,6 +452,10 @@ for(const i of items){
  }
 
 if(code)await env.DB.prepare("UPDATE referral_codes SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?)").bind(t,code).run();
+if(vendorCoupon.code){
+ const cw=await env.DB.prepare("UPDATE vendor_coupons SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?) AND vendor_id=? AND active=1 AND (usage_limit IS NULL OR used_count<usage_limit)").bind(t,vendorCoupon.code,vendorCoupon.vendor_id).run();
+ if(Number(cw?.meta?.changes||0)!==1)throw new Error("This vendor coupon is no longer available.");
+}
 if(mysteryToken)await env.DB.prepare("UPDATE mystery_claims SET used=1 WHERE token=? AND used=0").bind(mysteryToken).run();
 
 if(voucherCode){
@@ -453,7 +492,7 @@ try{
  }
  if(vendorNotices.length)await notifyVendorsForOrder(env,{orderId:id,orderNumber,placedAt:now(),orderStatus:"New",customerName:String(p.customer_name||"").trim(),vendors:vendorNotices});
 }catch(e){console.error("Vendor new-order notification failed:",e)}
-return{data:{id,order_number:orderNumber,public_tracking_id:tracking,subtotal,shipping_charge:shipping,referral_discount:discount,rewards_voucher_code:voucherCode||null,rewards_voucher_discount:voucherDiscount,mystery_discount:mysteryDiscount,grabpoints_opt_in:Number(p.grabpoints_opt_in||0)===1?1:0,total,status:"New"}}}
+return{data:{id,order_number:orderNumber,public_tracking_id:tracking,subtotal,shipping_charge:shipping,referral_discount:discount,vendor_coupon_code:vendorCoupon.code||null,vendor_coupon_vendor_id:vendorCoupon.vendor_id||null,vendor_coupon_discount:vendorCoupon.discount,rewards_voucher_code:voucherCode||null,rewards_voucher_discount:voucherDiscount,mystery_discount:mysteryDiscount,grabpoints_opt_in:Number(p.grabpoints_opt_in||0)===1?1:0,total,status:"New"}}}
 if(!isAdmin)throw new Error("Unauthorized.");throw new Error("Unsupported RPC.")}
 async function d1(req,env){await ensureSchema(env);if(req.method==="GET"){try{await q(env,"SELECT 1 AS ok");return json({ok:true,d1:true})}catch(e){return json({ok:false,d1:false,error:e.message},500)}}if(req.method!=="POST")return json({error:"Method not allowed."},405);let p={};try{p=await req.json()}catch{return json({error:"Invalid JSON."},400)}try{if(!p.type){if(p.table)p.type="table";else if(p.fn)p.type="rpc";}const pub=p.type==="rpc"&&["get_public_tracking_id","validate_referral_code","track_public_order","create_public_order","grabpoints_balance","validate_rewards_voucher","claim_mystery","rewards_public_settings","rewards_register","rewards_login","rewards_forgot_pin","rewards_verify_reset","rewards_reset_pin","rewards_me","rewards_history","rewards_tier_history","rewards_order_history","rewards_redeem"].includes(String(p.fn||""));const needs=p.type==="table"?(!["select"].includes(String(p.action||"select"))||!PUBLIC_TABLES.has(String(p.table||""))):p.type==="rpc"?!pub:true;const s=needs?await session(req,env):null;if(needs&&!s)throw new Error("Unauthorized.");if(p.type==="table")return json(await table(req,env,p,!!s));if(p.type==="rpc")return json(await rpc(env,p.fn,p.args||{},!!s));throw new Error("Invalid database request.");}catch(e){return json({error:e.message||"Database request failed."},/Unauthorized|authentication/i.test(e.message||"")?401:/Invalid|Unknown|Unsupported/i.test(e.message||"")?400:500)}}
 async function track(req,env){const id=new URL(req.url).searchParams.get("trackingId");if(!id)return json({error:"Tracking ID is required."},400);try{return json({success:true,order:(await rpc(env,"track_public_order",{p_tracking_id:id},false)).data})}catch(e){return json({error:e.message},404)}}
