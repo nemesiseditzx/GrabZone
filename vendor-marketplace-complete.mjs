@@ -532,46 +532,53 @@ await email(e,o.order_number);
 return json({ok:true,deleted:true});
 }}
 if(p==='/api/marketplace/brands'){const u=new URL(req.url),all=u.searchParams.get('all')==='1';const a=(await q(e,`SELECT id,slug,business_name,brand_name,logo_url,banner_url,description,tagline,accent_color,featured FROM vendors WHERE status='Active' ${all?'':'AND homepage_visible=1'} ORDER BY featured DESC,brand_name`)).results||[];return json({brands:a})}
-if(p==='/api/marketplace/products'){
- const u=new URL(req.url),v=clean(u.searchParams.get('vendor'),100),rawIds=String(u.searchParams.get('ids')||'').split(',').map(x=>clean(x,120)).filter(Boolean).slice(0,500);
- /*
-   Pagination. The defaults keep every existing caller working unchanged: the
-   storefront asks for limit=500 and still receives the whole catalogue, while a
-   caller that asks for one page now gets exactly that page, the total and a
-   has_more flag instead of the entire feed every time.
- */
- const MAX_LIMIT=500;
- const askedLimit=Number(u.searchParams.get('limit'));
- const limit=Number.isFinite(askedLimit)&&askedLimit>0?Math.min(MAX_LIMIT,Math.floor(askedLimit)):MAX_LIMIT;
- const askedPage=Number(u.searchParams.get('page'));
- const page=Number.isFinite(askedPage)&&askedPage>0?Math.floor(askedPage):1;
- const rawOffset=u.searchParams.get('offset');
- const askedOffset=rawOffset===null||rawOffset===''?NaN:Number(rawOffset);
- const offset=Number.isFinite(askedOffset)&&askedOffset>=0?Math.floor(askedOffset):(page-1)*limit;
- let where=" FROM products p JOIN vendors v ON v.id=p.vendor_id WHERE p.published=1",ps=[];
- if(rawIds.length){where+=' AND p.id IN ('+rawIds.map(()=>'?').join(',')+')';ps.push(...rawIds)}
- else{where+=" AND v.status='Active'";if(v){where+=' AND (v.slug=? OR v.id=?)';ps.push(v,v)}}
- const select="SELECT p.*,v.brand_name vendor_name,v.slug vendor_slug,v.logo_url vendor_logo,v.accent_color vendor_accent,v.shipping_fee vendor_shipping_fee";
- const totalRow=(await q(e,'SELECT COUNT(*) n'+where,ps)).results?.[0];
- const total=Number(totalRow?.n||0);
- const rows=(await q(e,select+where+' ORDER BY p.created_at DESC LIMIT ? OFFSET ?',[...ps,limit,offset])).results||[];
- const pagination={limit,page,offset,total,pages:Math.max(1,Math.ceil(total/limit)),has_more:offset+rows.length<total,count:rows.length};
-/*
-  Admin console feed vs public catalogue feed.
-  The admin table (marketplace-products.html) asks for scope=admin and must carry
-  an admin session; it gets the full row set including SKU, stock and the
-  supplier reference. Every public caller (storefront, brand stores, home
-  brand cards, checkout) keeps working but only receives the public columns —
-  supplier reference, SKU and inventory internals are never returned.
-*/
-const adminScope=u.searchParams.get('scope')==='admin';
-if(adminScope){
- if(!await admin(req,e))return json({error:'Unauthorized'},401);
- return json({products:rows,pagination});
+if(p==='/api/marketplace/categories'&&req.method==='GET'){
+ const u=new URL(req.url),vendor=clean(u.searchParams.get('vendor'),100);
+ const where=vendor?" WHERE p.published=1 AND v.status='Active' AND (v.slug=? OR v.id=?)":" WHERE p.published=1 AND v.status='Active'";
+ const params=vendor?[vendor,vendor]:[];
+ const rows=(await q(e,`SELECT COALESCE(NULLIF(TRIM(p.category),''),'Uncategorized') name,LOWER(REPLACE(REPLACE(TRIM(COALESCE(NULLIF(p.category,''),'Uncategorized')),' ','-'),'&','and')) slug,COUNT(*) product_count
+   FROM products p JOIN vendors v ON v.id=p.vendor_id${where}
+   GROUP BY COALESCE(NULLIF(TRIM(p.category),''),'Uncategorized') ORDER BY name COLLATE NOCASE`,params)).results||[];
+ return json({categories:rows});
 }
-const PRIVATE_FIELDS=new Set(['business_koro_product_id','sku','stock','stock_mode','low_stock_threshold','vendor_featured']);
-return json({products:rows.map(row=>{const out={};for(const k of Object.keys(row)){if(!PRIVATE_FIELDS.has(k))out[k]=row[k]}return out}),pagination})}
-if(p==='/api/marketplace/store'){const s=clean(new URL(req.url).searchParams.get('slug'),100),v=await one(e,"SELECT * FROM vendors WHERE slug=? AND status='Active'",[s]);if(!v)return json({error:'Store not found'},404);return json({vendor:v,products:(await q(e,'SELECT * FROM products WHERE vendor_id=? AND published=1 ORDER BY created_at DESC',[v.id])).results||[],sections:(await q(e,'SELECT * FROM vendor_store_sections WHERE vendor_id=? AND enabled=1 ORDER BY sort_order',[v.id])).results||[]})}
+if(p==='/api/marketplace/products'){
+ const u=new URL(req.url),v=clean(u.searchParams.get('vendor'),100),category=clean(u.searchParams.get('category'),120),search=clean(u.searchParams.get('q')||u.searchParams.get('search'),120),rawIds=String(u.searchParams.get('ids')||'').split(',').map(x=>clean(x,120)).filter(Boolean).slice(0,500);
+ const MAX_LIMIT=500,askedLimit=Number(u.searchParams.get('limit')),limit=Number.isFinite(askedLimit)&&askedLimit>0?Math.min(MAX_LIMIT,Math.floor(askedLimit)):MAX_LIMIT;
+ const askedPage=Number(u.searchParams.get('page')),page=Number.isFinite(askedPage)&&askedPage>0?Math.floor(askedPage):1,rawOffset=u.searchParams.get('offset'),askedOffset=rawOffset===null||rawOffset===''?NaN:Number(rawOffset),offset=Number.isFinite(askedOffset)&&askedOffset>=0?Math.floor(askedOffset):(page-1)*limit;
+ let where=" FROM products p JOIN vendors v ON v.id=p.vendor_id WHERE p.published=1 AND v.status='Active'",ps=[];
+ if(rawIds.length){where+=' AND p.id IN ('+rawIds.map(()=>'?').join(',')+')';ps.push(...rawIds)}
+ else{
+   if(v){where+=' AND (v.slug=? OR v.id=?)';ps.push(v,v)}
+   if(category){where+=" AND (LOWER(TRIM(COALESCE(p.category,'')))=LOWER(?) OR LOWER(REPLACE(REPLACE(TRIM(COALESCE(p.category,'')),' ','-'),'&','and'))=LOWER(?) )";ps.push(category,category)}
+   if(search){
+     const tokens=search.toLowerCase().split(/\s+/).filter(Boolean).slice(0,5);
+     for(const token of tokens){
+       const like='%'+token+'%';
+       where+=' AND (LOWER(COALESCE(p.name,\'\')) LIKE ? OR LOWER(COALESCE(p.description,\'\')) LIKE ? OR LOWER(COALESCE(p.category,\'\')) LIKE ? OR LOWER(COALESCE(v.brand_name,v.business_name,v.slug,\'\')) LIKE ?)';
+       ps.push(like,like,like,like);
+     }
+   }
+ }
+ const select="SELECT p.*,v.brand_name vendor_name,v.slug vendor_slug,v.logo_url vendor_logo,v.accent_color vendor_accent,v.shipping_fee vendor_shipping_fee";
+ const total=Number((await q(e,'SELECT COUNT(*) n'+where,ps)).results?.[0]?.n||0);
+ const order=search
+   ?" ORDER BY CASE WHEN LOWER(COALESCE(p.name,''))=LOWER(?) THEN 0 WHEN LOWER(COALESCE(p.name,'')) LIKE ? THEN 1 WHEN LOWER(COALESCE(v.brand_name,v.business_name,v.slug,'')) LIKE ? THEN 2 ELSE 3 END,p.created_at DESC"
+   :" ORDER BY p.created_at DESC";
+ const orderParams=search?[search,'%'+search.toLowerCase()+'%','%'+search.toLowerCase()+'%']:[];
+ const rows=(await q(e,select+where+order+' LIMIT ? OFFSET ?',[...ps,...orderParams,limit,offset])).results||[];
+ const pagination={limit,page,offset,total,pages:Math.max(1,Math.ceil(total/limit)),has_more:offset+rows.length<total,count:rows.length};
+ const adminScope=u.searchParams.get('scope')==='admin';
+ if(adminScope){if(!await admin(req,e))return json({error:'Unauthorized'},401);return json({products:rows,pagination})}
+ const PRIVATE_FIELDS=new Set(['business_koro_product_id','sku','stock','stock_mode','low_stock_threshold','vendor_featured']);
+ return json({products:rows.map(row=>{const out={};for(const k of Object.keys(row)){if(!PRIVATE_FIELDS.has(k))out[k]=row[k]}return out}),pagination});
+}
+if(p==='/api/marketplace/store'){
+ const u=new URL(req.url),s=clean(u.searchParams.get('slug'),100),v=await one(e,"SELECT * FROM vendors WHERE slug=? AND status='Active'",[s]);
+ if(!v)return json({error:'Store not found'},404);
+ const products=(await q(e,'SELECT * FROM products WHERE vendor_id=? AND published=1 ORDER BY created_at DESC',[v.id])).results||[];
+ const sections=(await q(e,'SELECT * FROM vendor_store_sections WHERE vendor_id=? AND enabled=1 ORDER BY sort_order',[v.id])).results||[];
+ return json({vendor:v,products,sections});
+}
 if(p==='/api/marketplace/track'){return track(req,e,clean(new URL(req.url).searchParams.get('tracking_id'),120))}
 if(p==='/api/marketplace/order'&&req.method==='POST'){return json({error:'Use the existing checkout.'},400)}
 return null}
