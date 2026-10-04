@@ -90,6 +90,48 @@
 <script src="/grabzone-animation-controller.js?v=20260922full-animation1"></script>
 
 <link rel="stylesheet" href="/grabzone-dashboard-motion.css?v=20260927motion1">
+<style id="mp-final-polish">
+/* Final marketplace shell polish — keep the runtime marketplace UI independent of legacy page CSS. */
+html,body{margin:0!important;padding:0!important;background:#f7f6f3!important}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important;color:#15191f!important}
+.mp-page{min-height:100vh!important;background:#f7f6f3!important}
+.mp-header{position:sticky!important;top:0!important;z-index:1000!important;background:rgba(255,255,255,.98)!important;border-bottom:1px solid #e8e4de!important;box-shadow:0 6px 24px rgba(25,20,15,.06)!important;backdrop-filter:blur(12px)!important}
+.mp-top{max-width:1440px!important;margin:0 auto!important;min-height:72px!important;padding:12px 32px!important;display:flex!important;align-items:center!important;gap:18px!important;box-sizing:border-box!important}
+.mp-logo{display:inline-flex!important;align-items:center!important;gap:9px!important;text-decoration:none!important;color:#17191d!important;font-size:25px!important;font-weight:950!important;letter-spacing:-1.2px!important;white-space:nowrap!important}
+.mp-logo img{width:42px!important;height:42px!important;object-fit:contain!important;display:block!important}
+.mp-logo span{color:#f25b0a!important}
+.mp-market-label{font-size:9px!important;font-weight:900!important;letter-spacing:.2em!important;color:#777!important;padding-left:2px!important}
+.mp-rewards{margin-left:auto!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;height:40px!important;padding:0 15px!important;border:1px solid #e1dcd5!important;border-radius:999px!important;background:#fff!important;color:#3b3150!important;text-decoration:none!important;font-size:10px!important;font-weight:900!important}
+.mp-rewards:hover{border-color:#ffb184!important;color:#ef5708!important}
+.mp-cart{height:42px!important;padding:0 17px!important;border:0!important;border-radius:999px!important;background:#ff650b!important;color:#fff!important;font-size:10px!important;font-weight:900!important;cursor:pointer!important;box-shadow:0 8px 18px rgba(255,101,11,.2)!important}
+.mp-links{max-width:1440px!important;margin:0 auto!important;padding:0 32px 11px!important;display:flex!important;align-items:center!important;gap:24px!important;box-sizing:border-box!important}
+.mp-links a{color:#666!important;text-decoration:none!important;font-size:10px!important;font-weight:800!important}
+.mp-links a:hover,.mp-links a.active{color:#ef5708!important}
+.mp-title{max-width:1440px!important;margin:0 auto!important;padding:64px 32px 34px!important;box-sizing:border-box!important}
+.mp-title small{display:block!important;color:#ef5708!important;font-size:9px!important;font-weight:950!important;letter-spacing:.22em!important}
+.mp-title h1{margin:10px 0 12px!important;font-size:64px!important;line-height:.98!important;letter-spacing:-.065em!important;color:#15191f!important}
+.mp-title h1 em{font-style:italic!important}
+.mp-title p{margin:0!important;max-width:720px!important;color:#70767d!important;font-size:14px!important;line-height:1.65!important}
+.mp-brands{max-width:1440px!important;margin:0 auto!important;padding:0 32px 34px!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:18px!important;box-sizing:border-box!important}
+.mp-brand-card{width:100%!important;min-width:0!important}
+.mp-tools,.mp-all{max-width:1440px!important}
+.mp-footer{max-width:none!important}
+@media(max-width:900px){
+ .mp-top{padding-inline:20px!important}.mp-links{padding-inline:20px!important}
+ .mp-title{padding:50px 20px 30px!important}.mp-title h1{font-size:54px!important}
+ .mp-brands{padding-inline:20px!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:600px){
+ .mp-top{min-height:62px!important;padding:9px 14px!important;gap:9px!important}
+ .mp-logo{font-size:20px!important}.mp-logo img{width:34px!important;height:34px!important}
+ .mp-market-label{display:none!important}.mp-rewards{display:none!important}
+ .mp-cart{height:38px!important;padding:0 13px!important}
+ .mp-links{padding:0 14px 10px!important;gap:15px!important;overflow:auto!important;white-space:nowrap!important}
+ .mp-title{padding:40px 14px 26px!important}.mp-title h1{font-size:42px!important}
+ .mp-title p{font-size:12px!important}
+ .mp-brands{padding-inline:14px!important;grid-template-columns:1fr!important;gap:12px!important}
+}
+</style>
 </head>
 <body>
 <div id="marketplace-app"></div>
