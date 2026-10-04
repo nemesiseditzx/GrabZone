@@ -1,5 +1,5 @@
 -- Referral Profit Portal
--- Global referral percentage, product costs, referrer portal auth and immutable profit snapshots.
+-- Global referral percentage, product costs, referrer portal auth and manually entered profit-cost records.
 PRAGMA foreign_keys = ON;
 
 ALTER TABLE products ADD COLUMN cost_price REAL NOT NULL DEFAULT 0;
