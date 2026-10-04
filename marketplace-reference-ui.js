@@ -43,8 +43,8 @@ function render(brands,products){
    if(state.category)rows=rows.filter(p=>norm(p.category)===norm(state.category));
    if(state.sort==='relevance')rows.sort((a,b)=>(b.__score-a.__score)||String(b.created_at||'').localeCompare(String(a.created_at||'')));
    if(state.sort==='newest')rows.sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
-   if(state.sort==='price-low')rows.sort((a,b)=>Number(a.sale_price??a.price||0)-Number(b.sale_price??b.price||0));
-   if(state.sort==='price-high')rows.sort((a,b)=>Number(b.sale_price??b.price||0)-Number(a.sale_price??a.price||0));
+   if(state.sort==='price-low')rows.sort((a,b)=>Number(a.sale_price??a.price??0)-Number(b.sale_price??b.price??0));
+   if(state.sort==='price-high')rows.sort((a,b)=>Number(b.sale_price??b.price??0)-Number(a.sale_price??a.price??0));
    if(state.sort==='name')rows.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
    return rows;
  }
