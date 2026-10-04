@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS referral_profit_orders (
  id TEXT PRIMARY KEY, referral_code TEXT NOT NULL, order_id TEXT NOT NULL UNIQUE, order_number TEXT NOT NULL,
  order_amount REAL NOT NULL DEFAULT 0, eligible_revenue REAL NOT NULL DEFAULT 0, total_cost REAL NOT NULL DEFAULT 0,
  net_profit REAL NOT NULL DEFAULT 0, referral_percent REAL NOT NULL DEFAULT 50, referral_profit REAL NOT NULL DEFAULT 0,
- grabzone_profit REAL NOT NULL DEFAULT 0, profit_status TEXT NOT NULL DEFAULT 'pending', payout_status TEXT NOT NULL DEFAULT 'unpaid',
+ grabzone_profit REAL NOT NULL DEFAULT 0, cost_entered INTEGER NOT NULL DEFAULT 0, net_profit REAL NOT NULL DEFAULT 0, profit_status TEXT NOT NULL DEFAULT 'pending', payout_status TEXT NOT NULL DEFAULT 'unpaid',
  created_at TEXT NOT NULL, updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS referral_profit_orders_code_idx ON referral_profit_orders(referral_code,created_at DESC);
