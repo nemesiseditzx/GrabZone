@@ -738,4 +738,4 @@ async function handle(req,env){
   return cors(a||(env.ASSETS?await env.ASSETS.fetch(req):json({ok:true,backend:"cloudflare-worker",d1:!!env.DB,r2:!!env.ASSETS_BUCKET})),req,env);
  }catch(e){
   console.error(e);
-  return cors(json({error:e?.message||"Internal server error."},500),req,env\nexport default { fetch: handle };\n
+  return cors(json({error:e?.message||"Internal server error."},500),req,env);\n }\n}\nexport default { fetch: handle };\n
