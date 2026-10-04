@@ -8,6 +8,7 @@ ALTER TABLE site_settings ADD COLUMN referral_profit_percent REAL NOT NULL DEFAU
 ALTER TABLE referral_codes ADD COLUMN portal_password_hash TEXT;
 ALTER TABLE referral_codes ADD COLUMN portal_password_salt TEXT;
 ALTER TABLE referral_codes ADD COLUMN portal_active INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE referral_codes ADD COLUMN referral_profit_percent REAL NOT NULL DEFAULT 50;
 
 CREATE TABLE IF NOT EXISTS referral_profit_orders (
   id TEXT PRIMARY KEY,
