@@ -3,6 +3,15 @@
 if(!/^\/marketplace(?:\.html)?\/?$/.test(location.pathname))return;
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=v=>'৳'+Number(v||0).toLocaleString('en-BD',{maximumFractionDigits:2});
+function shuffle(rows){
+ const a=[...rows];
+ for(let i=a.length-1;i>0;i--){
+   let r=Math.random();
+   try{if(globalThis.crypto?.getRandomValues){const x=new Uint32Array(1);crypto.getRandomValues(x);r=x[0]/4294967296}}catch{}
+   const j=Math.floor(r*(i+1));[a[i],a[j]]=[a[j],a[i]];
+ }
+ return a;
+}
 const norm=v=>String(v??'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9\u0980-\u09ff]+/g,' ').trim();
 function distance(a,b){a=norm(a);b=norm(b);if(!a||!b)return 99;if(a===b)return 0;if(a.includes(b)||b.includes(a))return Math.abs(a.length-b.length);const prev=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){let cur=[i];for(let j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));for(let j=0;j<=b.length;j++)prev[j]=cur[j]}return prev[b.length]}
 function score(p,q){
@@ -36,12 +45,16 @@ function render(brands,products){
  catRow.innerHTML='<button class="mp-cat active" data-cat="">All</button>'+cats.map(c=>'<button class="mp-cat" data-cat="'+esc(c)+'">'+esc(c)+'</button>').join('');
  const box=document.getElementById('mpBrands');box.innerHTML=brands.length?brands.map(b=>{const name=b.brand_name||b.business_name||b.slug||'Store',logo=b.logo_url||'',banner=b.banner_url||'',count=products.filter(p=>String(p.vendor_slug||'')===String(b.slug||'')||String(p.vendor_id||'')===String(b.id||'')).length;return '<a class="mp-brand-card" href="/store/'+encodeURIComponent(b.slug||b.id||'')+'"><div class="mp-brand-banner">'+(banner?'<img src="'+esc(banner)+'" alt="" loading="lazy">':'')+'<div class="mp-brand-logo">'+(logo?'<img src="'+esc(logo)+'" alt="">':'<span>'+esc(String(name).charAt(0).toUpperCase())+'</span>')+'</div></div><div class="mp-brand-body"><div class="mp-brand-name">'+esc(name)+'</div><div class="mp-brand-meta">'+count+' Products</div><span>Open Store <b>→</b></span></div></a>'}).join(''):'<div class="mp-empty">No stores are available right now.</div>';
  let state={query:'',store:'',category:'',sort:'relevance',page:1,viewAll:false};
+ const randomizedProducts=shuffle(products).map((p,i)=>({...p,__random:i}));
  function visible(){
-   let rows=products.map(p=>({...p,__score:score(p,state.query)}));
+   let rows=randomizedProducts.map(p=>({...p,__score:score(p,state.query)}));
    if(state.query)rows=rows.filter(p=>p.__score>0);
    if(state.store)rows=rows.filter(p=>String(p.vendor_slug||p.vendor_id)===String(state.store));
    if(state.category)rows=rows.filter(p=>norm(p.category)===norm(state.category));
-   if(state.sort==='relevance')rows.sort((a,b)=>(b.__score-a.__score)||String(b.created_at||'').localeCompare(String(a.created_at||'')));
+   if(state.sort==='relevance'){
+   if(state.query)rows.sort((a,b)=>(b.__score-a.__score)||(a.__random-b.__random));
+   else rows.sort((a,b)=>a.__random-b.__random);
+ }
    if(state.sort==='newest')rows.sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
    if(state.sort==='price-low')rows.sort((a,b)=>Number(a.sale_price??a.price??0)-Number(b.sale_price??b.price??0));
    if(state.sort==='price-high')rows.sort((a,b)=>Number(b.sale_price??b.price??0)-Number(a.sale_price??a.price??0));
@@ -52,7 +65,7 @@ function render(brands,products){
    const rows=visible(),size=20,total=rows.length,pages=Math.max(1,Math.ceil(total/size));if(state.page>pages)state.page=pages;
    const shown=state.viewAll?rows:rows.slice((state.page-1)*size,state.page*size);
    document.getElementById('mpHeading').innerHTML=state.query?'Search <em>Results.</em>':state.store?'Store <em>Products.</em>':state.category?esc(state.category)+' <em>Products.</em>':'All <em>Products.</em>';
-   document.getElementById('mpSummary').textContent=total+' product'+(total===1?'':'s')+' found'+(state.viewAll?' · showing all':' · 20 per page');
+   document.getElementById('mpSummary').textContent=total+' product'+(total===1?'':'s')+' found'+(state.viewAll?' · showing all':' · 20 per page')+(state.sort==='relevance'&&!state.query?' · randomized for you':'');
    document.getElementById('mpProducts').innerHTML=shown.length?shown.map(card).join(''):'<div class="mp-empty">No matching products found. Try another search, store, or category.</div>';
    const pag=document.getElementById('mpPagination');pag.innerHTML=state.viewAll||pages<=1?'':'<button id="mpPrev" '+(state.page<=1?'disabled':'')+'>Previous</button><span class="mp-page-indicator">Page '+state.page+' of '+pages+'</span><button id="mpNext" '+(state.page>=pages?'disabled':'')+'>Next</button>';
    document.getElementById('mpViewAll').textContent=state.viewAll?'Use Pagination':'View All Products';
