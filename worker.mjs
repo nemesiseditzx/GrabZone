@@ -119,6 +119,19 @@ if(table==="orders"&&inputValues.status!==undefined){
         }
       }
     }
+    for(const row of ids){
+      const order=(await q(env,"SELECT order_number,referral_code,total FROM orders WHERE id=? LIMIT 1",[row.id])).results?.[0];
+      const code=String(order?.referral_code||"").trim().toUpperCase();
+      if(code){
+        const exists=(await q(env,"SELECT id FROM referral_profit_orders WHERE order_id=? LIMIT 1",[row.id])).results?.[0];
+        if(!exists){
+          const setting=(await q(env,"SELECT referral_profit_percent FROM site_settings WHERE id=1 LIMIT 1")).results?.[0]||{};
+          const pct=Math.max(0,Math.min(100,Number(setting.referral_profit_percent??50)));
+          await env.DB.prepare("INSERT INTO referral_profit_orders(id,referral_code,order_id,order_number,order_amount,total_cost,net_profit,referral_percent,referral_profit,grabzone_profit,cost_entered,profit_status,payout_status,created_at,updated_at) VALUES(?,?,?,?,?,0,0,?,0,0,0,'pending','unpaid',?,?)").bind(crypto.randomUUID(),code,row.id,String(order?.order_number||row.id),Number(order?.total||0),pct,now(),now()).run();
+        }
+        await env.DB.prepare("UPDATE referral_codes SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?)").bind(now(),code).run();
+      }
+    }
   }
 }
 if(table==="orders"){
@@ -464,7 +477,6 @@ for(const i of items){
     .bind(crypto.randomUUID(),id,String(item.id),vendorId||"grabzone",String(item.product_id||""),rewardsEligible,referralEligible,rewardsEligible?lineSubtotal:0,lineReferralDiscount,t0,t0).run();
  }
 
-if(code){const pctRow=(await q(env,"SELECT referral_profit_percent FROM site_settings WHERE id=1 LIMIT 1")).results?.[0]||{};const referralPercent=Math.max(0,Math.min(100,Number(pctRow.referral_profit_percent??50)));const grossDiscount=Math.max(0,Number(discount||0)+Number(voucherDiscount||0)+Number(mysteryDiscount||0)+Number(vendorCoupon.discount||0));const orderProfitId=crypto.randomUUID();let eligibleRevenue=0,totalCost=0,netProfit=0;const profitRows=[];for(const row of allocationRows){if(!row.referralEligible||row.lineSubtotal<=0)continue;const item=row.item;const allocatedDiscount=Math.min(row.lineSubtotal,subtotal>0?grossDiscount*(row.lineSubtotal/subtotal):0);const revenue=Math.max(0,row.lineSubtotal-allocatedDiscount);const unitCost=Math.max(0,Number(item.unit_cost||0));const addCost=Math.max(0,Number(item.additional_cost||0));const cost=(unitCost+addCost)*Number(item.quantity||1);const itemNet=revenue-cost;eligibleRevenue+=revenue;totalCost+=cost;netProfit+=itemNet;profitRows.push({item,allocatedDiscount,revenue,cost,itemNet,unitCost,addCost})}const referralProfit=Math.max(0,netProfit)*referralPercent/100;const grabzoneProfit=netProfit-referralProfit;await env.DB.prepare("INSERT INTO referral_profit_orders(id,referral_code,order_id,order_number,order_amount,eligible_revenue,total_cost,net_profit,referral_percent,referral_profit,grabzone_profit,profit_status,payout_status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending','unpaid',?,?)").bind(orderProfitId,code,id,orderNumber,total,eligibleRevenue,totalCost,netProfit,referralPercent,referralProfit,grabzoneProfit,t,t).run();for(const pr of profitRows){await env.DB.prepare("INSERT INTO referral_profit_items(id,referral_profit_order_id,order_item_id,product_id,product_name,quantity,selling_revenue,allocated_discount,eligible_revenue,unit_cost,additional_cost,total_cost,net_profit,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(crypto.randomUUID(),orderProfitId,pr.item.id,pr.item.product_id,pr.item.product_name,pr.item.quantity,pr.item.line_total,pr.allocatedDiscount,pr.revenue,pr.unitCost,pr.addCost,pr.cost,pr.itemNet,t).run()}}
 if(code)await env.DB.prepare("UPDATE referral_codes SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?)").bind(t,code).run();
 if(vendorCoupon.code){
  const cw=await env.DB.prepare("UPDATE vendor_coupons SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?) AND vendor_id=? AND active=1 AND (usage_limit IS NULL OR used_count<usage_limit)").bind(t,vendorCoupon.code,vendorCoupon.vendor_id).run();
