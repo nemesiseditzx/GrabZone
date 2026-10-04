@@ -32,12 +32,67 @@
 @media(max-width:900px){.mp-products{grid-template-columns:repeat(2,minmax(0,1fr))!important}.mp-layout{grid-template-columns:190px minmax(0,1fr)!important;gap:22px!important}.mp-top{padding-inline:20px!important}.mp-links{padding-inline:20px!important}}
 @media(max-width:700px){.mp-top{padding:11px 14px!important}.mp-logo{font-size:22px!important}.mp-logo img{width:38px!important;height:38px!important}.mp-search{height:46px!important}.mp-links{padding:0 14px 12px!important;gap:18px!important}.mp-notice{height:40px!important}.mp-notice b{height:40px!important;padding:0 17px!important}.mp-title{padding:42px 14px 28px!important}.mp-title h1{font-size:44px!important}.mp-title p{font-size:12px!important}.mp-count{min-width:140px!important;padding:16px 20px!important}.mp-layout{padding:0 14px 55px!important;display:block!important}.mp-sidebar{display:flex!important;overflow:auto!important;position:static!important;margin-bottom:22px!important;padding:10px!important;gap:7px!important}.mp-sidebar h3,.mp-vendor-link{display:none!important}.mp-brand{width:auto!important;white-space:nowrap!important;padding:9px 12px!important}.mp-products{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}.mp-product-info{padding:12px!important}.mp-product-info>a{font-size:11px!important;min-height:32px!important}.mp-product-info strong{font-size:14px!important}.mp-product-info button{padding:8px 9px!important;font-size:8px!important}}
 </style>
+<style>
+/* 2026-10 marketplace runtime UI */
+.mp-brands{max-width:1440px!important;margin:0 auto!important;padding:0 32px 34px!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:18px!important;box-sizing:border-box!important}
+.mp-brand-card{display:block!important;min-width:0!important;overflow:hidden!important;background:#fff!important;border:1px solid #e4ded6!important;border-radius:18px!important;text-decoration:none!important;color:#15191f!important;box-shadow:0 6px 20px rgba(30,24,18,.045)!important;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease!important}
+.mp-brand-card:hover{transform:translateY(-4px)!important;box-shadow:0 16px 34px rgba(30,24,18,.10)!important;border-color:#f3b18c!important}
+.mp-brand-banner{height:150px!important;position:relative!important;overflow:hidden!important;background:linear-gradient(145deg,#f3f2ef,#fbfaf8)!important}
+.mp-brand-banner>img{width:100%!important;height:100%!important;display:block!important;object-fit:cover!important}
+.mp-brand-logo{position:absolute!important;left:15px!important;bottom:-22px!important;width:58px!important;height:58px!important;border-radius:15px!important;background:#fff!important;border:4px solid #fff!important;box-shadow:0 5px 16px rgba(0,0,0,.12)!important;display:grid!important;place-items:center!important;overflow:hidden!important;font-weight:900!important;font-size:22px!important;color:#111!important}
+.mp-brand-logo img{width:100%!important;height:100%!important;object-fit:contain!important;display:block!important}
+.mp-brand-body{padding:32px 15px 15px!important}
+.mp-brand-name{font-size:14px!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.mp-brand-meta{margin-top:5px!important;font-size:10px!important;color:#777!important}
+.mp-brand-body>span{display:inline-block!important;margin-top:13px!important;font-size:10px!important;font-weight:900!important;color:#ef5708!important}
+.mp-tools{max-width:1440px!important;margin:0 auto!important;padding:0 32px 26px!important;box-sizing:border-box!important}
+.mp-searchbox{display:flex!important;gap:9px!important;width:100%!important}
+.mp-searchbox input{flex:1!important;min-width:0!important;height:50px!important;box-sizing:border-box!important;border:1px solid #d9d5ce!important;border-radius:13px!important;padding:0 16px!important;background:#fff!important;color:#15191f!important;font:700 13px Inter,system-ui,sans-serif!important;outline:none!important}
+.mp-searchbox input:focus{border-color:#ff650b!important;box-shadow:0 0 0 3px rgba(255,101,11,.12)!important}
+.mp-searchbox button{height:50px!important;border:0!important;border-radius:13px!important;padding:0 22px!important;background:#11151a!important;color:#fff!important;font:900 11px Inter,system-ui,sans-serif!important;cursor:pointer!important}
+.mp-filter{display:flex!important;gap:9px!important;flex-wrap:wrap!important;margin-top:10px!important}
+.mp-filter select,.mp-filter .clear{height:43px!important;min-width:150px!important;box-sizing:border-box!important;border:1px solid #dcd7d0!important;border-radius:10px!important;background:#fff!important;color:#222!important;padding:0 12px!important;font:800 10px Inter,system-ui,sans-serif!important;cursor:pointer!important}
+.mp-filter .clear{min-width:90px!important}
+.mp-category-row{display:flex!important;gap:7px!important;overflow:auto!important;padding:12px 0 2px!important;scrollbar-width:none!important}
+.mp-category-row::-webkit-scrollbar{display:none!important}
+.mp-cat{border:1px solid #ddd8d1!important;background:#fff!important;color:#333!important;border-radius:999px!important;padding:8px 12px!important;font:800 9px Inter,system-ui,sans-serif!important;white-space:nowrap!important;cursor:pointer!important}
+.mp-cat.active{background:#111!important;color:#fff!important;border-color:#111!important}
+.mp-all{max-width:1440px!important;margin:0 auto!important;padding:0 32px 70px!important;box-sizing:border-box!important}
+.mp-result-tools{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:15px!important;margin-bottom:18px!important}
+.mp-result-tools h2{margin:5px 0 0!important;font-size:25px!important;letter-spacing:-.04em!important}
+.mp-result-tools h2 em{font-style:italic!important}
+.mp-result-tools small{font-size:9px!important;letter-spacing:.16em!important;font-weight:900!important;color:#777!important}
+.mp-result-tools .viewall{border:1px solid #ddd8d1!important;background:#fff!important;color:#222!important;border-radius:10px!important;padding:10px 13px!important;font:850 10px Inter,system-ui,sans-serif!important;cursor:pointer!important}
+.mp-products{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:18px!important}
+.mp-product{min-width:0!important;overflow:hidden!important;background:#fff!important;border:1px solid #e3ded7!important;border-radius:17px!important;box-shadow:0 5px 18px rgba(30,24,18,.035)!important;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease!important}
+.mp-product:hover{transform:translateY(-4px)!important;box-shadow:0 16px 36px rgba(20,20,20,.10)!important;border-color:#f3b18c!important}
+.mp-product-image{display:block!important;aspect-ratio:1/1!important;background:#f6f5f2!important;overflow:hidden!important}
+.mp-product-image img{width:100%!important;height:100%!important;object-fit:contain!important;padding:7px!important;box-sizing:border-box!important;display:block!important}
+.mp-product-info{padding:13px!important}
+.mp-vendor{display:flex!important;align-items:center!important;gap:6px!important;min-width:0!important}
+.mp-vendor-logo{width:22px!important;height:22px!important;flex:0 0 22px!important;border-radius:7px!important;background:#f2f1ee!important;display:grid!important;place-items:center!important;overflow:hidden!important;font-size:9px!important;font-weight:900!important}
+.mp-vendor-logo img{width:100%!important;height:100%!important;object-fit:contain!important}
+.mp-vendor a{font-size:9px!important;font-weight:800!important;color:#777!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;text-decoration:none!important}
+.mp-product-name{display:block!important;color:#15191f!important;text-decoration:none!important;font-size:12px!important;line-height:1.4!important;font-weight:850!important;margin:9px 0 13px!important;min-height:34px!important}
+.mp-price-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:7px!important}
+.mp-price-row strong{font-size:16px!important;color:#11151a!important}
+.mp-view{font-size:8px!important;font-weight:900!important;color:#fff!important;background:#11151a!important;border-radius:8px!important;padding:8px 9px!important;text-decoration:none!important}
+.mp-empty{grid-column:1/-1!important;padding:50px 20px!important;background:#fff!important;border:1px dashed #ddd8d1!important;border-radius:16px!important;text-align:center!important;color:#777!important;font-size:12px!important}
+.mp-pagination{display:flex!important;justify-content:center!important;align-items:center!important;gap:8px!important;margin-top:28px!important}
+.mp-pagination button{border:1px solid #ddd8d1!important;background:#fff!important;color:#222!important;border-radius:9px!important;padding:9px 13px!important;font:850 10px Inter,system-ui,sans-serif!important;cursor:pointer!important}
+.mp-pagination button:disabled{opacity:.35!important;cursor:not-allowed!important}
+.mp-page-indicator{font-size:10px!important;color:#777!important;font-weight:800!important}
+.mp-store-count{font-size:9px!important;color:#777!important;margin-top:4px!important}
+@media(max-width:1100px){.mp-brands{grid-template-columns:repeat(3,minmax(0,1fr))!important}.mp-products{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+@media(max-width:800px){.mp-brands{padding-inline:20px!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}.mp-tools,.mp-all{padding-inline:20px!important}.mp-products{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:600px){.mp-brands{padding-inline:14px!important;grid-template-columns:1fr!important;gap:12px!important}.mp-brand-banner{height:135px!important}.mp-tools,.mp-all{padding-inline:14px!important}.mp-searchbox input{height:44px!important}.mp-searchbox button{height:44px!important;padding-inline:15px!important}.mp-filter select{min-width:0!important;flex:1!important}.mp-products{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:11px!important}.mp-product-info{padding:10px!important}.mp-product-name{font-size:11px!important}.mp-price-row strong{font-size:14px!important}.mp-result-tools h2{font-size:21px!important}}
+</style>
 <script src="/grabzone-animation-controller.js?v=20260922full-animation1"></script>
 
 <link rel="stylesheet" href="/grabzone-dashboard-motion.css?v=20260927motion1">
 </head>
 <body>
 <div id="marketplace-app"></div>
-<script src="/marketplace-reference-ui.js?v=20260922-marketplacefix1" defer data-grabzone-reference-ui></script>
+<script src="/marketplace-reference-ui.js?v=20261004-marketplacefix2" defer data-grabzone-reference-ui></script>
 </body>
 </html>
