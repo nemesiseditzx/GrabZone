@@ -128,7 +128,18 @@ if(req.method==='GET'||req.method==='HEAD'){
     return new Response('Not found',{status:404,headers:{'Content-Type':'text/plain; charset=utf-8'}});
   }
 }
-const finish=async x=>inject(x,req);const go=await googleOAuth(req,env);if(go)return finish(go);let legacy=null;
+const finish=async x=>inject(x,req);
+const cleanStorePath=async()=>{
+  const m=/^\\/store\\/([^/]+)\\/?$/i.exec(new URL(req.url).pathname);
+  if(!m||(req.method!=='GET'&&req.method!=='HEAD'))return null;
+  const slug=decodeURIComponent(m[1]);
+  const target=new URL('/marketplace-store.html',req.url);target.searchParams.set('slug',slug);
+  const rr=new Request(target.toString(),req);
+  const asset=await env.ASSETS.fetch(rr);
+  return inject(asset,rr);
+};
+const cleanStore=await cleanStorePath();if(cleanStore)return cleanStore;
+const go=await googleOAuth(req,env);if(go)return finish(go);let legacy=null;
 if(!(p==='/api/d1'&&req.method==='POST')){
   legacy=await legacyApiBridge(req,env,ctx,(r)=>null);
   if(legacy)return finish(legacy);
