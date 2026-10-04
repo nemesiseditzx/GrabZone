@@ -13,9 +13,9 @@
     <div class="brand"><img src="/favicon.png" alt="GrabZone"><span>GRABZONE</span></div>
     <div class="eyebrow">REFERRAL PARTNER PORTAL</div>
     <h1>Welcome back.</h1>
-    <p>Sign in with your referral ID and password to view your own orders, costs and earnings.</p>
+    <p>Sign in with your account email and password to view all referral codes, orders, costs and earnings linked to that account.</p>
     <form id="loginForm">
-      <label>Referral ID<input id="loginIdentity" autocomplete="username" required placeholder="Your referral ID"></label>
+      <label>Email<input id="loginIdentity" type="email" autocomplete="username" required placeholder="Your account email"></label>
       <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="••••••••"></label>
       <button class="primary" type="submit">Sign in</button>
       <div id="loginMsg" class="msg"></div>
@@ -32,8 +32,10 @@
   <main class="container">
     <section class="hero">
       <div><div class="eyebrow">PARTNER DASHBOARD</div><h1 id="welcomeName">Referral performance</h1><p id="welcomeMeta"></p></div>
-      <div class="rate-card"><span>Current share</span><strong id="globalRate">—%</strong><small>Global admin setting</small></div>
+      <div class="rate-card"><span>Referral codes</span><strong id="codeCount">0</strong><small>Codes linked to this email</small></div>
     </section>
+
+    <section class="panel"><div class="panel-head"><div><div class="eyebrow">YOUR CODES</div><h2>Referral codes</h2><p>Every code using this account email appears here.</p></div></div><div id="partnerCodes" class="analytics"></div></section>
 
     <section class="kpis">
       <div class="kpi"><span>Orders</span><b id="kOrders">0</b><small>Total referral orders</small></div>
