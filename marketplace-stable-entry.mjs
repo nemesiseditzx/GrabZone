@@ -130,7 +130,7 @@ if(req.method==='GET'||req.method==='HEAD'){
 }
 const finish=async x=>inject(x,req);
 const cleanStorePath=async()=>{
-  const m=/^\\/store\\/([^/]+)\\/?$/i.exec(new URL(req.url).pathname);
+  const m=/^\/store\/([^/]+)\/?$/i.exec(new URL(req.url).pathname);
   if(!m||(req.method!=='GET'&&req.method!=='HEAD'))return null;
   const slug=decodeURIComponent(m[1]);
   const target=new URL('/marketplace-store.html',req.url);target.searchParams.set('slug',slug);
