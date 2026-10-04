@@ -71,3 +71,5 @@ CREATE TABLE IF NOT EXISTS referral_payouts (
 );
 CREATE INDEX IF NOT EXISTS referral_payouts_code_idx
   ON referral_payouts(referral_code,created_at DESC);
+
+ALTER TABLE referral_profit_orders ADD COLUMN cost_entered INTEGER NOT NULL DEFAULT 0;
