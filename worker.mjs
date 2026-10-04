@@ -399,7 +399,7 @@ async function referralAuth(req,env){
   if(b.action==="logout"){const raw=referralCookie(req);if(raw)await env.DB.prepare("DELETE FROM referral_portal_sessions WHERE token_hash=?").bind(await sha(raw)).run();return json({ok:true},200,{"Set-Cookie":"gz_referral_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax"})}
   const identity=String(b.identity||"").trim().toLowerCase(),pass=String(b.password||"");
   if(!identity||!pass)return json({error:"Enter your email and password."},400);
-  let account=(await q(env,"SELECT * FROM referral_portal_accounts WHERE lower(email)=lower(?) AND active=1 LIMIT 1",[identity])).results?.[0]||null;
+  let account=(await q(env,"SELECT * FROM referral_portal_accounts WHERE lower(email)=lower(?) LIMIT 1",[identity])).results?.[0]||null;
   if(!account){
     const seed=(await q(env,"SELECT * FROM referral_codes WHERE lower(trim(admin_email))=lower(?) ORDER BY created_at ASC LIMIT 1",[identity])).results?.[0]||null;
     if(seed?.admin_email){
@@ -408,6 +408,7 @@ async function referralAuth(req,env){
       account=(await q(env,"SELECT * FROM referral_portal_accounts WHERE lower(email)=lower(?) LIMIT 1",[identity])).results?.[0]||null;
     }
   }
+  if(!account?.active)return json({error:"This referral portal account is disabled. Contact the GrabZone admin."},403);
   if(!account?.password_hash||!account?.password_salt)return json({error:"Referral portal account is not configured yet. Ask the admin to set the account password."},401);
   if(await pbkdf(pass,account.password_salt)!==account.password_hash)return json({error:"Invalid email or password."},401);
   const raw=crypto.randomUUID().replace(/-/g,"")+crypto.randomUUID().replace(/-/g,""),exp=new Date(Date.now()+2592000000).toISOString();
