@@ -56,7 +56,7 @@ async function editProduct(id){
  const p=state.products.find(x=>String(x.id)===String(id));if(!p)return;
  if(!state.categories.length)await loadCategories();
  state.editing=p;state.files=[];state.mainIndex=0;
- $('#vpId').value=p.id;$('#vpName').value=p.name||'';$('#vpCategory').value=p.category||'';$('#vpProductType').value=p.product_type==='variable'?'variable':'simple';$('#vpPrice').value=p.price??'';$('#vpOldPrice').value=p.old_price??'';$('#vpSku').value=p.sku||'';$('#vpTag').value=p.tag||'';$('#vpDescription').value=p.description||'';$('#vpPublished').checked=!!p.published;
+ $('#vpId').value=p.id;$('#vpName').value=p.name||'';const categoryId=p.category_id||state.categories.find(c=>String(c.name||'').trim().toLowerCase()===String(p.category||'').trim().toLowerCase())?.id||'';$('#vpCategory').value=categoryId||p.category||'';$('#vpProductType').value=p.product_type==='variable'?'variable':'simple';$('#vpPrice').value=p.price??'';$('#vpOldPrice').value=p.old_price??'';$('#vpSku').value=p.sku||'';$('#vpTag').value=p.tag||'';$('#vpDescription').value=p.description||'';$('#vpPublished').checked=!!p.published;
  $('#vpFormTitle').textContent='✎ Edit product';$('#vpSubmit').textContent='Save Product Changes';$('#vpCancel').hidden=false;renderMedia();toggleVariationPanel();
  if(p.product_type==='variable'){await loadVariations(p.id)}else{state.variationOptions=[];state.variations=[];renderOptionRows();renderVariationRows()}
  window.scrollTo({top:$('#products').getBoundingClientRect().top+window.scrollY-20,behavior:'smooth'});
