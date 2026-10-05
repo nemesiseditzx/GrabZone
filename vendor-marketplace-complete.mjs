@@ -329,6 +329,45 @@ if(p==='/api/vendor/variations'){
  if(req.method==='DELETE'){const id=clean(url.pathname.split('/').pop(),120);await e.DB.prepare('UPDATE product_variations SET status="Disabled",updated_at=? WHERE id=? AND product_id=?').bind(now(),id,pid).run();return json({ok:true});}
  return json({error:'Method not allowed'},405);
 }
+if(p==='/api/admin/product-audit'&&req.method==='GET'){
+ const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
+ const url=new URL(req.url);
+ const vid=clean(url.searchParams.get('vendor_id')||'',100);
+ const requested=Math.max(1,Math.min(200,Number(url.searchParams.get('limit')||200)));
+ const products=(await q(e,`SELECT p.*,COALESCE(c.name,c2.name) category_name,COALESCE(c.slug,c2.slug) category_slug,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN marketplace_categories c2 ON lower(trim(c2.name))=lower(trim(p.category)) LEFT JOIN vendors v ON v.id=p.vendor_id WHERE (?='' OR p.vendor_id=?) ORDER BY p.created_at DESC LIMIT ?`,[vid,vid,requested])).results||[];
+ if(!products.length)return json({ok:true,products:[],count:0,limit:requested});
+ const chunks=(arr,size=80)=>{const out=[];for(let i=0;i<arr.length;i+=size)out.push(arr.slice(i,i+size));return out};
+ const productMap=new Map(products.map(x=>[String(x.id),x]));
+ const productIds=products.map(x=>String(x.id));
+ for(const p0 of products){p0.images=[];p0.variations=[];p0.options=[];p0.category=p0.category_name||p0.category||'';delete p0.category_name}
+ const variationMap=new Map(),variationIds=[];
+ for(const ids of chunks(productIds)){
+  const list=(await q(e,`SELECT * FROM product_variations WHERE product_id IN (${ids.map(()=>'?').join(',')}) ORDER BY product_id,created_at,id`,ids)).results||[];
+  for(const v of list){v.options={};v.images=[];variationIds.push(String(v.id));variationMap.set(String(v.id),v);const p0=productMap.get(String(v.product_id));if(p0)p0.variations.push(v)}
+ }
+ for(const ids of chunks(productIds)){
+  const [modern,legacy,opts]=await Promise.all([
+   q(e,`SELECT product_id,image_url,sort_order FROM vendor_product_images WHERE product_id IN (${ids.map(()=>'?').join(',')}) ORDER BY product_id,sort_order,id`,ids).catch(()=>({results:[]})),
+   q(e,`SELECT product_id,image_url,sort_order FROM product_images WHERE product_id IN (${ids.map(()=>'?').join(',')}) ORDER BY product_id,sort_order,id`,ids).catch(()=>({results:[]})),
+   q(e,`SELECT * FROM product_options WHERE product_id IN (${ids.map(()=>'?').join(',')}) ORDER BY product_id,sort_order,id`,ids).catch(()=>({results:[]}))
+  ]);
+  for(const x of [...(modern.results||[]),...(legacy.results||[])]){const p0=productMap.get(String(x.product_id));if(p0&&x.image_url)p0.images.push(String(x.image_url).trim())}
+  for(const o of (opts.results||[])){const p0=productMap.get(String(o.product_id));if(p0)p0.options.push({...o,values:[]})}
+ }
+ const optionIds=products.flatMap(p0=>p0.options.map(o=>String(o.id)));
+ const optionMap=new Map(products.flatMap(p0=>p0.options.map(o=>[String(o.id),o])));
+ for(const ids of chunks(optionIds)){if(!ids.length)continue;const vals=(await q(e,`SELECT * FROM option_values WHERE option_id IN (${ids.map(()=>'?').join(',')}) ORDER BY option_id,sort_order,id`,ids)).results||[];for(const v of vals){const o=optionMap.get(String(v.option_id));if(o)o.values.push(v)}}
+ for(const ids of chunks(variationIds)){if(!ids.length)continue;
+  const [links,imgs]=await Promise.all([
+   q(e,`SELECT vo.variation_id,vo.option_id,vo.option_value_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id IN (${ids.map(()=>'?').join(',')}) ORDER BY vo.variation_id,po.sort_order,ov.sort_order`,ids).catch(()=>({results:[]})),
+   q(e,`SELECT variation_id,image_url,sort_order FROM variation_images WHERE variation_id IN (${ids.map(()=>'?').join(',')}) ORDER BY variation_id,sort_order,id`,ids).catch(()=>({results:[]}))
+  ]);
+  for(const x of (links.results||[])){const v=variationMap.get(String(x.variation_id));if(v)v.options[x.name]=x.value}
+  for(const x of (imgs.results||[])){const v=variationMap.get(String(x.variation_id));if(v&&x.image_url)v.images.push(String(x.image_url).trim())}
+ }
+ for(const p0 of products){p0.images=[...new Set([...(p0.image_url?[p0.image_url]:[]),...p0.images].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10);p0.variations=p0.variations.map(v=>({...v,images:[...new Set(v.images)].slice(0,10)}))}
+ return json({ok:true,count:products.length,limit:requested,vendor_id:vid||null,products});
+}
 if(p==='/api/vendor/admin/products'&&(req.method==='GET'||req.method==='POST'||req.method==='PATCH'||req.method==='DELETE')){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const u=new URL(req.url),vid=clean(u.searchParams.get('vendor_id'),100);
