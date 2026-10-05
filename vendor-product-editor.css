@@ -46,3 +46,11 @@
 }
 .vp-var-image-choice.saved{box-shadow:0 0 0 2px rgba(35,140,75,.22);}
 .vp-field select{width:100%;box-sizing:border-box;border:1px solid #dfe3e7;border-radius:8px;padding:10px 11px;background:#fff;color:#111;font:inherit;min-height:38px;cursor:pointer}.vp-field select:focus{outline:2px solid rgba(255,107,0,.16);border-color:#ff6b00}
+/* Product media controls: choose the card's main image or remove an image before saving. */
+.vp-thumb{overflow:hidden;display:flex;flex-direction:column;gap:4px;padding:3px!important}
+.vp-thumb img{flex:1;min-height:0}
+.vp-thumb-actions{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:1px}
+.vp-thumb-actions button{border:0;border-radius:5px;padding:5px 3px;font-size:7px;font-weight:900;cursor:pointer;line-height:1.1;background:#f0f1f2;color:#222}
+.vp-thumb-actions .vp-thumb-main{background:#111;color:#fff}
+.vp-thumb-actions .vp-thumb-delete{background:#ffe9e7;color:#a51e17}
+.vp-thumb.main{outline:2px solid #111;outline-offset:1px}
