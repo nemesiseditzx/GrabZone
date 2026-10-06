@@ -3,6 +3,7 @@ import { sendCustomerOrderConfirmation } from './grabzone-email.mjs';
 import { notifyVendorsForOrder } from './vendor-order-notify.mjs';
 import { gzApplyCors, gzPreflight } from './cors-policy.mjs';
 import { handleRewardsEligibility } from './rewards-eligibility-api.mjs';
+import surveySystem from './survey-system.mjs';
 const TABLES=new Set(["products","product_images","orders","order_items","billboards","billboard_settings","notices","referral_codes","site_settings","store_policies","customer_points","grabpoints_ledger","vendors","vendor_orders","vendor_order_items","shipments","referral_profit_orders","referral_profit_items","referral_payouts"]);
 const PUBLIC_TABLES=new Set(["products","product_images","notices","site_settings","billboards","billboard_settings","store_policies"]);
 const BOOLS=new Set(["portal_active","drop_enabled","published","active","is_main","autoplay","show_arrows","show_dots","enabled","animation_enabled","show_notice","show_offer","show_how","show_referral","animations_enabled","page_load","scroll_reveal","product_hover","button_effects","hero_animation","floating_effects","notice_animation","magnetic_cursor","text_reveal","image_parallax","scroll_velocity","product_stagger","marquee_motion","header_scroll","premium_hover_glow","section_transitions","product_entrance","product_3d_tilt","product_image_zoom","product_image_parallax","product_cursor_spotlight","product_shine","product_hover_lift","product_featured_glow","billboard_animation","rewards_auth_animation","rewards_redeem_animation","rewards_redeem_sound","mobile_nav_animation","store_page_animation","cart_animation","modal_animation","micro_interactions","global_transitions"]);
@@ -776,6 +777,7 @@ async function shippingSettings(req,env){
   return json({ok:true,global_shipping_fee:fee});
 }
 async function api(req,env){const p=new URL(req.url).pathname;
+if(p.startsWith('/api/surveys')||p.startsWith('/api/admin/surveys'))return surveySystem.fetch(req,env);
 if(p==="/api/rewards/eligibility")return handleRewardsEligibility(req,env,null);
 if(p.startsWith("/api/admin/rewards-eligibility/"))return handleRewardsEligibility(req,env,await session(req,env));
 if(p==="/api/marketplace/shipping-settings")return shippingSettings(req,env);
