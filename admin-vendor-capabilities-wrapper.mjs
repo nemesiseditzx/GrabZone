@@ -23,7 +23,7 @@ async function vendorData(req,e){
  if(!v)return json({error:'Vendor not found'},404);
  if(vu&&String(vu.vendor_id)!==String(v.id))return json({error:'Unauthorized'},403);
  const products=(await q(e,'SELECT p.* FROM products p WHERE p.vendor_id=? ORDER BY p.created_at DESC',[v.id])).results||[];
- for(const p of products){p.image_urls=await getImages(e,p.id,v.id);if(!p.image_urls.length&&p.image_url)p.image_urls=[p.image_url]}
+ const imageMap=await getImagesBatch(e,products.map(p=>p.id),v.id);for(const p of products){p.image_urls=imageMap.get(String(p.id))||[];if(!p.image_urls.length&&p.image_url)p.image_urls=[p.image_url]}
  let orders=[];
  try{
   orders=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.address,o.district,o.division,o.upazila,o.status order_status,o.created_at order_created_at,o.payment_method,o.shipping_charge,COALESCE(o.total_amount,o.total,0) order_total,o.total,o.subtotal order_subtotal FROM vendor_orders vo LEFT JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC LIMIT 100`,[v.id])).results||[];
