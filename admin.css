@@ -669,3 +669,75 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .gz-shared-brand span{font-size:16px;font-weight:950;letter-spacing:-.04em;color:#17191d}
 .gz-login-logo{display:none!important}
 @media(max-width:560px){.gz-shared-brand img{width:36px;height:36px}.gz-shared-brand span{font-size:14px}}
+
+
+/* =========================================================
+   GRABZONE — ADVANCED CONTROL CENTER MOTION SYSTEM
+   UI-only polish: no business logic changes.
+========================================================= */
+:root{
+  --gz-orange:#ff650b;
+  --gz-ink:#11151a;
+  --gz-line:#e8eaee;
+  --gz-soft:#f7f8fa;
+  --gz-shadow:0 18px 55px rgba(17,21,26,.075);
+}
+@keyframes gzFadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gzFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes gzSlideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+@keyframes gzFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes gzPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,101,11,.18)}50%{box-shadow:0 0 0 8px rgba(255,101,11,0)}}
+@keyframes gzShimmer{0%{background-position:120% 0}100%{background-position:-120% 0}}
+@keyframes gzPop{0%{opacity:0;transform:scale(.97)}100%{opacity:1;transform:scale(1)}}
+
+.content>.tab.active{animation:gzFadeUp .34s cubic-bezier(.2,.7,.2,1) both}
+.page-title{animation:gzFadeUp .38s ease both}
+.sidebar .side-link{animation:gzSlideIn .32s ease both}
+.sidebar .side-link:nth-child(1){animation-delay:.02s}.sidebar .side-link:nth-child(2){animation-delay:.04s}
+.sidebar .side-link:nth-child(3){animation-delay:.06s}.sidebar .side-link:nth-child(4){animation-delay:.08s}
+.sidebar .side-link:nth-child(5){animation-delay:.10s}.sidebar .side-link:nth-child(6){animation-delay:.12s}
+.sidebar .side-link:nth-child(7){animation-delay:.14s}.sidebar .side-link:nth-child(8){animation-delay:.16s}
+.sidebar .side-link:nth-child(9){animation-delay:.18s}.sidebar .side-link:nth-child(10){animation-delay:.20s}
+
+.panel,.stat,.quick,.gz-kpi,.product-admin-item,.item{transition:transform .24s cubic-bezier(.2,.7,.2,1),box-shadow .24s ease,border-color .24s ease}
+.panel:hover,.stat:hover{border-color:#dfe3e8;box-shadow:0 16px 42px rgba(17,21,26,.055)}
+.stat:hover{transform:translateY(-3px)}
+.quick:hover{transform:translateY(-4px) scale(1.005)}
+.primary,.ghost,.side-link{transition:transform .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease}
+.primary:active,.ghost:active,.side-link:active{transform:scale(.97)}
+.primary:hover{box-shadow:0 10px 25px rgba(17,21,26,.14)}
+.side-link.active{box-shadow:0 8px 22px rgba(17,21,26,.13)}
+.side-link.active:before{content:"";width:3px;height:20px;border-radius:999px;background:var(--gz-orange);margin-right:2px}
+.topbar .brand-badge{animation:gzFloat 4s ease-in-out infinite}
+.top-actions .view-store{transition:.2s ease}
+.top-actions .view-store:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(17,21,26,.08)}
+
+input,textarea,select{transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+input:focus,textarea:focus,select:focus{transform:translateY(-1px)}
+.file-button:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(17,21,26,.06)}
+
+.gz-analytics-section,.gz-analytics-grid,.gz-kpi-grid{animation:gzFadeUp .45s ease both}
+.gz-kpi:nth-child(1){animation:gzPop .35s .04s both}.gz-kpi:nth-child(2){animation:gzPop .35s .08s both}
+.gz-kpi:nth-child(3){animation:gzPop .35s .12s both}.gz-kpi:nth-child(4){animation:gzPop .35s .16s both}
+.gz-kpi:nth-child(5){animation:gzPop .35s .20s both}.gz-kpi:nth-child(6){animation:gzPop .35s .24s both}
+.gz-bar i,.gz-mini-bar i{animation:gzShimmer 2.2s linear infinite;background-image:linear-gradient(90deg,#111 0%,#444 45%,#111 75%);background-size:220% 100%}
+
+#tab-surveys{animation:gzFadeUp .38s ease both}
+#tab-surveys .gz-sv-card,#tab-surveys .gz-sv-item,#tab-surveys .gz-sv-response{
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;
+}
+#tab-surveys .gz-sv-card:hover{box-shadow:0 18px 45px rgba(17,21,26,.06)}
+#tab-surveys .gz-sv-item:hover,#tab-surveys .gz-sv-response:hover{
+  transform:translateY(-2px);border-color:#d8dde3;box-shadow:0 10px 26px rgba(17,21,26,.055);
+}
+#tab-surveys .gz-sv-tabs button{transition:.2s cubic-bezier(.2,.7,.2,1)}
+#tab-surveys .gz-sv-tabs button:hover{transform:translateY(-1px)}
+#tab-surveys .gz-sv-tabs button.active{box-shadow:0 7px 18px rgba(17,21,26,.14)}
+#tab-surveys .gz-sv-kpi{position:relative;overflow:hidden}
+#tab-surveys .gz-sv-kpi:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-120%);animation:gzShimmer 4s infinite;pointer-events:none}
+#tab-surveys .gz-sv-actions .primary{background:linear-gradient(135deg,#11151a,#2a3038)}
+#tab-surveys .gz-sv-actions .primary:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(17,21,26,.18)}
+
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
+}
