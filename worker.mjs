@@ -785,11 +785,21 @@ if(p==="/api/admin-auth")return auth(req,env);if(p==="/api/referral-auth")return
 function cors(r,req,env){
  return gzApplyCors(r,req,env);
 }
+function utf8AssetResponse(r){
+ if(!r||!r.headers)return r;
+ const h=new Headers(r.headers);
+ const ct=String(h.get("Content-Type")||"").toLowerCase();
+ if(ct.startsWith("text/")||ct.includes("javascript")||ct.includes("json")||ct.includes("xml")){
+  if(!/charset\s*=/.test(ct))h.set("Content-Type",String(h.get("Content-Type")||"text/plain")+"; charset=utf-8");
+ }
+ return new Response(r.body,{status:r.status,statusText:r.statusText,headers:h});
+}
 async function handle(req,env){
  try{
   if(req.method==="OPTIONS")return gzPreflight(req,env);
   const a=await api(req,env);
-  return cors(a||(env.ASSETS?await env.ASSETS.fetch(req):json({ok:true,backend:"cloudflare-worker",d1:!!env.DB,r2:!!env.ASSETS_BUCKET})),req,env);
+  const asset=a||(env.ASSETS?await env.ASSETS.fetch(req):json({ok:true,backend:"cloudflare-worker",d1:!!env.DB,r2:!!env.ASSETS_BUCKET}));
+  return cors(a?asset:utf8AssetResponse(asset),req,env);
  }catch(e){
   console.error(e);
   return cors(json({error:e?.message||"Internal server error."},500),req,env);
