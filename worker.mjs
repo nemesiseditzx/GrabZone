@@ -803,7 +803,16 @@ async function handle(req,env){
    req=new Request(incoming.toString(),req);
   }
   const a=await api(req,env);
-  const asset=a||(env.ASSETS?await env.ASSETS.fetch(req):json({ok:true,backend:"cloudflare-worker",d1:!!env.DB,r2:!!env.ASSETS_BUCKET}));
+  let asset=a||(env.ASSETS?await env.ASSETS.fetch(req):json({ok:true,backend:"cloudflare-worker",d1:!!env.DB,r2:!!env.ASSETS_BUCKET}));
+  if(!a && asset?.status===404 && env.DB && /^\/[A-Za-z0-9-]+\/?$/.test(incoming.pathname)){
+   const slug=incoming.pathname.replace(/^\//,'').replace(/\/$/,'').toLowerCase();
+   const rows=(await env.DB.prepare("SELECT title FROM surveys WHERE published=1 AND active=1").all()).results||[];
+   const makeSlug=v=>String(v??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+   if(rows.some(x=>makeSlug(x.title)===slug)){
+    const u=new URL(req.url);u.pathname='/feedback-surveys.html';req=new Request(u.toString(),req);
+    asset=await env.ASSETS.fetch(req);
+   }
+  }
   return cors(a?asset:utf8AssetResponse(asset),req,env);
  }catch(e){
   console.error(e);
