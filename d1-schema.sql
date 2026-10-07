@@ -12,7 +12,7 @@ CREATE INDEX IF NOT EXISTS orders_tracking_idx ON orders(tracking_number);
 CREATE INDEX IF NOT EXISTS orders_public_tracking_idx ON orders(public_tracking_id);
 CREATE TABLE IF NOT EXISTS order_items (id TEXT PRIMARY KEY,order_id TEXT NOT NULL,product_id TEXT,product_name TEXT NOT NULL,image_url TEXT,quantity INTEGER NOT NULL,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS order_items_order_idx ON order_items(order_id,id);
-CREATE TABLE IF NOT EXISTS referral_codes (id TEXT PRIMARY KEY,admin_name TEXT NOT NULL,admin_phone TEXT,admin_email TEXT,code TEXT NOT NULL,benefit_type TEXT NOT NULL DEFAULT 'fixed',benefit_value REAL NOT NULL DEFAULT 0,min_order_amount REAL NOT NULL DEFAULT 0,max_discount_amount REAL,usage_limit INTEGER,used_count INTEGER NOT NULL DEFAULT 0,starts_at TEXT,expires_at TEXT,active INTEGER NOT NULL DEFAULT 1,note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,owner_name TEXT,commission_type TEXT NOT NULL DEFAULT 'percentage',commission_value REAL NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS referral_codes (id TEXT PRIMARY KEY,admin_name TEXT NOT NULL,admin_phone TEXT,admin_email TEXT,code TEXT NOT NULL,benefit_type TEXT NOT NULL DEFAULT 'fixed',benefit_value REAL NOT NULL DEFAULT 0,min_order_amount REAL NOT NULL DEFAULT 0,max_discount_amount REAL,usage_limit INTEGER,used_count INTEGER NOT NULL DEFAULT 0,starts_at TEXT,expires_at TEXT,active INTEGER NOT NULL DEFAULT 1,note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,owner_name TEXT,commission_type TEXT NOT NULL DEFAULT 'percentage',commission_value REAL NOT NULL DEFAULT 0,referral_profit_percent REAL NOT NULL DEFAULT 50);
 CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_upper_idx ON referral_codes(upper(code));
 CREATE TABLE IF NOT EXISTS site_settings (id INTEGER PRIMARY KEY,store_name TEXT,tagline TEXT,currency TEXT,logo_url TEXT,favicon_url TEXT,hero_image_url TEXT,hero_eyebrow TEXT,hero_title TEXT,hero_title_em TEXT,hero_description TEXT,hero_button_text TEXT,hero_button_link TEXT,how_button_text TEXT,how_button_link TEXT,offer_title TEXT,offer_message TEXT,offer_code TEXT,collection_eyebrow TEXT,collection_title TEXT,how_eyebrow TEXT,how_title TEXT,step1_title TEXT,step1_body TEXT,step2_title TEXT,step2_body TEXT,step3_title TEXT,step3_body TEXT,referral_eyebrow TEXT,referral_title TEXT,referral_body TEXT,referral_button_text TEXT,footer_text TEXT,whatsapp TEXT,messenger TEXT,instagram TEXT,header_link1_label TEXT,header_link1_url TEXT,header_link2_label TEXT,header_link2_url TEXT,header_link3_label TEXT,header_link3_url TEXT,primary_color TEXT,page_background TEXT,custom_css TEXT,show_notice INTEGER NOT NULL DEFAULT 1,show_offer INTEGER NOT NULL DEFAULT 1,show_how INTEGER NOT NULL DEFAULT 1,show_referral INTEGER NOT NULL DEFAULT 1,updated_at TEXT,animations_enabled INTEGER NOT NULL DEFAULT 1,page_load INTEGER NOT NULL DEFAULT 1,scroll_reveal INTEGER NOT NULL DEFAULT 1,product_hover INTEGER NOT NULL DEFAULT 1,button_effects INTEGER NOT NULL DEFAULT 1,hero_animation INTEGER NOT NULL DEFAULT 1,floating_effects INTEGER NOT NULL DEFAULT 1,notice_animation INTEGER NOT NULL DEFAULT 1,animation_speed TEXT DEFAULT 'normal',magnetic_cursor INTEGER NOT NULL DEFAULT 1,text_reveal INTEGER NOT NULL DEFAULT 1,image_parallax INTEGER NOT NULL DEFAULT 1,scroll_velocity INTEGER NOT NULL DEFAULT 1,product_stagger INTEGER NOT NULL DEFAULT 1,marquee_motion INTEGER NOT NULL DEFAULT 1,header_scroll INTEGER NOT NULL DEFAULT 1,premium_hover_glow INTEGER NOT NULL DEFAULT 1,section_transitions INTEGER NOT NULL DEFAULT 1,product_entrance INTEGER NOT NULL DEFAULT 1,product_3d_tilt INTEGER NOT NULL DEFAULT 1,product_image_zoom INTEGER NOT NULL DEFAULT 1,product_image_parallax INTEGER NOT NULL DEFAULT 1,product_cursor_spotlight INTEGER NOT NULL DEFAULT 1,product_shine INTEGER NOT NULL DEFAULT 1,product_hover_lift INTEGER NOT NULL DEFAULT 1,product_featured_glow INTEGER NOT NULL DEFAULT 1,payment_methods TEXT,product_display_mode TEXT,product_shuffle_seed TEXT,product_display_updated_at TEXT);
 CREATE TABLE IF NOT EXISTS billboards (id TEXT PRIMARY KEY,title TEXT,eyebrow TEXT,message TEXT,image_url TEXT NOT NULL,button_text TEXT DEFAULT 'Shop Now →',link_url TEXT,active INTEGER NOT NULL DEFAULT 1,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
@@ -66,3 +66,41 @@ INSERT OR IGNORE INTO vendor_email_settings(vendor_id,customer_email_notificatio
 CREATE TABLE IF NOT EXISTS vendor_order_notifications (notification_key TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,vendor_order_id TEXT,recipient TEXT,status TEXT NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,provider TEXT,provider_status INTEGER,provider_message_id TEXT,error TEXT,claim_token TEXT,claimed_at TEXT,sent_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_vendor_order_notifications_order ON vendor_order_notifications(order_id,vendor_id);
 CREATE INDEX IF NOT EXISTS idx_vendor_order_notifications_state ON vendor_order_notifications(status,claimed_at);
+
+
+-- Referral Profit Portal (2026-10-03)
+ALTER TABLE products ADD COLUMN cost_price REAL NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN additional_cost REAL NOT NULL DEFAULT 0;
+ALTER TABLE site_settings ADD COLUMN referral_profit_percent REAL NOT NULL DEFAULT 50;
+ALTER TABLE referral_codes ADD COLUMN portal_password_hash TEXT;
+ALTER TABLE referral_codes ADD COLUMN portal_password_salt TEXT;
+ALTER TABLE referral_codes ADD COLUMN portal_active INTEGER NOT NULL DEFAULT 1;
+
+CREATE TABLE IF NOT EXISTS referral_profit_orders (
+ id TEXT PRIMARY KEY, referral_code TEXT NOT NULL, order_id TEXT NOT NULL UNIQUE, order_number TEXT NOT NULL,
+ order_amount REAL NOT NULL DEFAULT 0, eligible_revenue REAL NOT NULL DEFAULT 0, total_cost REAL NOT NULL DEFAULT 0,
+ net_profit REAL NOT NULL DEFAULT 0, referral_percent REAL NOT NULL DEFAULT 50, referral_profit REAL NOT NULL DEFAULT 0,
+ grabzone_profit REAL NOT NULL DEFAULT 0, cost_entered INTEGER NOT NULL DEFAULT 0, profit_status TEXT NOT NULL DEFAULT 'pending', payout_status TEXT NOT NULL DEFAULT 'unpaid',
+ created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS referral_profit_orders_code_idx ON referral_profit_orders(referral_code,created_at DESC);
+CREATE INDEX IF NOT EXISTS referral_profit_orders_status_idx ON referral_profit_orders(referral_code,profit_status,payout_status,created_at DESC);
+
+CREATE TABLE IF NOT EXISTS referral_profit_items (
+ id TEXT PRIMARY KEY, referral_profit_order_id TEXT NOT NULL, order_item_id TEXT, product_id TEXT, product_name TEXT NOT NULL,
+ quantity INTEGER NOT NULL DEFAULT 1, selling_revenue REAL NOT NULL DEFAULT 0, allocated_discount REAL NOT NULL DEFAULT 0,
+ eligible_revenue REAL NOT NULL DEFAULT 0, unit_cost REAL NOT NULL DEFAULT 0, additional_cost REAL NOT NULL DEFAULT 0,
+ total_cost REAL NOT NULL DEFAULT 0, net_profit REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS referral_profit_items_order_idx ON referral_profit_items(referral_profit_order_id);
+
+CREATE TABLE IF NOT EXISTS referral_portal_sessions (
+ token_hash TEXT PRIMARY KEY, referral_code TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS referral_portal_sessions_code_idx ON referral_portal_sessions(referral_code,expires_at);
+
+CREATE TABLE IF NOT EXISTS referral_payouts (
+ id TEXT PRIMARY KEY, referral_code TEXT NOT NULL, amount REAL NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'paid',
+ reference TEXT, note TEXT, created_at TEXT NOT NULL, paid_at TEXT
+);
+CREATE INDEX IF NOT EXISTS referral_payouts_code_idx ON referral_payouts(referral_code,created_at DESC);

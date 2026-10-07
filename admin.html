@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="/favicon.png">
 
   <link rel="stylesheet" href="/admin.css?v=20260930admin1">
-  <link rel="stylesheet" href="vendor-product-editor.css?v=20260923adminmirror1">
+  <link rel="stylesheet" href="vendor-product-editor.css?v=20261005-gallery2">
   <link rel="stylesheet" href="billboard-admin.css">
 
 <style>
@@ -514,6 +514,17 @@ body.gz-gallery-dragging-active{
           GrabPoints
         </span>
       </button>
+      <button
+        class="side-link"
+        data-tab="surveys"
+        type="button"
+      >
+        📋
+        <span>
+          Feedback & Surveys
+        </span>
+      </button>
+
       <button
         class="side-link"
         data-tab="mystery"
@@ -3068,7 +3079,7 @@ document.addEventListener("keydown",event=>{
 
 <script src="admin-animations.js"></script>
 
-<script src="admin-product-editor-mirror.js?v=20260925-shared-db-sync1"></script>
+<script src="admin-product-editor-mirror.js?v=20261005-gallery2"></script>
 <script>
 /* Admin Products must use the exact vendor product/variation editor. */
 window.gzOpenProductEditor = function(){ if(window.gzAdminOpenVendorEditor) window.gzAdminOpenVendorEditor(); };
@@ -3077,7 +3088,8 @@ window.gzSelectProduct = function(id){ if(window.gzAdminOpenVendorEdit && id) wi
 <script src="payment-admin.js?v=20260902authfix4"></script>
 <script src="orders-admin.js?v=20260902authfix4"></script>
 <script src="tracking-admin.js?v=20260902authfix5"></script>
-<script src="referrals-admin.js?v=20260902authfix5"></script>
+<script src="referrals-admin.js?v=20260902authfix5"></script>\n<script src="referral-profit-admin.js?v=20261003v1"></script>
+<script src="survey-admin.js?v=20261006ui2"></script>
 
 
 <script>

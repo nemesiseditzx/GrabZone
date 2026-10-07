@@ -12,7 +12,7 @@ vendor:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V7l8-4 8 4v14"
 cart:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 1.9-1.4L22 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>'
 };
 const admin=[
-['Overview','/admin.html','home'],['Vendors','/vendor-admin.html','vendor'],['Products','/marketplace-products.html','grid'],['Orders','/marketplace-admin-orders.html','orders'],['Sales','/marketplace-sales.html','chart'],['Shipping','/marketplace-shipping.html','cart'],['Stores','/marketplace-stores.html','store'],['Settings','/marketplace-settings.html','settings']
+['Overview','/admin.html','home'],['Vendors','/vendor-admin.html','vendor'],['Products','/marketplace-products.html','grid'],['Orders','/marketplace-admin-orders.html','orders'],['Sales','/marketplace-sales.html','chart'],['Shipping','/marketplace-shipping.html','cart'],['Stores','/marketplace-stores.html','store'],['Settings','/marketplace-settings.html','settings'],['Referral Portal','/referral-portal.html','chart']
 ];
 const vendor=[['Dashboard','/vendor-dashboard.html#dashboard','home'],['Products','/vendor-dashboard.html#products','grid'],['Orders','/vendor-dashboard.html#orders','orders'],['Store','/vendor-dashboard.html#store','store'],['Settings','/vendor-dashboard.html#settings','settings']];
 const orderPage=path.includes('orders');
