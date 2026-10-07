@@ -6,6 +6,7 @@ import vendorFinalizer from './vendor-system-finalizer.mjs';
 import vendorV2 from './vendor-system-v2.mjs';
 import vendorGenerator from './vendor-system-generator.mjs';
 import vendorStore from './vendor-store-v2.mjs';
+import surveySystem from './survey-system.mjs';
 import adminVariations from './marketplace-admin-variations.mjs';
 import marketplaceComplete from './vendor-marketplace-complete.mjs';
 const json=(x,s=200,h={})=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate',...h}});const now=()=>new Date().toISOString();function cookie(req,n){for(const p of(req.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}async function sha(v){return[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}async function one(e,s,p=[]){return(await e.DB.prepare(s).bind(...p).all()).results?.[0]||null}async function admin(req,e){const t=cookie(req,'gz_admin_session');return t?one(e,"SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>?",[await sha(t),now()]):null}async function vendor(req,e){const t=cookie(req,'gz_vendor_session');return t?one(e,"SELECT vu.id,vu.vendor_id,vu.email,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active'",[await sha(t),now()]):null}
@@ -136,6 +137,7 @@ if(req.method==='GET'||req.method==='HEAD'){
     return new Response('Not found',{status:404,headers:{'Content-Type':'text/plain; charset=utf-8'}});
   }
 }
+if(p.startsWith('/api/surveys')||p.startsWith('/api/admin/surveys'))return finish(await surveySystem.fetch(req,env));
 const cleanStorePath=async()=>{
   const m=/^\/store\/([^/]+)\/?$/i.exec(new URL(req.url).pathname);
   if(!m||(req.method!=='GET'&&req.method!=='HEAD'))return null;
