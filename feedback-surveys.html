@@ -269,14 +269,123 @@ body.survey-active #surveyPanel #sMsg{
   body.survey-active #questions .q{animation:none!important}
 }
 
-/* Professional star rating */
-.star-rating{display:flex;align-items:center;gap:6px;margin-top:6px;padding:12px 14px;border:1px solid #e4e6e9;border-radius:14px;background:linear-gradient(135deg,#fff,#fafbfc);width:max-content;max-width:100%}
-.star-option{position:relative;display:flex;align-items:center;gap:3px;padding:4px;cursor:pointer;border-radius:9px;transition:transform .18s,background .18s}
-.star-option input{position:absolute;opacity:0;pointer-events:none}
-.star{font-size:31px;line-height:1;color:#d8dce1;transition:color .18s,transform .18s,text-shadow .18s}
-.star-option:hover{background:#fff4eb;transform:translateY(-2px)}
-.star-option:hover .star,.star-option:has(input:checked) .star{color:#ff9b18;text-shadow:0 3px 10px rgba(255,155,24,.22);transform:scale(1.06)}
-.star-option:has(input:checked){background:#fff4eb}
-.star-number{font-size:8px;font-weight:900;color:#9298a0;display:none}
-@media(max-width:700px){.star-rating{width:100%;justify-content:center;padding:10px}.star{font-size:34px}.star-option{padding:5px}}
+
+/* =========================================================
+   PREMIUM 5-STAR RATING
+========================================================= */
+.star-rating{
+  display:flex;
+  align-items:center;
+  gap:3px;
+  width:max-content;
+  max-width:100%;
+  padding:10px 12px;
+  border:1px solid #e4e6ea;
+  border-radius:16px;
+  background:linear-gradient(145deg,#ffffff,#f8f9fb);
+  box-shadow:0 8px 24px rgba(20,25,30,.06),inset 0 1px 0 #fff;
+}
+.star-option{
+  position:relative;
+  display:grid;
+  place-items:center;
+  width:48px;
+  height:48px;
+  padding:0;
+  border-radius:12px;
+  cursor:pointer;
+  transition:transform .18s cubic-bezier(.2,.7,.2,1),background .18s ease;
+}
+.star-option input{
+  position:absolute;
+  opacity:0;
+  width:1px;
+  height:1px;
+  pointer-events:none;
+}
+.star{
+  display:block;
+  font-size:34px;
+  line-height:1;
+  color:#d9dde3;
+  -webkit-text-stroke:1px #cbd0d7;
+  transform:scale(.92);
+  transform-origin:center;
+  transition:
+    color .2s ease,
+    text-shadow .2s ease,
+    transform .2s cubic-bezier(.2,.8,.2,1),
+    filter .2s ease;
+}
+.star-option:hover{
+  background:#fff5ed;
+  transform:translateY(-3px);
+}
+.star-option:hover .star{
+  color:#ffb13b;
+  -webkit-text-stroke:1px #ff8a16;
+  text-shadow:0 0 14px rgba(255,150,35,.42);
+  transform:scale(1.08);
+}
+/* Selected star AND every star before it becomes filled/glowing. */
+.star-option:has(input:checked),
+.star-option:has(~ .star-option input:checked){
+  background:linear-gradient(145deg,#fff7ed,#fff1e3);
+}
+.star-option:has(input:checked) .star,
+.star-option:has(~ .star-option input:checked) .star{
+  color:#ff9a19;
+  -webkit-text-stroke:1px #f47b00;
+  text-shadow:
+    0 0 7px rgba(255,151,25,.48),
+    0 0 18px rgba(255,151,25,.24),
+    0 3px 8px rgba(255,128,0,.14);
+  transform:scale(1.04);
+  filter:saturate(1.08);
+}
+/* Make the actual selected star slightly stronger. */
+.star-option:has(input:checked) .star{
+  color:#ff8b0a;
+  transform:scale(1.12);
+  text-shadow:
+    0 0 9px rgba(255,139,10,.58),
+    0 0 24px rgba(255,139,10,.30),
+    0 4px 10px rgba(255,120,0,.16);
+}
+/* Hover preview: hovering a star previews the rating up to that star. */
+.star-option:hover .star,
+.star-option:hover ~ .star-option .star{
+  color:#d9dde3;
+  -webkit-text-stroke:1px #cbd0d7;
+  text-shadow:none;
+  transform:scale(.92);
+}
+.star-rating:has(.star-option:nth-child(1):hover) .star-option:nth-child(-n+1) .star,
+.star-rating:has(.star-option:nth-child(2):hover) .star-option:nth-child(-n+2) .star,
+.star-rating:has(.star-option:nth-child(3):hover) .star-option:nth-child(-n+3) .star,
+.star-rating:has(.star-option:nth-child(4):hover) .star-option:nth-child(-n+4) .star,
+.star-rating:has(.star-option:nth-child(5):hover) .star-option:nth-child(-n+5) .star{
+  color:#ffad32;
+  -webkit-text-stroke:1px #ff8a16;
+  text-shadow:0 0 13px rgba(255,150,35,.40);
+  transform:scale(1.06);
+}
+.star-number{display:none}
+@media(max-width:700px){
+  .star-rating{
+    width:100%;
+    justify-content:center;
+    gap:2px;
+    padding:9px 6px;
+  }
+  .star-option{
+    width:50px;
+    height:50px;
+  }
+  .star{font-size:35px}
+}
+@media(max-width:420px){
+  .star-option{width:42px;height:46px}
+  .star{font-size:31px}
+}
 </style></head><body><header class="head"><div class="top"><a class="brand" href="/"><img src="/favicon.png" alt="GrabZone">Grab<span>Zone</span></a><nav class="links"><a href="/">Shop</a><a href="/marketplace">Marketplace</a><a href="/grabpoints.html">GrabPoints</a><a href="/track-order.html">Track Order</a></nav></div></header><main class="wrap"><section class="hero"><div class="eyebrow">GRABZONE · PRIMARY RESEARCH</div><h1>Feedback & <em>Surveys.</em></h1><p>Help us improve GrabZone and shape what comes next. Tell us what you actually want to see, what is not working, and what we should build better.</p><div class="hero-badges"><span class="hero-badge"><i></i> Your voice matters</span><span class="hero-badge">⚡ Quick 1–3 min surveys</span><span class="hero-badge">🎁 GrabPoints may be available</span><span class="hero-badge">🔒 Privacy-conscious</span></div></section><section id="home" class="grid"><div class="card"><h2>Take a Survey</h2><p>Answer an available GrabZone survey. Your name, phone and email can be pre-filled when you are signed in to GrabPoints.</p><div id="surveys" class="survey-list">Loading surveys…</div></div><div class="card"><h2>Give Feedback</h2><p>Have a suggestion, complaint, or idea? Send it directly to GrabZone.</p><button class="btn orange" id="openFeedback">Give General Feedback →</button></div></section><section id="surveyPanel" class="panel hidden"></section><section id="feedbackPanel" class="panel hidden"><span class="back" id="feedbackBack">← Back</span><h2 style="margin-bottom:5px">General Feedback</h2><p style="color:#777;font-size:12px">Tell us what you think. Please do not include passwords, PINs, or other sensitive information.</p><div class="identity"><div class="field"><label>Full Name</label><input id="fbName"></div><div class="field"><label>Phone</label><input id="fbPhone" inputmode="tel"></div><div class="field"><label>Email</label><input id="fbEmail" type="email"></div></div><div class="field"><label>Feedback</label><textarea id="fbMessage" placeholder="What should GrabZone improve?"></textarea></div><div id="fbMsg" class="msg"></div><div class="submit-row"><button class="btn orange" id="sendFeedback">Submit Feedback</button></div></section><section id="thanksPanel" class="panel hidden thanks"><div class="icon">🎉</div><h2>Thank You!</h2><p>Your feedback has been submitted successfully. Your response helps us improve GrabZone.<br><b>Your response may be reviewed for GrabPoints.</b></p><button class="btn" id="backHome">Back to Feedback & Surveys</button></section></main><script src="/feedback-surveys.js?v=20261006v1"></script></body></html>
