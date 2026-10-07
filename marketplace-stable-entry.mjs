@@ -6,9 +6,9 @@ import vendorFinalizer from './vendor-system-finalizer.mjs';
 import vendorV2 from './vendor-system-v2.mjs';
 import vendorGenerator from './vendor-system-generator.mjs';
 import vendorStore from './vendor-store-v2.mjs';
-import surveySystem from './survey-system.mjs';
 import adminVariations from './marketplace-admin-variations.mjs';
 import marketplaceComplete from './vendor-marketplace-complete.mjs';
+import surveySystem from './survey-system.mjs';
 const json=(x,s=200,h={})=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate',...h}});const now=()=>new Date().toISOString();function cookie(req,n){for(const p of(req.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}async function sha(v){return[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}async function one(e,s,p=[]){return(await e.DB.prepare(s).bind(...p).all()).results?.[0]||null}async function admin(req,e){const t=cookie(req,'gz_admin_session');return t?one(e,"SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>?",[await sha(t),now()]):null}async function vendor(req,e){const t=cookie(req,'gz_vendor_session');return t?one(e,"SELECT vu.id,vu.vendor_id,vu.email,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active'",[await sha(t),now()]):null}
 const marketplaceSecret=e=>String(e.MARKETPLACE_AUTH_SECRET||e.D1_AUTH_SECRET||e.GRABZONE_ADMIN_PASSWORD||'');async function verifyUploadToken(t,e){try{const parts=String(t||'').split('.');if(parts.length!==2)return null;const sec=marketplaceSecret(e);if(!sec)return null;const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(sec),{name:'HMAC',hash:'SHA-256'},false,['verify']);const sig=Uint8Array.from(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));const ok=await crypto.subtle.verify('HMAC',k,sig,new TextEncoder().encode(parts[0]));if(!ok)return null;const b64=parts[0].replace(/-/g,'+').replace(/_/g,'/');const payload=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64+'='.repeat((4-b64.length%4)%4)),c=>c.charCodeAt(0))));if(payload.scope!=='vendor-upload'||Number(payload.exp||0)<Date.now()/1000)return null;const u=await one(e,"SELECT vu.id,vu.vendor_id,vu.email,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE vu.id=? AND vu.status='Active' AND v.status='Active' LIMIT 1",[payload.sub]);return u&&String(u.vendor_id)===String(payload.vendor_id)?u:null}catch{return null}}
 async function publicVariations(req,e){
@@ -118,15 +118,7 @@ const V2UI='<link rel="stylesheet" href="/vendor-system-v2.css?v=20260916-v5"><l
 const ADMIN_VAR_UI='<script src="/marketplace-admin-variations-ui.js?v=20260919-v5" data-grabzone-admin-variations-ui></script>';
 const LOADER='<script src="/grabzone-global-loader.js?v=20260916-notice11" data-grabzone-global-loader></script>',CART='<script src="/grabzone-cart-quantity-bridge.js" data-grabzone-cart-bridge></script>',MKT='<script defer src="/marketplace-reference-ui.js?v=20260911-final3" data-grabzone-marketplace-reference-ui></script>',HOME='<link rel="stylesheet" href="/marketplace-home-brand-premium.css?v=20261001-store-grid"><script src="/grabzone-home-reference-marketplace.js?v=20261001-store-grid" data-grabzone-home-reference-marketplace></script><script src="/grabzone-home-layout-finalizer.js?v=20261001-layout"></script>',RESP='<link rel="stylesheet" href="/grabzone-site-responsive.css?v=20260912-final2" data-grabzone-final-visual-fix>',CUSTOMER_UI='<link rel="stylesheet" href="/grabzone-customer-ui-final.css?v=20261001-ui-final">',STORE_UI='<link rel="stylesheet" href="/grabzone-store-final-ui.css?v=20261001-store-final">';
 async function inject(r,req){if(!r.ok)return r;const type=r.headers.get('content-type')||'';if(!type.includes('text/html'))return r;let b=await r.text();const p=new URL(req.url).pathname,s=[];b=b.replace(/<link[^>]+rel=["'][^"']*(?:icon|apple-touch-icon)[^"']*["'][^>]*>/gi,'');const BRAND_FAVICON='<link rel="icon" type="image/png" href="/favicon.png"><link rel="shortcut icon" type="image/png" href="/favicon.png"><link rel="apple-touch-icon" href="/favicon.png">';if(!b.includes('data-grabzone-global-loader'))s.push(LOADER);if(p==='/checkout.html'&&!b.includes('data-grabzone-cart-bridge'))s.push(CART);if((p==='/marketplace'||p==='/marketplace.html')&&!b.includes('data-grabzone-marketplace-reference-ui'))s.push(MKT);if(p==='/'||p==='/index.html')s.push(HOME);if(/^\/(admin|vendor-admin|marketplace-admin-orders|marketplace-vendor-control-v2|vendor-dashboard)(?:\.html)?$/i.test(p))s.push(UPLOAD_UI);if(/^\/(vendor-dashboard|vendor-admin|marketplace-vendor-control-v2|product|checkout)(?:\.html)?$/i.test(p))s.push(V2UI);if(p==='/marketplace-vendor-control-v2'||p==='/marketplace-vendor-control-v2.html')s.push(ADMIN_VAR_UI);else{if(!/^\/product(?:\.html)?$/i.test(p))s.push(RESP);s.push(CUSTOMER_UI);if(p==='/marketplace-store'||p==='/marketplace-store.html')s.push(STORE_UI);}const injected=BRAND_FAVICON+'\n'+s.join('\n');const out=/<head[^>]*>/i.test(b)?b.replace(/<head[^>]*>/i,m=>m+'\n'+injected):injected+b;const h=new Headers(r.headers);h.set('Cache-Control','no-store,must-revalidate');h.delete('Content-Length');return new Response(out,{status:r.status,statusText:r.statusText,headers:h})}
-async function gzRoute(req,env,ctx){try{const p=new URL(req.url).pathname;const finish=async x=>inject(x,req);
-if(req.method==='GET'||req.method==='HEAD'){
-  const surveyMatch=/^\/feedback-surveys\/[^/]+\/?$/i.test(p);
-  if(surveyMatch){
-    const u=new URL(req.url);u.pathname='/feedback-surveys.html';
-    const rr=new Request(u.toString(),req);
-    return finish(await env.ASSETS.fetch(rr));
-  }
-}
+async function gzRoute(req,env,ctx){try{const p=new URL(req.url).pathname;
 /*
   Never serve backend source, config or migration files as static assets.
   Defence in depth on top of .assetsignore, which keeps them out of the asset
@@ -137,6 +129,15 @@ if(req.method==='GET'||req.method==='HEAD'){
     return new Response('Not found',{status:404,headers:{'Content-Type':'text/plain; charset=utf-8'}});
   }
 }
+const finish=async x=>inject(x,req);
+const cleanSurveyPath=async()=>{
+  const m=/^\/feedback-surveys\/([^/]+)\/?$/i.exec(p);
+  if(!m||(req.method!=='GET'&&req.method!=='HEAD'))return null;
+  const target=new URL('/feedback-surveys.html',req.url);
+  const asset=await env.ASSETS.fetch(new Request(target.toString(),req));
+  return inject(asset,req);
+};
+const cleanSurvey=await cleanSurveyPath();if(cleanSurvey)return cleanSurvey;
 if(p.startsWith('/api/surveys')||p.startsWith('/api/admin/surveys'))return finish(await surveySystem.fetch(req,env));
 const cleanStorePath=async()=>{
   const m=/^\/store\/([^/]+)\/?$/i.exec(new URL(req.url).pathname);
