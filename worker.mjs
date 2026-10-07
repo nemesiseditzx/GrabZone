@@ -797,6 +797,11 @@ function utf8AssetResponse(r){
 async function handle(req,env){
  try{
   if(req.method==="OPTIONS")return gzPreflight(req,env);
+  const incoming=new URL(req.url);
+  if(/^\/feedback-surveys\/[^/]+\/?$/.test(incoming.pathname)){
+   incoming.pathname='/feedback-surveys.html';
+   req=new Request(incoming.toString(),req);
+  }
   const a=await api(req,env);
   const asset=a||(env.ASSETS?await env.ASSETS.fetch(req):json({ok:true,backend:"cloudflare-worker",d1:!!env.DB,r2:!!env.ASSETS_BUCKET}));
   return cors(a?asset:utf8AssetResponse(asset),req,env);
