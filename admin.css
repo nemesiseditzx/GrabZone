@@ -741,3 +741,66 @@ input:focus,textarea:focus,select:focus{transform:translateY(-1px)}
 @media(prefers-reduced-motion:reduce){
   *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
 }
+
+
+/* Survey admin final color + filter controls */
+#tab-surveys .gz-sv-tabs button,
+#tab-surveys .gz-sv-actions .ghost,
+#tab-surveys .gz-r-actions .ghost,
+#tab-surveys .gz-r-filter-title .ghost{
+  background:#fff !important;
+  color:#343a43 !important;
+  border:1px solid #dfe2e6 !important;
+  box-shadow:none !important;
+}
+#tab-surveys .gz-sv-tabs button:hover,
+#tab-surveys .gz-sv-actions .ghost:hover,
+#tab-surveys .gz-r-actions .ghost:hover,
+#tab-surveys .gz-r-filter-title .ghost:hover{
+  background:#fff7f0 !important;
+  color:#c64b00 !important;
+  border-color:#ffc29a !important;
+}
+#tab-surveys .gz-sv-tabs button.active{
+  background:linear-gradient(135deg,#ff6a12,#ed5705) !important;
+  color:#fff !important;
+  border-color:#f56a12 !important;
+  box-shadow:0 7px 18px rgba(245,106,18,.20) !important;
+}
+#tab-surveys .gz-sv-actions .primary,
+#tab-surveys .gz-r-actions .primary{
+  background:linear-gradient(135deg,#ff6a12,#ed5705) !important;
+  color:#fff !important;
+  border-color:#f56a12 !important;
+  box-shadow:0 8px 20px rgba(245,106,18,.18) !important;
+}
+#tab-surveys .gz-sv-actions .primary:hover,
+#tab-surveys .gz-r-actions .primary:hover{
+  background:linear-gradient(135deg,#f45e08,#d94d00) !important;
+  color:#fff !important;
+}
+#tab-surveys .gz-r-toolbar{
+  background:linear-gradient(135deg,#fff,#fffaf6) !important;
+}
+#tab-surveys .gz-r-mainfilters,
+#tab-surveys .gz-r-filters,
+#tab-surveys .gz-r-results{
+  background:#fff !important;
+}
+#tab-surveys .gz-r-filters{
+  animation:gzFadeUp .22s ease both;
+}
+#tab-surveys .gz-r-actions{
+  align-items:center;
+}
+#tab-surveys .gz-r-actions button{
+  min-width:112px;
+}
+#tab-surveys .gz-r-mainfilters select,
+#tab-surveys .gz-r-mainfilters input{
+  background:#fff !important;
+  color:#252a31 !important;
+}
+#tab-surveys .gz-r-resulthead span{
+  color:#8a9098 !important;
+}
