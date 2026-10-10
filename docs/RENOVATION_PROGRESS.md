@@ -99,6 +99,9 @@ These changes are code and automated-regression work on the renovation branch on
 - Product detail gallery now has a fallback image even when a product has no image at all, and failed main/thumbnail image URLs fall back instead of leaving a broken gallery.
 - Added regression coverage for conditional stock reservation/rollback, retry-safe sale logging, fuzzy-search tokenization, and product detail image fallback.
 
+- Order finalization now derives variation price, SKU, image, and option labels from D1 rather than trusting client-supplied variation prices; it also rejects a variation ID that does not belong to the submitted product.
+- Admin and vendor variation APIs now reject fractional/invalid stock and quantity limits and invalid low-stock thresholds rather than silently rounding malformed inputs.
+
 ## Still not verified end-to-end
 - Browser-driven checkout and vendor order flow against a safe deployment of this exact renovation branch.
 - Integration tests against a disposable remote D1 database and R2 test bucket.
