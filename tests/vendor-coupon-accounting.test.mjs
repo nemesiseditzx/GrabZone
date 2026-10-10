@@ -13,6 +13,12 @@ test('vendor coupon discount is deducted from the matching vendor order before c
   assert.ok(finalizer.includes('total:netSubtotal+delivery'));
 });
 
+test('vendor notification emails receive the store coupon discount and net total', () => {
+  const finalizer = read('vendor-system-finalizer.mjs');
+  assert.ok(finalizer.includes('const discount=Math.min(subtotal,Math.max(0,Number(v.discount_amount||0)))'));
+  assert.ok(finalizer.includes('items,subtotal,discount,shipping,total:Math.max(0,subtotal-discount)+shipping'));
+});
+
 test('legacy vendor order schema gains the discount field used by the dashboard', () => {
   const finalizer = read('vendor-system-finalizer.mjs');
   assert.ok(finalizer.includes('discount_amount REAL NOT NULL DEFAULT 0'));
