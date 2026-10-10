@@ -390,6 +390,10 @@
       background: linear-gradient(135deg, #00B2FF, #006AFF);
     }
 
+    .contact-telegram-icon {
+      background: #229ED9;
+    }
+
     .contact-messenger-icon svg {
       fill: none;
       stroke: none;
@@ -1246,6 +1250,19 @@
           </span>
           <span class="contact-arrow">→</span>
         </a>
+
+        <a id="contactTelegram" class="contact-option" href="#" target="_blank" rel="noopener">
+          <span class="contact-icon contact-telegram-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path fill="currentColor" stroke="none" d="M21.7 4.4 18.5 20c-.2 1.1-.9 1.3-1.8.8l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.3-8.4c.4-.4-.1-.6-.6-.2L6 13.4l-4.9-1.5c-1.1-.3-1.1-1.1.2-1.6L20.4 3c.9-.3 1.7.2 1.3 1.4Z"></path>
+            </svg>
+          </span>
+          <span>
+            <strong>Telegram</strong>
+            <small data-i18n="contactTelegramText">Chat with us on Telegram</small>
+          </span>
+          <span class="contact-arrow">→</span>
+        </a>
       </div>
     </div>
   </div>
@@ -1319,6 +1336,8 @@
         Messenger
       </a>
 
+      <a id="tg" target="_blank" rel="noopener">Telegram</a>
+
     </div>
 
   </footer>
@@ -1372,6 +1391,7 @@
         contactInstagramText: "Instagram-এ মেসেজ করুন",
         contactWhatsAppText: "WhatsApp-এ চ্যাট করুন",
         contactMessengerText: "Facebook-এ মেসেজ করুন",
+        contactTelegramText: "Telegram-এ মেসেজ করুন",
 
         dmOrder: "কার্ট দেখুন",
 
@@ -1471,6 +1491,7 @@
         contactInstagramText: "Message us on Instagram",
         contactWhatsAppText: "Chat with us on WhatsApp",
         contactMessengerText: "Message us on Facebook",
+        contactTelegramText: "Chat with us on Telegram",
 
         dmOrder: "View Cart",
 
@@ -1714,6 +1735,7 @@
       const footerInstagram = document.getElementById("ig");
       const footerWhatsApp = document.getElementById("wa");
       const footerMessenger = document.getElementById("ms");
+      const footerTelegram = document.getElementById("tg");
 
       const instagram =
         footerInstagram && footerInstagram.getAttribute("href") || "";
@@ -1723,10 +1745,13 @@
 
       const messenger =
         footerMessenger && footerMessenger.getAttribute("href") || "";
+      const telegram =
+        footerTelegram && footerTelegram.getAttribute("href") || "";
 
       const ig = document.getElementById("contactInstagram");
       const wa = document.getElementById("contactWhatsApp");
       const ms = document.getElementById("contactMessenger");
+      const tg = document.getElementById("contactTelegram");
 
       if (ig) {
         ig.href = instagram || "#";
@@ -1744,6 +1769,12 @@
         ms.href = messenger || "#";
         ms.style.display = messenger ? "flex" : "none";
         ms.setAttribute("aria-hidden", messenger ? "false" : "true");
+      }
+
+      if (tg) {
+        tg.href = telegram || "#";
+        tg.style.display = telegram ? "flex" : "none";
+        tg.setAttribute("aria-hidden", telegram ? "false" : "true");
       }
       modal.classList.add("open");
       modal.setAttribute("aria-hidden", "false");
