@@ -1,44 +1,64 @@
 # GrabZone Full Renovation — Progress Log
 Updated: 2026-10-10
-Branch: grabzone-full-renovation-2026-10-10
+Target branch: `grabzone-full-renovation-2026-10-10`
+Last verified code commit: `17b21b70311cd314c5dfa1e8bd2a7b27bdc2c2cc`
 
-## Implemented in the renovation branch
-- Routed `create_public_order` through the vendor finalizer before the legacy D1 handler, so successful public orders can be snapshotted and split into vendor orders.
-- Added compatibility migrations for vendor sessions/users, vendor identity/status fields, product ownership, variation tables, vendor coupon fields, and vendor order totals/discount fields.
-- Added a default GrabZone vendor bootstrap and assigned legacy products with no vendor owner to that default vendor during checkout initialization.
-- Normalized active-vendor status comparisons to avoid rejecting `active` vs `Active` values.
-- Added server-side variation lookup, server-authoritative variant pricing, minimum/maximum quantity checks, tracked variation stock reservation, rollback on failed order persistence, inventory ledger entries, and idempotent stock restoration when a vendor order is cancelled.
-- Prevented client-supplied variation prices from overwriting persisted server-calculated order-item prices.
-- Added server-side vendor coupon and rewards voucher validation, discount calculation, one-time claim reservation, usage counting, and rollback when order persistence fails.
-- Added atomic GrabPoints redemption and Mystery Deal claim reservation with rollback if the order batch fails.
-- Removed a schema-startup update that rewrote historical order shipping charges and totals to a fixed 130.
-- Corrected vendor order total aliasing against the existing D1 `orders.total` column, vendor coupon discount accounting, vendor commission basis, and vendor order duplicate protection.
-- Fixed product image uploads to use the shared authenticated vendor image uploader.
-- Preserved the existing Cloudflare Workers/D1/R2 architecture, COD checkout, and Meta Pixel ID.
+## Implemented
 
-## Regression coverage added
-- Checkout routing through the vendor finalizer.
-- Legacy D1 schema compatibility and default-vendor bootstrap.
-- Variant price, stock reservation, rollback, and cancellation restoration.
-- Vendor status casing and ownership checks.
-- Vendor coupon/rewards voucher validation and accounting.
-- GrabPoints and Mystery Deal atomicity.
-- COD, D1/R2 bindings, Meta Pixel, and core schema preservation.
-- Vendor image upload path and checkout response totals.
+### Checkout, inventory, and vendor orders
+- Routed `create_public_order` through the vendor finalizer before the legacy D1 handler.
+- Added compatibility migrations for vendor sessions/users, vendor identity/status fields, product ownership, product variations, vendor coupons, vendor order totals/discount fields, and vendor order item snapshots.
+- Restored default GrabZone vendor bootstrap/backfill for legacy products without a vendor owner.
+- Made active-status comparisons case-insensitive across the vendor finalizer, vendor-system-v2, marketplace entrypoint, vendor marketplace API, and vendor admin compatibility API.
+- Kept server-side variation lookup and pricing authoritative; the server does not trust client-supplied variation prices.
+- Preserved tracked variation stock decrement/rollback and idempotent stock restoration on cancellation.
+- Made vendor order creation idempotent and repairable after partial snapshot writes. Retries add missing order-item snapshots without resetting a vendor order's existing fulfillment status.
+- Added a D1-backed finalization retry queue for failures after a customer order has already been accepted. The customer order response is preserved; retry jobs are drained on relevant API traffic, and stale processing jobs can be reclaimed.
+- Removed startup logic that rewrote historical order shipping charges and totals to a fixed amount.
+- Corrected the vendor order listing total alias, vendor coupon accounting, commission basis, vendor notification discount/total, and duplicate vendor order protection.
 
-A branch-specific GitHub Actions workflow was added to run JavaScript syntax checks and all `tests/*.test.mjs` tests. This log does not claim that GitHub Actions or live Cloudflare integration tests have passed until their run results are observed.
+### Rewards and checkout
+- Added server-side vendor coupon and rewards voucher validation, discount calculation, claim reservation, usage counting, and rollback on failed order persistence.
+- Added conditional GrabPoints redemption and Mystery Deal claim reservation with rollback.
+- Corrected checkout payloads to send the selected vendor ID and only the applied rewards voucher.
+- Updated confirmation email totals to use the server-calculated order total.
+- Preserved Cash on Delivery.
 
-## Not yet complete
-- Full route-by-route inventory for every admin, customer, vendor, analytics, survey, referral, rewards, shipment, and integration endpoint.
-- Full frontend UX/accessibility/mobile audit and visual regression testing.
-- End-to-end browser tests against a safe preview environment.
-- D1 integration tests against a disposable test database.
-- Reconciliation and selective porting of every relevant feature/fix branch.
-- Security review for all admin/vendor APIs and all authorization boundaries.
-- Final changed-file diff review, unresolved issue list, and acceptance checklist.
+### UI and usability
+- Replaced browser alerts in the vendor product editor, admin product editor, customer variation picker, invoice-download error path, injected image upload controls, and vendor variation UI with non-blocking toast feedback.
+- Replaced vendor store-section editing and vendor-control product/section editing prompts with accessible modals.
+- Replaced shipment-creation prompts with a modal, corrected the default shipment status, and aligned the vendor order status dropdown with statuses accepted by the API.
+- Added responsive form layouts, inline error states, Escape/backdrop close behavior, and accessible status announcements to the new dialogs.
+- Preserved the existing Cloudflare Workers/D1/R2 architecture and Meta Pixel ID `1625544792515582`.
 
-## Safety constraints
-- No merge to `main`.
-- No production deployment.
-- No destructive D1 migration or live data mutation without explicit approval.
-- Never mark an unrun test as passed.
+### Schema, tests, and CI
+- Added `vendor_order_items` and `vendor_order_finalization_jobs` to `d1-schema.sql`, including supporting indexes.
+- Added regression tests for checkout contracts, discount accounting, inventory, ownership, vendor status compatibility, retryable finalization, image uploads, and UI dialogs/feedback.
+- The renovation CI checks external JavaScript syntax, inline JavaScript from root HTML pages, the regression suite, local D1 schema application, and a Wrangler Worker dry-run build. It does not deploy.
+
+## Last verified CI result
+
+GitHub Actions run: https://github.com/nemesiseditzx/GrabZone/actions/runs/38082469675
+
+- JavaScript syntax: passed
+- Inline HTML scripts: 40 extracted and syntax-checked
+- Regression tests: 49 passed, 0 failed
+- D1 schema: applied successfully to Wrangler's local database
+- Wrangler dry-run bundle: passed
+- No production deployment performed by this workflow
+
+Additional documentation and UI-feedback changes after this verified commit require the latest CI run to finish before they can be called verified.
+
+## Still not verified end-to-end
+- Browser-driven checkout and vendor order flow against a safe deployment of this exact renovation branch.
+- Integration tests against a disposable remote D1 database and R2 test bucket.
+- Live email delivery and provider fallback.
+- Full screenshot-based visual regression across desktop/mobile breakpoints.
+- Full manual route-by-route security review across every admin, customer, vendor, analytics, survey, referral, rewards, shipment, and integration endpoint.
+- Exhaustive content-level review of every relevant historical feature branch; large branch divergence means this cannot be certified solely from commit comparisons.
+
+## Release guardrails
+- Do not merge into `main` without explicit approval.
+- Do not deploy production from this branch.
+- Do not run destructive or data-changing operations against the live D1 database without backup and explicit approval.
+- Treat live-preview and remote-D1 checks as not run until an exact renovation preview/test environment is available.
