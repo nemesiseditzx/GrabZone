@@ -7,7 +7,8 @@ async function one(e,s,p=[]){return(await q(e,s,p)).results?.[0]||null}
 async function sha(v){return[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function cookie(r,n){for(const p of(r.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}
 async function vendor(r,e){await schema(e);const t=cookie(r,'gz_vendor_session')||(r.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!t)return null;return one(e,"SELECT vu.id,vu.vendor_id,vu.email,vu.role,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND COALESCE(vu.active,1)=1 AND LOWER(COALESCE(vu.status,'active'))='active' AND LOWER(COALESCE(v.status,'active'))='active' LIMIT 1",[await sha(t),now()])}
-async function ensureVendorOrderTables(e){
+let vendorOrderSchemaPromise=null;
+async function ensureVendorOrderTables(e){if(vendorOrderSchemaPromise)return vendorOrderSchemaPromise;vendorOrderSchemaPromise=(async()=>{
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,discount_amount REAL NOT NULL DEFAULT 0,coupon_code TEXT,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,shipping_fee REAL NOT NULL DEFAULT 0,shipping_charge REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,total REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id))").run().catch(()=>{});
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT,sku TEXT)").run().catch(()=>{});
  for(const sql of [
@@ -26,7 +27,7 @@ async function ensureVendorOrderTables(e){
   "ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT",
   "ALTER TABLE vendor_order_items ADD COLUMN sku TEXT"
  ])await e.DB.prepare(sql).run().catch(()=>{});
-}
+ return true;})();try{return await vendorOrderSchemaPromise}catch(err){vendorOrderSchemaPromise=null;throw err}}
 let schemaPromise=null;
 async function schema(e){if(schemaPromise)return schemaPromise;schemaPromise=(async()=>{for(const sql of [
 "CREATE TABLE IF NOT EXISTS vendor_sessions(token_hash TEXT PRIMARY KEY,vendor_user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)",
