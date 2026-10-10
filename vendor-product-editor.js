@@ -46,7 +46,7 @@ function build(){
      <div class="vp-easy-setup"><b>Easy setup</b><div class="vp-setup-steps"><span>① Select Size values.</span><span>② Select common Colors or add another option.</span><span>③ Generate variations.</span></div></div><div id="vpPresetOptions"></div><div id="vpOptions"></div>
      <div class="vp-var-actions"><button type="button" class="gz-btn primary" id="vpGenerateVariations">Generate / Update Variations</button><input id="vpBulkPrice" type="number" min="0" step="0.01" placeholder="Apply regular price to all"><button type="button" class="gz-btn light" id="vpApplyBulk">Apply price to all</button></div>
      <div id="vpVariationMsg" class="vp-var-msg"></div>
-     <div class="vp-variation-table-wrap"><table class="vp-variation-table"><thead><tr><th>Variation</th><th>SKU</th><th>Regular</th><th>Old</th><th>Status</th><th>Product Image</th><th></th></tr></thead><tbody id="vpVariationRows"></tbody></table></div>
+     <div class="vp-variation-table-wrap"><table class="vp-variation-table"><thead><tr><th>Variation</th><th>SKU</th><th>Regular</th><th>Sale</th><th>Old</th><th>Stock</th><th>Stock Mode</th><th>Min Qty</th><th>Max Qty</th><th>Status</th><th>Product Image</th><th>Actions</th></tr></thead><tbody id="vpVariationRows"></tbody></table></div>
     </section>
     <div class="vp-actions"><button class="gz-btn primary" id="vpSubmit" type="submit">Upload &amp; Save Product</button><button type="button" class="gz-btn light" onclick="resetProductEditor()">Reset</button></div>
    </form>
