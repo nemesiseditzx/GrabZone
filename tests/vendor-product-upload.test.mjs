@@ -10,4 +10,6 @@ test('vendor product editor uses the shared authenticated image uploader', () =>
   const dashboard = read('vendor-dashboard.js');
   assert.ok(editor.includes("window.uploadVendorImage(f,'product-image')"));
   assert.ok(dashboard.includes('async function uploadVendorImage(file,scope)'));
+  assert.ok(!editor.includes('alert('));
+  assert.ok(editor.includes('const notify=(message,type=\'error\')=>'));
 });
