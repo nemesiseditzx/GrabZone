@@ -72,6 +72,7 @@ document.head.appendChild(galleryNavStyle);
 let sb = null;
 let allProducts = [];
 let activeCategory = "All";
+let activeProductPage = 1;
 let SITE = {};
 
 const C = window.GRABZONE_CONFIG || {};
@@ -951,6 +952,7 @@ function renderProducts() {
     (searchInput?.value || "")
       .trim()
       .toLowerCase();
+  activeProductPage = 1;
 
   const selectedCategory =
     String(activeCategory || "All")
@@ -1087,7 +1089,12 @@ function renderProducts() {
     );
   });
 
-  grid.innerHTML = filtered.map(product => {
+  const pageSize = 20;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  activeProductPage = Math.max(1, Math.min(activeProductPage, pageCount));
+  const pageRows = filtered.slice((activeProductPage - 1) * pageSize, activeProductPage * pageSize);
+
+  grid.innerHTML = pageRows.map(product => {
     const now=Date.now();
     const starts=product.flash_starts_at ? Date.parse(product.flash_starts_at) : NaN;
     const ends=product.flash_ends_at ? Date.parse(product.flash_ends_at) : NaN;
@@ -1144,6 +1151,20 @@ ${flashActive ? '<div class="gz-flash-sale" data-flash-end="'+escAttr(product.fl
       </a>
     `;
   }).join("");
+
+  let pager = document.getElementById("gzHomeProductPagination");
+  if (!pager) {
+    pager = document.createElement("nav");
+    pager.id = "gzHomeProductPagination";
+    pager.setAttribute("aria-label", "Product pages");
+    pager.style.cssText = "display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:22px auto 36px;padding:0 14px";
+    grid.insertAdjacentElement("afterend", pager);
+  }
+  pager.innerHTML = filtered.length > pageSize
+    ? '<button type="button" data-page="prev" '+(activeProductPage <= 1 ? 'disabled' : '')+' style="border:1px solid #ddd;border-radius:9px;background:#fff;padding:9px 13px;font-weight:800;cursor:pointer">Previous</button><span style="font-size:11px;color:#777;font-weight:800">Showing '+((activeProductPage-1)*pageSize+1)+'–'+Math.min(activeProductPage*pageSize,filtered.length)+' of '+filtered.length+' products · Page '+activeProductPage+' of '+pageCount+'</span><button type="button" data-page="next" '+(activeProductPage >= pageCount ? 'disabled' : '')+' style="border:1px solid #ddd;border-radius:9px;background:#fff;padding:9px 13px;font-weight:800;cursor:pointer">Next</button>'
+    : '';
+  pager.querySelector('[data-page="prev"]')?.addEventListener('click', () => { activeProductPage = Math.max(1, activeProductPage - 1); renderProducts(); grid.scrollIntoView({behavior:'smooth',block:'start'}); });
+  pager.querySelector('[data-page="next"]')?.addEventListener('click', () => { activeProductPage = Math.min(pageCount, activeProductPage + 1); renderProducts(); grid.scrollIntoView({behavior:'smooth',block:'start'}); });
 
   const empty =
     document.getElementById("empty");
