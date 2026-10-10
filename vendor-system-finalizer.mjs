@@ -181,6 +181,7 @@ async function enqueueVendorFinalization(e,orderId,payload,error){
 }
 async function processPendingVendorFinalizations(e){
  await schema(e);await ensureVendorOrderTables(e);
+ await e.DB.prepare("UPDATE vendor_order_finalization_jobs SET status='pending',updated_at=? WHERE status='processing' AND julianday(updated_at)<julianday('now','-5 minutes')").bind(now()).run().catch(()=>{});
  const jobs=(await q(e,"SELECT id,order_id,payload_json,attempts FROM vendor_order_finalization_jobs WHERE status='pending' AND attempts<8 ORDER BY created_at LIMIT 3")).results||[];
  for(const job of jobs){
   const claim=await e.DB.prepare("UPDATE vendor_order_finalization_jobs SET status='processing',attempts=attempts+1,updated_at=? WHERE id=? AND status='pending' AND attempts<8").bind(now(),job.id).run();
