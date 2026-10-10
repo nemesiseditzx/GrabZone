@@ -19,4 +19,7 @@ test('vendor finalization retries repair missing item snapshots without resettin
   assert.ok(finalizer.includes("SELECT id FROM vendor_order_items WHERE vendor_order_id=? AND order_item_id=? LIMIT 1"));
   assert.ok(finalizer.includes("!['id','order_id','vendor_id','created_at','status'].includes(k)"));
   assert.ok(finalizer.includes("CREATE UNIQUE INDEX IF NOT EXISTS vendor_order_items_order_item_unique"));
+  const schema = read('d1-schema.sql');
+  assert.ok(schema.includes('CREATE TABLE IF NOT EXISTS vendor_order_finalization_jobs'));
+  assert.ok(schema.includes('CREATE INDEX IF NOT EXISTS vendor_order_finalization_jobs_status_idx'));
 });
