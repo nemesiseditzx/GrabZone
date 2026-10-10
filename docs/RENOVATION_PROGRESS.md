@@ -47,7 +47,7 @@ GitHub Actions run: https://github.com/nemesiseditzx/GrabZone/actions/runs/38082
 - Wrangler dry-run bundle: passed
 - No production deployment performed by this workflow
 
-Additional documentation and UI-feedback changes after this verified commit require the latest CI run to finish before they can be called verified.
+The UI-feedback and vendor-auth changes listed above are included in the verified code commit. Documentation updates are being rechecked by CI before final acceptance.
 
 ## Still not verified end-to-end
 - Browser-driven checkout and vendor order flow against a safe deployment of this exact renovation branch.
