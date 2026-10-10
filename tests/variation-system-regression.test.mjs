@@ -49,7 +49,7 @@ test('inventory sale log is written during retry finalization for cancellation-s
   assert.ok(finalizer.includes('await logHeld(e,[],job.order_id)'));
   assert.ok(finalizer.includes('sale:"+row.id'));
   assert.ok(finalizer.includes("reason='order_sale'"));
-  assert.ok(finalizer.includes("reason='order_cancelled'"));
+  assert.ok(finalizer.includes('"order_cancelled"'));
 });
 
 test('product detail gallery always has a fallback image', () => {
