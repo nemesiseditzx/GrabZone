@@ -35,7 +35,7 @@ function gzUiConfirm(message){
   });
 }
 
-const fields=["store_name","tagline","hero_eyebrow","hero_title","hero_title_em","hero_description","hero_button_text","hero_button_link","how_button_text","how_button_link","offer_title","offer_message","offer_code","collection_eyebrow","collection_title","how_eyebrow","how_title","step1_title","step1_body","step2_title","step2_body","step3_title","step3_body","referral_eyebrow","referral_title","referral_body","referral_button_text","footer_text","whatsapp","instagram","messenger","header_link1_label","header_link1_url","header_link2_label","header_link2_url","header_link3_label","header_link3_url","custom_css"];
+const fields=["store_name","tagline","hero_eyebrow","hero_title","hero_title_em","hero_description","hero_button_text","hero_button_link","how_button_text","how_button_link","offer_title","offer_message","offer_code","collection_eyebrow","collection_title","how_eyebrow","how_title","step1_title","step1_body","step2_title","step2_body","step3_title","step3_body","referral_eyebrow","referral_title","referral_body","referral_button_text","footer_text","whatsapp","instagram","messenger","telegram","header_link1_label","header_link1_url","header_link2_label","header_link2_url","header_link3_label","header_link3_url","custom_css"];
 
 function esc(x){
  return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))
