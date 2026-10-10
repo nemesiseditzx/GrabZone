@@ -58,6 +58,22 @@ CREATE TABLE IF NOT EXISTS vendor_order_items (
   variation_sku TEXT,
   sku TEXT
 );
+CREATE UNIQUE INDEX IF NOT EXISTS vendor_order_items_order_item_unique
+  ON vendor_order_items(vendor_order_id, order_item_id);
+
+CREATE TABLE IF NOT EXISTS vendor_order_finalization_jobs (
+  id TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL UNIQUE,
+  payload_json TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS vendor_order_finalization_jobs_status_idx
+  ON vendor_order_finalization_jobs(status, created_at);
+
 
 CREATE INDEX IF NOT EXISTS vendor_orders_vendor_idx ON vendor_orders(vendor_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS vendor_orders_order_idx ON vendor_orders(order_id,vendor_id);
