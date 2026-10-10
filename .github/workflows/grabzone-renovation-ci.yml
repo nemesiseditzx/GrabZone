@@ -24,7 +24,11 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           set -e
-          for f in *.js *.mjs tests/*.mjs; do
+          for f in *.js; do
+            [ -f "$f" ] || continue
+            node --check --input-type=module < "$f"
+          done
+          for f in *.mjs tests/*.mjs; do
             [ -f "$f" ] || continue
             node --check "$f"
           done
