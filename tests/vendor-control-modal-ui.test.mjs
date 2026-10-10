@@ -14,3 +14,12 @@ test('vendor control edits products and store sections through accessible modals
   assert.ok(!page.includes('prompt('));
   assert.ok(!page.includes('alert('));
 });
+
+test('vendor dashboard shipment creation uses a modal and supported order statuses', () => {
+  const ui = read('vendor-system-final-ui.js');
+  assert.ok(ui.includes('gzVendorShipmentModal'));
+  assert.ok(ui.includes("status:'Processing'"));
+  assert.ok(ui.includes("['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled']"));
+  assert.ok(!ui.includes('prompt('));
+  assert.ok(!ui.includes('alert('));
+});
