@@ -111,6 +111,7 @@ async function notifyVendor(e,vendorOrderId){
   if(!v)return false;
   const items=(await q(e,"SELECT voi.*,oi.product_name,oi.image_url FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id WHERE voi.vendor_order_id=? ORDER BY voi.rowid",[vendorOrderId])).results||[];
   const subtotal=Number(v.subtotal||0);
+  const discount=Math.min(subtotal,Math.max(0,Number(v.discount_amount||0)));
   const shipping=Math.max(0,Number(v.delivery_charge||v.shipping_fee||0));
   const result=await notifyVendorOrder(e,{
    orderId:v.order_id,
@@ -121,7 +122,7 @@ async function notifyVendor(e,vendorOrderId){
    vendorName:v.brand_name||v.business_name||"GrabZone Vendor",
    recipient:String(v.order_notification_email||v.vendor_email||"").trim(),
    vendorOrderId:v.id,
-   items,subtotal,shipping,total:subtotal+shipping,
+   items,subtotal,discount,shipping,total:Math.max(0,subtotal-discount)+shipping,
    customerName:v.customer_name,
   });
   if(result?.sent){
