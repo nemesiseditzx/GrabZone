@@ -1042,6 +1042,28 @@ function renderProducts() {
       return synonyms.some(word => gzWordPattern(word).test(haystack));
     });
 
+  const gzFuzzyMatch = (haystack) => {
+    const tokens = query.split(/\\s+/).filter(Boolean);
+    if (!tokens.length) return true;
+    const words = String(haystack || "").split(/[^a-z0-9\\u0980-\\u09ff]+/i).filter(Boolean);
+    const distance = (a, b) => {
+      if (a === b) return 0;
+      if (Math.abs(a.length - b.length) > 2) return 99;
+      let prev = Array.from({length:b.length + 1}, (_, i) => i);
+      for (let i = 1; i <= a.length; i++) {
+        const row = [i];
+        for (let j = 1; j <= b.length; j++) row[j] = Math.min(row[j-1] + 1, prev[j] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+        prev = row;
+      }
+      return prev[b.length];
+    };
+    return tokens.every(token => {
+      if (haystack.includes(token)) return true;
+      const limit = token.length >= 7 ? 2 : token.length >= 4 ? 1 : 0;
+      return limit > 0 && words.some(word => distance(token, word) <= limit);
+    });
+  };
+
   const filtered = allProducts.filter(product => {
     const category =
       String(product.category || "")
@@ -1061,7 +1083,7 @@ function renderProducts() {
 
     return (
       categoryMatches &&
-      (searchableText.includes(query) || gzBanglaMatch(searchableText))
+      (searchableText.includes(query) || gzBanglaMatch(searchableText) || gzFuzzyMatch(searchableText))
     );
   });
 
