@@ -1737,16 +1737,15 @@
       const footerMessenger = document.getElementById("ms");
       const footerTelegram = document.getElementById("tg");
 
-      const instagram =
-        footerInstagram && footerInstagram.getAttribute("href") || "";
+      const configuredHref = element => {
+        const href = String(element?.getAttribute("href") || "").trim();
+        return href && href !== "#" && !/^javascript:/i.test(href) ? href : "";
+      };
 
-      const whatsapp =
-        footerWhatsApp && footerWhatsApp.getAttribute("href") || "";
-
-      const messenger =
-        footerMessenger && footerMessenger.getAttribute("href") || "";
-      const telegram =
-        footerTelegram && footerTelegram.getAttribute("href") || "";
+      const instagram = configuredHref(footerInstagram);
+      const whatsapp = configuredHref(footerWhatsApp);
+      const messenger = configuredHref(footerMessenger);
+      const telegram = configuredHref(footerTelegram);
 
       const ig = document.getElementById("contactInstagram");
       const wa = document.getElementById("contactWhatsApp");
