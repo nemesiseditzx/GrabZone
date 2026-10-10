@@ -91,6 +91,14 @@ These code changes are on the renovation branch only. They are not evidence that
 
 These changes are code and automated-regression work on the renovation branch only. A green local/CI validation is not the same as an authenticated browser test against a safely isolated remote Worker/D1/R2 deployment.
 
+### Additional inventory and product-detail fixes
+
+- Tracked variation stock is now decremented using a conditional SQL update (`stock >= requested quantity`) during order creation, protecting against concurrent overselling.
+- If the base order request fails, previously reserved tracked stock is restored. Inventory sale logs are idempotent and are also written during queued vendor-order finalization retries, so cancellation restoration can find the original sale record.
+- Fixed the home fuzzy-search tokenizer so it correctly splits whitespace and English/Bangla terms.
+- Product detail gallery now has a fallback image even when a product has no image at all, and failed main/thumbnail image URLs fall back instead of leaving a broken gallery.
+- Added regression coverage for conditional stock reservation/rollback, retry-safe sale logging, fuzzy-search tokenization, and product detail image fallback.
+
 ## Still not verified end-to-end
 - Browser-driven checkout and vendor order flow against a safe deployment of this exact renovation branch.
 - Integration tests against a disposable remote D1 database and R2 test bucket.
