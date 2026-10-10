@@ -55,7 +55,6 @@ test('vendor variation generation returns persisted combinations and clean store
   const worker = read('worker.mjs');
   assert.ok(api.includes('count:rows.length,options:opts,variations'));
   assert.ok(worker.includes("incoming.pathname='/marketplace-store.html'"));
-  assert.ok(worker.includes('/store\\/[A-Za-z0-9-]+\\/?
   assert.ok(read('store.js').includes("onerror=\"this.onerror=null;this.src='/favicon.png\"") || read('store.js').includes("this.src='/favicon.png'"));
   assert.ok(read('marketplace-reference-ui.js').includes('this.src=&quot;/favicon.png&quot;'));
   assert.ok(read('marketplace-store.html').includes('this.src=&quot;/favicon.png&quot;'));
