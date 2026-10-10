@@ -9,6 +9,7 @@ test('checkout sends the selected vendor ID but the server calculates the discou
   const checkout = read('checkout.js');
   const worker = read('worker.js');
   assert.ok(checkout.includes('vendor_coupon_vendor_id:vendorCouponState.vendor_id||null'));
+  assert.ok(checkout.includes('rewards_voucher_code:rewardsVoucherState.code||null'));
   assert.ok(worker.includes('vendorCouponDiscount=Math.max(0,Math.min(rawCouponDiscount,vendorSubtotal))'));
   assert.ok(worker.includes('rewardsVoucherDiscount=Math.min(subtotal,Math.max(0,Number(rewardsVoucherRow.value||0)))'));
 });
