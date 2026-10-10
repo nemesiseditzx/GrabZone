@@ -16,7 +16,45 @@ function vpToggle(name,value,checked){const values=vpValues(name);if(checked){if
 function vpPreset(name,choices){const selected=new Set(vpValues(name));const chips=choices.map(v=>'<label class="vp-chip"><input type="checkbox" data-vp-opt="'+esc(name)+'" value="'+esc(v)+'" '+(selected.has(v)?'checked':'')+'><span>'+esc(v)+'</span></label>').join('');return '<div class="vp-preset-card"><div class="vp-preset-head"><b>'+esc(name)+'</b></div><div class="vp-chip-grid">'+chips+'</div></div>'}
 function collectOptionRows(){const boxes=[...document.querySelectorAll('#vpPresetOptions [data-vp-opt]')];const grouped={};boxes.forEach(input=>{const n=input.dataset.vpOpt;if(!grouped[n])grouped[n]=[];if(input.checked)grouped[n].push(input.value)});for(const [n,values] of Object.entries(grouped)){state.variationOptions=state.variationOptions.filter(o=>o.name.toLowerCase()!==n.toLowerCase());if(values.length)state.variationOptions.push({name:n,values})}}
 function toggleVariationPanel(){const panel=$('#vpVariationPanel');const isVariable=String($('#vpProductType')?.value||'simple').toLowerCase()==='variable';if(panel)panel.hidden=!isVariable;if(!isVariable){state.variationOptions=[];state.variations=[];const msg=$('#vpVariationMsg');if(msg)msg.textContent=''}else{renderOptionRows();renderVariationRows()}}
+function ensureVariationLayoutCSS(){
+ if(document.getElementById('gz-vp-variation-layout'))return;
+ const style=document.createElement('style');style.id='gz-vp-variation-layout';
+ style.textContent=`
+  #products{width:100%;max-width:none;min-width:0}
+  #products .vp-panel,#products .vp-form-panel,#vpVariationPanel{width:100%;max-width:none;min-width:0;box-sizing:border-box}
+  #vpVariationPanel{padding:clamp(14px,2vw,26px);border:1px solid #e5e7eb;border-radius:18px;background:linear-gradient(180deg,#fff,#fcfcfd);margin-top:18px}
+  #vpVariationPanel .vp-var-head{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+  #vpVariationPanel .vp-variation-table-wrap{width:100%;max-width:100%;overflow:auto;overscroll-behavior-x:contain;border:1px solid #dfe3e9;border-radius:14px;background:#fff}
+  #vpVariationPanel .vp-variation-table{width:100%;min-width:1760px;border-collapse:separate;border-spacing:0;table-layout:auto}
+  #vpVariationPanel .vp-variation-table th{position:sticky;top:0;z-index:2;background:#fff4eb;color:#754321;font-size:11px;font-weight:850;letter-spacing:.035em;white-space:nowrap}
+  #vpVariationPanel .vp-variation-table th,#vpVariationPanel .vp-variation-table td{padding:13px 12px;border-bottom:1px solid #edf0f3;vertical-align:middle}
+  #vpVariationPanel .vp-variation-table tbody tr{height:112px}
+  #vpVariationPanel .vp-variation-table tbody tr:hover{background:#fffaf6}
+  #vpVariationPanel .vp-variation-table td input,#vpVariationPanel .vp-variation-table td select{width:100%;min-width:94px;min-height:42px;box-sizing:border-box;border:1px solid #dce1e8;border-radius:10px;padding:9px 10px;font-size:13px;background:#fff}
+  #vpVariationPanel .vp-variation-table .vp-var-name{min-width:190px;max-width:250px;white-space:normal;line-height:1.5}
+  #vpVariationPanel .vp-variation-table td:nth-child(11){min-width:250px;width:250px}
+  #vpVariationPanel .vp-var-image-picker{min-width:220px}
+  #vpVariationPanel .vp-var-image-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:9px;align-items:start}
+  #vpVariationPanel .vp-var-image-choice{position:relative;display:flex;align-items:center;justify-content:center;width:60px;height:68px;padding:4px;border:2px solid #e1e5eb;border-radius:12px;background:#fff;cursor:pointer;overflow:hidden;transition:border-color .15s,box-shadow .15s,transform .15s}
+  #vpVariationPanel .vp-var-image-choice:hover{border-color:#ff9a54;transform:translateY(-1px)}
+  #vpVariationPanel .vp-var-image-choice.selected{border-color:#ff6b00;box-shadow:0 0 0 3px #ff6b001c}
+  #vpVariationPanel .vp-var-image-choice img{display:block;width:100%;height:100%;min-width:0;object-fit:contain;border-radius:7px;background:#f7f7f8}
+  #vpVariationPanel .vp-var-image-choice span{position:absolute;right:3px;bottom:3px;min-width:18px;height:18px;display:grid;place-items:center;border-radius:6px;background:#20242b;color:white;font-size:10px;font-weight:800}
+  #vpVariationPanel .vp-var-image-picker small{display:block;margin-top:7px;color:#747b86;font-size:10px;line-height:1.4}
+  #vpVariationPanel .vp-var-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0}
+  #vpVariationPanel .vp-var-actions input{min-height:42px;flex:1 1 240px;max-width:420px;box-sizing:border-box}
+  #vpVariationPanel .vp-var-msg{margin:10px 0}
+  @media(max-width:700px){
+   #vpVariationPanel{padding:12px}
+   #vpVariationPanel .vp-variation-table{min-width:1680px}
+   #vpVariationPanel .vp-variation-table th,#vpVariationPanel .vp-variation-table td{padding:10px 9px}
+   #vpVariationPanel .vp-var-image-grid{grid-template-columns:repeat(auto-fill,minmax(54px,1fr))}
+   #vpVariationPanel .vp-var-image-choice{width:56px;height:62px}
+  }`;
+ document.head.appendChild(style);
+}
 function build(){
+ ensureVariationLayoutCSS();
  const sec=$('#products');if(!sec||sec.dataset.vpReady)return;sec.dataset.vpReady='1';
  sec.innerHTML=`
   <div class="vp-top"><div><span class="vp-kicker"><i></i> CATALOG</span><h1>Products</h1><p>Create simple products or variable products with Color, Size, Material and any combination you need.</p></div><button class="gz-btn primary" id="vpNewTop" type="button">＋ Add Product</button></div>
