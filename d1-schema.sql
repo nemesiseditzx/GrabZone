@@ -44,6 +44,21 @@ CREATE TABLE IF NOT EXISTS variations (id TEXT PRIMARY KEY,product_id TEXT NOT N
 CREATE INDEX IF NOT EXISTS variations_product_idx ON variations(product_id,status);
 CREATE TABLE IF NOT EXISTS vendor_email_settings (vendor_id TEXT PRIMARY KEY,order_notification_email TEXT,support_email TEXT,customer_email_notifications INTEGER NOT NULL DEFAULT 1,vendor_email_notifications INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS vendor_orders (id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,shipping_charge REAL NOT NULL DEFAULT 0,total REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'New',admin_note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id));
+
+CREATE TABLE IF NOT EXISTS vendor_order_items (
+  id TEXT PRIMARY KEY,
+  vendor_order_id TEXT NOT NULL,
+  order_item_id TEXT NOT NULL,
+  product_id TEXT,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price REAL NOT NULL DEFAULT 0,
+  line_total REAL NOT NULL DEFAULT 0,
+  variation_id TEXT,
+  variation_options TEXT,
+  variation_sku TEXT,
+  sku TEXT
+);
+
 CREATE INDEX IF NOT EXISTS vendor_orders_vendor_idx ON vendor_orders(vendor_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS vendor_orders_order_idx ON vendor_orders(order_id,vendor_id);
 CREATE INDEX IF NOT EXISTS vendor_orders_status_idx ON vendor_orders(vendor_id,status,created_at DESC);
