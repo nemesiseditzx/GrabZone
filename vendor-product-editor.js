@@ -141,7 +141,7 @@ function renderVariationRows(){
    const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(' · ');
    const selected=v.image_url||'';
    const thumbs=productImages.length?productImages.map((url,i)=>'<button type="button" class="vp-var-image-choice '+(selected===url?'selected':'')+'" data-image-url="'+esc(url)+'" title="Use image '+(i+1)+'"><img src="'+esc(url)+'" alt="Product image '+(i+1)+'"><span>'+(i+1)+'</span></button>').join(''):'<span class="vp-no-images">No product images available</span>';
-   return '<tr data-variation-id="'+esc(v.id)+'"><td class="vp-var-name"><b>'+esc(labels||'Variation')+'</b></td><td><input data-v="sku" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="'+Number(v.regular_price??0)+'"></td><td><input data-v="old" type="number" min="0" step="0.01" value="'+(v.old_price??'')+'"></td><td><select data-v="status"><option '+(v.status==='Available'||!v.status?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><div class="vp-var-image-picker"><div class="vp-var-image-grid">'+thumbs+'</div><small>Select one of the product images for this variation.</small></div></td><td><button type="button" class="gz-btn light vp-save-variation">Save</button></td></tr>';
+   return '<tr data-variation-id="'+esc(v.id)+'"><td class="vp-var-name"><b>'+esc(labels||'Variation')+'</b></td><td><input data-v="sku" aria-label="Variation SKU" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" aria-label="Regular price" type="number" min="0" step="0.01" value="'+Number(v.regular_price??0)+'"></td><td><input data-v="sale" aria-label="Sale price" type="number" min="0" step="0.01" value="'+(v.sale_price??'')+'"></td><td><input data-v="old" aria-label="Old price" type="number" min="0" step="0.01" value="'+(v.old_price??'')+'"></td><td><input data-v="stock" aria-label="Stock quantity" type="number" min="0" step="1" value="'+Number(v.stock??0)+'"></td><td><select data-v="stockmode" aria-label="Stock tracking"><option value="tracked" '+(v.stock_mode==='tracked'?'selected':'')+'>Track stock</option><option value="untracked" '+(v.stock_mode!=='tracked'?'selected':'')+'>No stock tracking</option></select></td><td><input data-v="min" aria-label="Minimum quantity" type="number" min="1" step="1" value="'+Number(v.min_qty||1)+'"></td><td><input data-v="max" aria-label="Maximum quantity (optional)" type="number" min="1" step="1" value="'+(v.max_qty??'')+'"></td><td><select data-v="status" aria-label="Variation status"><option '+(v.status==='Available'||!v.status?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><div class="vp-var-image-picker"><div class="vp-var-image-grid">'+thumbs+'</div><small>Select one of the product images for this variation.</small></div></td><td><button type="button" class="gz-btn light vp-save-variation">Save</button><button type="button" class="gz-btn light vp-disable-variation">Disable</button></td></tr>';
  }).join('');
  body.querySelectorAll('.vp-var-image-choice').forEach(btn=>btn.onclick=async()=>{
    const row=btn.closest('tr'),id=row?.dataset.variationId,url=btn.dataset.imageUrl,v=state.variations.find(x=>String(x.id)===String(id));
@@ -158,6 +158,7 @@ function renderVariationRows(){
    }finally{btn.disabled=false}
  });
  body.querySelectorAll('.vp-save-variation').forEach(btn=>btn.onclick=saveVariation);
+ body.querySelectorAll('.vp-disable-variation').forEach(btn=>btn.onclick=async()=>{const row=btn.closest('tr'),id=row?.dataset.variationId;if(!id||!confirm('Disable this variation? It will no longer be purchasable.'))return;btn.disabled=true;try{await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'DELETE',body:JSON.stringify({product_id:$('#vpId').value})});const v=state.variations.find(x=>String(x.id)===String(id));if(v)v.status='Disabled';await loadVariations($('#vpId').value)}catch(err){notify(err.message)}finally{btn.disabled=false}});
 }
 async function saveVariation(e){
  const row=e.currentTarget.closest('tr'),id=row?.dataset.variationId;if(!id)return;
@@ -165,8 +166,9 @@ async function saveVariation(e){
  const v=state.variations.find(x=>String(x.id)===String(id));if(!v)return;
  btn.disabled=true;
  try{
-   await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({sku:val('sku'),regular_price:Number(val('regular')||0),old_price:val('old')===''?null:Number(val('old')),status:val('status'),image_url:v.image_url||''})});
-   v.sku=val('sku');v.regular_price=Number(val('regular')||0);v.old_price=val('old')===''?null:Number(val('old'));v.status=val('status');
+   const payload={sku:val('sku'),regular_price:Number(val('regular')||0),sale_price:val('sale')===''?null:Number(val('sale')),old_price:val('old')===''?null:Number(val('old')),stock:Number(val('stock')||0),stock_mode:val('stockmode'),min_qty:Number(val('min')||1),max_qty:val('max')===''?null:Number(val('max')),status:val('status'),image_url:v.image_url||''};
+   await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify(payload)});
+   Object.assign(v,payload);
    btn.textContent='Saved ✓';setTimeout(()=>btn.textContent='Save',900);
  }catch(err){notify(err.message)}finally{btn.disabled=false}
 }
