@@ -65,8 +65,13 @@ async function reserveInventory(e,items){
  for(const item of items){
   const n=qty(item.quantity);
   if(item.variation_id){
-   const v=await one(e,"SELECT pv.id,pv.status,pv.product_id,pv.stock,pv.stock_mode,pv.min_qty,pv.max_qty,p.vendor_id,p.published,p.name product_name,ven.status vendor_status FROM product_variations pv JOIN products p ON p.id=pv.product_id LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE pv.id=?",[clean(item.variation_id,120)]);
-   if(!v||!v.published||v.status!=='Available'||(v.vendor_id&&String(v.vendor_status||'').toLowerCase()!=='active'))throw Object.assign(new Error('One selected variation is no longer available.'),{status:409});
+   const v=await one(e,"SELECT pv.id,pv.status,pv.product_id,pv.stock,pv.stock_mode,pv.min_qty,pv.max_qty,pv.regular_price,pv.sale_price,pv.sku,pv.image_url,p.vendor_id,p.published,p.name product_name,ven.status vendor_status FROM product_variations pv JOIN products p ON p.id=pv.product_id LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE pv.id=?",[clean(item.variation_id,120)]);
+   if(!v||String(v.product_id)!==String(item.product_id)||!v.published||v.status!=='Available'||(v.vendor_id&&String(v.vendor_status||'').toLowerCase()!=='active'))throw Object.assign(new Error('One selected variation is no longer available for this product.'),{status:409});
+   const regular=Number(v.regular_price||0),sale=v.sale_price===null||v.sale_price===undefined||v.sale_price===''?null:Number(v.sale_price);
+   item.unit_price=sale!==null&&Number.isFinite(sale)&&sale>=0&&sale<regular?sale:regular;
+   item.price=item.unit_price;item.sku=v.sku||item.sku||'';item.image_url=v.image_url||item.image_url||'';
+   const optionRows=(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[v.id])).results||[];
+   item.variation_options=Object.fromEntries(optionRows.map(x=>[x.name,x.value]));
    const minQty=Math.max(1,Math.floor(Number(v.min_qty||1))),maxQty=v.max_qty===null||v.max_qty===undefined||v.max_qty===''?null:Math.floor(Number(v.max_qty));
    if(n<minQty)throw Object.assign(new Error('Selected variation requires a minimum quantity of '+minQty+'.'),{status:400});
    if(maxQty!==null&&n>maxQty)throw Object.assign(new Error('Selected variation allows a maximum quantity of '+maxQty+'.'),{status:400});
