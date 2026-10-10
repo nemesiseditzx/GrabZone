@@ -202,7 +202,7 @@ async function createOrder(req,e,next,ctx){
  if(!b||b.fn!=='create_public_order')return null;
  const payload=b.args?.payload||b.payload||{},items=Array.isArray(payload.items)?payload.items:[];
  if(!items.length)return next(req);
- await schema(e);await ensureVendorOrderTables(e);
+ await schema(e);await ensureVendorOrderTables(e);await ensureDefaultVendor(e);
  let shipping=0;
  const vendorIds=new Set();
  for(const item of items){const v=await one(e,"SELECT p.vendor_id,ven.status FROM products p LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE p.id=?",[clean(item.product_id,120)]);if(v?.vendor_id)vendorIds.add(v.vendor_id)}
