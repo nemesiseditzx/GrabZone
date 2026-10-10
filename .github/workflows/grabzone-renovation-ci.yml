@@ -34,3 +34,5 @@ jobs:
           done
       - name: Run renovation regression tests
         run: node --test tests/*.test.mjs
+      - name: Validate Cloudflare Worker bundle without deploying
+        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/grabzone-wrangler-dry-run
