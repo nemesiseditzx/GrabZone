@@ -42,7 +42,7 @@ test('checkout confirmation email includes selected variation details', () => {
   assert.ok(checkout.includes('t.me/grabzoneofficial'));
 });
 
-test('home storefront paginates the product catalogue instead of rendering every product at once', () => {
+test('home storefront paginates the product catalogue and resets on filter changes', () => {
   const home = read('store.js');
   assert.ok(home.includes('const pageSize = 20'));
   assert.ok(home.includes('gzHomeProductPagination'));
@@ -55,15 +55,10 @@ test('vendor variation generation returns persisted combinations and clean store
   const worker = read('worker.mjs');
   assert.ok(api.includes('count:rows.length,options:opts,variations'));
   assert.ok(worker.includes("incoming.pathname='/marketplace-store.html'"));
-  assert.ok(read('store.js').includes("onerror=\"this.onerror=null;this.src='/favicon.png\"") || read('store.js').includes("this.src='/favicon.png'"));
-  assert.ok(read('marketplace-reference-ui.js').includes('this.src=&quot;/favicon.png&quot;'));
-  assert.ok(read('marketplace-store.html').includes('this.src=&quot;/favicon.png&quot;'));
-});
-));
 });
 
 test('storefront product cards use a fallback when an image URL fails', () => {
-  assert.ok(read('store.js').includes("onerror=\"this.onerror=null;this.src='/favicon.png\"") || read('store.js').includes("this.src='/favicon.png'"));
+  assert.ok(read('store.js').includes("this.src='/favicon.png'"));
   assert.ok(read('marketplace-reference-ui.js').includes('this.src=&quot;/favicon.png&quot;'));
   assert.ok(read('marketplace-store.html').includes('this.src=&quot;/favicon.png&quot;'));
 });
