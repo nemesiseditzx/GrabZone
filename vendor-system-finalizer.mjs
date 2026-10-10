@@ -11,6 +11,7 @@ let vendorOrderSchemaPromise=null;
 async function ensureVendorOrderTables(e){if(vendorOrderSchemaPromise)return vendorOrderSchemaPromise;vendorOrderSchemaPromise=(async()=>{
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,discount_amount REAL NOT NULL DEFAULT 0,coupon_code TEXT,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,shipping_fee REAL NOT NULL DEFAULT 0,shipping_charge REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,total REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id))").run().catch(()=>{});
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT,sku TEXT)").run().catch(()=>{});
+  await e.DB.prepare("CREATE INDEX IF NOT EXISTS vendor_order_items_variation_idx ON vendor_order_items(variation_id)").run().catch(()=>{});
  for(const sql of [
   "ALTER TABLE vendor_orders ADD COLUMN commission_amount REAL NOT NULL DEFAULT 0",
   "ALTER TABLE vendor_orders ADD COLUMN vendor_earnings REAL NOT NULL DEFAULT 0",
