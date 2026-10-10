@@ -1,7 +1,7 @@
 # GrabZone Full Renovation — Progress Log
 Updated: 2026-10-10
 Target branch: `grabzone-full-renovation-2026-10-10`
-Last verified code commit: `6ff4871de649154b0753bd845b437ac5614ee793`
+Latest code/test commit: `c9f1b6497df8f98b6ee669697b6233e7229d24c5`
 
 ## Implemented
 
@@ -36,18 +36,25 @@ Last verified code commit: `6ff4871de649154b0753bd845b437ac5614ee793`
 - Added regression tests for checkout contracts, discount accounting, inventory, ownership, vendor status compatibility, retryable finalization, image uploads, and UI dialogs/feedback.
 - The renovation CI checks external JavaScript syntax, inline JavaScript from root HTML pages, the regression suite, local D1 schema application, and a Wrangler Worker dry-run build. It does not deploy.
 
-## Last verified CI result
+## Latest verified CI result
 
-GitHub Actions run: https://github.com/nemesiseditzx/GrabZone/actions/runs/38083601362
+GitHub Actions run: https://github.com/nemesiseditzx/GrabZone/actions/runs/38087339746
 
 - JavaScript syntax: passed
 - Inline HTML scripts: 40 extracted and syntax-checked
-- Regression tests: 50 passed, 0 failed
+- Regression tests: 51 passed, 0 failed
+- Added a runtime regression test proving any `*.workers.dev` preview host uses its own origin for backend requests while `grabzone.tech` retains the configured production backend URL
 - D1 schema: applied successfully to Wrangler's local database
 - Wrangler dry-run bundle: passed
 - No production deployment performed by this workflow
 
-The latest verified commit also fixes the vendor-order cancellation handler's previous-status lookup and adds a regression assertion for it.
+The latest code/test commit also fixes the vendor-order cancellation handler's previous-status lookup and adds a regression assertion for it. The frontend backend-origin routing fix is in commit `11ee21cbc4b1e969819144749baf74b367a4cc12` and covered by the 51-test CI run.
+
+## Backend connection update
+
+- `config.js` now recognizes every Cloudflare Workers preview hostname ending in `.workers.dev`, rather than only one hard-coded vendor preview hostname. Preview frontend API calls use `window.location.origin`; `grabzone.tech` continues using `https://grabzone.nemesiseditzx984.workers.dev`.
+- This is a code-level routing fix. It does not prove a remote Worker is deployed or that its bindings are healthy.
+- The current `wrangler.jsonc`, `wrangler.marketplace-dev.jsonc`, and `wrangler.vendor-preview.jsonc` configurations reuse the same D1 database ID and R2 bucket name. Do not deploy the renovation branch for end-to-end testing until a separate disposable D1 database and R2 bucket are configured.
 
 ## Still not verified end-to-end
 - Browser-driven checkout and vendor order flow against a safe deployment of this exact renovation branch.
