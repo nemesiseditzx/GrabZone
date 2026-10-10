@@ -70,8 +70,12 @@ async function reserveInventory(e,items){
    const minQty=Math.max(1,Math.floor(Number(v.min_qty||1))),maxQty=v.max_qty===null||v.max_qty===undefined||v.max_qty===''?null:Math.floor(Number(v.max_qty));
    if(n<minQty)throw Object.assign(new Error('Selected variation requires a minimum quantity of '+minQty+'.'),{status:400});
    if(maxQty!==null&&n>maxQty)throw Object.assign(new Error('Selected variation allows a maximum quantity of '+maxQty+'.'),{status:400});
-   if(String(v.stock_mode||'untracked')==='tracked'&&n>Number(v.stock||0))throw Object.assign(new Error('Only '+Number(v.stock||0)+' unit(s) remain for the selected variation.'),{status:409});
-   held.push({kind:'variation',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name});
+   const tracked=String(v.stock_mode||'untracked')==='tracked';
+   if(tracked){
+    const reserved=await e.DB.prepare("UPDATE product_variations SET stock=stock-?,updated_at=? WHERE id=? AND status='Available' AND stock_mode='tracked' AND COALESCE(stock,0)>=?").bind(n,now(),v.id,n).run();
+    if(Number(reserved.meta?.changes||0)!==1){const latest=await one(e,'SELECT stock FROM product_variations WHERE id=?',[v.id]);throw Object.assign(new Error('Only '+Number(latest?.stock||0)+' unit(s) remain for the selected variation.'),{status:409})}
+   }
+   held.push({kind:'variation',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name,reserved_stock:tracked});
   }else{
    const p=await one(e,"SELECT p.id,p.name,p.published,p.vendor_id,v.status vendor_status FROM products p LEFT JOIN vendors v ON v.id=p.vendor_id WHERE p.id=?",[clean(item.product_id,120)]);
    if(!p||!p.published||(p.vendor_id&&String(p.vendor_status||'').toLowerCase()!=='active'))throw Object.assign(new Error('One selected product is no longer available.'),{status:409});
@@ -80,7 +84,7 @@ async function reserveInventory(e,items){
  }
  return held;
 }
-async function restoreInventory(e,held){return true}
+async function restoreInventory(e,held){for(const item of [...(held||[])].reverse()){if(item.kind!=='variation'||!item.reserved_stock)continue;await e.DB.prepare("UPDATE product_variations SET stock=COALESCE(stock,0)+?,updated_at=? WHERE id=?").bind(item.qty,now(),item.id).run()}return true}
 async function restoreVendorOrderInventory(e,vendorOrderId,vendorId){
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)").run();
  const rows=(await q(e,"SELECT voi.order_item_id,voi.product_id,voi.variation_id,voi.quantity,pv.stock_mode FROM vendor_order_items voi JOIN vendor_orders vo ON vo.id=voi.vendor_order_id LEFT JOIN product_variations pv ON pv.id=voi.variation_id WHERE voi.vendor_order_id=? AND vo.vendor_id=?",[vendorOrderId,vendorId])).results||[];
@@ -101,7 +105,16 @@ async function restoreVendorOrderInventory(e,vendorOrderId,vendorId){
  }
  return true;
 }
-async function logHeld(e,held,orderId){return true}
+async function logHeld(e,held,orderId){
+ await e.DB.prepare("CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)").run();
+ const rows=(await q(e,"SELECT id,product_id,quantity,variation_id FROM order_items WHERE order_id=? ORDER BY rowid",[orderId])).results||[];
+ for(let i=0;i<Math.min(rows.length,held.length);i++){
+  const h=held[i],row=rows[i];
+  if(h.kind!=='variation'||!h.reserved_stock||!row.variation_id)continue;
+  await e.DB.prepare("INSERT OR IGNORE INTO inventory_log(id,product_id,variation_id,vendor_id,change_qty,reason,reference_id,created_at) VALUES(?,?,?,?,?,?,?,?)").bind("sale:"+row.id,row.product_id,row.variation_id,h.vendor_id,h.qty,"order_sale",orderId,now()).run();
+ }
+ return true;
+}
 async function snapshot(e,orderId,payload){const rows=(await q(e,'SELECT id,product_id,quantity,unit_price,line_total FROM order_items WHERE order_id=? ORDER BY rowid',[orderId])).results||[];const items=Array.isArray(payload.items)?payload.items:[];for(let i=0;i<Math.min(rows.length,items.length);i++){const src=items[i];if(!src?.variation_id)continue;const v=await one(e,"SELECT pv.sku,pv.image_url,(SELECT image_url FROM variation_images WHERE variation_id=pv.id ORDER BY sort_order,id LIMIT 1) variation_image FROM product_variations pv WHERE pv.id=?",[clean(src.variation_id,120)]);const optionRows=(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[src.variation_id])).results||[];const opts=Object.fromEntries(optionRows.map(x=>[x.name,x.value]));if(!Object.keys(opts).length&&src.variation_options&&typeof src.variation_options==='object')Object.assign(opts,src.variation_options);await e.DB.prepare('UPDATE order_items SET variation_id=?,variation_options=?,variation_sku=?,unit_price=?,line_total=?,image_url=COALESCE(?,image_url) WHERE id=?').bind(src.variation_id,JSON.stringify(opts),v?.sku||src.sku||'',Number(rows[i].unit_price||0),Number(rows[i].line_total||0),v?.image_url||v?.variation_image||src.image_url||null,rows[i].id).run()}const vendorRows=(await q(e,'SELECT voi.id,voi.order_item_id FROM vendor_order_items voi JOIN vendor_orders vo ON vo.id=voi.vendor_order_id WHERE vo.order_id=?',[orderId])).results||[];for(const x of vendorRows){const oi=await one(e,'SELECT variation_id,variation_options,variation_sku FROM order_items WHERE id=?',[x.order_item_id]);if(oi)await e.DB.prepare('UPDATE vendor_order_items SET variation_id=?,variation_options=?,variation_sku=? WHERE id=?').bind(oi.variation_id,oi.variation_options,oi.variation_sku,x.id).run()}}
 async function emailStatus(next,e,orderNumber,status){try{const a=await one(e,'SELECT id,email FROM admin_users ORDER BY created_at LIMIT 1');const secret=String(e.MARKETPLACE_AUTH_SECRET||e.D1_AUTH_SECRET||e.GRABZONE_ADMIN_PASSWORD||'');if(!a||!secret)return false;const payload=btoa(JSON.stringify({sub:a.id,email:a.email,exp:Math.floor(Date.now()/1000)+300})).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);const sig=[...new Uint8Array(await crypto.subtle.sign('HMAC',k,new TextEncoder().encode(payload)))].map(x=>String.fromCharCode(x)).join('');const token=payload+'.'+btoa(sig).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');const r=await next(new Request(new URL('/api/send-order-email',e.PUBLIC_BASE_URL||'http://internal'),{method:'POST',headers:{'Content-Type':'application/json','X-GrabZone-Token':token},body:JSON.stringify({orderNumber,type:'order_status_updated',status})}));return r.ok}catch{return false}}
 async function notifyVendor(e,vendorOrderId){
@@ -219,7 +232,7 @@ async function createOrder(req,e,next,ctx){
   const nb={...b,args:{...(b.args||{}),payload:{...payload,shipping_charge:shipping,items:items.map(i=>({...i}))}}};
   const h=new Headers(req.headers);h.delete('content-length');h.set('X-GZ-Inventory-Reserved','1');
   const r=await next(new Request(req.url,{method:'POST',headers:h,body:JSON.stringify(nb)}));
-  if(!r.ok)return r;
+  if(!r.ok){await restoreInventory(e,held);return r;}
   const d=await r.clone().json().catch(()=>({})),o=d?.data||d?.order;
   if(!o?.id){console.error('GrabZone order was accepted without a readable order ID; vendor finalization could not be queued.');return r}
   try{
