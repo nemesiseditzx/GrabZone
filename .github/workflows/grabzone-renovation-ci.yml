@@ -1,0 +1,32 @@
+name: Validate GrabZone Full Renovation
+
+on:
+  push:
+    branches:
+      - grabzone-full-renovation-2026-10-10
+  pull_request:
+    branches:
+      - grabzone-full-renovation-2026-10-10
+
+permissions:
+  contents: read
+
+jobs:
+  syntax-and-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout renovation branch
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          set -e
+          for f in *.js *.mjs tests/*.mjs; do
+            [ -f "$f" ] || continue
+            node --check "$f"
+          done
+      - name: Run renovation regression tests
+        run: node --test tests/grabzone-renovation.test.mjs
