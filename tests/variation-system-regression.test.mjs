@@ -34,6 +34,15 @@ test('customer variation picker constrains quantity and order API validates it s
   assert.ok(finalizer.includes('unit(s) remain for the selected variation.'));
 });
 
+test('checkout overrides client variation price and verifies the variation belongs to the submitted product', () => {
+  const finalizer = read('vendor-system-finalizer.mjs');
+  assert.ok(finalizer.includes('pv.regular_price,pv.sale_price,pv.sku,pv.image_url'));
+  assert.ok(finalizer.includes('String(v.product_id)!==String(item.product_id)'));
+  assert.ok(finalizer.includes('item.unit_price=sale!==null'));
+  assert.ok(finalizer.includes('item.price=item.unit_price'));
+  assert.ok(finalizer.includes('item.variation_options=Object.fromEntries(optionRows.map'));
+});
+
 test('tracked variation inventory is atomically deducted and restored on failed order creation', () => {
   const finalizer = read('vendor-system-finalizer.mjs');
   assert.ok(finalizer.includes("UPDATE product_variations SET stock=stock-?"));
