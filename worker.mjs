@@ -798,6 +798,12 @@ async function handle(req,env){
  try{
   if(req.method==="OPTIONS")return gzPreflight(req,env);
   const incoming=new URL(req.url);
+  // Clean vendor storefront URLs must resolve to the storefront asset while
+  // preserving the browser-visible /store/<slug> path for client-side slug lookup.
+  if(/^\/store\/[A-Za-z0-9-]+\/?$/.test(incoming.pathname)){
+   incoming.pathname='/marketplace-store.html';
+   req=new Request(incoming.toString(),req);
+  }
   if(/^\/feedback-surveys\/[^/]+\/?$/.test(incoming.pathname)){
    incoming.pathname='/feedback-surveys.html';
    req=new Request(incoming.toString(),req);
