@@ -22,3 +22,25 @@ test('admin product editor mirror uses non-blocking feedback', () => {
   assert.ok(editor.includes('gzAdminProductToastRoot'));
   assert.ok(!editor.includes('alert('));
 });
+
+
+test('Cloudflare Workers preview frontends call their own backend origin', async () => {
+  const vm = await import('node:vm');
+  const configSource = read('config.js');
+  const loadConfig = (hostname, origin) => {
+    const window = { location: { hostname, origin } };
+    const document = {
+      querySelector: () => null,
+      createElement: () => ({ setAttribute() {} }),
+      head: { appendChild() {} }
+    };
+    vm.runInNewContext(configSource, { window, document });
+    return window.GRABZONE_CONFIG;
+  };
+
+  const preview = loadConfig('renovation-preview.grabzone.workers.dev', 'https://renovation-preview.grabzone.workers.dev');
+  assert.equal(preview.backendUrl, 'https://renovation-preview.grabzone.workers.dev');
+
+  const production = loadConfig('grabzone.tech', 'https://grabzone.tech');
+  assert.equal(production.backendUrl, 'https://grabzone.nemesiseditzx984.workers.dev');
+});
