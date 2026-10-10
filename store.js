@@ -1047,9 +1047,9 @@ function renderProducts() {
     });
 
   const gzFuzzyMatch = (haystack) => {
-    const tokens = query.split(/\\s+/).filter(Boolean);
+    const tokens = query.split(/\s+/).filter(Boolean);
     if (!tokens.length) return true;
-    const words = String(haystack || "").split(/[^a-z0-9\\u0980-\\u09ff]+/i).filter(Boolean);
+    const words = String(haystack || "").split(/[^a-z0-9\u0980-\u09ff]+/i).filter(Boolean);
     const distance = (a, b) => {
       if (a === b) return 0;
       if (Math.abs(a.length - b.length) > 2) return 99;
