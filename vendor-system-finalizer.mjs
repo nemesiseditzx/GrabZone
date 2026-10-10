@@ -65,8 +65,12 @@ async function reserveInventory(e,items){
  for(const item of items){
   const n=qty(item.quantity);
   if(item.variation_id){
-   const v=await one(e,"SELECT pv.id,pv.status,pv.product_id,p.vendor_id,p.published,p.name product_name,ven.status vendor_status FROM product_variations pv JOIN products p ON p.id=pv.product_id LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE pv.id=?",[clean(item.variation_id,120)]);
+   const v=await one(e,"SELECT pv.id,pv.status,pv.product_id,pv.stock,pv.stock_mode,pv.min_qty,pv.max_qty,p.vendor_id,p.published,p.name product_name,ven.status vendor_status FROM product_variations pv JOIN products p ON p.id=pv.product_id LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE pv.id=?",[clean(item.variation_id,120)]);
    if(!v||!v.published||v.status!=='Available'||(v.vendor_id&&String(v.vendor_status||'').toLowerCase()!=='active'))throw Object.assign(new Error('One selected variation is no longer available.'),{status:409});
+   const minQty=Math.max(1,Math.floor(Number(v.min_qty||1))),maxQty=v.max_qty===null||v.max_qty===undefined||v.max_qty===''?null:Math.floor(Number(v.max_qty));
+   if(n<minQty)throw Object.assign(new Error('Selected variation requires a minimum quantity of '+minQty+'.'),{status:400});
+   if(maxQty!==null&&n>maxQty)throw Object.assign(new Error('Selected variation allows a maximum quantity of '+maxQty+'.'),{status:400});
+   if(String(v.stock_mode||'untracked')==='tracked'&&n>Number(v.stock||0))throw Object.assign(new Error('Only '+Number(v.stock||0)+' unit(s) remain for the selected variation.'),{status:409});
    held.push({kind:'variation',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name});
   }else{
    const p=await one(e,"SELECT p.id,p.name,p.published,p.vendor_id,v.status vendor_status FROM products p LEFT JOIN vendors v ON v.id=p.vendor_id WHERE p.id=?",[clean(item.product_id,120)]);
