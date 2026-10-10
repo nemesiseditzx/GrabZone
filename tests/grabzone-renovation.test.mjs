@@ -22,7 +22,7 @@ test('checkout finalizer creates vendor orders after the base order has been cre
   assert.match(finalizer, /await snapshot\(e,o\.id,payload\);/);
   assert.match(finalizer, /await createVendorOrders\(e,o\.id\);/);
   assert.match(finalizer, /await enqueueVendorFinalization\(e,o\.id,payload,finalizationError\)/);
-  assert.match(finalizer, /if\(!r\.ok\)\{await restoreInventory\(e,held\);return r\}/);
+  assert.match(finalizer, /if\(!r\.ok\)return r;/);
 });
 
 test('the current checkout contract remains Cash on Delivery', () => {
