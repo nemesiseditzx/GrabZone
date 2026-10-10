@@ -8,7 +8,7 @@ async function sha(v){return[...new Uint8Array(await crypto.subtle.digest('SHA-2
 function cookie(r,n){for(const p of(r.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}
 async function vendor(r,e){await schema(e);const t=cookie(r,'gz_vendor_session')||(r.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!t)return null;return one(e,"SELECT vu.id,vu.vendor_id,vu.email,vu.role,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND COALESCE(vu.active,1)=1 AND LOWER(COALESCE(vu.status,'active'))='active' AND LOWER(COALESCE(v.status,'active'))='active' LIMIT 1",[await sha(t),now()])}
 async function ensureVendorOrderTables(e){
- await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,discount_amount REAL NOT NULL DEFAULT 0,coupon_code TEXT,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,shipping_fee REAL NOT NULL DEFAULT 0,shipping_charge REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,total REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
+ await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,discount_amount REAL NOT NULL DEFAULT 0,coupon_code TEXT,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,shipping_fee REAL NOT NULL DEFAULT 0,shipping_charge REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,total REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id))").run().catch(()=>{});
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT,sku TEXT)").run().catch(()=>{});
  for(const sql of [
   "ALTER TABLE vendor_orders ADD COLUMN commission_amount REAL NOT NULL DEFAULT 0",
@@ -20,6 +20,7 @@ async function ensureVendorOrderTables(e){
   "ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0",
   "ALTER TABLE vendor_orders ADD COLUMN total REAL NOT NULL DEFAULT 0",
   "ALTER TABLE vendor_orders ADD COLUMN vendor_notified_at TEXT",
+  "CREATE UNIQUE INDEX IF NOT EXISTS vendor_orders_order_vendor_unique ON vendor_orders(order_id,vendor_id)",
   "ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT",
   "ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT",
   "ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT",
