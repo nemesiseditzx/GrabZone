@@ -32,7 +32,7 @@ test('vendor orders are generated after the underlying public order succeeds', (
   assert.ok(finalizer.includes('await snapshot(e,o.id,payload);'));
   assert.ok(finalizer.includes('await createVendorOrders(e,o.id);'));
   assert.ok(finalizer.includes('await enqueueVendorFinalization(e,o.id,payload,finalizationError)'));
-  assert.ok(finalizer.includes('if(!r.ok)return r;'));
+  assert.ok(finalizer.includes('if(!r.ok){await restoreInventory(e,held);return r;}'));
 });
 
 test('checkout remains COD and core data tables remain in schema', () => {
