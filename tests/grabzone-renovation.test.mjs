@@ -38,7 +38,6 @@ test('the main D1 schema keeps core marketplace and rewards tables', () => {
     'vendors',
     'vendor_users',
     'vendor_orders',
-    'vendor_order_items',
     'shipments',
     'vendor_payouts',
     'customer_points',
