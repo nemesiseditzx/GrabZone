@@ -107,11 +107,10 @@ async function restoreVendorOrderInventory(e,vendorOrderId,vendorId){
 }
 async function logHeld(e,held,orderId){
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)").run();
- const rows=(await q(e,"SELECT id,product_id,quantity,variation_id FROM order_items WHERE order_id=? ORDER BY rowid",[orderId])).results||[];
- for(let i=0;i<Math.min(rows.length,held.length);i++){
-  const h=held[i],row=rows[i];
-  if(h.kind!=='variation'||!h.reserved_stock||!row.variation_id)continue;
-  await e.DB.prepare("INSERT OR IGNORE INTO inventory_log(id,product_id,variation_id,vendor_id,change_qty,reason,reference_id,created_at) VALUES(?,?,?,?,?,?,?,?)").bind("sale:"+row.id,row.product_id,row.variation_id,h.vendor_id,h.qty,"order_sale",orderId,now()).run();
+ const rows=(await q(e,"SELECT oi.id,oi.product_id,oi.quantity,oi.variation_id,pv.stock_mode,p.vendor_id FROM order_items oi LEFT JOIN product_variations pv ON pv.id=oi.variation_id LEFT JOIN products p ON p.id=oi.product_id WHERE oi.order_id=? ORDER BY oi.rowid",[orderId])).results||[];
+ for(const row of rows){
+  if(!row.variation_id||String(row.stock_mode||'untracked')!=='tracked')continue;
+  await e.DB.prepare("INSERT OR IGNORE INTO inventory_log(id,product_id,variation_id,vendor_id,change_qty,reason,reference_id,created_at) VALUES(?,?,?,?,?,?,?,?)").bind("sale:"+row.id,row.product_id,row.variation_id,row.vendor_id,Math.max(1,Math.floor(Number(row.quantity||1))),"order_sale",orderId,now()).run();
  }
  return true;
 }
@@ -207,6 +206,7 @@ async function processPendingVendorFinalizations(e){
    const payload=JSON.parse(job.payload_json||'{"items":[]}');
    await snapshot(e,job.order_id,payload);
    await createVendorOrders(e,job.order_id);
+   await logHeld(e,[],job.order_id);
    await e.DB.prepare("UPDATE vendor_order_finalization_jobs SET status='completed',last_error=NULL,updated_at=? WHERE id=?").bind(now(),job.id).run();
   }catch(err){
    const attempts=Number(job.attempts||0)+1,status=attempts>=8?'failed':'pending';
