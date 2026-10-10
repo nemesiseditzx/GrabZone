@@ -29,12 +29,12 @@ test('variable product limits and required options are checked before the produc
 
 test('failed variation-image update restores the previous selected image', () => {
   const editor = read('admin-product-editor-mirror.js');
-  assert.ok(editor.includes('const previousImageUrl=v.image_url||\'\''));
+  assert.ok(editor.includes("const previousImageUrl=v.image_url||''"));
   assert.ok(editor.includes('v.image_url=previousImageUrl'));
   assert.ok(editor.includes('x.dataset.imageUrl===previousImageUrl'));
 });
 
 test('admin loads the updated product editor script cache version', () => {
   const admin = read('admin.html');
-  assert.match(admin, /admin-product-editor-mirror\\.js\\?v=20261010-bugfix2/);
+  assert.match(admin, /admin-product-editor-mirror\.js\?v=20261010-bugfix2/);
 });
