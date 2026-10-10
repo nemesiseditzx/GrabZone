@@ -557,7 +557,10 @@ async function submit(e){
         quantity:Number(i.quantity||1),
         unit_price:Number(i.price||0),
         line_total:Number(i.price||0)*Number(i.quantity||1),
-        image_url:i.image_url||''
+        image_url:i.image_url||'',
+        variation_options:i.variation_options||{},
+        variation_sku:i.variation_sku||i.sku||'',
+        sku:i.variation_sku||i.sku||''
       }))
     );
     $('successEmailNote').textContent=emailSent
