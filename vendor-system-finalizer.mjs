@@ -47,7 +47,8 @@ async function ensureDefaultVendor(e){
  let id=existing?.id;
  if(!id){
   id=crypto.randomUUID();const t=now();
-  await e.DB.prepare("INSERT INTO vendors(id,name,slug,business_name,brand_name,email,status,shipping_fee,commission_type,commission_value,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,"GrabZone","grabzone","GrabZone","GrabZone",String(e.GMAIL_FROM_EMAIL||"support@grabzone.tech"),"Active",130,"percentage",0,t,t).run();
+  try{await e.DB.prepare("INSERT INTO vendors(id,name,slug,business_name,brand_name,email,status,shipping_fee,commission_type,commission_value,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,"GrabZone","grabzone","GrabZone","GrabZone",String(e.GMAIL_FROM_EMAIL||"support@grabzone.tech"),"Active",130,"percentage",0,t,t).run();}
+  catch(err){const raced=await one(e,"SELECT id FROM vendors WHERE slug='grabzone' LIMIT 1");if(!raced)throw err;id=raced.id;}
  }
  await e.DB.prepare("UPDATE products SET vendor_id=? WHERE vendor_id IS NULL").bind(id).run();
  return id;
