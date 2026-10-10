@@ -197,10 +197,11 @@ async function editSection(id){
  const modal=document.createElement('div');modal.id='gzSectionEditorModal';modal.className='gz-modal show';
  modal.innerHTML='<div class="gz-modal-box" role="dialog" aria-modal="true" aria-labelledby="gzSectionEditorTitle"><div class="gz-head"><div><div class="gz-kicker">STORE CONTENT</div><h2 id="gzSectionEditorTitle">Edit store section</h2><p>Update the title and content shown on your storefront.</p></div><button type="button" class="gz-btn light" data-section-close aria-label="Close editor">×</button></div><form id="gzSectionEditorForm" class="gz-form"><div class="gz-field"><label for="gzSectionEditorName">Section title</label><input id="gzSectionEditorName" maxlength="120" required value="'+esc(s.title||'')+'"></div><div class="gz-field"><label for="gzSectionEditorBody">Section content</label><textarea id="gzSectionEditorBody" rows="8" maxlength="12000">'+esc(s.body||'')+'</textarea></div><div class="gz-actions"><button type="submit" class="gz-btn primary" id="gzSectionEditorSave">Save section</button><button type="button" class="gz-btn light" data-section-close>Cancel</button></div><p id="gzSectionEditorMessage" class="form-msg" role="status" aria-live="polite"></p></form></div>';
  document.body.appendChild(modal);
- const close=()=>modal.remove();
+ let onKey;
+ const close=()=>{modal.remove();if(onKey)window.removeEventListener('keydown',onKey)};
  modal.querySelectorAll('[data-section-close]').forEach(b=>b.addEventListener('click',close));
  modal.addEventListener('click',e=>{if(e.target===modal)close()});
- const onKey=e=>{if(e.key==='Escape'){close();window.removeEventListener('keydown',onKey)}};
+ onKey=e=>{if(e.key==='Escape')close()};
  window.addEventListener('keydown',onKey);
  modal.querySelector('#gzSectionEditorName')?.focus();
  modal.querySelector('#gzSectionEditorForm')?.addEventListener('submit',async e=>{
