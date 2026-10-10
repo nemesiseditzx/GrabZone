@@ -13,3 +13,9 @@ test('vendor product editor uses the shared authenticated image uploader', () =>
   assert.ok(!editor.includes('alert('));
   assert.ok(editor.includes('const notify=(message,type=\'error\')=>'));
 });
+
+test('injected vendor upload controls report failures with non-blocking toast feedback', () => {
+  const entry = read('marketplace-stable-entry.mjs');
+  assert.ok(entry.includes('function toast(message)'));
+  assert.ok(!entry.includes('alert('));
+});
