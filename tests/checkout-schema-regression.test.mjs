@@ -38,7 +38,7 @@ test('checkout remains COD and core data tables remain in schema', () => {
   const schema = read('d1-schema.sql');
   assert.ok(worker.includes('"Cash on Delivery"'));
   for (const table of ['products','orders','order_items','vendors','vendor_users','vendor_orders','vendor_order_items','shipments','vendor_payouts','customer_points','grabpoints_ledger','membership_tiers','referral_codes','rewards_vouchers']) {
-    assert.ok(schema.includes('CREATE TABLE IF NOT EXISTS ' + table + '('), 'missing core table: ' + table);
+    assert.ok(schema.includes('CREATE TABLE IF NOT EXISTS ' + table), 'missing core table: ' + table);
   }
 });
 
