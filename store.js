@@ -145,6 +145,10 @@ function getSocialUrl(type) {
     );
   }
 
+  if (type === "telegram") {
+    return SITE.telegram || SITE.telegram_url || SITE.telegram_link || C?.telegram || "";
+  }
+
   return "";
 }
 
@@ -767,7 +771,8 @@ function applySiteSettings() {
   [
     ["wa", SITE.whatsapp || C?.whatsapp],
     ["ig", SITE.instagram || C?.instagram],
-    ["ms", SITE.messenger || SITE.facebook || C?.messenger || C?.facebook]
+    ["ms", SITE.messenger || SITE.facebook || C?.messenger || C?.facebook],
+    ["tg", getSocialUrl("telegram")]
   ].forEach(([id, url]) => {
     setHref(id, url || "#");
   });
@@ -1653,20 +1658,26 @@ async function renderDetail() {
         : []);
 
   const dbGallery = Array.isArray(images)
-    ? images.filter(x => x && x.image_url)
+    ? images.filter(x => x && x.image_url).sort((a, b) =>
+        Number(Boolean(b.is_main)) - Number(Boolean(a.is_main)) ||
+        Number(a.sort_order || 0) - Number(b.sort_order || 0))
     : [];
 
+  const dbHasMain = dbGallery.some(x => Boolean(x.is_main));
+  const candidates = [
+    ...(product.image_url ? [{ image_url: product.image_url, is_main: !dbHasMain }] : []),
+    ...dbGallery,
+    ...marketplaceImages,
+    ...storedUrls.map((image_url, i) => ({ image_url, is_main: i === 0 && !product.image_url && !dbHasMain }))
+  ].sort((a, b) => Number(Boolean(b.is_main)) - Number(Boolean(a.is_main)));
+
   const seenGallery = new Set();
-  const gallery = [...dbGallery, ...marketplaceImages, ...storedUrls.map((image_url, i) => ({
-    image_url,
-    is_main: i === 0
-  }))]
-    .filter(x => {
-      const url = String(x.image_url || "").trim();
-      if (!url || seenGallery.has(url)) return false;
-      seenGallery.add(url);
-      return true;
-    });
+  const gallery = candidates.filter(x => {
+    const url = String(x.image_url || "").trim();
+    if (!url || seenGallery.has(url)) return false;
+    seenGallery.add(url);
+    return true;
+  });
 
   if (!gallery.length) {
     gallery.push({
@@ -1738,10 +1749,11 @@ async function renderDetail() {
     src="${escAttr(
       gallery[0].image_url || '/favicon.png'
     )}"
+    data-gz-gallery-fallback-index="1"
     alt="${escAttr(
       product.name
     )}"
-   onerror="this.onerror=null;this.src=&#39;/favicon.png&#39;">
+   onerror="window.gzGalleryImageError ? window.gzGalleryImageError(this) : (this.onerror=null,this.src='/favicon.png')">
 
   <button
     type="button"
@@ -1823,8 +1835,22 @@ async function renderDetail() {
 
   try{const er=await fetch('/api/rewards/eligibility?product_id='+encodeURIComponent(product.id),{cache:'no-store'});if(er.ok){const eligibility=await er.json();const badges=[];if(eligibility.rewards_eligible)badges.push('Rewards Eligible');if(eligibility.referral_eligible)badges.push('Referral Eligible');if(badges.length){const priceEl=element.querySelector('.detail-price');if(priceEl){const wrap=document.createElement('div');wrap.className='gz-product-benefit-badges';wrap.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:12px 0';wrap.innerHTML=badges.map(x=>'<span style="display:inline-flex;background:#e4f7ea;color:#16723b;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:900">'+x+'</span>').join('');priceEl.parentNode.insertBefore(wrap,priceEl)}}}}catch(e){console.warn('Rewards eligibility unavailable',e)}
 
-  window.__gallery =
-    gallery;
+  window.__gallery = gallery;
+  window.gzGalleryImageError = function(img) {
+    const items = window.__gallery || [];
+    let next = Number(img?.dataset?.gzGalleryFallbackIndex || 0);
+    while (next < items.length) {
+      const candidate = String(items[next]?.image_url || "").trim();
+      next += 1;
+      if (img?.dataset) img.dataset.gzGalleryFallbackIndex = String(next);
+      if (candidate && candidate !== img.src && !candidate.endsWith("/favicon.png")) {
+        img.src = candidate;
+        return;
+      }
+    }
+    img.onerror = null;
+    img.src = "/favicon.png";
+  };
   window.__gzProductRendered = true;
   window.dispatchEvent(new Event('grabzone:product-rendered'));
   if(typeof window.GZMountCustomerVariations==='function') window.GZMountCustomerVariations();
@@ -1903,8 +1929,11 @@ function showGalleryImage(index) {
         );
 
     if (mainImage) {
-        mainImage.src =
-            gallery[index].image_url;
+        mainImage.dataset.gzGalleryFallbackIndex = String(index + 1);
+        mainImage.onerror = () => window.gzGalleryImageError
+          ? window.gzGalleryImageError(mainImage)
+          : (mainImage.onerror = null, mainImage.src = "/favicon.png");
+        mainImage.src = gallery[index].image_url;
     }
 
     document
