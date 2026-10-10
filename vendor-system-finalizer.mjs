@@ -130,38 +130,46 @@ async function notifyVendor(e,vendorOrderId){
 }
 
 async function createVendorOrders(e,orderId){
-  const orderCoupon=await one(e,'SELECT vendor_coupon_code,vendor_coupon_vendor_id,vendor_coupon_discount FROM orders WHERE id=?',[orderId]);
-  const table=(await one(e,"SELECT name FROM sqlite_master WHERE type='table' AND name='vendor_orders'"))?.name;
-  if(!table)return;
-  const rows=(await q(e,"SELECT oi.id order_item_id,oi.product_id,oi.product_name,oi.quantity,oi.unit_price,oi.line_total,oi.variation_id,oi.variation_options,oi.variation_sku,p.vendor_id,COALESCE(v.brand_name,v.business_name,v.slug,'GrabZone Vendor') vendor_name,COALESCE(v.shipping_fee,0) shipping_fee,COALESCE(v.commission_type,'percentage') commission_type,COALESCE(v.commission_value,0) commission_value FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN vendors v ON v.id=p.vendor_id WHERE oi.order_id=? ORDER BY oi.rowid",[orderId])).results||[];
-  const groups=new Map();
-  for(const row of rows){if(!row.vendor_id)continue;if(!groups.has(row.vendor_id))groups.set(row.vendor_id,{vendor_id:row.vendor_id,vendor_name:row.vendor_name,shipping_fee:Number(row.shipping_fee??0),commission_type:String(row.commission_type||'percentage'),commission_value:Number(row.commission_value||0),items:[]});groups.get(row.vendor_id).items.push(row);}
-  if(!groups.size)return;
-  const voCols=new Set(((await q(e,'PRAGMA table_info(vendor_orders)')).results||[]).map(x=>x.name));
-  const voiCols=new Set(((await q(e,'PRAGMA table_info(vendor_order_items)')).results||[]).map(x=>x.name));
-  for(const g of groups.values()){
-    const exists=await one(e,'SELECT id FROM vendor_orders WHERE order_id=? AND vendor_id=? LIMIT 1',[orderId,g.vendor_id]);
-    if(exists)continue;
-    const subtotal=Math.max(0,g.items.reduce((n,x)=>n+Number(x.line_total||0),0));
-    const discount=String(orderCoupon?.vendor_coupon_vendor_id||'')===String(g.vendor_id)?Math.min(subtotal,Math.max(0,Number(orderCoupon?.vendor_coupon_discount||0))):0;
-    const netSubtotal=Math.max(0,subtotal-discount);
-    const commission=g.commission_type==='percentage'?Math.min(netSubtotal,Math.round(netSubtotal*Math.max(0,g.commission_value)/100*100)/100):Math.min(netSubtotal,Math.max(0,g.commission_value));
-    const earnings=Math.max(0,netSubtotal-commission);
-    const delivery=Math.max(0,Number(g.shipping_fee??0));
-    const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,discount_amount:discount,coupon_code:discount?String(orderCoupon?.vendor_coupon_code||''):null,shipping_fee:delivery,shipping_charge:delivery,delivery_charge:delivery,total:netSubtotal+delivery,commission_amount:commission,vendor_earnings:earnings,status:'Processing',created_at:now(),updated_at:now()};
-    const vfields=Object.keys(vo).filter(k=>voCols.has(k));
-    if(!vfields.includes('id')||!vfields.includes('order_id')||!vfields.includes('vendor_id'))continue;
-    try{await e.DB.prepare('INSERT INTO vendor_orders('+vfields.join(',')+') VALUES('+vfields.map(()=>'?').join(',')+')').bind(...vfields.map(k=>vo[k])).run();}catch(err){const raced=await one(e,'SELECT id FROM vendor_orders WHERE order_id=? AND vendor_id=? LIMIT 1',[orderId,g.vendor_id]);if(raced)continue;throw err;}
-    for(const item of g.items){
-      const vi={id:crypto.randomUUID(),vendor_order_id:vo.id,order_item_id:item.order_item_id,product_id:item.product_id,quantity:item.quantity,unit_price:item.unit_price,line_total:item.line_total,variation_id:item.variation_id||null,variation_options:item.variation_options||null,variation_sku:item.variation_sku||null};
-      const ifields=Object.keys(vi).filter(k=>voiCols.has(k));
-      if(!ifields.includes('id')||!ifields.includes('vendor_order_id')||!ifields.includes('order_item_id'))continue;
-      await e.DB.prepare('INSERT INTO vendor_order_items('+ifields.join(',')+') VALUES('+ifields.map(()=>'?').join(',')+')').bind(...ifields.map(k=>vi[k])).run();
-    }
-    await notifyVendor(e,vo.id);
+ const orderCoupon=await one(e,'SELECT vendor_coupon_code,vendor_coupon_vendor_id,vendor_coupon_discount FROM orders WHERE id=?',[orderId]);
+ const table=(await one(e,"SELECT name FROM sqlite_master WHERE type='table' AND name='vendor_orders'"))?.name;
+ if(!table)return;
+ const rows=(await q(e,"SELECT oi.id order_item_id,oi.product_id,oi.product_name,oi.quantity,oi.unit_price,oi.line_total,oi.variation_id,oi.variation_options,oi.variation_sku,p.vendor_id,COALESCE(v.brand_name,v.business_name,v.slug,'GrabZone Vendor') vendor_name,COALESCE(v.shipping_fee,0) shipping_fee,COALESCE(v.commission_type,'percentage') commission_type,COALESCE(v.commission_value,0) commission_value FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN vendors v ON v.id=p.vendor_id WHERE oi.order_id=? ORDER BY oi.rowid",[orderId])).results||[];
+ const groups=new Map();
+ for(const row of rows){if(!row.vendor_id)continue;if(!groups.has(row.vendor_id))groups.set(row.vendor_id,{vendor_id:row.vendor_id,vendor_name:row.vendor_name,shipping_fee:Number(row.shipping_fee??0),commission_type:String(row.commission_type||'percentage'),commission_value:Number(row.commission_value||0),items:[]});groups.get(row.vendor_id).items.push(row);}
+ if(!groups.size)return;
+ const voCols=new Set(((await q(e,'PRAGMA table_info(vendor_orders)')).results||[]).map(x=>x.name));
+ const voiCols=new Set(((await q(e,'PRAGMA table_info(vendor_order_items)')).results||[]).map(x=>x.name));
+ for(const g of groups.values()){
+  const subtotal=Math.max(0,g.items.reduce((n,x)=>n+Number(x.line_total||0),0));
+  const discount=String(orderCoupon?.vendor_coupon_vendor_id||'')===String(g.vendor_id)?Math.min(subtotal,Math.max(0,Number(orderCoupon?.vendor_coupon_discount||0))):0;
+  const netSubtotal=Math.max(0,subtotal-discount);
+  const commission=g.commission_type==='percentage'?Math.min(netSubtotal,Math.round(netSubtotal*Math.max(0,g.commission_value)/100*100)/100):Math.min(netSubtotal,Math.max(0,g.commission_value));
+  const earnings=Math.max(0,netSubtotal-commission);
+  const delivery=Math.max(0,Number(g.shipping_fee??0));
+  const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,discount_amount:discount,coupon_code:discount?String(orderCoupon?.vendor_coupon_code||''):null,shipping_fee:delivery,shipping_charge:delivery,delivery_charge:delivery,total:netSubtotal+delivery,commission_amount:commission,vendor_earnings:earnings,status:'Processing',created_at:now(),updated_at:now()};
+  let existing=await one(e,'SELECT id FROM vendor_orders WHERE order_id=? AND vendor_id=? LIMIT 1',[orderId,g.vendor_id]);
+  if(existing)vo.id=existing.id;
+  const vfields=Object.keys(vo).filter(k=>voCols.has(k));
+  if(!vfields.includes('id')||!vfields.includes('order_id')||!vfields.includes('vendor_id'))continue;
+  if(existing){
+   const updates=vfields.filter(k=>!['id','order_id','vendor_id','created_at'].includes(k));
+   if(updates.length)await e.DB.prepare('UPDATE vendor_orders SET '+updates.map(k=>k+'=?').join(',')+' WHERE id=? AND order_id=? AND vendor_id=?').bind(...updates.map(k=>vo[k]),vo.id,orderId,g.vendor_id).run();
+  }else{
+   try{await e.DB.prepare('INSERT INTO vendor_orders('+vfields.join(',')+') VALUES('+vfields.map(()=>'?').join(',')+')').bind(...vfields.map(k=>vo[k])).run();}
+   catch(err){existing=await one(e,'SELECT id FROM vendor_orders WHERE order_id=? AND vendor_id=? LIMIT 1',[orderId,g.vendor_id]);if(!existing)throw err;vo.id=existing.id;const updates=vfields.filter(k=>!['id','order_id','vendor_id','created_at'].includes(k));if(updates.length)await e.DB.prepare('UPDATE vendor_orders SET '+updates.map(k=>k+'=?').join(',')+' WHERE id=? AND order_id=? AND vendor_id=?').bind(...updates.map(k=>vo[k]),vo.id,orderId,g.vendor_id).run();}
   }
+  for(const item of g.items){
+   const itemExists=await one(e,'SELECT id FROM vendor_order_items WHERE vendor_order_id=? AND order_item_id=? LIMIT 1',[vo.id,item.order_item_id]);
+   if(itemExists)continue;
+   const vi={id:crypto.randomUUID(),vendor_order_id:vo.id,order_item_id:item.order_item_id,product_id:item.product_id,quantity:item.quantity,unit_price:item.unit_price,line_total:item.line_total,variation_id:item.variation_id||null,variation_options:item.variation_options||null,variation_sku:item.variation_sku||null,sku:item.variation_sku||null};
+   const ifields=Object.keys(vi).filter(k=>voiCols.has(k));
+   if(!ifields.includes('id')||!ifields.includes('vendor_order_id')||!ifields.includes('order_item_id'))continue;
+   try{await e.DB.prepare('INSERT INTO vendor_order_items('+ifields.join(',')+') VALUES('+ifields.map(()=>'?').join(',')+')').bind(...ifields.map(k=>vi[k])).run();}
+   catch(err){const raced=await one(e,'SELECT id FROM vendor_order_items WHERE vendor_order_id=? AND order_item_id=? LIMIT 1',[vo.id,item.order_item_id]);if(!raced)throw err;}
+  }
+  await notifyVendor(e,vo.id);
+ }
 }
-
 async function createOrder(req,e,next){const b=await req.clone().json().catch(()=>null);if(!b||b.fn!=='create_public_order')return null;const payload=b.args?.payload||b.payload||{};const items=Array.isArray(payload.items)?payload.items:[];if(!items.length)return next(req);await schema(e);await ensureVendorOrderTables(e);await ensureDefaultVendor(e);let shipping=0;const vendorIds=new Set();for(const item of items){const v=await one(e,"SELECT p.vendor_id,ven.status FROM products p LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE p.id=?",[clean(item.product_id,120)]);if(v?.vendor_id)vendorIds.add(v.vendor_id)}for(const vendorId of vendorIds){const v=await one(e,"SELECT shipping_fee,status FROM vendors WHERE id=?",[vendorId]);if(String(v?.status||'').toLowerCase()==='active')shipping+=Math.max(0,Number(v.shipping_fee??0))}if(!vendorIds.size)shipping=130;let held=[];try{held=await reserveInventory(e,items);const nb={...b,args:{...(b.args||{}),payload:{...payload,shipping_charge:shipping,items:items.map(i=>({...i}))}}};const h=new Headers(req.headers);h.delete('content-length');h.set('X-GZ-Inventory-Reserved','1');const r=await next(new Request(req.url,{method:'POST',headers:h,body:JSON.stringify(nb)}));if(!r.ok){await restoreInventory(e,held);return r}const d=await r.clone().json().catch(()=>({})),o=d?.data||d?.order;if(o?.id){await snapshot(e,o.id,payload);await createVendorOrders(e,o.id);await logHeld(e,held,o.id)}else{await restoreInventory(e,held);return json({error:'Order service did not return an order ID.'},500)}return r}catch(err){await restoreInventory(e,held);return json({error:err?.message||'Unable to create order.'},err?.status||500)}}
 async function orders(req,e){const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);await schema(e);await ensureVendorOrderTables(e);const rows=(await q(e,`SELECT vo.*,o.order_number,o.public_tracking_id,o.customer_name,o.email,o.phone,o.address,o.district,o.division,o.upazila,o.status order_status,o.created_at order_created_at,o.payment_method,o.shipping_charge,o.total total_amount,o.subtotal order_subtotal FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? ORDER BY vo.created_at DESC`,[u.vendor_id])).results||[];for(const o of rows){let items=(await q(e,`SELECT voi.*,oi.product_name,oi.image_url,COALESCE(NULLIF(voi.variation_sku,''),NULLIF(pv.sku,''),NULLIF(p.sku,''),NULLIF(oi.variation_sku,''),'') sku,COALESCE(voi.variation_options,oi.variation_options) options_json FROM vendor_order_items voi JOIN order_items oi ON oi.id=voi.order_item_id LEFT JOIN products p ON p.id=voi.product_id LEFT JOIN product_variations pv ON pv.id=COALESCE(voi.variation_id,oi.variation_id) WHERE voi.vendor_order_id=? ORDER BY voi.rowid`,[o.id])).results||[];if(!items.length){items=(await q(e,`SELECT oi.*,p.vendor_id,COALESCE(NULLIF(pv.sku,''),NULLIF(p.sku,''),NULLIF(oi.variation_sku,''),'') sku,COALESCE(oi.variation_options,'{}') options_json FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN product_variations pv ON pv.id=oi.variation_id WHERE oi.order_id=? AND p.vendor_id=? ORDER BY oi.rowid`,[o.order_id,u.vendor_id])).results||[]}for(const i of items){i.variation_options=null;try{i.variation_options=i.options_json?JSON.parse(i.options_json):null}catch{}delete i.options_json}o.items=items;o.item_count=items.reduce((n,i)=>n+Number(i.quantity||1),0);o.shipments=(await q(e,'SELECT * FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[o.order_id,u.vendor_id])).results||[]}return json({orders:rows})}
 async function status(req,e,next){const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);const b=await req.json().catch(()=>({}));const allowed=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];if(!allowed.includes(b.status))return json({error:'Invalid status.'},400);const vo=await one(e,'SELECT vo.id,vo.order_id,o.order_number FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.id=? AND vo.vendor_id=?',[clean(b.vendor_order_id,120),u.vendor_id]);if(!vo)return json({error:'Vendor order not found.'},404);const previous=vo.status;if((b.status==='Cancelled'||b.status==='Returned')&&previous!==b.status)await restoreVendorOrderInventory(e,vo.id,u.vendor_id);await e.DB.prepare('UPDATE vendor_orders SET status=?,updated_at=? WHERE id=?').bind(b.status,now(),vo.id).run();const rows=(await q(e,'SELECT status FROM vendor_orders WHERE order_id=?',[vo.order_id])).results||[];const s=rows.map(x=>String(x.status||''));let parent='New';if(!s.length)parent='New';else if(s.every(x=>x==='Delivered'))parent='Delivered';else if(s.every(x=>x==='Cancelled'))parent='Cancelled';else if(s.every(x=>x==='Shipped'))parent='Shipped';else if(s.every(x=>x==='Processing'))parent='Processing';else if(s.every(x=>x==='Confirmed'))parent='Confirmed';else if(s.every(x=>x==='Contacting'))parent='Contacting';else if(s.some(x=>x==='Shipped'))parent='Shipped';else if(s.some(x=>x==='Processing'))parent='Processing';else if(s.some(x=>x==='Confirmed'))parent='Confirmed';else if(s.some(x=>x==='Contacting'))parent='Contacting';await e.DB.prepare('UPDATE orders SET status=?,updated_at=? WHERE id=?').bind(parent,now(),vo.order_id).run();await emailStatus(next,e,vo.order_number,b.status);return json({ok:true,status:b.status,parent_status:parent})}
