@@ -31,7 +31,7 @@ test('customer variation picker constrains quantity and order API validates it s
   assert.ok(customer.includes('const minQty=v=>'));
   assert.ok(customer.includes('Maximum available quantity is'));
   assert.ok(finalizer.includes('Selected variation requires a minimum quantity'));
-  assert.ok(finalizer.includes('Only \' + Number(v.stock || 0) + ' unit(s) remain') || finalizer.includes('unit(s) remain for the selected variation.'));
+  assert.ok(finalizer.includes('unit(s) remain for the selected variation.'));
 });
 
 test('checkout confirmation email includes selected variation details', () => {
