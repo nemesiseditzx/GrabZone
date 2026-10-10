@@ -18,6 +18,6 @@ test('vendor checkout passes calculated shipping into the underlying order reque
 
 test('vendor order totals include shipping and percentage commission cannot exceed subtotal', () => {
   const finalizer = read('vendor-system-finalizer.mjs');
-  assert.ok(finalizer.includes('shipping_charge:delivery,delivery_charge:delivery,total:subtotal+delivery'));
+  assert.ok(finalizer.includes('shipping_charge:delivery,delivery_charge:delivery,total:netSubtotal+delivery'));
   assert.ok(finalizer.includes("Math.min(subtotal,Math.round(subtotal*Math.max(0,g.commission_value)/100*100)/100)"));
 });
