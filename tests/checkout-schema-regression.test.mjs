@@ -29,7 +29,9 @@ test('vendor finalizer initializes schema before vendor session authentication',
 
 test('vendor orders are generated after the underlying public order succeeds', () => {
   const finalizer = read('vendor-system-finalizer.mjs');
-  assert.ok(finalizer.includes('await snapshot(e,o.id,payload);await createVendorOrders(e,o.id);'));
+  assert.ok(finalizer.includes('await snapshot(e,o.id,payload);'));
+  assert.ok(finalizer.includes('await createVendorOrders(e,o.id);'));
+  assert.ok(finalizer.includes('await enqueueVendorFinalization(e,o.id,payload,finalizationError)'));
   assert.ok(finalizer.includes('if(!r.ok){await restoreInventory(e,held);return r}'));
 });
 
