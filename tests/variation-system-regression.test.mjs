@@ -44,6 +44,21 @@ test('tracked variation inventory is atomically deducted and restored on failed 
   assert.ok(!finalizer.includes('async function logHeld(e,held,orderId){return true}'));
 });
 
+test('inventory sale log is written during retry finalization for cancellation-safe restoration', () => {
+  const finalizer = read('vendor-system-finalizer.mjs');
+  assert.ok(finalizer.includes('await logHeld(e,[],job.order_id)'));
+  assert.ok(finalizer.includes('sale:"+row.id'));
+  assert.ok(finalizer.includes("reason='order_sale'"));
+  assert.ok(finalizer.includes("reason='order_cancelled'"));
+});
+
+test('product detail gallery always has a fallback image', () => {
+  const home = read('store.js');
+  assert.ok(home.includes("image_url: product.image_url || '/favicon.png'"));
+  assert.ok(home.includes("gallery[0].image_url || '/favicon.png'"));
+  assert.ok(home.includes("this.onerror=null;this.src=&#39;/favicon.png&#39;"));
+});
+
 test('home fuzzy search tokenizes whitespace and Bangla/English words correctly', () => {
   const home = read('store.js');
   assert.ok(home.includes('query.split(/\\s+/)'));
