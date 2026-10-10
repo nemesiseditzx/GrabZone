@@ -53,11 +53,12 @@ const regular=Number(b.regular_price??v.regular_price??0);if(!Number.isFinite(re
 const saleRaw=b.sale_price===undefined?v.sale_price:b.sale_price,sale=saleRaw===null||saleRaw===''?null:Number(saleRaw);if(sale!==null&&(!Number.isFinite(sale)||sale<0))return json({error:'Sale price must be a valid non-negative number.'},400);
 const oldRaw=b.old_price===undefined?v.old_price:b.old_price,old=oldRaw===null||oldRaw===''?null:Number(oldRaw);if(old!==null&&(!Number.isFinite(old)||old<0))return json({error:'Old price must be a valid non-negative number.'},400);
 const stockRaw=b.stock===undefined?v.stock:b.stock,stock=Number(stockRaw??0);if(!Number.isFinite(stock)||stock<0||!Number.isInteger(stock))return json({error:'Stock must be a valid non-negative whole number.'},400);
-const minRaw=b.min_qty===undefined?v.min_qty:b.min_qty,minQty=Math.max(1,Math.floor(Number(minRaw||1)));
-const maxRaw=b.max_qty===undefined?v.max_qty:b.max_qty,maxQty=maxRaw===null||maxRaw===''?null:Math.floor(Number(maxRaw));
-if(!Number.isFinite(minQty)||minQty<1||(maxQty!==null&&(!Number.isFinite(maxQty)||maxQty<minQty)))return json({error:'Maximum quantity must be empty or at least the minimum quantity.'},400);
+const minRaw=b.min_qty===undefined?v.min_qty:b.min_qty,minQty=Number(minRaw||1);
+const maxRaw=b.max_qty===undefined?v.max_qty:b.max_qty,maxQty=maxRaw===null||maxRaw===''?null:Number(maxRaw);
+if(!Number.isInteger(minQty)||minQty<1||(maxQty!==null&&(!Number.isInteger(maxQty)||maxQty<minQty)))return json({error:'Maximum quantity must be empty or a whole number at least as large as the minimum quantity.'},400);
 const modeRaw=b.stock_mode===undefined?v.stock_mode:b.stock_mode,stockMode=['tracked','untracked'].includes(String(modeRaw||''))?String(modeRaw):((b.stock!==undefined)?'tracked':String(v.stock_mode||'untracked'));
-const threshold=Math.max(0,Math.floor(Number(b.low_stock_threshold??v.low_stock_threshold??0)));
+const threshold=Number(b.low_stock_threshold??v.low_stock_threshold??0);
+if(!Number.isInteger(threshold)||threshold<0)return json({error:'Low-stock threshold must be a non-negative whole number.'},400);
 await e.DB.prepare('UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,stock_mode=?,low_stock_threshold=?,min_qty=?,max_qty=?,image_url=?,status=?,updated_at=? WHERE id=?').bind(clean(b.sku??v.sku,120),regular,sale,old,stock,stockMode,threshold,minQty,maxQty,clean(b.image_url??v.image_url,2000),status,now(),id).run();
 if(Array.isArray(b.images)){await e.DB.prepare('DELETE FROM variation_images WHERE variation_id=?').bind(id).run();for(let i=0;i<Math.min(10,b.images.length);i++)await e.DB.prepare('INSERT INTO variation_images(id,variation_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),id,clean(b.images[i],2000),i,now()).run()}
 await audit(e,'vendor',u.id,'VARIATION_UPDATED',u.vendor_id,{product_id:pid,variation_id:id});return json({ok:true,variation:await loadVariation(e,id)})}return json({error:'Method not allowed'},405)}
