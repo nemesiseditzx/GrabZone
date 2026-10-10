@@ -37,12 +37,12 @@ async function reserveInventory(e,items){
  for(const item of items){
   const n=qty(item.quantity);
   if(item.variation_id){
-   const v=await one(e,"SELECT pv.id,pv.status,pv.product_id,p.vendor_id,p.published,p.name product_name FROM product_variations pv JOIN products p ON p.id=pv.product_id WHERE pv.id=?",[clean(item.variation_id,120)]);
-   if(!v||!v.published||v.status!=='Available')throw Object.assign(new Error('One selected variation is no longer available.'),{status:409});
+   const v=await one(e,"SELECT pv.id,pv.status,pv.product_id,p.vendor_id,p.published,p.name product_name,ven.status vendor_status FROM product_variations pv JOIN products p ON p.id=pv.product_id LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE pv.id=?",[clean(item.variation_id,120)]);
+   if(!v||!v.published||v.status!=='Available'||(v.vendor_id&&String(v.vendor_status||'').toLowerCase()!=='active'))throw Object.assign(new Error('One selected variation is no longer available.'),{status:409});
    held.push({kind:'variation',id:v.id,qty:n,product_id:v.product_id,vendor_id:v.vendor_id,name:v.product_name});
   }else{
-   const p=await one(e,"SELECT id,name,published,vendor_id FROM products WHERE id=?",[clean(item.product_id,120)]);
-   if(!p||!p.published)throw Object.assign(new Error('One selected product is no longer available.'),{status:409});
+   const p=await one(e,"SELECT p.id,p.name,p.published,p.vendor_id,v.status vendor_status FROM products p LEFT JOIN vendors v ON v.id=p.vendor_id WHERE p.id=?",[clean(item.product_id,120)]);
+   if(!p||!p.published||(p.vendor_id&&String(p.vendor_status||'').toLowerCase()!=='active'))throw Object.assign(new Error('One selected product is no longer available.'),{status:409});
    held.push({kind:'product',id:p.id,qty:n,product_id:p.id,vendor_id:p.vendor_id,name:p.name});
   }
  }
