@@ -112,6 +112,7 @@ async function notifyVendor(e,vendorOrderId){
 }
 
 async function createVendorOrders(e,orderId){
+  const orderCoupon=await one(e,'SELECT vendor_coupon_vendor_id,vendor_coupon_discount FROM orders WHERE id=?',[orderId]);
   const table=(await one(e,"SELECT name FROM sqlite_master WHERE type='table' AND name='vendor_orders'"))?.name;
   if(!table)return;
   const rows=(await q(e,"SELECT oi.id order_item_id,oi.product_id,oi.product_name,oi.quantity,oi.unit_price,oi.line_total,oi.variation_id,oi.variation_options,oi.variation_sku,p.vendor_id,COALESCE(v.brand_name,v.business_name,v.slug,'GrabZone Vendor') vendor_name,COALESCE(v.shipping_fee,0) shipping_fee,COALESCE(v.commission_type,'percentage') commission_type,COALESCE(v.commission_value,0) commission_value FROM order_items oi JOIN products p ON p.id=oi.product_id LEFT JOIN vendors v ON v.id=p.vendor_id WHERE oi.order_id=? ORDER BY oi.rowid",[orderId])).results||[];
@@ -124,10 +125,12 @@ async function createVendorOrders(e,orderId){
     const exists=await one(e,'SELECT id FROM vendor_orders WHERE order_id=? AND vendor_id=? LIMIT 1',[orderId,g.vendor_id]);
     if(exists)continue;
     const subtotal=Math.max(0,g.items.reduce((n,x)=>n+Number(x.line_total||0),0));
-    const commission=g.commission_type==='percentage'?Math.min(subtotal,Math.round(subtotal*Math.max(0,g.commission_value)/100*100)/100):Math.min(subtotal,Math.max(0,g.commission_value));
-    const earnings=Math.max(0,subtotal-commission);
+    const discount=String(orderCoupon?.vendor_coupon_vendor_id||'')===String(g.vendor_id)?Math.min(subtotal,Math.max(0,Number(orderCoupon?.vendor_coupon_discount||0))):0;
+    const netSubtotal=Math.max(0,subtotal-discount);
+    const commission=g.commission_type==='percentage'?Math.min(netSubtotal,Math.round(netSubtotal*Math.max(0,g.commission_value)/100*100)/100):Math.min(netSubtotal,Math.max(0,g.commission_value));
+    const earnings=Math.max(0,netSubtotal-commission);
     const delivery=Math.max(0,Number(g.shipping_fee??0));
-    const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,shipping_fee:delivery,shipping_charge:delivery,delivery_charge:delivery,total:subtotal+delivery,commission_amount:commission,vendor_earnings:earnings,status:'Processing',created_at:now(),updated_at:now()};
+    const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,discount_amount:discount,shipping_fee:delivery,shipping_charge:delivery,delivery_charge:delivery,total:netSubtotal+delivery,commission_amount:commission,vendor_earnings:earnings,status:'Processing',created_at:now(),updated_at:now()};
     const vfields=Object.keys(vo).filter(k=>voCols.has(k));
     if(!vfields.includes('id')||!vfields.includes('order_id')||!vfields.includes('vendor_id'))continue;
     await e.DB.prepare('INSERT INTO vendor_orders('+vfields.join(',')+') VALUES('+vfields.map(()=>'?').join(',')+')').bind(...vfields.map(k=>vo[k])).run();
