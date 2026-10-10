@@ -1092,10 +1092,11 @@ function renderProducts() {
       >
         <div class="product-image">
           <img
-            src="${escAttr(product.image_url)}"
+            src="${escAttr(product.image_url || '/favicon.png')}"
             alt="${escAttr(product.name)}"
             loading="lazy"
             decoding="async"
+            onerror="this.onerror=null;this.src='/favicon.png'"
           >
         </div>
 
