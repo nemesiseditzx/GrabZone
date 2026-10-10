@@ -8,7 +8,7 @@ const read = (name) => fs.readFileSync(path.join(process.cwd(), name), 'utf8');
 test('vendor variation API persists price, stock mode, and quantity constraints', () => {
   const api = read('vendor-system-v2.mjs');
   assert.ok(api.includes('sale_price=?,old_price=?,stock=?,stock_mode=?,low_stock_threshold=?,min_qty=?,max_qty=?'));
-  assert.ok(api.includes('Maximum quantity must be empty or at least the minimum quantity'));
+  assert.ok(api.includes('Maximum quantity must be empty or a whole number at least as large as the minimum quantity'));
   assert.ok(api.includes("CASE WHEN status='Disabled' THEN 'Available' ELSE status END"));
 });
 
