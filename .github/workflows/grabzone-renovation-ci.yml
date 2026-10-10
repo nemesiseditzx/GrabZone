@@ -90,5 +90,9 @@ jobs:
           done
       - name: Run renovation regression tests
         run: node --test tests/*.test.mjs
+      - name: Validate D1 schema against a local database
+        run: |
+          npx --yes wrangler@4 d1 execute grabzone-db-test --local --file=d1-schema.sql
+          npx --yes wrangler@4 d1 execute grabzone-db-test --local --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('vendor_order_items','vendor_order_finalization_jobs') ORDER BY name"
       - name: Validate Cloudflare Worker bundle without deploying
         run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/grabzone-wrangler-dry-run
