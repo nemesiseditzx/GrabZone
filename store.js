@@ -1668,9 +1668,9 @@ async function renderDetail() {
       return true;
     });
 
-  if (!gallery.length && product.image_url) {
+  if (!gallery.length) {
     gallery.push({
-      image_url: product.image_url,
+      image_url: product.image_url || '/favicon.png',
       is_main: true
     });
   }
@@ -1709,8 +1709,9 @@ async function renderDetail() {
               >
                 <img
                   src="${escAttr(
-                    image.image_url
+                    image.image_url || '/favicon.png'
                   )}"
+                  onerror="this.onerror=null;this.src=&#39;/favicon.png&#39;"
                   alt="${escAttr(
                     product.name
                   )} ${index + 1}"
@@ -1735,12 +1736,12 @@ async function renderDetail() {
   <img
     id="mainProductImage"
     src="${escAttr(
-      gallery[0].image_url
+      gallery[0].image_url || '/favicon.png'
     )}"
     alt="${escAttr(
       product.name
     )}"
-  >
+   onerror="this.onerror=null;this.src=&#39;/favicon.png&#39;">
 
   <button
     type="button"
