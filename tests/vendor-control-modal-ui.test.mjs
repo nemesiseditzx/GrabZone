@@ -23,3 +23,9 @@ test('vendor dashboard shipment creation uses a modal and supported order status
   assert.ok(!ui.includes('prompt('));
   assert.ok(!ui.includes('alert('));
 });
+
+test('vendor variation UI uses non-blocking feedback for validation and save errors', () => {
+  const ui = read('vendor-system-v2-ui.js');
+  assert.ok(ui.includes('gzVendorV2ToastRoot'));
+  assert.ok(!ui.includes('alert('));
+});
