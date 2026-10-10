@@ -11,6 +11,9 @@ let vendorOrderSchemaPromise=null;
 async function ensureVendorOrderTables(e){if(vendorOrderSchemaPromise)return vendorOrderSchemaPromise;vendorOrderSchemaPromise=(async()=>{
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,discount_amount REAL NOT NULL DEFAULT 0,coupon_code TEXT,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,shipping_fee REAL NOT NULL DEFAULT 0,shipping_charge REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,total REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id))").run().catch(()=>{});
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT,sku TEXT)").run().catch(()=>{});
+ await e.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS vendor_order_items_order_item_unique ON vendor_order_items(vendor_order_id,order_item_id)").run().catch(()=>{});
+ await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_finalization_jobs(id TEXT PRIMARY KEY,order_id TEXT NOT NULL UNIQUE,payload_json TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INTEGER NOT NULL DEFAULT 0,last_error TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
+ await e.DB.prepare("CREATE INDEX IF NOT EXISTS vendor_order_finalization_jobs_status_idx ON vendor_order_finalization_jobs(status,created_at)").run().catch(()=>{});
   await e.DB.prepare("CREATE INDEX IF NOT EXISTS vendor_order_items_variation_idx ON vendor_order_items(variation_id)").run().catch(()=>{});
  for(const sql of [
   "ALTER TABLE vendor_orders ADD COLUMN commission_amount REAL NOT NULL DEFAULT 0",
@@ -152,7 +155,7 @@ async function createVendorOrders(e,orderId){
   const vfields=Object.keys(vo).filter(k=>voCols.has(k));
   if(!vfields.includes('id')||!vfields.includes('order_id')||!vfields.includes('vendor_id'))continue;
   if(existing){
-   const updates=vfields.filter(k=>!['id','order_id','vendor_id','created_at'].includes(k));
+   const updates=vfields.filter(k=>!['id','order_id','vendor_id','created_at','status'].includes(k));
    if(updates.length)await e.DB.prepare('UPDATE vendor_orders SET '+updates.map(k=>k+'=?').join(',')+' WHERE id=? AND order_id=? AND vendor_id=?').bind(...updates.map(k=>vo[k]),vo.id,orderId,g.vendor_id).run();
   }else{
    try{await e.DB.prepare('INSERT INTO vendor_orders('+vfields.join(',')+') VALUES('+vfields.map(()=>'?').join(',')+')').bind(...vfields.map(k=>vo[k])).run();}
