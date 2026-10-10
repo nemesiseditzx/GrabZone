@@ -1,7 +1,7 @@
 # GrabZone Full Renovation — Progress Log
 Updated: 2026-10-10
 Target branch: `grabzone-full-renovation-2026-10-10`
-Last verified code commit: `17b21b70311cd314c5dfa1e8bd2a7b27bdc2c2cc`
+Last verified code commit: `6ff4871de649154b0753bd845b437ac5614ee793`
 
 ## Implemented
 
@@ -38,16 +38,16 @@ Last verified code commit: `17b21b70311cd314c5dfa1e8bd2a7b27bdc2c2cc`
 
 ## Last verified CI result
 
-GitHub Actions run: https://github.com/nemesiseditzx/GrabZone/actions/runs/38082469675
+GitHub Actions run: https://github.com/nemesiseditzx/GrabZone/actions/runs/38083601362
 
 - JavaScript syntax: passed
 - Inline HTML scripts: 40 extracted and syntax-checked
-- Regression tests: 49 passed, 0 failed
+- Regression tests: 50 passed, 0 failed
 - D1 schema: applied successfully to Wrangler's local database
 - Wrangler dry-run bundle: passed
 - No production deployment performed by this workflow
 
-The UI-feedback and vendor-auth changes listed above are included in the verified code commit. Documentation updates are being rechecked by CI before final acceptance.
+The latest verified commit also fixes the vendor-order cancellation handler's previous-status lookup and adds a regression assertion for it.
 
 ## Still not verified end-to-end
 - Browser-driven checkout and vendor order flow against a safe deployment of this exact renovation branch.
@@ -62,3 +62,4 @@ The UI-feedback and vendor-auth changes listed above are included in the verifie
 - Do not deploy production from this branch.
 - Do not run destructive or data-changing operations against the live D1 database without backup and explicit approval.
 - Treat live-preview and remote-D1 checks as not run until an exact renovation preview/test environment is available.
+- The current Wrangler config binds `DB` to `grabzone-db-test` using a database ID shared by `main` and `vendor-system-dev`, and binds `ASSETS_BUCKET` to `grabzone-assets` across those branches. Do not deploy this config for acceptance testing; provision dedicated preview D1 and R2 resources and point a separate preview config at them first.
