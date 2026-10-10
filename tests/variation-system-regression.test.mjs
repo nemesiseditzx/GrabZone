@@ -42,6 +42,14 @@ test('checkout confirmation email includes selected variation details', () => {
   assert.ok(checkout.includes('t.me/grabzoneofficial'));
 });
 
+test('home storefront paginates the product catalogue instead of rendering every product at once', () => {
+  const home = read('store.js');
+  assert.ok(home.includes('const pageSize = 20'));
+  assert.ok(home.includes('gzHomeProductPagination'));
+  assert.ok(home.includes('Showing '));
+  assert.ok(home.includes('lastProductFilterKey'));
+});
+
 test('vendor variation generation returns persisted combinations and clean store URLs route to the storefront', () => {
   const api = read('vendor-system-v2.mjs');
   const worker = read('worker.mjs');
