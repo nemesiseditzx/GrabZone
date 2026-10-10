@@ -12,4 +12,6 @@ test('vendor store section editing uses an accessible modal instead of prompt di
   assert.ok(dashboard.includes('gzSectionEditorForm'));
   assert.ok(!dashboard.includes("prompt('Section title'"));
   assert.ok(!dashboard.includes("prompt('Section content'"));
+  assert.ok(dashboard.includes('function gzVendorNotify'));
+  assert.ok(!dashboard.includes('alert('));
 });
