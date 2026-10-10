@@ -56,6 +56,27 @@ The latest code/test commit also fixes the vendor-order cancellation handler's p
 - This is a code-level routing fix. It does not prove a remote Worker is deployed or that its bindings are healthy.
 - The current `wrangler.jsonc`, `wrangler.marketplace-dev.jsonc`, and `wrangler.vendor-preview.jsonc` configurations reuse the same D1 database ID and R2 bucket name. Do not deploy the renovation branch for end-to-end testing until a separate disposable D1 database and R2 bucket are configured.
 
+## New requested renovation scope — 2026-10-10
+
+The user supplied a nine-item issue list. Treat these as acceptance criteria, not as already completed work:
+
+1. Add category/search controls to every vendor storefront and searchable vendor/category coverage in the marketplace.
+2. Replace the single fixed product-pagination row with consistent pagination on home/marketplace/store listing surfaces.
+3. Standardize invoice and transactional email support contact to `support@grabzone.tech`; add the GrabZone Telegram channel where social contacts are shown.
+4. Upgrade marketplace search to typo-tolerant, broad matching similar to large marketplaces without making exact searches mandatory.
+5. Give each vendor a stable readable store URL based on its slug, while retaining compatibility for existing store links.
+6. Show each vendor's saved contact details and social links on their own store page.
+7. Add category search/filtering that remains usable as users change category and continue searching.
+8. Allow variations to be edited and disabled/deleted safely, including persistence of quantity limits and stock tracking mode.
+9. Ensure product images reliably appear on the main storefront.
+
+### Changes started in this pass
+- Variation generation now reactivates a previously disabled combination if it is generated again, rather than leaving the regenerated combination permanently disabled.
+- Variation PATCH now validates regular/sale price and stock inputs, preserves or explicitly accepts tracked/untracked inventory mode (including tracked zero stock), and persists `min_qty` / `max_qty` instead of resetting them on every edit.
+- Checkout invoice contact now uses `support@grabzone.tech` and includes the GrabZone Telegram channel link.
+
+These code changes are on the renovation branch only. They are not evidence that the full nine-item list is complete. Continue with storefront search/category/pagination, slug routing, vendor contact/social rendering, product image coverage, and dedicated variation regression tests before declaring acceptance.
+
 ## Still not verified end-to-end
 - Browser-driven checkout and vendor order flow against a safe deployment of this exact renovation branch.
 - Integration tests against a disposable remote D1 database and R2 test bucket.
