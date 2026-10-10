@@ -1,4 +1,4 @@
-const $=s=>document.querySelector(s),$=s=>[...document.querySelectorAll(s)];
+const $=s=>document.querySelector(s);const $=s=>[...document.querySelectorAll(s)];
 function gzVendorNotify(message,type='info'){
  let root=document.getElementById('gzVendorToastRoot');
  if(!root){root=document.createElement('div');root.id='gzVendorToastRoot';root.setAttribute('aria-live','polite');root.setAttribute('aria-atomic','false');root.style.cssText='position:fixed;right:18px;top:18px;z-index:99999;display:grid;gap:8px;width:min(380px,calc(100vw - 36px));pointer-events:none';document.body.appendChild(root)}
