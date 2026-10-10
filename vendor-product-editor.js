@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
-const MB=1024*1024,MAX=10,MAX_VARIATIONS=200;const VP_SIZES=['XS','S','M','L','XL','XXL','3XL'];
+const MB=1024*1024,MAX=10,MAX_VARIATIONS=200;
+const notify=(message,type='error')=>{if(typeof window.gzVendorNotify==='function')window.gzVendorNotify(message,type);else console.error(message)};const VP_SIZES=['XS','S','M','L','XL','XXL','3XL'];
 const VP_COLORS=['Black','White','Grey','Brown','Beige','Tan','Cream','Khaki','Off White','Charcoal Black','Light Grey','Camel','Charcoal Grey','Dark Grey','Bronze','Mauve Brown','Mustard Grey','Pale Grey','Peach Beige','Rust Brown','Red','Maroon','Deep Red','Crimson','Rust','Wine','Wine Maroon','Pink','Magenta','Rose','Peach','Light Pink','Mauve Pink','Coral Pink','Dusty Pink','Dusty Rose','Magenta Pink','Raspberry Pink','Purple','Lavender','Mauve','Plum','Deep Purple','Light Purple','Violet','Blue','Sky Blue','Navy Blue','Navy','Light Blue','Denim','Royal Blue','Steel Blue','Dark Navy','Light Blue Denim','Dark Blue Denim','Teal Blue','Cornflower Blue','Dark Teal Blue','Denim Blue','Light Denim Blue','Pale Blue','Slate Blue','Teal','Aqua','Mint Aqua','Teal Green','Aqua Green','Green','Olive','Olive Green','Sage Green','Dark Green','Mint','Mint Green','Sea Green','Light Green','Pale Sage','Lime Green','Pale Mint','Sage','Mint Pista','Yellow','Orange','Mustard','Gold','Mustard Yellow','Pale Yellow','Multi'];
 
 const $=s=>document.querySelector(s);
@@ -67,7 +68,7 @@ async function editProduct(id){
  if(p.product_type==='variable'){await loadVariations(p.id)}else{state.variationOptions=[];state.variations=[];renderOptionRows();renderVariationRows()}
  window.scrollTo({top:$('#products').getBoundingClientRect().top+window.scrollY-20,behavior:'smooth'});
 }
-function handleFiles(){const files=[...($('#vpFiles').files||[])];if(files.length>MAX){alert('Maximum 10 images per product.');$('#vpFiles').value='';state.files=[];renderMedia();return}const bad=files.find(f=>f.size>MB||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));if(bad){alert(`${bad.name} is not a supported image or is larger than 1 MB.`);$('#vpFiles').value='';state.files=[];renderMedia();return}state.files=files;state.mainIndex=0;renderMedia()}
+function handleFiles(){const files=[...($('#vpFiles').files||[])];if(files.length>MAX){notify('Maximum 10 images per product.');$('#vpFiles').value='';state.files=[];renderMedia();return}const bad=files.find(f=>f.size>MB||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));if(bad){notify(`${bad.name} is not a supported image or is larger than 1 MB.`);$('#vpFiles').value='';state.files=[];renderMedia();return}state.files=files;state.mainIndex=0;renderMedia()}
 function removeSelectedImage(index){if(index<0)return;if(state.files.length){state.files.splice(index,1);if(state.mainIndex>=state.files.length)state.mainIndex=Math.max(0,state.files.length-1);if(state.mainIndex>index)state.mainIndex--;$('#vpFiles').value='';renderMedia();return}const imgs=[...(state.editing?.image_urls||[])].filter(Boolean);if(index>=imgs.length)return;imgs.splice(index,1);state.editing.image_urls=imgs;if(!imgs.length){state.editing.image_url='';state.mainIndex=0}else{if(!imgs.includes(state.editing.image_url))state.editing.image_url=imgs[0];state.mainIndex=Math.max(0,imgs.indexOf(state.editing.image_url))}renderMedia()}
 function setSelectedMain(index){if(index<0)return;if(state.files.length){state.mainIndex=index;renderMedia();return}const imgs=[...(state.editing?.image_urls||[])].filter(Boolean);if(!imgs[index])return;const chosen=imgs[index];state.editing.image_url=chosen;state.editing.image_urls=[chosen,...imgs.filter(x=>x!==chosen)];state.mainIndex=0;renderMedia()}
 function renderMedia(){
@@ -120,8 +121,8 @@ async function loadVariations(pid){
  catch(e){state.variationOptions=[];state.variations=[];renderOptionRows();renderVariationRows();if(msg)msg.textContent='⚠ '+e.message}
 }
 async function generateVariations(){
- collectOptionRows();if(!state.variationOptions.length)return alert('Add at least one option with values.');
- let count=1;for(const o of state.variationOptions)count*=o.values.length;if(count>MAX_VARIATIONS)return alert(`This will create ${count} variations. Maximum is ${MAX_VARIATIONS}.`);
+ collectOptionRows();if(!state.variationOptions.length)return notify('Add at least one option with values.');
+ let count=1;for(const o of state.variationOptions)count*=o.values.length;if(count>MAX_VARIATIONS)return notify(`This will create ${count} variations. Maximum is ${MAX_VARIATIONS}.`);
  const pid=$('#vpId').value.trim();if(!pid){message('Save the product first, then generate variations.',false);return}
  const msg=$('#vpVariationMsg');msg.textContent='Generating combinations…';
  try{const d=await api('/api/vendor/variations?product_id='+encodeURIComponent(pid),{method:'POST',body:JSON.stringify({options:state.variationOptions})});state.variations=d.variations||[];renderVariationRows();msg.textContent=`✓ ${d.count} variations generated.`;$('#vpProductType').value='variable'}catch(e){msg.textContent='⚠ '+e.message}
@@ -153,7 +154,7 @@ function renderVariationRows(){
      await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({image_url:url})});
      btn.classList.add('saved');
    }catch(err){
-     btn.classList.remove('selected');alert(err.message);
+     btn.classList.remove('selected');notify(err.message);
    }finally{btn.disabled=false}
  });
  body.querySelectorAll('.vp-save-variation').forEach(btn=>btn.onclick=saveVariation);
@@ -167,12 +168,12 @@ async function saveVariation(e){
    await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({sku:val('sku'),regular_price:Number(val('regular')||0),old_price:val('old')===''?null:Number(val('old')),status:val('status'),image_url:v.image_url||''})});
    v.sku=val('sku');v.regular_price=Number(val('regular')||0);v.old_price=val('old')===''?null:Number(val('old'));v.status=val('status');
    btn.textContent='Saved ✓';setTimeout(()=>btn.textContent='Save',900);
- }catch(err){alert(err.message)}finally{btn.disabled=false}
+ }catch(err){notify(err.message)}finally{btn.disabled=false}
 }
 async function applyBulkPrice(){
- const price=$('#vpBulkPrice').value;if(price==='')return alert('Enter a regular price first.');
- const rows=[...document.querySelectorAll('#vpVariationRows tr[data-variation-id]')];if(!rows.length)return alert('Generate variations first.');
- try{for(const row of rows){await api('/api/vendor/variations/'+encodeURIComponent(row.dataset.variationId)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({regular_price:Number(price)})})}await loadVariations($('#vpId').value);$('#vpBulkPrice').value=''}catch(e){alert(e.message)}
+ const price=$('#vpBulkPrice').value;if(price==='')return notify('Enter a regular price first.');
+ const rows=[...document.querySelectorAll('#vpVariationRows tr[data-variation-id]')];if(!rows.length)return notify('Generate variations first.');
+ try{for(const row of rows){await api('/api/vendor/variations/'+encodeURIComponent(row.dataset.variationId)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({regular_price:Number(price)})})}await loadVariations($('#vpId').value);$('#vpBulkPrice').value=''}catch(e){notify(e.message)}
 }
 async function saveProduct(e){
  e.preventDefault();const btn=$('#vpSubmit');btn.disabled=true;message('Saving product…',true);
