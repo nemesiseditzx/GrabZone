@@ -20,8 +20,12 @@ function ensureVariationLayoutCSS(){
  if(document.getElementById('gz-vp-variation-layout'))return;
  const style=document.createElement('style');style.id='gz-vp-variation-layout';
  style.textContent=`
-  #products{width:100%;max-width:none;min-width:0}
-  #products .vp-panel,#products .vp-form-panel,#vpVariationPanel{width:100%;max-width:none;min-width:0;box-sizing:border-box}
+  .gz-main,#app,#products{width:100%!important;max-width:none!important;min-width:0;box-sizing:border-box}
+  #app{display:block!important;flex:1 1 auto!important;align-self:stretch!important}
+  #products{display:block!important;flex:1 1 100%!important;margin:0!important}
+  #products>.vp-top,#products>.vp-panel,#products>.vp-form-panel,#products .vp-panel,#products .vp-form-panel,#vpVariationPanel{width:100%!important;max-width:none!important;min-width:0;box-sizing:border-box}
+  #products .vp-form-panel,#products .vp-panel{align-self:stretch!important}
+  #vpVariationPanel .vp-variation-table-wrap{display:block;width:100%!important;max-width:none!important;box-sizing:border-box}
   #vpVariationPanel{padding:clamp(14px,2vw,26px);border:1px solid #e5e7eb;border-radius:18px;background:linear-gradient(180deg,#fff,#fcfcfd);margin-top:18px}
   #vpVariationPanel .vp-var-head{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
   #vpVariationPanel .vp-variation-table-wrap{width:100%;max-width:100%;overflow:auto;overscroll-behavior-x:contain;border:1px solid #dfe3e9;border-radius:14px;background:#fff}
