@@ -6,11 +6,19 @@ async function one(e,s,p=[]){return(await q(e,s,p)).results?.[0]||null}
 async function sha(v){return[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function cookie(r,n){for(const p of(r.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}
 async function admin(r,e){const t=cookie(r,'gz_admin_session');if(!t)return null;return one(e,"SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>?",[await sha(t),now()])}
-async function vendor(r,e){const t=cookie(r,'gz_vendor_session')||(r.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!t)return null;return one(e,"SELECT vu.id,vu.vendor_id,vu.email,vu.role,v.slug,v.brand_name,v.status vendor_status FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active' LIMIT 1",[await sha(t),now()])}
+async function vendor(r,e){const t=cookie(r,'gz_vendor_session')||(r.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!t)return null;return one(e,"SELECT vu.id,vu.vendor_id,vu.email,vu.role,v.slug,v.brand_name,v.status vendor_status FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND COALESCE(vu.active,1)=1 AND LOWER(COALESCE(vu.status,'active'))='active' AND LOWER(COALESCE(v.status,'active'))='active' LIMIT 1",[await sha(t),now()])}
 async function audit(e,type,id,action,vid,details={}){await e.DB.prepare('INSERT INTO marketplace_audit_log(id,actor_type,actor_id,action,vendor_id,details,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),type,id,action,vid,JSON.stringify(details),now()).run().catch(()=>{})}
 let schemaPromise=null;
 async function schema(e){if(schemaPromise)return schemaPromise;schemaPromise=(async()=>{for(const x of[
 `ALTER TABLE vendors ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 130`,
+`ALTER TABLE vendors ADD COLUMN brand_name TEXT`,
+`ALTER TABLE vendors ADD COLUMN business_name TEXT`,
+`ALTER TABLE vendors ADD COLUMN email TEXT`,
+`ALTER TABLE vendors ADD COLUMN order_notification_email TEXT`,
+`ALTER TABLE products ADD COLUMN vendor_id TEXT`,
+`ALTER TABLE vendor_users ADD COLUMN status TEXT NOT NULL DEFAULT 'Active'`,
+`ALTER TABLE vendor_users ADD COLUMN active INTEGER NOT NULL DEFAULT 1`,
+`CREATE TABLE IF NOT EXISTS vendor_sessions(token_hash TEXT PRIMARY KEY,vendor_user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)`,
 `ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0`,
 `CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
 `CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
