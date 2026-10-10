@@ -134,7 +134,7 @@ function renderMedia(){
 }
 function vpValues(name){const option=state.variationOptions.find(x=>String(x.name).toLowerCase()===String(name).toLowerCase());return Array.isArray(option?.values)?option.values:[]}
 function vpSet(name,values){const clean=[...new Set((values||[]).map(v=>String(v??'').trim()).filter(Boolean))];const key=String(name||'').trim();if(!key||!clean.length)return;const existing=state.variationOptions.findIndex(x=>x.name.toLowerCase()===key.toLowerCase());if(existing>=0)state.variationOptions[existing]={...state.variationOptions[existing],name:key,values:clean};else state.variationOptions.push({name:key,values:clean});renderOptionRows()}
-function vpToggle(name,value,checked){const current=vpValues(name);vpSet(name,checked?current.concat(value):current.filter(v=>v!==value));if(!checked&&!vpValues(name).length)state.variationOptions=state.variationOptions.filter(x=>x.name.toLowerCase()!==String(name).toLowerCase());renderOptionRows()}
+function vpToggle(name,value,checked){const key=String(name||'').trim().toLowerCase(),current=vpValues(name);if(checked){vpSet(name,current.concat(value));return}const remaining=current.filter(v=>v!==value);if(remaining.length){vpSet(name,remaining);return}state.variationOptions=state.variationOptions.filter(x=>String(x.name).toLowerCase()!==key);renderOptionRows()}
 function vpPreset(name,choices){const selected=vpValues(name);const chips=choices.map(value=>'<label class="vp-chip"><input type="checkbox" data-vp-opt="'+esc(name)+'" value="'+esc(value)+'"'+(selected.includes(value)?' checked':'')+'><span>'+esc(value)+'</span></label>').join('');const extra=name==='Size'?'<div class="vp-custom-inline"><input class="vp-numeric-size-input" placeholder="Custom sizes, e.g. 38, 40, 42"><button type="button" class="gz-btn light vp-add-numeric-sizes">Add sizes</button></div>':'';const search=name==='Color'?'<input class="vp-color-search" placeholder="Search colors…">':'';return '<div class="vp-preset-card"><div class="vp-preset-head"><b>'+esc(name)+'</b></div>'+search+'<div class="vp-chip-grid">'+chips+'</div>'+extra+'</div>'}
 function addOptionRow(o={name:'',values:[]}){const n=o.name.trim();if(!n)return;vpSet(n,o.values||[])}
 function renderOptionRows(){
@@ -211,7 +211,14 @@ async function applyBulkPrice(){
 async function saveProduct(e){
  e.preventDefault();const btn=$('#vpSubmit');btn.disabled=true;message('Saving product…',true);
  try{
-  const id=$('#vpId').value.trim();let urls=null,mainUrl=null;
+  const id=$('#vpId').value.trim();
+  if($('#vpProductType').value==='variable'){
+   collectOptionRows();
+   if(!state.variationOptions.length||state.variationOptions.some(o=>!o.values?.length))throw Error('Variable product needs at least one option with values.');
+   const variationCount=state.variationOptions.reduce((n,o)=>n*o.values.length,1);
+   if(variationCount>MAX_VARIATIONS)throw Error(`This will create ${variationCount} variations. Maximum is ${MAX_VARIATIONS}.`);
+  }
+  let urls=null,mainUrl=null;
   if(state.files.length){if(state.files.length>MAX)throw Error('Maximum 10 images per product.');const uploaded=[];for(const f of state.files)uploaded.push(await upload(f));urls=uploaded;mainUrl=uploaded[state.mainIndex]||uploaded[0]}
   else if(state.editing){urls=(state.editing.image_urls||[]).filter(Boolean);mainUrl=urls[0]||state.editing.image_url||''}
   else throw Error('Please choose at least one product image.');
