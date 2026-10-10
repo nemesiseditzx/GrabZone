@@ -204,7 +204,7 @@ async function createOrder(req,e,next,ctx){
  await schema(e);await ensureVendorOrderTables(e);
  let shipping=0;
  const vendorIds=new Set();
- for(const item of items){const v=await one(e,"SELECT p.vendor_id,ven.status FROM products p LEFT JOIN vendors ven ON v.id=p.vendor_id WHERE p.id=?",[clean(item.product_id,120)]);if(v?.vendor_id)vendorIds.add(v.vendor_id)}
+ for(const item of items){const v=await one(e,"SELECT p.vendor_id,ven.status FROM products p LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE p.id=?",[clean(item.product_id,120)]);if(v?.vendor_id)vendorIds.add(v.vendor_id)}
  for(const vendorId of vendorIds){const v=await one(e,"SELECT shipping_fee,status FROM vendors WHERE id=?",[vendorId]);if(String(v?.status||'').toLowerCase()==='active')shipping+=Math.max(0,Number(v.shipping_fee??0))}
  if(!vendorIds.size)shipping=130;
  let held=[];
