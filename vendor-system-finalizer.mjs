@@ -6,13 +6,31 @@ async function q(e,s,p=[]){return e.DB.prepare(s).bind(...p).all()}
 async function one(e,s,p=[]){return(await q(e,s,p)).results?.[0]||null}
 async function sha(v){return[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function cookie(r,n){for(const p of(r.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}
-async function vendor(r,e){const t=cookie(r,'gz_vendor_session')||(r.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!t)return null;return one(e,"SELECT vu.id,vu.vendor_id,vu.email,vu.role,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active' LIMIT 1",[await sha(t),now()])}
+async function vendor(r,e){await schema(e);const t=cookie(r,'gz_vendor_session')||(r.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!t)return null;return one(e,"SELECT vu.id,vu.vendor_id,vu.email,vu.role,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active' LIMIT 1",[await sha(t),now()])}
 async function ensureVendorOrderTables(e){
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
- await e.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN vendor_notified_at TEXT").run().catch(()=>{});
+ await e.DB.prepare("for(const sql of [
+"ALTER TABLE vendor_orders ADD COLUMN commission_amount REAL NOT NULL DEFAULT 0",
+"ALTER TABLE vendor_orders ADD COLUMN vendor_earnings REAL NOT NULL DEFAULT 0",
+"ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0",
+"ALTER TABLE vendor_orders ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 0",
+"ALTER TABLE vendor_orders ADD COLUMN vendor_notified_at TEXT",
+"ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT",
+"ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT",
+"ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT"
+])await e.DB.prepare(sql).run().catch(()=>{});
  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT)").run().catch(()=>{});
 }
-async function schema(e){for(const sql of ["ALTER TABLE order_items ADD COLUMN variation_id TEXT","ALTER TABLE order_items ADD COLUMN variation_options TEXT","ALTER TABLE order_items ADD COLUMN variation_sku TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT","ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'","ALTER TABLE shipments ADD COLUMN customer_notified_at TEXT","CREATE INDEX IF NOT EXISTS order_items_variation_idx ON order_items(variation_id)","CREATE INDEX IF NOT EXISTS vendor_order_items_variation_idx ON vendor_order_items(variation_id)"])await e.DB.prepare(sql).run().catch(()=>{});}
+async function schema(e){for(const sql of [
+"CREATE TABLE IF NOT EXISTS vendor_sessions(token_hash TEXT PRIMARY KEY,vendor_user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)",
+"ALTER TABLE vendors ADD COLUMN brand_name TEXT",
+"ALTER TABLE vendors ADD COLUMN business_name TEXT",
+"ALTER TABLE vendors ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 130",
+"ALTER TABLE products ADD COLUMN vendor_id TEXT",
+"ALTER TABLE vendor_users ADD COLUMN status TEXT NOT NULL DEFAULT 'Active'",
+"CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 5,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
+"CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)",
+"ALTER TABLE order_items ADD COLUMN variation_id TEXT","ALTER TABLE order_items ADD COLUMN variation_options TEXT","ALTER TABLE order_items ADD COLUMN variation_sku TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT","ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'","ALTER TABLE shipments ADD COLUMN customer_notified_at TEXT","CREATE INDEX IF NOT EXISTS order_items_variation_idx ON order_items(variation_id)","CREATE INDEX IF NOT EXISTS vendor_order_items_variation_idx ON vendor_order_items(variation_id)"])await e.DB.prepare(sql).run().catch(()=>{});}
 function qty(x){return Math.max(1,Math.floor(Number(x||1)))}
 async function reserveInventory(e,items){
  const held=[];
