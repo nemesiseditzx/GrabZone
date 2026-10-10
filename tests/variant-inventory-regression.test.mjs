@@ -28,6 +28,12 @@ test('cancelled vendor orders restore tracked stock with an idempotency guard', 
   assert.ok(finalizer.includes("if((b.status==='Cancelled'||b.status==='Returned')&&previous!==b.status)await restoreVendorOrderInventory(e,vo.id,u.vendor_id);await e.DB.prepare('UPDATE vendor_orders SET status"));
 });
 
+test('vendor cancellation reads the persisted previous status before restoring stock', () => {
+  const finalizer = read('vendor-system-finalizer.mjs');
+  assert.ok(finalizer.includes('SELECT vo.id,vo.order_id,vo.status,o.order_number FROM vendor_orders vo'));
+  assert.ok(finalizer.includes('const previous=vo.status'));
+});
+
 test('variant snapshots cannot overwrite server-calculated price with client-supplied values', () => {
   const finalizer = read('vendor-system-finalizer.mjs');
   assert.ok(finalizer.includes('Number(rows[i].unit_price||0),Number(rows[i].line_total||0)'));
