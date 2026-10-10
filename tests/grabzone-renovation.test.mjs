@@ -19,7 +19,9 @@ test('public checkout is routed through the vendor order finalizer before the le
 test('checkout finalizer creates vendor orders after the base order has been created', () => {
   const finalizer = read('vendor-system-finalizer.mjs');
   assert.match(finalizer, /async function createOrder\(/);
-  assert.match(finalizer, /if\(o\?\.id\)\{await snapshot\(e,o\.id,payload\);await createVendorOrders\(e,o\.id\);/);
+  assert.match(finalizer, /await snapshot\(e,o\.id,payload\);/);
+  assert.match(finalizer, /await createVendorOrders\(e,o\.id\);/);
+  assert.match(finalizer, /await enqueueVendorFinalization\(e,o\.id,payload,finalizationError\)/);
   assert.match(finalizer, /if\(!r\.ok\)\{await restoreInventory\(e,held\);return r\}/);
 });
 
