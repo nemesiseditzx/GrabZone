@@ -191,7 +191,27 @@ async function loadSections(){
   }
 }
 async function toggleSection(id,enabled){try{const d=await api('/api/vendor/sections');const s=(d.sections||[]).find(x=>x.id===id);if(!s)return;await api('/api/vendor/sections',{method:'PATCH',body:JSON.stringify({id,title:s.title,body:s.body,sort_order:s.sort_order,enabled,data_json:s.data_json||{}})});loadSections()}catch(e){alert(e.message)}}
-async function editSection(id){const d=await api('/api/vendor/sections');const s=(d.sections||[]).find(x=>x.id===id);if(!s)return;const title=prompt('Section title',s.title||'');if(title===null)return;const body=prompt('Section content',s.body||'');if(body===null)return;try{await api('/api/vendor/sections',{method:'PATCH',body:JSON.stringify({id,title,body,sort_order:s.sort_order,enabled:!!s.enabled,data_json:s.data_json||{}})});loadSections()}catch(e){alert(e.message)}}
+async function editSection(id){
+ const d=await api('/api/vendor/sections'),s=(d.sections||[]).find(x=>x.id===id);if(!s)return;
+ document.getElementById('gzSectionEditorModal')?.remove();
+ const modal=document.createElement('div');modal.id='gzSectionEditorModal';modal.className='gz-modal show';
+ modal.innerHTML='<div class="gz-modal-box" role="dialog" aria-modal="true" aria-labelledby="gzSectionEditorTitle"><div class="gz-head"><div><div class="gz-kicker">STORE CONTENT</div><h2 id="gzSectionEditorTitle">Edit store section</h2><p>Update the title and content shown on your storefront.</p></div><button type="button" class="gz-btn light" data-section-close aria-label="Close editor">×</button></div><form id="gzSectionEditorForm" class="gz-form"><div class="gz-field"><label for="gzSectionEditorName">Section title</label><input id="gzSectionEditorName" maxlength="120" required value="'+esc(s.title||'')+'"></div><div class="gz-field"><label for="gzSectionEditorBody">Section content</label><textarea id="gzSectionEditorBody" rows="8" maxlength="12000">'+esc(s.body||'')+'</textarea></div><div class="gz-actions"><button type="submit" class="gz-btn primary" id="gzSectionEditorSave">Save section</button><button type="button" class="gz-btn light" data-section-close>Cancel</button></div><p id="gzSectionEditorMessage" class="form-msg" role="status" aria-live="polite"></p></form></div>';
+ document.body.appendChild(modal);
+ const close=()=>modal.remove();
+ modal.querySelectorAll('[data-section-close]').forEach(b=>b.addEventListener('click',close));
+ modal.addEventListener('click',e=>{if(e.target===modal)close()});
+ const onKey=e=>{if(e.key==='Escape'){close();window.removeEventListener('keydown',onKey)}};
+ window.addEventListener('keydown',onKey);
+ modal.querySelector('#gzSectionEditorName')?.focus();
+ modal.querySelector('#gzSectionEditorForm')?.addEventListener('submit',async e=>{
+  e.preventDefault();const save=modal.querySelector('#gzSectionEditorSave'),message=modal.querySelector('#gzSectionEditorMessage');
+  const title=modal.querySelector('#gzSectionEditorName').value.trim(),body=modal.querySelector('#gzSectionEditorBody').value;
+  if(!title){message.textContent='Enter a section title.';message.className='form-msg error';return}
+  save.disabled=true;save.textContent='Saving…';message.textContent='';
+  try{await api('/api/vendor/sections',{method:'PATCH',body:JSON.stringify({id,title,body,sort_order:s.sort_order,enabled:!!s.enabled,data_json:s.data_json||{}})});close();await loadSections()}
+  catch(err){message.textContent=err.message||'Could not save this section.';message.className='form-msg error';save.disabled=false;save.textContent='Save section'}
+ });
+}
 async function deleteSection(id){if(!confirm('Delete this store section?'))return;try{await api('/api/vendor/sections',{method:'DELETE',body:JSON.stringify({id})});loadSections()}catch(e){alert(e.message)}}
 let vendorUploadToken='';async function getVendorUploadToken(force=false){if(vendorUploadToken&&!force)return vendorUploadToken;const r=await fetch('/api/vendor-auth',{credentials:'include',cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authenticated)throw Error(d.error||'Vendor session expired. Please log in again.');vendorUploadToken=d.upload_token||sessionStorage.getItem('gz_vendor_session_token')||'';return vendorUploadToken}
 async function uploadVendorImage(file,scope){if(!file)return'';if(file.size>1024*1024)throw Error(file.name+' is larger than 1 MB. Choose a smaller image.');if(!/^image\/(jpeg|png|webp|gif|avif)$/.test(file.type))throw Error(file.name+' is not a supported image type.');const makeForm=()=>{const fd=new FormData();fd.append('file',file,file.name);fd.append('scope',scope);return fd};let r=await fetch('/api/vendor/upload',{method:'POST',body:makeForm(),credentials:'include',cache:'no-store'});let d=await r.json().catch(()=>({}));if(r.ok)return d.url||'';if(r.status===401){const token=await getVendorUploadToken(true);if(token){r=await fetch('/api/vendor/upload',{method:'POST',body:makeForm(),credentials:'include',cache:'no-store',headers:{Authorization:'Bearer '+token}});d=await r.json().catch(()=>({}));}}if(!r.ok)throw Error(d.error||'Image upload failed');return d.url||''}
