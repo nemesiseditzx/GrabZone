@@ -10,6 +10,7 @@ test('vendor order finalization failures are queued and retried without failing 
   assert.ok(finalizer.includes('CREATE TABLE IF NOT EXISTS vendor_order_finalization_jobs'));
   assert.ok(finalizer.includes('async function enqueueVendorFinalization(e,orderId,payload,error)'));
   assert.ok(finalizer.includes('async function processPendingVendorFinalizations(e)'));
+  assert.ok(finalizer.includes("status='processing' AND julianday(updated_at)<julianday('now','-5 minutes')"));
   assert.ok(finalizer.includes("console.error('GrabZone order '+o.id+' was accepted, but vendor finalization needs retry.'"));
   assert.ok(finalizer.includes('await enqueueVendorFinalization(e,o.id,payload,finalizationError)'));
 });
