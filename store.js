@@ -73,6 +73,7 @@ let sb = null;
 let allProducts = [];
 let activeCategory = "All";
 let activeProductPage = 1;
+let lastProductFilterKey = null;
 let SITE = {};
 
 const C = window.GRABZONE_CONFIG || {};
@@ -952,12 +953,13 @@ function renderProducts() {
     (searchInput?.value || "")
       .trim()
       .toLowerCase();
-  activeProductPage = 1;
 
   const selectedCategory =
     String(activeCategory || "All")
       .trim()
       .toLowerCase();
+  const filterKey = query + "\\u0000" + selectedCategory;
+  if (filterKey !== lastProductFilterKey) { activeProductPage = 1; lastProductFilterKey = filterKey; }
 
   /*
     Bangla search.
