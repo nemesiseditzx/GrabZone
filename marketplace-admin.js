@@ -276,8 +276,8 @@ const adminLoadVariationOptions=(p)=>{
  return [...opts.entries()].map(([name,values])=>({name,values}));
 };
 const adminGenerateVariations=()=>{
- const options=adminOptionState.filter(o=>o.name&&o.values.length);if(!options.length)return alert('Select at least one Size, Color or custom option.');
- let count=1;for(const o of options)count*=o.values.length;if(count>200)return alert('Maximum 200 variations.');
+ const options=adminOptionState.filter(o=>o.name&&o.values.length);if(!options.length)return msg('Select at least one Size, Color or custom option.',false);
+ let count=1;for(const o of options)count*=o.values.length;if(count>200)return msg('Maximum 200 variations.',false);
  adminCollectVariationInputs();const old=new Map(adminVariationState.map(v=>[Object.entries(v.options||{}).sort().map(([k,x])=>k+'='+x).join('|'),v]));
  adminVariationState.splice(0,adminVariationState.length,...adminCartesian(options).map(o=>{const key=Object.entries(o).sort().map(([k,x])=>k+'='+x).join('|');const prev=old.get(key)||{};return {...prev,options:o,sku:prev.sku||'',price:prev.price??null,old_price:prev.old_price??null,status:prev.status||'Available',image_url:prev.image_url||''}}));
  adminRenderVariations();document.getElementById('gzmpVariationMsg').textContent='✓ '+adminVariationState.length+' variations generated.';
@@ -297,7 +297,7 @@ const openProductEditor=async(p={},isNew=true)=>{
  $('gzmpProductType').onchange=syncType;syncType();
  $('gzmpAddOption').onclick=()=>adminAddOption();
  $('gzmpGenerateVariations').onclick=adminGenerateVariations;
- $('gzmpApplyPrice').onclick=()=>{adminCollectVariationInputs();const price=$('gzmpBulkPrice').value;if(price==='')return alert('Enter a regular price first.');adminVariationState.forEach(v=>v.price=Number(price));adminRenderVariations()};
+ $('gzmpApplyPrice').onclick=()=>{adminCollectVariationInputs();const price=$('gzmpBulkPrice').value;if(price==='')return msg('Enter a regular price first.',false);adminVariationState.forEach(v=>v.price=Number(price));adminRenderVariations()};
  renderAdminMedia();
  $('gzmpProductFiles').onchange=handleAdminMediaFiles;
  $('gzmpProductForm').onsubmit=async e=>{
@@ -317,14 +317,14 @@ const openProductEditor=async(p={},isNew=true)=>{
    if(!isNew)b.id=p.id;
    const d=await api('/api/vendor/admin/products',{method:isNew?'POST':'PATCH',body:JSON.stringify(b)});
    msg(isNew?'✓ Product created.':'✓ Product saved.');closeModal();await openVendorPanel(activeVendor);
-  }catch(err){const m=$('gzmpProductMsg');if(m){m.textContent='⚠ '+(err.message||'Could not save product.');m.style.color='#a00'}else alert(err.message)}finally{btn.disabled=false}
+  }catch(err){const m=$('gzmpProductMsg');if(m){m.textContent='⚠ '+(err.message||'Could not save product.');m.style.color='#a00'}else msg(err.message||'Could not save product.',false)}finally{btn.disabled=false}
  };
 };
 const handleAdminMediaFiles=()=>{
  const input=$('gzmpProductFiles');const files=[...(input?.files||[])];
- if(files.length>10){alert('Maximum 10 images per product.');input.value='';adminMediaState.files=[];renderAdminMedia();return}
+ if(files.length>10){msg('Maximum 10 images per product.',false);input.value='';adminMediaState.files=[];renderAdminMedia();return}
  const bad=files.find(f=>f.size>1024*1024||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));
- if(bad){alert(`${bad.name} is not a supported image or is larger than 1 MB.`);input.value='';adminMediaState.files=[];renderAdminMedia();return}
+ if(bad){msg(`${bad.name} is not a supported image or is larger than 1 MB.`,false);input.value='';adminMediaState.files=[];renderAdminMedia();return}
  adminMediaState.files=files;adminMediaState.mainIndex=0;renderAdminMedia();
 };
 const renderAdminMedia=()=>{
