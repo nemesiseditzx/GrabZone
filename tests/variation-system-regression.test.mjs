@@ -34,6 +34,22 @@ test('customer variation picker constrains quantity and order API validates it s
   assert.ok(finalizer.includes('unit(s) remain for the selected variation.'));
 });
 
+test('tracked variation inventory is atomically deducted and restored on failed order creation', () => {
+  const finalizer = read('vendor-system-finalizer.mjs');
+  assert.ok(finalizer.includes("UPDATE product_variations SET stock=stock-?"));
+  assert.ok(finalizer.includes("AND COALESCE(stock,0)>=?"));
+  assert.ok(finalizer.includes("UPDATE product_variations SET stock=COALESCE(stock,0)+?"));
+  assert.ok(finalizer.includes("if(!r.ok){await restoreInventory(e,held);return r;}"));
+  assert.ok(finalizer.includes('"sale:"+row.id'));
+  assert.ok(!finalizer.includes('async function logHeld(e,held,orderId){return true}'));
+});
+
+test('home fuzzy search tokenizes whitespace and Bangla/English words correctly', () => {
+  const home = read('store.js');
+  assert.ok(home.includes('query.split(/\\s+/)'));
+  assert.ok(home.includes('split(/[^a-z0-9\\u0980-\\u09ff]+/i)'));
+});
+
 test('checkout confirmation email includes selected variation details', () => {
   const checkout = read('checkout.js');
   assert.ok(checkout.includes('variation_options:i.variation_options||{}'));
