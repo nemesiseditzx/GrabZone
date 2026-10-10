@@ -27,7 +27,8 @@ async function ensureVendorOrderTables(e){
   "ALTER TABLE vendor_order_items ADD COLUMN sku TEXT"
  ])await e.DB.prepare(sql).run().catch(()=>{});
 }
-async function schema(e){for(const sql of [
+let schemaPromise=null;
+async function schema(e){if(schemaPromise)return schemaPromise;schemaPromise=(async()=>{for(const sql of [
 "CREATE TABLE IF NOT EXISTS vendor_sessions(token_hash TEXT PRIMARY KEY,vendor_user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)",
 "CREATE TABLE IF NOT EXISTS vendors(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT NOT NULL UNIQUE,status TEXT NOT NULL DEFAULT 'active',commission_type TEXT NOT NULL DEFAULT 'percentage',commission_value REAL NOT NULL DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
 "ALTER TABLE vendors ADD COLUMN name TEXT",
@@ -41,7 +42,7 @@ async function schema(e){for(const sql of [
 "CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 5,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
 "CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)",
 "CREATE TABLE IF NOT EXISTS vendor_coupons(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,code TEXT NOT NULL,discount_type TEXT NOT NULL DEFAULT 'fixed',discount_value REAL NOT NULL DEFAULT 0,min_order_amount REAL NOT NULL DEFAULT 0,max_discount_amount REAL,usage_limit INTEGER,used_count INTEGER NOT NULL DEFAULT 0,starts_at TEXT,expires_at TEXT,active INTEGER NOT NULL DEFAULT 1,note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
-"ALTER TABLE order_items ADD COLUMN variation_id TEXT","ALTER TABLE order_items ADD COLUMN variation_options TEXT","ALTER TABLE order_items ADD COLUMN variation_sku TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT","ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'","ALTER TABLE shipments ADD COLUMN customer_notified_at TEXT","CREATE INDEX IF NOT EXISTS order_items_variation_idx ON order_items(variation_id)","CREATE INDEX IF NOT EXISTS vendor_order_items_variation_idx ON vendor_order_items(variation_id)"])await e.DB.prepare(sql).run().catch(()=>{});}
+"ALTER TABLE order_items ADD COLUMN variation_id TEXT","ALTER TABLE order_items ADD COLUMN variation_options TEXT","ALTER TABLE order_items ADD COLUMN variation_sku TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT","ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'","ALTER TABLE shipments ADD COLUMN customer_notified_at TEXT","CREATE INDEX IF NOT EXISTS order_items_variation_idx ON order_items(variation_id)","CREATE INDEX IF NOT EXISTS vendor_order_items_variation_idx ON vendor_order_items(variation_id)"])await e.DB.prepare(sql).run().catch(()=>{});return true;})();try{return await schemaPromise}catch(err){schemaPromise=null;throw err}}
 async function ensureDefaultVendor(e){
  const existing=await one(e,"SELECT id FROM vendors WHERE slug='grabzone' LIMIT 1");
  let id=existing?.id;
