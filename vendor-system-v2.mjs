@@ -112,7 +112,7 @@ async function coupons(req,e){
    const url=new URL(req.url),code=couponCode(url.searchParams.get('code')),vendorId=clean(url.searchParams.get('vendor_id'),120),subtotal=Math.max(0,Number(url.searchParams.get('subtotal')||0));
    if(!code||!vendorId)return json({valid:false,discount:0,message:'Enter a coupon code.'},400);
    const row=await one(e,'SELECT c.*,v.status vendor_status FROM vendor_coupons c JOIN vendors v ON v.id=c.vendor_id WHERE upper(c.code)=upper(?) AND c.vendor_id=? AND c.active=1 LIMIT 1',[code,vendorId]);
-   if(!row||String(row.vendor_status||'Active')!=='Active')return json({valid:false,discount:0,message:'This coupon is not valid for this store.'});
+   if(!row||String(row.vendor_status||'active').toLowerCase()!=='active')return json({valid:false,discount:0,message:'This coupon is not valid for this store.'});
    if(row.starts_at&&new Date(row.starts_at)>new Date())return json({valid:false,discount:0,message:'This coupon is not active yet.'});
    if(row.expires_at&&new Date(row.expires_at)<=new Date())return json({valid:false,discount:0,message:'This coupon has expired.'});
    if(row.usage_limit!==null&&Number(row.used_count||0)>=Number(row.usage_limit))return json({valid:false,discount:0,message:'This coupon has reached its usage limit.'});
