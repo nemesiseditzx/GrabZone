@@ -77,6 +77,20 @@ The user supplied a nine-item issue list. Treat these as acceptance criteria, no
 
 These code changes are on the renovation branch only. They are not evidence that the full nine-item list is complete. Continue with storefront search/category/pagination, slug routing, vendor contact/social rendering, product image coverage, and dedicated variation regression tests before declaring acceptance.
 
+### Follow-up implementation pass
+
+- Admin and vendor variation editors now expose sale price, old price, stock quantity, tracked/untracked mode, minimum/maximum quantity, status, and image controls. Variation removal is a safe disable/archive operation so historical order records are retained.
+- Vendor variation PATCH now validates and persists sale price, stock, stock mode, low-stock threshold, and quantity limits. Regenerating a disabled combination reactivates it, and the vendor variation-generation response now returns the persisted variations so the editor can immediately render them.
+- Customer variation picker now constrains quantity by minimum/maximum and tracked stock. The order finalizer independently validates minimum quantity, maximum quantity, and available tracked stock before forwarding an order.
+- Checkout confirmation email item payload now includes selected variation options and SKU.
+- Main storefront, marketplace cards, and vendor storefront cards now fall back to the GrabZone favicon when an image URL fails.
+- Main storefront product grid now paginates at 20 products per page and resets pagination when the search/category filter changes.
+- Clean `/store/<slug>` URLs now route to `marketplace-store.html` in the Worker while preserving the browser-visible slug path.
+- Main storefront search now supports conservative typo tolerance for longer English terms; marketplace search already includes fuzzy matching and category/store filters.
+- Added `tests/variation-system-regression.test.mjs` to cover variation field persistence, editor controls, quantity enforcement, email variation details, image fallbacks, clean store routing, and home pagination.
+
+These changes are code and automated-regression work on the renovation branch only. A green local/CI validation is not the same as an authenticated browser test against a safely isolated remote Worker/D1/R2 deployment.
+
 ## Still not verified end-to-end
 - Browser-driven checkout and vendor order flow against a safe deployment of this exact renovation branch.
 - Integration tests against a disposable remote D1 database and R2 test bucket.
