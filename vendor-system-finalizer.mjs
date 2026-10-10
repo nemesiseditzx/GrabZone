@@ -147,7 +147,7 @@ async function createVendorOrders(e,orderId){
     const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,discount_amount:discount,coupon_code:discount?String(orderCoupon?.vendor_coupon_code||''):null,shipping_fee:delivery,shipping_charge:delivery,delivery_charge:delivery,total:netSubtotal+delivery,commission_amount:commission,vendor_earnings:earnings,status:'Processing',created_at:now(),updated_at:now()};
     const vfields=Object.keys(vo).filter(k=>voCols.has(k));
     if(!vfields.includes('id')||!vfields.includes('order_id')||!vfields.includes('vendor_id'))continue;
-    await e.DB.prepare('INSERT INTO vendor_orders('+vfields.join(',')+') VALUES('+vfields.map(()=>'?').join(',')+')').bind(...vfields.map(k=>vo[k])).run();
+    try{await e.DB.prepare('INSERT INTO vendor_orders('+vfields.join(',')+') VALUES('+vfields.map(()=>'?').join(',')+')').bind(...vfields.map(k=>vo[k])).run();}catch(err){const raced=await one(e,'SELECT id FROM vendor_orders WHERE order_id=? AND vendor_id=? LIMIT 1',[orderId,g.vendor_id]);if(raced)continue;throw err;}
     for(const item of g.items){
       const vi={id:crypto.randomUUID(),vendor_order_id:vo.id,order_item_id:item.order_item_id,product_id:item.product_id,quantity:item.quantity,unit_price:item.unit_price,line_total:item.line_total,variation_id:item.variation_id||null,variation_options:item.variation_options||null,variation_sku:item.variation_sku||null};
       const ifields=Object.keys(vi).filter(k=>voiCols.has(k));
