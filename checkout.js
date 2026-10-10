@@ -549,7 +549,7 @@ async function submit(e){
         rewards_voucher_code:String(order.rewards_voucher_code||rewardsVoucherState.code||''),
         rewards_voucher_discount:Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0),
         mystery_discount:Number(order.mystery_discount||0),
-        total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0)-Number(order.mystery_discount||0)),
+        total:Number(order.total??Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(order.vendor_coupon_discount||vendorCouponState.discount||0)-Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0)-Number(order.mystery_discount||0))),
         public_tracking_id:privateTrackingId
       },
       checkoutItems.map(i=>({
