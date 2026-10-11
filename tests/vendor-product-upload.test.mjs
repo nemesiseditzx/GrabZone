@@ -13,3 +13,15 @@ test('vendor product editor uses the shared authenticated image uploader', () =>
   assert.ok(!editor.includes('alert('));
   assert.ok(editor.includes('const notify=(message,type=\'error\')=>'));
 });
+
+test('injected vendor upload controls report failures with non-blocking toast feedback', () => {
+  const entry = read('marketplace-stable-entry.mjs');
+  assert.ok(entry.includes('function toast(message)'));
+  assert.ok(!entry.includes('alert('));
+  const forceImageUi = read('marketplace-image-final-entry.mjs');
+  const multiImageUi = read('marketplace-image-policy-entry.mjs');
+  assert.ok(forceImageUi.includes('function toast(message)'));
+  assert.ok(multiImageUi.includes('function toast(message)'));
+  assert.ok(!forceImageUi.includes('alert('));
+  assert.ok(!multiImageUi.includes('alert('));
+});
