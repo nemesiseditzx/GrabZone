@@ -127,7 +127,7 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
  await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
  product.image_urls=((await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? AND vendor_id=? ORDER BY sort_order,id',[id,product.vendor_id])).results||[]).map(x=>x.image_url).filter(Boolean);
  if(!product.image_urls.length&&product.image_url)product.image_urls=[product.image_url];let opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[id])).results||[];
- for(const o of opts)o.values=(await q(e,'SELECT id,value,sort_order FROM option_values WHERE option_id=? ORDER BY sort_order,id',[o.id])).results||[];
+ if(opts.length){const optionIds=opts.map(o=>o.id),valuesByOption=new Map(opts.map(o=>[o.id,[]]));for(let offset=0;offset<optionIds.length;offset+=80){const ids=optionIds.slice(offset,offset+80),placeholders=ids.map(()=>'?').join(',');const rows=(await q(e,'SELECT id,option_id,value,sort_order FROM option_values WHERE option_id IN ('+placeholders+') ORDER BY sort_order,id',ids)).results||[];for(const row of rows)valuesByOption.get(row.option_id)?.push({id:row.id,value:row.value,sort_order:row.sort_order})}for(const o of opts)o.values=valuesByOption.get(o.id)||[]}
  // Recover variable products whose old option definitions were never saved.
  // The editor's Size Details format is used only when the product is explicitly variable.
  if(!opts.length&&String(product.product_type||'').toLowerCase()==='variable'){
@@ -138,7 +138,7 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
      await e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid,id,'Size',0,t,t).run();
      for(let i=0;i<found.length;i++)await e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),oid,found[i],i,t,t).run();
      opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[id])).results||[];
-     for(const o of opts)o.values=(await q(e,'SELECT id,value,sort_order FROM option_values WHERE option_id=? ORDER BY sort_order,id',[o.id])).results||[];
+     if(opts.length){const optionIds=opts.map(o=>o.id),valuesByOption=new Map(opts.map(o=>[o.id,[]]));for(let offset=0;offset<optionIds.length;offset+=80){const ids=optionIds.slice(offset,offset+80),placeholders=ids.map(()=>'?').join(',');const rows=(await q(e,'SELECT id,option_id,value,sort_order FROM option_values WHERE option_id IN ('+placeholders+') ORDER BY sort_order,id',ids)).results||[];for(const row of rows)valuesByOption.get(row.option_id)?.push({id:row.id,value:row.value,sort_order:row.sort_order})}for(const o of opts)o.values=valuesByOption.get(o.id)||[]}
    }
  }let vs=(await q(e,"SELECT id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
  // Repair products that have saved option definitions but never got variation rows.
