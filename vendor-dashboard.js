@@ -9,7 +9,32 @@ let state={user:null,products:[],orders:[]};
 async function api(path,opt={}){const h={'Content-Type':'application/json',...(opt.headers||{})};const st=sessionStorage.getItem('gz_vendor_session_token');if(st&&!h.Authorization)h.Authorization='Bearer '+st;const r=await fetch(path,{credentials:'include',cache:'no-store',...opt,headers:h});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Request failed');return d}
 const money=n=>'৳'+Number(n||0).toLocaleString('en-BD',{maximumFractionDigits:2});
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-function show(id){qAll('.gz-section').forEach(x=>x.classList.remove('show'));$('#'+id)?.classList.add('show');qAll('.gz-nav button').forEach(x=>x.classList.toggle('active',x.dataset.section===id));if(id==='dashboard')loadDash();if(id==='products')loadProducts();if(id==='orders')loadOrders();if(id==='coupons')loadCoupons();if(id==='store')loadProfile();if(id==='settings')loadVendorSettings()}
+function show(id){
+ const allowed=new Set(qAll('.gz-nav button[data-section]').map(b=>b.dataset.section));
+ if(!allowed.has(id)||!document.getElementById(id)?.classList.contains('gz-section'))return false;
+ const sections=qAll('.gz-section');
+ for(const section of sections){
+  const active=section.id===id;
+  section.classList.toggle('show',active);
+  section.style.display=active?'block':'none';
+  section.setAttribute('aria-hidden',active?'false':'true');
+ }
+ for(const button of qAll('.gz-nav button[data-section]')){
+  const active=button.dataset.section===id;
+  button.classList.toggle('active',active);
+  if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+  button.setAttribute('aria-controls',button.dataset.section);
+ }
+ document.body.dataset.gzVendorSection=id;
+ window.scrollTo({top:0,left:0,behavior:'auto'});
+ if(id==='dashboard')loadDash();
+ if(id==='products')loadProducts();
+ if(id==='orders')loadOrders();
+ if(id==='coupons')loadCoupons();
+ if(id==='store')loadProfile();
+ if(id==='settings')loadVendorSettings();
+ return true;
+}
 async function loadDash(){try{const d=await api('/api/vendor/dashboard');$('#vendorName').textContent=d.vendor?.brand_name||d.vendor?.business_name||'Vendor';$('#statProducts').textContent=d.metrics?.products??0;$('#statOrders').textContent=d.metrics?.orders??0;$('#statSales').textContent=money(d.metrics?.sales);$('#statEarn').textContent=money(d.metrics?.earnings);$('#statShip').textContent=d.metrics?.open_shipments??0;const link=$('#storeLink');if(link&&d.vendor?.slug){link.href='/store/'+encodeURIComponent(d.vendor.slug);link.textContent=location.origin+'/store/'+d.vendor.slug}const box=$('#vendorRewardsStatus'),r=d.rewardsEligibility||{};if(box){const active=r.eligibility_status==='active';box.innerHTML='<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><b>Store eligibility</b><span class="gz-status" style="background:'+(active?'#e4f7ea':'#f2f2f2')+';color:'+(active?'#16723b':'#666')+'">'+(active?'Eligible':'Not eligible')+'</span></div><p style="color:#777;margin:10px 0 0">All store products are '+(active?'automatically included in Rewards and Referral.':'not currently eligible.')+' Only GrabZone Admin can change this.</p>'}}catch(e){console.error(e)}}
 let editingCouponId='';
 async function loadCoupons(){
@@ -237,7 +262,7 @@ $('#v_store_slug')?.addEventListener('input',e=>{
 $('#v_logo_file')?.addEventListener('change',e=>previewFiles(e.target,'logoPreview'));$('#v_banner_file')?.addEventListener('change',e=>previewFiles(e.target,'bannerPreview'));$('#p_image_files')?.addEventListener('change',e=>{if(e.target.files.length>10){gzVendorNotify('Maximum 10 images per product.','error');e.target.value='';return}previewFiles(e.target,'productPreview')});
 $('#profileForm')?.addEventListener('submit',async e=>{e.preventDefault();const msg=$('#profileMsg');msg.textContent='Saving…';try{let logo=$('#v_logo_url').value||'',banner=$('#v_banner_url').value||'';if($('#v_logo_file')?.files[0])logo=await uploadVendorImage($('#v_logo_file').files[0],'store-logo');if($('#v_banner_file')?.files[0])banner=await uploadVendorImage($('#v_banner_file').files[0],'store-banner');let contact={},social={};try{contact=JSON.parse($('#v_contact_info').value||'{}')}catch{throw Error('Contact info JSON is invalid.')}try{social=JSON.parse($('#v_social_links').value||'{}')}catch{throw Error('Social links JSON is invalid.')}const b={};for(const k of ['business_name','brand_name','phone','accent_color','tagline','description','announcement'])b[k]=$('#v_'+k).value;b.slug=normalizeStoreSlug($('#v_store_slug').value);if(!b.slug)throw Error('Store URL slug is required.');b.email=$('#v_store_email').value.trim();b.logo_url=logo;b.banner_url=banner;b.contact_info=contact;b.social_links=social;await api('/api/vendor/profile',{method:'PATCH',body:JSON.stringify(b)});msg.textContent='Saved successfully ✓';await loadDash();await loadProfile()}catch(x){msg.textContent=x.message}});
 $('#logout').onclick=async()=>{await api('/api/vendor-auth',{method:'POST',body:JSON.stringify({action:'logout'})});sessionStorage.removeItem('gz_vendor_session_token');location.href='/vendor-login.html'};
-qAll('.gz-nav button').forEach(b=>b.onclick=()=>show(b.dataset.section));
+document.querySelector('.gz-nav')?.addEventListener('click',event=>{const button=event.target.closest('button[data-section]');if(!button||!event.currentTarget.contains(button))return;event.preventDefault();show(button.dataset.section)});
 (async()=>{for(let attempt=0;attempt<3;attempt++){try{const d=await api('/api/vendor-auth');if(!d.authenticated)throw Error('not logged');state.user=d.user;$('#vendorEmail').textContent=d.user.email;show('dashboard');return}catch(e){if(attempt<2)await new Promise(resolve=>setTimeout(resolve,400));}}location.href='/vendor-login.html'})();
 async function loadVendorSettings(){try{const d=await api('/api/vendor/settings');const s=d.settings||{};if($('#setShowPhone'))$('#setShowPhone').checked=s.show_phone!==false;if($('#setShowAnnouncement'))$('#setShowAnnouncement').checked=s.show_announcement!==false;if($('#setShowContact'))$('#setShowContact').checked=s.show_contact!==false}catch(e){console.error(e)}}
 async function saveVendorSettings(){try{await api('/api/vendor/settings',{method:'PATCH',body:JSON.stringify({show_phone:$('#setShowPhone').checked,show_announcement:$('#setShowAnnouncement').checked,show_contact:$('#setShowContact').checked})});$('#settingsMsg').textContent='Preferences saved ✓'}catch(e){$('#settingsMsg').textContent=e.message}}
