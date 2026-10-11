@@ -14,11 +14,19 @@ body{font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;backgroun
 .gz-side{top:76px;height:calc(100vh - 76px);padding:22px 14px;background:rgba(255,255,255,.88);backdrop-filter:blur(18px)}
 .gz-nav{gap:6px}.gz-nav button{position:relative;display:flex;align-items:center;gap:10px;padding:13px 14px;color:#656771;border:1px solid transparent}
 .gz-nav button:before{width:8px;height:8px;border-radius:3px;background:#d9d9de;content:"";transition:.2s}
-.gz-nav button:nth-child(1):before{content:"⌂";width:17px;height:17px;background:none;font-size:16px;line-height:17px}
-.gz-nav button:nth-child(2):before{content:"▦";width:17px;height:17px;background:none;font-size:15px}
-.gz-nav button:nth-child(3):before{content:"↗";width:17px;height:17px;background:none;font-size:15px}
-.gz-nav button:nth-child(4):before{content:"◈";width:17px;height:17px;background:none;font-size:15px}
-.gz-nav button:nth-child(5):before{content:"⚙";width:17px;height:17px;background:none;font-size:14px}
+.gz-nav button:nth-child(1):before{content:"⌂";width:17px;height:17px;flex:0 0 17px;background:none;font-size:16px;line-height:17px}
+.gz-nav button:nth-child(2):before{content:"▦";width:17px;height:17px;flex:0 0 17px;background:none;font-size:15px}
+.gz-nav button:nth-child(3):before{content:"↗";width:17px;height:17px;flex:0 0 17px;background:none;font-size:15px}
+.gz-nav button:nth-child(4):before{content:"◈";width:17px;height:17px;flex:0 0 17px;background:none;font-size:15px}
+.gz-nav button:nth-child(5):before{content:"▣";width:17px;height:17px;flex:0 0 17px;background:none;font-size:14px}
+.gz-nav button:nth-child(6):before{content:"⚙";width:17px;height:17px;flex:0 0 17px;background:none;font-size:14px}
+.gz-nav button{width:100%;min-height:44px;box-sizing:border-box;cursor:pointer}
+.gz-nav button:focus-visible{outline:3px solid #ffb27d;outline-offset:2px}
+.gz-layout{grid-template-columns:220px minmax(0,1fr)}
+.gz-main{box-sizing:border-box;min-width:0;width:100%;max-width:none}
+.gz-section{min-width:0;max-width:100%;box-sizing:border-box}
+@media(max-width:1000px){.gz-layout{grid-template-columns:minmax(0,1fr)}.gz-side{height:auto;max-height:none;overflow:visible}.gz-nav{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}.gz-nav button{flex:0 0 auto;width:auto;min-width:120px}}
+@media(max-width:650px){.gz-main{width:100%;padding:18px 12px!important}.gz-side{padding:8px!important}.gz-nav button{min-width:104px;padding:10px 12px!important}}
 .gz-nav button.active,.gz-nav button:hover{background:linear-gradient(100deg,#fff0e5,#fffaf7);border-color:#ffe0cc;box-shadow:0 7px 20px rgba(255,107,0,.08),inset 3px 0 var(--gz)}
 .gz-nav button.active:before{color:var(--gz);background:none}
 .gz-main{padding:38px 42px 60px;max-width:1560px}
