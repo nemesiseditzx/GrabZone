@@ -5,6 +5,7 @@
  const C=window.GRABZONE_CONFIG||{};
  let invoiceSiteSettings={whatsapp:C.whatsapp||'',instagram:C.instagram||'',messenger:C.messenger||''};
  const $=id=>document.getElementById(id);
+ const notify=(message,type='error')=>{let root=document.getElementById('gzTrackToastRoot');if(!root){root=document.createElement('div');root.id='gzTrackToastRoot';root.setAttribute('aria-live','polite');root.setAttribute('aria-atomic','false');root.style.cssText='position:fixed;right:18px;top:18px;z-index:100001;display:grid;gap:8px;width:min(380px,calc(100vw - 36px));pointer-events:none';document.body.appendChild(root)}const toast=document.createElement('div');toast.setAttribute('role',type==='error'?'alert':'status');toast.textContent=String(message||'Something went wrong.');toast.style.cssText='padding:13px 15px;border-radius:12px;background:'+(type==='error'?'#991b1b':'#166534')+';color:#fff;box-shadow:0 12px 30px rgba(0,0,0,.18);font:600 13px/1.45 system-ui,sans-serif;pointer-events:auto';root.appendChild(toast);window.setTimeout(()=>toast.remove(),4500)};
  const statuses=['New','Contacting','Confirmed','Processing','Shipped','Delivered','Cancelled'];
  const statusIcons={
    New:'<svg viewBox="0 0 24 24"><path d="M4 9.5 12 4l8 5.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-9Z"/><path d="M8 20v-6h8v6"/></svg>',
@@ -140,7 +141,7 @@
          pagebreak:{mode:['css'],avoid:['.gz-invoice-grabpoints','.gz-invoice-barcodes','.gz-invoice-thanks','.gz-invoice-footer','.gz-inv-product']}
        };
        await window.html2pdf().set(opt).from(clone).save();
-     }catch(err){console.error('Invoice PDF download failed:',err);alert('Invoice PDF তৈরি করা যায়নি। পেজটি রিফ্রেশ করে আবার চেষ্টা করুন।');}
+     }catch(err){console.error('Invoice PDF download failed:',err);notify('Invoice PDF তৈরি করা যায়নি। পেজটি রিফ্রেশ করে আবার চেষ্টা করুন।');}
      finally{if(pdfRoot)pdfRoot.remove();downloadBtn.disabled=false;downloadBtn.innerHTML=old;}
    };
    const setPrinterStage=stage=>{
