@@ -11,4 +11,6 @@ test('public variation endpoint batches option value reads by option IDs', () =>
   assert.ok(fn.includes('SELECT id,option_id,value,sort_order FROM option_values WHERE option_id IN ('));
   assert.ok(fn.includes('for(let offset=0;offset<optionIds.length;offset+=80)'));
   assert.ok(!fn.includes('SELECT id,value,sort_order FROM option_values WHERE option_id=? ORDER BY sort_order,id'));
+  assert.ok(!fn.includes('CREATE TABLE IF NOT EXISTS vendor_product_images'), 'image table setup is not repeated per public variation request');
+  assert.ok(source.includes('CREATE TABLE IF NOT EXISTS vendor_product_images'), 'image table is created by cached schema initialization');
 });
