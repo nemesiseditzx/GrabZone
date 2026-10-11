@@ -59,3 +59,9 @@ test('product editor layout CSS respects the Products section hidden state', () 
   assert.ok(!editor.includes('#products{display:block!important;flex:1 1 100%!important;margin:0!important}'));
   assert.ok(html.includes('vendor-product-editor.js?v=20261011-product-section-visibility6'));
 });
+
+test('legacy vendor dashboard does not receive duplicate V2UI sibling panels', () => {
+  const entry = read('marketplace-stable-entry.mjs');
+  assert.ok(entry.includes('vendor-admin|marketplace-vendor-control-v2|product|checkout'));
+  assert.ok(!entry.includes('vendor-dashboard|vendor-admin|marketplace-vendor-control-v2|product|checkout'));
+});
