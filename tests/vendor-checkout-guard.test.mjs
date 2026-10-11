@@ -16,3 +16,10 @@ test('checkout guard uses a valid variation sale price instead of always chargin
   assert.ok(v2.includes('pv.regular_price,pv.sale_price,pv.old_price'));
   assert.ok(v2.includes('sale>0&&sale<regular?sale:regular'));
 });
+
+test('checkout order guard receives the continuation callback in the correct argument position', () => {
+  const v2 = read('vendor-system-v2.mjs');
+  assert.ok(v2.includes("async function orderGuard(req,e,next)"));
+  assert.ok(v2.includes("return orderGuard(req,e,next)"));
+  assert.ok(!v2.includes("return orderGuard(req,e,ctx,next)"));
+});
