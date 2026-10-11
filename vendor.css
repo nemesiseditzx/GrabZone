@@ -346,3 +346,7 @@ body{background:radial-gradient(ellipse at 8% 0%,#fff0e4 0,transparent 34%),line
  .gz-nav button{min-width:104px;padding:10px 11px!important}
  .gz-main{padding:18px 12px 42px!important}
 }
+
+/* A vendor dashboard navigation click must reveal one main section only. */
+main.gz-main > .gz-section[hidden]{display:none!important}
+main.gz-main > .gz-section:not([hidden]){display:block!important}
