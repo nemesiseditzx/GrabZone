@@ -319,3 +319,30 @@ body{background:radial-gradient(ellipse at 8% 0%,#fff0e4 0,transparent 34%),line
 .gz-vendor-note{background:linear-gradient(135deg,#fff7ef,#fff);border-color:#ffe0c5}
 .gz-table th{background:#fff7f0;color:#7c4a2b}
 @media(max-width:650px){.gz-main{padding:18px 12px 42px}.gz-card{border-radius:17px;padding:16px}.gz-head h1{font-size:27px}}
+
+/* Final vendor-dashboard sidebar/layout overrides: keep six nav items ordered and clickable. */
+.gz-layout{grid-template-columns:220px minmax(0,1fr);align-items:start}
+.gz-side{box-sizing:border-box;min-width:0;z-index:80}
+.gz-nav{display:flex;flex-direction:column;gap:7px}
+.gz-nav button{box-sizing:border-box;width:100%;min-height:46px;display:flex;align-items:center;gap:10px;text-align:left;white-space:nowrap}
+.gz-nav button:nth-child(1):before{content:"⌂"}
+.gz-nav button:nth-child(2):before{content:"▦"}
+.gz-nav button:nth-child(3):before{content:"↗"}
+.gz-nav button:nth-child(4):before{content:"◈"}
+.gz-nav button:nth-child(5):before{content:"▣"}
+.gz-nav button:nth-child(6):before{content:"⚙"}
+.gz-main{box-sizing:border-box;min-width:0;width:100%;max-width:none}
+.gz-section{box-sizing:border-box;min-width:0;max-width:100%}
+@media(max-width:1000px){
+ .gz-layout{grid-template-columns:minmax(0,1fr)}
+ .gz-side{position:sticky;top:72px;height:auto;max-height:none;overflow:visible;padding:8px 10px}
+ .gz-nav{flex-direction:row;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
+ .gz-nav button{flex:0 0 auto;width:auto;min-width:118px;min-height:42px}
+ .gz-main{width:100%;max-width:none;padding:24px 18px 50px}
+}
+@media(max-width:650px){
+ .gz-side{top:64px;padding:7px}
+ .gz-nav{gap:6px}
+ .gz-nav button{min-width:104px;padding:10px 11px!important}
+ .gz-main{padding:18px 12px 42px!important}
+}
