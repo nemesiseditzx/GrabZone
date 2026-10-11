@@ -10,7 +10,7 @@ test('vendor dashboard navigation has six explicit, matching sections', () => {
     assert.ok(html.includes('data-section="'+id+'"'), 'missing nav button '+id);
     assert.ok(html.includes('id="'+id+'" class="gz-section'), 'missing section '+id);
   }
-  assert.ok(html.includes('vendor-dashboard.js?v=20261011-exclusive-sections4'));
+  assert.ok(html.includes('vendor-dashboard.js?v=20261011-section-top5'));
 });
 
 test('sidebar navigation binds click handlers directly and exposes section switching', () => {
@@ -18,7 +18,7 @@ test('sidebar navigation binds click handlers directly and exposes section switc
   assert.ok(js.includes('window.gzShowVendorSection=show'));
   assert.ok(js.includes("qAll('.gz-nav button[data-section]').forEach(button=>"));
   assert.ok(js.includes("button.addEventListener('click',event=>"));
-  assert.ok(js.includes("section.style.display=active?'block':'none'"));
+  assert.ok(js.includes("section.style.setProperty('display',active?'block':'none','important')"));
 });
 
 test('all six sidebar icons match their current order and content fits its grid column', () => {
