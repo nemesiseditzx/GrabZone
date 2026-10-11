@@ -40,3 +40,13 @@ test('only the selected top-level vendor section is visible', () => {
   assert.ok(js.includes("section.style.setProperty('display',active?'block':'none','important')"));
   assert.ok(css.includes('main.gz-main > .gz-section[hidden]{display:none!important}'));
 });
+
+test('sidebar navigation closes the product editor and resets the viewport after switching', () => {
+  const js = read('vendor-dashboard.js');
+  const html = read('vendor-dashboard.html');
+  assert.ok(js.includes('function resetVendorSectionViewport(id)'));
+  assert.ok(js.includes("if(modal?.classList.contains('show'))closeModal()"));
+  assert.ok(js.includes('requestAnimationFrame(()=>requestAnimationFrame(reset))'));
+  assert.ok(js.includes("window.scrollTo({top:0,left:0,behavior:'auto'})"));
+  assert.ok(html.includes('vendor-dashboard.js?v=20261011-section-top5'));
+});
