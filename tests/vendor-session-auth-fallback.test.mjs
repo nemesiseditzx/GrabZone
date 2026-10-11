@@ -32,3 +32,11 @@ test('browser requests the upload token with the saved vendor bearer session', (
   assert.ok(dashboard.includes("Authorization:'Bearer '+sessionToken"));
   assert.ok(dashboard.includes("fetch('/api/vendor-auth',{credentials:'include',cache:'no-store',headers})"));
 });
+
+test('session verification adapts to older D1 vendor table columns', () => {
+  const complete = read('vendor-marketplace-complete.mjs');
+  assert.ok(complete.includes("PRAGMA table_info('+table+')"));
+  assert.ok(complete.includes("uc.has('role')?'vu.role':\"'vendor_admin' role\""));
+  assert.ok(complete.includes("if(uc.has('active'))checks.push('COALESCE(vu.active,1)=1')"));
+  assert.ok(complete.includes("String(u.status||'').toLowerCase()!=='active'"));
+});
