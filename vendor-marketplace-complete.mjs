@@ -41,7 +41,7 @@ let gz=await one(env,"SELECT id FROM vendors WHERE slug='grabzone'");if(!gz){con
 await env.DB.prepare('UPDATE products SET vendor_id=? WHERE vendor_id IS NULL').bind(gz.id).run();
 })();return ready}
 async function admin(req,e){const raw=cookie(req,'gz_admin_session');if(raw){const x=await one(e,"SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>?",[await sha(raw),now()]);if(x)return x}const b=(req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'');const p=await verify(b,secret(e));return p?.sub?{id:p.sub,email:p.email}:null}
-async function vu(req,e){const raw=cookie(req,'gz_vendor_session')||(req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'');if(!raw)return null;return one(e,"SELECT vu.id,vu.email,vu.vendor_id,vu.role,v.brand_name,v.slug,v.status vendor_status FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active'",[await sha(raw),now()])}
+async function vu(req,e){const raw=cookie(req,'gz_vendor_session')||(req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'');if(!raw)return null;return one(e,"SELECT vu.id,vu.email,vu.vendor_id,vu.role,v.brand_name,v.slug,v.status vendor_status FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND LOWER(COALESCE(vu.status,'active'))='active' AND LOWER(COALESCE(v.status,'active'))='active'",[await sha(raw),now()])}
 async function audit(e,t,a,action,v,d){await e.DB.prepare('INSERT INTO marketplace_audit_log(id,actor_type,actor_id,action,vendor_id,details,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),t,a,action,v,d?JSON.stringify(d):null,now()).run().catch(()=>{})}
 async function syncOrder(e,orderId){
 await e.DB.prepare('UPDATE order_items SET vendor_id=(SELECT vendor_id FROM products WHERE products.id=order_items.product_id) WHERE order_id=? AND vendor_id IS NULL').bind(orderId).run();
@@ -580,7 +580,7 @@ return json({ok:true,deleted:true});
 if(p==='/api/marketplace/brands'){const u=new URL(req.url),all=u.searchParams.get('all')==='1';const a=(await q(e,`SELECT id,slug,business_name,brand_name,logo_url,banner_url,description,tagline,accent_color,featured FROM vendors WHERE status='Active' ${all?'':'AND homepage_visible=1'} ORDER BY featured DESC,brand_name`)).results||[];return json({brands:a})}
 if(p==='/api/marketplace/categories'&&req.method==='GET'){
  const u=new URL(req.url),vendor=clean(u.searchParams.get('vendor'),100);
- const where=vendor?" WHERE p.published=1 AND v.status='Active' AND (v.slug=? OR v.id=?)":" WHERE p.published=1 AND v.status='Active'";
+ const where=vendor?" WHERE p.published=1 AND LOWER(COALESCE(v.status,'active'))='active' AND (v.slug=? OR v.id=?)":" WHERE p.published=1 AND LOWER(COALESCE(v.status,'active'))='active'";
  const params=vendor?[vendor,vendor]:[];
  const rows=(await q(e,`SELECT COALESCE(NULLIF(TRIM(p.category),''),'Uncategorized') name,LOWER(REPLACE(REPLACE(TRIM(COALESCE(NULLIF(p.category,''),'Uncategorized')),' ','-'),'&','and')) slug,COUNT(*) product_count
    FROM products p JOIN vendors v ON v.id=p.vendor_id${where}
@@ -591,7 +591,7 @@ if(p==='/api/marketplace/products'){
  const u=new URL(req.url),v=clean(u.searchParams.get('vendor'),100),category=clean(u.searchParams.get('category'),120),search=clean(u.searchParams.get('q')||u.searchParams.get('search'),120),rawIds=String(u.searchParams.get('ids')||'').split(',').map(x=>clean(x,120)).filter(Boolean).slice(0,500);
  const MAX_LIMIT=500,askedLimit=Number(u.searchParams.get('limit')),limit=Number.isFinite(askedLimit)&&askedLimit>0?Math.min(MAX_LIMIT,Math.floor(askedLimit)):MAX_LIMIT;
  const askedPage=Number(u.searchParams.get('page')),page=Number.isFinite(askedPage)&&askedPage>0?Math.floor(askedPage):1,rawOffset=u.searchParams.get('offset'),askedOffset=rawOffset===null||rawOffset===''?NaN:Number(rawOffset),offset=Number.isFinite(askedOffset)&&askedOffset>=0?Math.floor(askedOffset):(page-1)*limit;
- let where=" FROM products p JOIN vendors v ON v.id=p.vendor_id WHERE p.published=1 AND v.status='Active'",ps=[];
+ let where=" FROM products p JOIN vendors v ON v.id=p.vendor_id WHERE p.published=1 AND LOWER(COALESCE(v.status,'active'))='active'",ps=[];
  if(rawIds.length){where+=' AND p.id IN ('+rawIds.map(()=>'?').join(',')+')';ps.push(...rawIds)}
  else{
    if(v){where+=' AND (v.slug=? OR v.id=?)';ps.push(v,v)}
