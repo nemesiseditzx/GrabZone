@@ -78,7 +78,7 @@ CREATE INDEX IF NOT EXISTS vendor_order_finalization_jobs_status_idx
 CREATE INDEX IF NOT EXISTS vendor_orders_vendor_idx ON vendor_orders(vendor_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS vendor_orders_order_idx ON vendor_orders(order_id,vendor_id);
 CREATE INDEX IF NOT EXISTS vendor_orders_status_idx ON vendor_orders(vendor_id,status,created_at DESC);
-CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,shipment_tracking_id TEXT NOT NULL,courier_name TEXT,courier_tracking_number TEXT,courier_tracking_url TEXT,status TEXT NOT NULL DEFAULT 'Processing',note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS shipments (id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_order_id TEXT,vendor_id TEXT NOT NULL,shipment_tracking_id TEXT,courier_name TEXT,courier_tracking_number TEXT,courier_tracking_url TEXT,courier TEXT,tracking_id TEXT,tracking_url TEXT,status TEXT NOT NULL DEFAULT 'Processing',note TEXT,created_at TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL DEFAULT '');
 CREATE INDEX IF NOT EXISTS shipments_order_idx ON shipments(order_id,created_at);
 CREATE INDEX IF NOT EXISTS shipments_vendor_idx ON shipments(vendor_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS shipments_tracking_idx ON shipments(shipment_tracking_id);

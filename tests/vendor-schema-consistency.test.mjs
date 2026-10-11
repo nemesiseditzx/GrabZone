@@ -14,9 +14,14 @@ test('shipment_items schema remains compatible with every shipment writer', () =
     assert.ok(source.includes('created_at'), 'created_at must be present');
   }
   assert.ok(complete.includes("ALTER TABLE shipment_items ADD COLUMN product_name TEXT NOT NULL DEFAULT 'Product'"));
+  assert.ok(complete.includes('ALTER TABLE shipments ADD COLUMN tracking_id TEXT'));
+  assert.ok(complete.includes('ALTER TABLE shipments ADD COLUMN courier TEXT'));
+  assert.ok(schema.includes('courier TEXT,tracking_id TEXT,tracking_url TEXT'));
   assert.ok(complete.includes('INSERT INTO shipment_items(id,shipment_id,order_item_id,product_id,product_name,quantity,created_at) VALUES(?,?,?,?,?,?,?)'));
   assert.ok(complete.includes("COALESCE(NULLIF(TRIM(oi.product_name),''),NULLIF(TRIM(p.name),''),'Product') product_name"));
   assert.ok(wrapper.includes('INSERT INTO shipment_items(id,shipment_id,order_item_id,product_id,product_name,quantity,created_at) VALUES(?,?,?,?,?,?,?)'));
+  assert.ok(wrapper.includes('CREATE TABLE IF NOT EXISTS shipment_items'));
+  assert.ok(wrapper.includes("['shipments','tracking_id','TEXT']"));
 });
 
 test('vendor coupon APIs are routed to the coupon handler before the marketplace catch-all', () => {
