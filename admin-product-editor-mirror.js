@@ -6,6 +6,11 @@ const VP_COLORS=['Black','White','Grey','Brown','Beige','Tan','Cream','Khaki','O
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const money=n=>'৳'+Number(n||0).toLocaleString('en-BD',{maximumFractionDigits:2});
+function notify(message,type='error'){
+ let root=document.getElementById('gzAdminProductToastRoot');
+ if(!root){root=document.createElement('div');root.id='gzAdminProductToastRoot';root.setAttribute('aria-live','polite');root.setAttribute('aria-atomic','false');root.style.cssText='position:fixed;right:18px;top:18px;z-index:100001;display:grid;gap:8px;width:min(380px,calc(100vw - 36px));pointer-events:none';document.body.appendChild(root)}
+ const toast=document.createElement('div');toast.setAttribute('role',type==='error'?'alert':'status');toast.textContent=String(message||'Something went wrong.');toast.style.cssText='padding:13px 15px;border-radius:12px;background:'+(type==='error'?'#991b1b':'#166534')+';color:#fff;box-shadow:0 12px 30px rgba(0,0,0,.18);font:600 13px/1.45 system-ui,sans-serif;pointer-events:auto';root.appendChild(toast);window.setTimeout(()=>toast.remove(),4500);
+}
 const state={products:[],editing:null,files:[],mainIndex:0,variationOptions:[],variations:[],variationLoading:false,categories:[]};
 async function api(path,opt={}){const method=(opt.method||'GET').toUpperCase();const url=new URL(path,location.origin);
   const body=opt.body?JSON.parse(opt.body):null;
@@ -92,7 +97,7 @@ async function editProduct(id){
  await loadVariations(p.id);if(state.variationOptions.length||state.variations.length)$('#vpProductType').value='variable';else if(p.product_type!=='variable')$('#vpProductType').value='simple';toggleVariationPanel();
  window.scrollTo({top:$('#products').getBoundingClientRect().top+window.scrollY-20,behavior:'smooth'});
 }
-function handleFiles(){const files=[...($('#vpFiles').files||[])];if(files.length>MAX){alert('Maximum 10 images per product.');$('#vpFiles').value='';state.files=[];renderMedia();return}const bad=files.find(f=>f.size>MB||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));if(bad){alert(`${bad.name} is not a supported image or is larger than 1 MB.`);$('#vpFiles').value='';state.files=[];renderMedia();return}state.files=files;state.mainIndex=0;renderMedia()}
+function handleFiles(){const files=[...($('#vpFiles').files||[])];if(files.length>MAX){notify('Maximum 10 images per product.');$('#vpFiles').value='';state.files=[];renderMedia();return}const bad=files.find(f=>f.size>MB||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));if(bad){notify(`${bad.name} is not a supported image or is larger than 1 MB.`);$('#vpFiles').value='';state.files=[];renderMedia();return}state.files=files;state.mainIndex=0;renderMedia()}
 function removeSelectedImage(index){if(index<0)return;if(state.files.length){state.files.splice(index,1);if(state.mainIndex>=state.files.length)state.mainIndex=Math.max(0,state.files.length-1);if(state.mainIndex>index)state.mainIndex--;$('#vpFiles').value='';renderMedia();return}const imgs=[...(state.editing?.image_urls||[])].filter(Boolean);if(index>=imgs.length)return;imgs.splice(index,1);state.editing.image_urls=imgs;if(!imgs.length){state.editing.image_url='';state.mainIndex=0}else{if(!imgs.includes(state.editing.image_url))state.editing.image_url=imgs[0];state.mainIndex=Math.max(0,imgs.indexOf(state.editing.image_url))}renderMedia()}
 function setSelectedMain(index){if(index<0)return;if(state.files.length){state.mainIndex=index;renderMedia();return}const imgs=[...(state.editing?.image_urls||[])].filter(Boolean);if(!imgs[index])return;const chosen=imgs[index];state.editing.image_url=chosen;state.editing.image_urls=[chosen,...imgs.filter(x=>x!==chosen)];state.mainIndex=0;renderMedia()}
 function renderMedia(){
@@ -112,6 +117,8 @@ function renderMedia(){
    return;
  }
  let existing=(state.editing?.image_urls||[]).filter(Boolean);
+ const legacyMain=String(state.editing?.image_url||'').trim();
+ if(legacyMain&&!existing.includes(legacyMain))existing.unshift(legacyMain);
  if(existing.length){
    const current=state.editing?.image_url||existing[0];
    if(current&&existing.includes(current))existing=[current,...existing.filter(x=>x!==current)];else if(current)existing=[current,...existing];
@@ -127,6 +134,10 @@ function renderMedia(){
    preview.innerHTML=`<img alt="Main product image" src="${esc(existing[0])}"><span class="vp-main-label">MAIN IMAGE</span>`;
  }else{note.textContent='Maximum 10 images · Maximum 1 MB per image.';preview.textContent='No images selected'}
 }
+function vpValues(name){const option=state.variationOptions.find(x=>String(x.name).toLowerCase()===String(name).toLowerCase());return Array.isArray(option?.values)?option.values:[]}
+function vpSet(name,values){const clean=[...new Set((values||[]).map(v=>String(v??'').trim()).filter(Boolean))];const key=String(name||'').trim();if(!key||!clean.length)return;const existing=state.variationOptions.findIndex(x=>x.name.toLowerCase()===key.toLowerCase());if(existing>=0)state.variationOptions[existing]={...state.variationOptions[existing],name:key,values:clean};else state.variationOptions.push({name:key,values:clean});renderOptionRows()}
+function vpToggle(name,value,checked){const key=String(name||'').trim().toLowerCase(),current=vpValues(name);if(checked){vpSet(name,current.concat(value));return}const remaining=current.filter(v=>v!==value);if(remaining.length){vpSet(name,remaining);return}state.variationOptions=state.variationOptions.filter(x=>String(x.name).toLowerCase()!==key);renderOptionRows()}
+function vpPreset(name,choices){const selected=vpValues(name);const chips=choices.map(value=>'<label class="vp-chip"><input type="checkbox" data-vp-opt="'+esc(name)+'" value="'+esc(value)+'"'+(selected.includes(value)?' checked':'')+'><span>'+esc(value)+'</span></label>').join('');const extra=name==='Size'?'<div class="vp-custom-inline"><input class="vp-numeric-size-input" placeholder="Custom sizes, e.g. 38, 40, 42"><button type="button" class="gz-btn light vp-add-numeric-sizes">Add sizes</button></div>':'';const search=name==='Color'?'<input class="vp-color-search" placeholder="Search colors…">':'';return '<div class="vp-preset-card"><div class="vp-preset-head"><b>'+esc(name)+'</b></div>'+search+'<div class="vp-chip-grid">'+chips+'</div>'+extra+'</div>'}
 function addOptionRow(o={name:'',values:[]}){const n=o.name.trim();if(!n)return;vpSet(n,o.values||[])}
 function renderOptionRows(){
  const box=$('#vpPresetOptions');if(!box)return;
@@ -138,15 +149,15 @@ function renderOptionRows(){
  box.querySelectorAll('.vp-add-numeric-sizes').forEach(btn=>{const input=btn.parentElement.querySelector('.vp-numeric-size-input');const add=()=>{const values=input.value.split(',').map(x=>x.trim()).filter(Boolean);if(!values.length)return;vpSet('Size',vpValues('Size').concat(values));};btn.onclick=add;input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();add();}});});
  const oldAdd=box.querySelector('.vp-add-another');if(!oldAdd){const btn=document.createElement('button');btn.type='button';btn.className='gz-btn light vp-add-another';btn.textContent='＋ Add Another Option';btn.onclick=()=>{const wrap=document.createElement('div');wrap.className='vp-custom-inline';wrap.innerHTML='<input placeholder="Option name"><input placeholder="Values separated by commas"><button type="button" class="gz-btn light">Add</button>';box.appendChild(wrap);wrap.querySelector('button').onclick=()=>{const ins=wrap.querySelectorAll('input'),n=ins[0].value.trim(),vs=ins[1].value.split(',').map(x=>x.trim()).filter(Boolean);if(n&&vs.length)vpSet(n,vs)}};box.appendChild(btn)}
 }
-function collectOptionRows(){}
+function collectOptionRows(){const grouped=new Map();document.querySelectorAll('#vpPresetOptions [data-vp-opt]').forEach(input=>{const name=String(input.dataset.vpOpt||'').trim();if(!name)return;if(!grouped.has(name))grouped.set(name,[]);if(input.checked)grouped.get(name).push(input.value)});state.variationOptions=[...grouped.entries()].filter(([,values])=>values.length).map(([name,values])=>({name,values:[...new Set(values)]}));}
 async function loadVariations(pid){
  const msg=$('#vpVariationMsg');if(msg)msg.textContent='Loading variations…';
  try{const d=await api('/api/vendor/variations?product_id='+encodeURIComponent(pid));state.variationOptions=(d.options||[]).map(o=>({name:o.name,values:(o.values||[]).map(v=>v.value)}));state.variations=d.variations||[];renderOptionRows();renderVariationRows();if(msg)msg.textContent=state.variations.length?`${state.variations.length} variations loaded.`:'No variations yet. Add options and generate combinations.'}
  catch(e){state.variationOptions=[];state.variations=[];renderOptionRows();renderVariationRows();if(msg)msg.textContent='⚠ '+e.message}
 }
 async function generateVariations(){
- collectOptionRows();if(!state.variationOptions.length)return alert('Add at least one option with values.');
- let count=1;for(const o of state.variationOptions)count*=o.values.length;if(count>MAX_VARIATIONS)return alert(`This will create ${count} variations. Maximum is ${MAX_VARIATIONS}.`);
+ collectOptionRows();if(!state.variationOptions.length)return notify('Add at least one option with values.');
+ let count=1;for(const o of state.variationOptions)count*=o.values.length;if(count>MAX_VARIATIONS)return notify(`This will create ${count} variations. Maximum is ${MAX_VARIATIONS}.`);
  const pid=$('#vpId').value.trim();if(!pid){message('Save the product first, then generate variations.',false);return}
  const msg=$('#vpVariationMsg');msg.textContent='Generating combinations…';
  try{const d=await api('/api/vendor/variations?product_id='+encodeURIComponent(pid),{method:'POST',body:JSON.stringify({options:state.variationOptions})});state.variations=d.variations||[];renderVariationRows();msg.textContent=`✓ ${d.count} variations generated.`;$('#vpProductType').value='variable'}catch(e){msg.textContent='⚠ '+e.message}
@@ -170,6 +181,7 @@ function renderVariationRows(){
  body.querySelectorAll('.vp-var-image-choice').forEach(btn=>btn.onclick=async()=>{
    const row=btn.closest('tr'),id=row?.dataset.variationId,url=btn.dataset.imageUrl,v=state.variations.find(x=>String(x.id)===String(id));
    if(!v)return;
+   const previousImageUrl=v.image_url||'';
    v.image_url=url;
    row.querySelectorAll('.vp-var-image-choice').forEach(x=>x.classList.remove('selected'));
    btn.classList.add('selected');
@@ -178,7 +190,9 @@ function renderVariationRows(){
      await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({image_url:url})});
      btn.classList.add('saved');
    }catch(err){
-     btn.classList.remove('selected');alert(err.message);
+     v.image_url=previousImageUrl;
+     row.querySelectorAll('.vp-var-image-choice').forEach(x=>x.classList.toggle('selected',x.dataset.imageUrl===previousImageUrl));
+     btn.classList.remove('saved');notify(err.message);
    }finally{btn.disabled=false}
  });
  body.querySelectorAll('.vp-save-variation').forEach(btn=>btn.onclick=saveVariation);
@@ -192,19 +206,26 @@ async function saveVariation(e){
    await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({sku:val('sku'),regular_price:Number(val('regular')||0),old_price:val('old')===''?null:Number(val('old')),status:val('status'),image_url:v.image_url||''})});
    v.sku=val('sku');v.regular_price=Number(val('regular')||0);v.old_price=val('old')===''?null:Number(val('old'));v.status=val('status');
    btn.textContent='Saved ✓';setTimeout(()=>btn.textContent='Save',900);
- }catch(err){alert(err.message)}finally{btn.disabled=false}
+ }catch(err){notify(err.message)}finally{btn.disabled=false}
 }
 async function applyBulkPrice(){
- const price=$('#vpBulkPrice').value;if(price==='')return alert('Enter a regular price first.');
- const rows=[...document.querySelectorAll('#vpVariationRows tr[data-variation-id]')];if(!rows.length)return alert('Generate variations first.');
- try{for(const row of rows){await api('/api/vendor/variations/'+encodeURIComponent(row.dataset.variationId)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({regular_price:Number(price)})})}await loadVariations($('#vpId').value);$('#vpBulkPrice').value=''}catch(e){alert(e.message)}
+ const price=$('#vpBulkPrice').value;if(price==='')return notify('Enter a regular price first.');
+ const rows=[...document.querySelectorAll('#vpVariationRows tr[data-variation-id]')];if(!rows.length)return notify('Generate variations first.');
+ try{for(const row of rows){await api('/api/vendor/variations/'+encodeURIComponent(row.dataset.variationId)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({regular_price:Number(price)})})}await loadVariations($('#vpId').value);$('#vpBulkPrice').value=''}catch(e){notify(e.message)}
 }
 async function saveProduct(e){
  e.preventDefault();const btn=$('#vpSubmit');btn.disabled=true;message('Saving product…',true);
  try{
-  const id=$('#vpId').value.trim();let urls=null,mainUrl=null;
+  const id=$('#vpId').value.trim();
+  if($('#vpProductType').value==='variable'){
+   collectOptionRows();
+   if(!state.variationOptions.length||state.variationOptions.some(o=>!o.values?.length))throw Error('Variable product needs at least one option with values.');
+   const variationCount=state.variationOptions.reduce((n,o)=>n*o.values.length,1);
+   if(variationCount>MAX_VARIATIONS)throw Error(`This will create ${variationCount} variations. Maximum is ${MAX_VARIATIONS}.`);
+  }
+  let urls=null,mainUrl=null;
   if(state.files.length){if(state.files.length>MAX)throw Error('Maximum 10 images per product.');const uploaded=[];for(const f of state.files)uploaded.push(await upload(f));urls=uploaded;mainUrl=uploaded[state.mainIndex]||uploaded[0]}
-  else if(state.editing){urls=(state.editing.image_urls||[]).filter(Boolean);mainUrl=urls[0]||state.editing.image_url||''}
+  else if(state.editing){urls=(state.editing.image_urls||[]).filter(Boolean);if(!urls.length&&state.editing.image_url)urls=[state.editing.image_url];mainUrl=urls[0]||state.editing.image_url||''}
   else throw Error('Please choose at least one product image.');
   const body={name:$('#vpName').value.trim(),category:$('#vpCategory').value.trim(),price:Number($('#vpPrice').value),old_price:$('#vpOldPrice').value===''?null:Number($('#vpOldPrice').value),product_type:$('#vpProductType').value,category_id:$('#vpCategory option:checked').dataset.categoryId||'',sku:$('#vpSku').value.trim(),tag:$('#vpTag').value.trim(),description:$('#vpDescription').value,published:$('#vpPublished').checked,image_url:mainUrl,image_urls:urls};
   if(id)body.id=id;
@@ -222,7 +243,7 @@ async function saveProduct(e){
   }else{
    message(id?'Product updated successfully.':'Product added successfully.',true);
   }
-  await loadProducts();if(typeof window.loadDash==='function')window.loadDash();if(!id){state.editing=d.product||{id:productId,image_urls:urls||[]};$('#vpId').value=productId;$('#vpFormTitle').textContent='✎ Edit product';$('#vpSubmit').textContent='Save Product Changes';$('#vpCancel').hidden=false}
+  await loadProducts();if(typeof window.loadDash==='function')window.loadDash();if(!id){state.editing={...(d.product||{}),id:productId,image_url:mainUrl,image_urls:urls||[]};$('#vpId').value=productId;$('#vpFormTitle').textContent='✎ Edit product';$('#vpSubmit').textContent='Save Product Changes';$('#vpCancel').hidden=false}
  }catch(err){message(err.message||'Could not save product.')}finally{btn.disabled=false}
 }
 async function loadCategories(){
