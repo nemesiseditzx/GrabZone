@@ -266,13 +266,30 @@ $('#v_logo_file')?.addEventListener('change',e=>previewFiles(e.target,'logoPrevi
 $('#profileForm')?.addEventListener('submit',async e=>{e.preventDefault();const msg=$('#profileMsg');msg.textContent='Saving…';try{let logo=$('#v_logo_url').value||'',banner=$('#v_banner_url').value||'';if($('#v_logo_file')?.files[0])logo=await uploadVendorImage($('#v_logo_file').files[0],'store-logo');if($('#v_banner_file')?.files[0])banner=await uploadVendorImage($('#v_banner_file').files[0],'store-banner');let contact={},social={};try{contact=JSON.parse($('#v_contact_info').value||'{}')}catch{throw Error('Contact info JSON is invalid.')}try{social=JSON.parse($('#v_social_links').value||'{}')}catch{throw Error('Social links JSON is invalid.')}const b={};for(const k of ['business_name','brand_name','phone','accent_color','tagline','description','announcement'])b[k]=$('#v_'+k).value;b.slug=normalizeStoreSlug($('#v_store_slug').value);if(!b.slug)throw Error('Store URL slug is required.');b.email=$('#v_store_email').value.trim();b.logo_url=logo;b.banner_url=banner;b.contact_info=contact;b.social_links=social;await api('/api/vendor/profile',{method:'PATCH',body:JSON.stringify(b)});msg.textContent='Saved successfully ✓';await loadDash();await loadProfile()}catch(x){msg.textContent=x.message}});
 $('#logout').onclick=async()=>{await api('/api/vendor-auth',{method:'POST',body:JSON.stringify({action:'logout'})});sessionStorage.removeItem('gz_vendor_session_token');location.href='/vendor-login.html'};
 window.gzShowVendorSection=show;
+function resetVendorSectionViewport(id){
+ const active=document.getElementById(id);
+ if(!active)return;
+ // Close the product editor so it cannot remain visible over another menu section.
+ const modal=$('#modal');
+ if(modal?.classList.contains('show'))closeModal();
+ if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+ const reset=()=>{
+  window.scrollTo({top:0,left:0,behavior:'auto'});
+  document.documentElement.scrollTop=0;
+  document.body.scrollTop=0;
+  const main=$('main.gz-main');if(main)main.scrollTop=0;
+ };
+ reset();
+ requestAnimationFrame(()=>requestAnimationFrame(reset));
+}
 qAll('.gz-nav button[data-section]').forEach(button=>{
  button.type='button';
  button.setAttribute('aria-controls',button.dataset.section);
  button.addEventListener('click',event=>{
   event.preventDefault();
   const id=button.dataset.section;
-  if(!show(id))gzVendorNotify('This section is not available. Refresh the page and try again.','error');
+  if(!show(id)){gzVendorNotify('This section is not available. Refresh the page and try again.','error');return}
+  resetVendorSectionViewport(id);
  });
 });
 (async()=>{for(let attempt=0;attempt<3;attempt++){try{const d=await api('/api/vendor-auth');if(!d.authenticated)throw Error('not logged');state.user=d.user;$('#vendorEmail').textContent=d.user.email;show('dashboard');return}catch(e){if(attempt<2)await new Promise(resolve=>setTimeout(resolve,400));}}location.href='/vendor-login.html'})();
