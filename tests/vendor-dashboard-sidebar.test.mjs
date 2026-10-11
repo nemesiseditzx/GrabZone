@@ -50,3 +50,12 @@ test('sidebar navigation closes the product editor and resets the viewport after
   assert.ok(js.includes("window.scrollTo({top:0,left:0,behavior:'auto'})"));
   assert.ok(html.includes('vendor-dashboard.js?v=20261011-section-top5'));
 });
+
+test('product editor layout CSS respects the Products section hidden state', () => {
+  const editor = read('vendor-product-editor.js');
+  const html = read('vendor-dashboard.html');
+  assert.ok(editor.includes('#products:not([hidden]){display:block!important;flex:1 1 100%!important;margin:0!important}'));
+  assert.ok(editor.includes('#products[hidden]{display:none!important}'));
+  assert.ok(!editor.includes('#products{display:block!important;flex:1 1 100%!important;margin:0!important}'));
+  assert.ok(html.includes('vendor-product-editor.js?v=20261011-product-section-visibility6'));
+});
