@@ -498,7 +498,7 @@ async function submit(e){
   const payload={
     customer_name:d.customer_name,email:d.email,phone:d.phone,division:d.division,
     district:d.district,upazila:d.upazila,address:d.address,
-    referral_code:d.referral_code||null,vendor_coupon_code:vendorCouponState.code||null,rewards_voucher_code:d.rewards_voucher_code||null,payment_method:'Cash on Delivery',
+    referral_code:d.referral_code||null,vendor_coupon_code:vendorCouponState.code||null,vendor_coupon_vendor_id:vendorCouponState.vendor_id||null,rewards_voucher_code:rewardsVoucherState.code||null,payment_method:'Cash on Delivery',
     shipping_charge:shipping,
     items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price),variation_id:i.variation_id||null,variation_options:i.variation_options||{} ,variation_sku:i.variation_sku||i.sku||''})),
     subtotal:subtotal(),referral_discount:Number(referralState.discount||0),vendor_coupon_discount:Number(vendorCouponState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:1,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(vendorCouponState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
@@ -549,7 +549,7 @@ async function submit(e){
         rewards_voucher_code:String(order.rewards_voucher_code||rewardsVoucherState.code||''),
         rewards_voucher_discount:Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0),
         mystery_discount:Number(order.mystery_discount||0),
-        total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0)-Number(order.mystery_discount||0)),
+        total:Number(order.total??Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(order.vendor_coupon_discount||vendorCouponState.discount||0)-Number(order.rewards_voucher_discount||rewardsVoucherState.discount||0)-Number(order.mystery_discount||0))),
         public_tracking_id:privateTrackingId
       },
       checkoutItems.map(i=>({
@@ -557,7 +557,10 @@ async function submit(e){
         quantity:Number(i.quantity||1),
         unit_price:Number(i.price||0),
         line_total:Number(i.price||0)*Number(i.quantity||1),
-        image_url:i.image_url||''
+        image_url:i.image_url||'',
+        variation_options:i.variation_options||{},
+        variation_sku:i.variation_sku||i.sku||'',
+        sku:i.variation_sku||i.sku||''
       }))
     );
     $('successEmailNote').textContent=emailSent
@@ -584,7 +587,7 @@ async function submit(e){
         '<div class="success-invoice-thanks"><b>আপনার অর্ডারের জন্য ধন্যবাদ! 💚</b><span>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</span></div>'+
         '<section class="success-invoice-barcodes"><div><h3>GrabZone Order Barcode</h3><svg id="successOrderBarcode" role="img" aria-label="Order barcode"></svg><small>'+esc(order.order_number)+'</small></div><div><h3>Tracking ID Barcode</h3><svg id="successTrackingBarcode" role="img" aria-label="Tracking ID barcode"></svg><small>'+esc(privateTrackingId)+'</small></div></section>'+
         '<section class="success-invoice-rewards"><div class="success-rewards-mark">GP</div><div class="success-rewards-copy"><strong>Grab<span>Points</span></strong><h3>কেনাকাটায় আরও বেশি সুবিধা পান!</h3><p>GrabPoints সংগ্রহ করুন এবং ভবিষ্যতের অর্ডারে রিওয়ার্ড ও সুবিধা উপভোগ করুন।</p><a href="https://grabzone.tech/grabpoints.html" target="_blank" rel="noopener noreferrer">🎁 Explore GrabPoints <span>→</span></a></div></section>'+
-        '<footer class="success-invoice-footer"><div><b>🛟 Need Help?</b><a href="mailto:grabzonesupport@gmail.com">grabzonesupport@gmail.com</a></div><div><b>🌐 Visit Our Store</b><a href="https://grabzone.tech/" target="_blank" rel="noopener noreferrer">grabzone.tech</a></div><div><b>📲 Follow GrabZone</b><span class="success-social-links"><a href="https://www.facebook.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Facebook"><span class="success-social-icon facebook">f</span> Facebook</a><a href="https://www.instagram.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Instagram"><span class="success-social-icon instagram">◎</span> Instagram</a></span></div><small>© '+new Date().getFullYear()+' GrabZone. All rights reserved.</small></footer>';
+        '<footer class="success-invoice-footer"><div><b>🛟 Need Help?</b><a href="mailto:support@grabzone.tech">support@grabzone.tech</a></div><div><b>🌐 Visit Our Store</b><a href="https://grabzone.tech/" target="_blank" rel="noopener noreferrer">grabzone.tech</a></div><div><b>📲 Follow GrabZone</b><span class="success-social-links"><a href="https://www.facebook.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Facebook"><span class="success-social-icon facebook">f</span> Facebook</a><a href="https://www.instagram.com/grabzoneofficial/" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Instagram"><span class="success-social-icon instagram">◎</span> Instagram</a><a href="https://t.me/grabzoneofficial" target="_blank" rel="noopener noreferrer" aria-label="GrabZone Telegram"><span class="success-social-icon telegram">➤</span> Telegram</a></span></div><small>© '+new Date().getFullYear()+' GrabZone. All rights reserved.</small></footer>';
     }
     if(window.JsBarcode){
       try{
