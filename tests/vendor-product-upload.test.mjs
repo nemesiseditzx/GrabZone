@@ -25,3 +25,17 @@ test('injected vendor upload controls report failures with non-blocking toast fe
   assert.ok(!forceImageUi.includes('alert('));
   assert.ok(!multiImageUi.includes('alert('));
 });
+
+test('vendor session endpoint issues a short-lived, session-bound image upload token', () => {
+  const complete = read('vendor-marketplace-complete.mjs');
+  const stable = read('marketplace-stable-entry.mjs');
+  const dashboard = read('vendor-dashboard.js');
+  assert.ok(complete.includes("scope:'vendor-upload'"));
+  assert.ok(complete.includes("session_hash:await sha(session)"));
+  assert.ok(complete.includes("exp:Math.floor(Date.now()/1000)+300"));
+  assert.ok(stable.includes("s.token_hash=? AND s.expires_at>?"));
+  assert.ok(stable.includes("!payload.session_hash"));
+  assert.ok(dashboard.includes("if(!d.upload_token)throw Error('Secure image-upload authorization was not issued."));
+  assert.ok(dashboard.includes("fd.append('kind',scope||'product-image')"));
+  assert.ok(!dashboard.includes("d.upload_token||sessionStorage.getItem('gz_vendor_session_token')"));
+});
