@@ -22,7 +22,9 @@ function ensureVariationLayoutCSS(){
  style.textContent=`
   .gz-main,#app,#products{width:100%!important;max-width:none!important;min-width:0;box-sizing:border-box}
   #app{display:block!important;flex:1 1 auto!important;align-self:stretch!important}
-  #products{display:block!important;flex:1 1 100%!important;margin:0!important}
+  /* Do not force the Products section visible: sidebar navigation controls its hidden state. */
+  #products:not([hidden]){display:block!important;flex:1 1 100%!important;margin:0!important}
+  #products[hidden]{display:none!important}
   #products>.vp-top,#products>.vp-panel,#products>.vp-form-panel,#products .vp-panel,#products .vp-form-panel,#vpVariationPanel{width:100%!important;max-width:none!important;min-width:0;box-sizing:border-box}
   #products .vp-form-panel,#products .vp-panel{align-self:stretch!important}
   #vpVariationPanel .vp-variation-table-wrap{display:block;width:100%!important;max-width:none!important;box-sizing:border-box}
