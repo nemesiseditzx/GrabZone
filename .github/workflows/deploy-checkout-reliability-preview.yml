@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/checkout-reliability-2026-10-10
+  workflow_dispatch:
 
 concurrency:
   group: grabzone-fix-checkout-preview
