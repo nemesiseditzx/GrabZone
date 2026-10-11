@@ -40,3 +40,9 @@ test('session verification adapts to older D1 vendor table columns', () => {
   assert.ok(complete.includes("if(uc.has('active'))checks.push('COALESCE(vu.active,1)=1')"));
   assert.ok(complete.includes("String(u.status||'').toLowerCase()!=='active'"));
 });
+
+test('vendor auth does not 500 when optional upload-token signing secret is absent', () => {
+  const complete = read('vendor-marketplace-complete.mjs');
+  assert.ok(complete.includes("const signingSecret=secret(e);const upload_token=signingSecret?await sign("));
+  assert.ok(complete.includes("):session;return json({authenticated:true,user:u,upload_token})"));
+});
