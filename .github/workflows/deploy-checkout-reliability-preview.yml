@@ -1,0 +1,40 @@
+name: Validate and Deploy Checkout Reliability Preview
+
+on:
+  push:
+    branches:
+      - fix/checkout-reliability-2026-10-10
+
+concurrency:
+  group: grabzone-fix-checkout-preview
+  cancel-in-progress: true
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check changed server and browser scripts
+        run: |
+          set -e
+          node --check vendor-marketplace-complete.mjs
+          node --check marketplace-stable-entry.mjs
+          node --check vendor-system-v2.mjs
+          node --check vendor-dashboard.js
+          node --test tests/vendor-session-auth-fallback.test.mjs
+      - name: Deploy isolated branch preview
+        uses: cloudflare/wrangler-action@v4
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: deploy --config wrangler.fix-preview.jsonc
