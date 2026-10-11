@@ -39,3 +39,10 @@ test('vendor session endpoint issues a short-lived, session-bound image upload t
   assert.ok(dashboard.includes("fd.append('kind',scope||'product-image')"));
   assert.ok(!dashboard.includes("d.upload_token||sessionStorage.getItem('gz_vendor_session_token')"));
 });
+
+test('product editor API calls carry the vendor session bearer token as a cookie fallback', () => {
+  const editor = read('vendor-product-editor.js');
+  assert.ok(editor.includes("sessionStorage.getItem('gz_vendor_session_token')"));
+  assert.ok(editor.includes("headers.Authorization='Bearer '+token"));
+  assert.ok(editor.includes("credentials:'include'"));
+});
