@@ -12,12 +12,14 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 function show(id){
  const allowed=new Set(qAll('.gz-nav button[data-section]').map(b=>b.dataset.section));
  if(!allowed.has(id)||!document.getElementById(id)?.classList.contains('gz-section'))return false;
- const sections=qAll('.gz-section');
+ const sections=qAll('main.gz-main > .gz-section');
  for(const section of sections){
   const active=section.id===id;
   section.classList.toggle('show',active);
-  section.style.display=active?'block':'none';
+  section.hidden=!active;
+  section.style.setProperty('display',active?'block':'none','important');
   section.setAttribute('aria-hidden',active?'false':'true');
+  if(active)section.removeAttribute('inert');else section.setAttribute('inert','');
  }
  for(const button of qAll('.gz-nav button[data-section]')){
   const active=button.dataset.section===id;
@@ -26,6 +28,7 @@ function show(id){
   button.setAttribute('aria-controls',button.dataset.section);
  }
  document.body.dataset.gzVendorSection=id;
+ const main=$('main.gz-main');if(main)main.scrollTop=0;
  window.scrollTo({top:0,left:0,behavior:'auto'});
  if(id==='dashboard')loadDash();
  if(id==='products')loadProducts();
