@@ -1,0 +1,98 @@
+name: Validate GrabZone Full Renovation
+
+on:
+  push:
+    branches:
+      - grabzone-full-renovation-2026-10-10
+  pull_request:
+    branches:
+      - grabzone-full-renovation-2026-10-10
+
+permissions:
+  contents: read
+
+jobs:
+  syntax-and-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout renovation branch
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          set -e
+          for f in *.js; do
+            [ -f "$f" ] || continue
+            node --check --input-type=module < "$f"
+          done
+          for f in *.mjs tests/*.mjs; do
+            [ -f "$f" ] || continue
+            node --check "$f"
+          done
+      - name: Check inline JavaScript in HTML pages
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import re
+
+          out = Path('/tmp/grabzone-inline-scripts')
+          out.mkdir(parents=True, exist_ok=True)
+
+          class Scripts(HTMLParser):
+              def __init__(self, source):
+                  super().__init__(convert_charrefs=False)
+                  self.source = source
+                  self.index = 0
+                  self.current = None
+                  self.parts = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() != 'script':
+                      return
+                  attrs = dict(attrs)
+                  if attrs.get('src'):
+                      self.current = None
+                      return
+                  kind = (attrs.get('type') or '').lower().strip()
+                  if kind and kind not in ('module', 'text/javascript', 'application/javascript', 'application/ecmascript', 'text/ecmascript'):
+                      self.current = None
+                      return
+                  self.index += 1
+                  ext = 'mjs' if kind == 'module' else 'js'
+                  safe = re.sub(r'[^a-zA-Z0-9_-]+', '_', self.source.stem)
+                  self.current = out / f'{safe}_{self.index}.{ext}'
+                  self.parts = []
+
+              def handle_data(self, data):
+                  if self.current is not None:
+                      self.parts.append(data)
+
+              def handle_endtag(self, tag):
+                  if tag.lower() == 'script' and self.current is not None:
+                      self.current.write_text(''.join(self.parts), encoding='utf-8')
+                      self.current = None
+                      self.parts = []
+
+          for page in Path('.').glob('*.html'):
+              parser = Scripts(page)
+              parser.feed(page.read_text(encoding='utf-8', errors='replace'))
+              parser.close()
+          print(f'Extracted {len(list(out.glob("*.js"))) + len(list(out.glob("*.mjs")))} inline scripts')
+          PY
+          set -e
+          for f in /tmp/grabzone-inline-scripts/*.js /tmp/grabzone-inline-scripts/*.mjs; do
+            [ -f "$f" ] || continue
+            node --check "$f"
+          done
+      - name: Run renovation regression tests
+        run: node --test tests/*.test.mjs
+      - name: Validate D1 schema against a local database
+        run: |
+          npx --yes wrangler@4 d1 execute grabzone-db-test --local --file=d1-schema.sql
+          npx --yes wrangler@4 d1 execute grabzone-db-test --local --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('vendor_order_items','vendor_order_finalization_jobs') ORDER BY name"
+      - name: Validate Cloudflare Worker bundle without deploying
+        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/grabzone-wrangler-dry-run
