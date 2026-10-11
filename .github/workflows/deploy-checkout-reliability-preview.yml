@@ -29,7 +29,7 @@ jobs:
           node --check marketplace-stable-entry.mjs
           node --check vendor-system-v2.mjs
           node --check vendor-dashboard.js
-          node --test tests/vendor-session-auth-fallback.test.mjs
+          node --test tests/vendor-session-auth-fallback.test.mjs tests/vendor-dashboard-sidebar.test.mjs
       - name: Deploy isolated branch preview
         uses: cloudflare/wrangler-action@v4
         env:
