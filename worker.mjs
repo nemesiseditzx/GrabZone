@@ -26,10 +26,21 @@ const D1_SCHEMA=["PRAGMA foreign_keys = ON","CREATE TABLE IF NOT EXISTS products
 "INSERT OR IGNORE INTO rewards_settings(id,enabled,gp_value_bdt,updated_at) VALUES(1,1,NULL,CURRENT_TIMESTAMP)",
 "CREATE TABLE IF NOT EXISTS referral_profit_orders (id TEXT PRIMARY KEY,referral_code TEXT NOT NULL,order_id TEXT NOT NULL UNIQUE,order_number TEXT NOT NULL,order_amount REAL NOT NULL DEFAULT 0,eligible_revenue REAL NOT NULL DEFAULT 0,total_cost REAL NOT NULL DEFAULT 0,net_profit REAL NOT NULL DEFAULT 0,referral_percent REAL NOT NULL DEFAULT 50,referral_profit REAL NOT NULL DEFAULT 0,grabzone_profit REAL NOT NULL DEFAULT 0,cost_entered INTEGER NOT NULL DEFAULT 0,profit_status TEXT NOT NULL DEFAULT 'pending',payout_status TEXT NOT NULL DEFAULT 'unpaid',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS referral_profit_orders_code_idx ON referral_profit_orders(referral_code,created_at DESC)","CREATE INDEX IF NOT EXISTS referral_profit_orders_status_idx ON referral_profit_orders(referral_code,profit_status,payout_status,created_at DESC)","CREATE TABLE IF NOT EXISTS referral_profit_items (id TEXT PRIMARY KEY,referral_profit_order_id TEXT NOT NULL,order_item_id TEXT,product_id TEXT,product_name TEXT NOT NULL,quantity INTEGER NOT NULL DEFAULT 1,selling_revenue REAL NOT NULL DEFAULT 0,allocated_discount REAL NOT NULL DEFAULT 0,eligible_revenue REAL NOT NULL DEFAULT 0,unit_cost REAL NOT NULL DEFAULT 0,additional_cost REAL NOT NULL DEFAULT 0,total_cost REAL NOT NULL DEFAULT 0,net_profit REAL NOT NULL DEFAULT 0,created_at TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS referral_profit_items_order_idx ON referral_profit_items(referral_profit_order_id)","CREATE TABLE IF NOT EXISTS referral_portal_accounts (id TEXT PRIMARY KEY,email TEXT NOT NULL UNIQUE,name TEXT, password_hash TEXT,password_salt TEXT,active INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS referral_portal_accounts_active_idx ON referral_portal_accounts(active,created_at DESC)","CREATE INDEX IF NOT EXISTS referral_codes_admin_email_idx ON referral_codes(admin_email)","CREATE TABLE IF NOT EXISTS referral_portal_sessions (token_hash TEXT PRIMARY KEY,referral_code TEXT NOT NULL,account_id TEXT,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS referral_portal_sessions_code_idx ON referral_portal_sessions(referral_code,expires_at)","CREATE TABLE IF NOT EXISTS referral_payouts (id TEXT PRIMARY KEY,referral_code TEXT NOT NULL,amount REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'paid',reference TEXT,note TEXT,created_at TEXT NOT NULL,paid_at TEXT)","CREATE INDEX IF NOT EXISTS referral_payouts_code_idx ON referral_payouts(referral_code,created_at DESC)","INSERT OR IGNORE INTO billboard_settings (id) VALUES (1)"];
 let schemaPromise=null;
+// Cache shipping-schema setup per D1 binding for the lifetime of a Worker isolate.
+// Previously every call retried ALTER TABLE, even when the column already existed.
+const shippingSettingSetup = new WeakMap();
 async function ensureShippingSetting(env){
-  await env.DB.prepare("ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 130").run().catch(()=>{});
-  const row=(await env.DB.prepare("SELECT global_shipping_fee FROM site_settings WHERE id=1 LIMIT 1").all()).results?.[0];
-  if(!row) await env.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee) VALUES(1,130)").run().catch(()=>{});
+  if(!env.DB) throw new Error("Cloudflare D1 binding DB is missing.");
+  let setup = shippingSettingSetup.get(env.DB);
+  if(!setup){
+    setup = (async()=>{
+      await env.DB.prepare("ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 130").run().catch(()=>{});
+      const row=(await env.DB.prepare("SELECT global_shipping_fee FROM site_settings WHERE id=1 LIMIT 1").all()).results?.[0];
+      if(!row) await env.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee) VALUES(1,130)").run().catch(()=>{});
+    })().catch(err=>{shippingSettingSetup.delete(env.DB);throw err;});
+    shippingSettingSetup.set(env.DB,setup);
+  }
+  return setup;
 }
 async function getGlobalShipping(env){
   await ensureShippingSetting(env);
