@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/vendor.css?v=20261011-sidebarfix3">
+<link rel="stylesheet" href="/vendor.css?v=20261011-exclusive-sections4">
 <link rel="stylesheet" href="/vendor-product-editor.css?v=20261005-gallery2">
 <style>
 .gz-vendor-note{background:#f7f7f4;border:1px solid #e5e5df;border-radius:16px;padding:14px 16px;color:#666;font-size:13px;line-height:1.6;margin-top:14px}
@@ -59,7 +59,7 @@
   <button type="button" data-section="settings" aria-controls="settings">Settings</button>
 </nav></aside>
 <main class="gz-main">
-<section id="dashboard" class="gz-section show">
+<section id="dashboard" class="gz-section show" aria-hidden="false">
   <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">VENDOR CONTROL CENTER</div><h1 style="margin:4px 0">Welcome, <span id="vendorName">Vendor</span></h1><p>Your products and your orders — in the same GrabZone workflow.</p></div><button class="gz-btn primary" onclick="show('products');newProduct()">+ Add Product</button></div>
   <div class="gz-grid">
     <div class="gz-card gz-stat"><div class="label">Products</div><div id="statProducts" class="num">—</div></div>
@@ -71,17 +71,17 @@
   <div id="vendorRewardsStatus" class="gz-card" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><b>🎁 Rewards & Referral Eligibility</b><span class="gz-status">Loading…</span></div><p style="color:#777;margin-bottom:0">Your eligibility and qualifying product status are controlled by GrabZone Admin.</p></div>
   <div class="gz-vendor-note"><b>What you can control:</b> your own products, price, stock, publishing and fulfillment. <b>GrabZone controls:</b> marketplace settings, checkout, membership, commissions and other vendors. You never see another vendor's products or orders.</div>
 </section>
-<section id="products" class="gz-section">
+<section id="products" class="gz-section" hidden aria-hidden="true" inert>
   <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">YOUR CATALOG</div><h1 style="margin:4px 0">Products</h1><p>Add and manage products using the GrabZone product workflow.</p></div><button class="gz-btn primary" onclick="newProduct()">+ Add Product</button></div>
   <div class="gz-toolbar"><input id="productSearch" placeholder="Search your products…" oninput="renderProducts()"><select id="productFilter" onchange="renderProducts()"><option value="all">All products</option><option value="published">Published</option><option value="hidden">Hidden</option><option value="low">Low stock</option></select><button class="gz-btn light" onclick="loadProducts()">Refresh</button></div>
   <div id="productList" class="gz-card"></div>
 </section>
-<section id="orders" class="gz-section">
+<section id="orders" class="gz-section" hidden aria-hidden="true" inert>
   <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">FULFILLMENT</div><h1 style="margin:4px 0">Orders</h1><p>When a customer orders your product, the vendor order appears here.</p></div><button class="gz-btn light" onclick="loadOrders()">Refresh</button></div>
   <div class="gz-toolbar"><input id="orderSearch" placeholder="Search order, customer or phone…" oninput="renderOrders()"><select id="orderFilter" onchange="renderOrders()"><option value="all">All statuses</option><option>Processing</option><option>Picked Up</option><option>In Transit</option><option>Out for Delivery</option><option>Delivered</option><option>Failed</option><option>Returned</option><option>Cancelled</option></select></div>
   <div id="orderList"></div>
 </section>
-<section id="coupons" class="gz-section">
+<section id="coupons" class="gz-section" hidden aria-hidden="true" inert>
   <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">STORE PROMOTIONS</div><h1 style="margin:4px 0">Coupons</h1><p>Create coupon codes that work only on your store's products.</p></div><button class="gz-btn primary" onclick="openCouponForm()">+ Create Coupon</button></div>
   <div id="couponFormPanel" class="gz-card" hidden style="margin-bottom:14px">
     <form id="couponForm" class="gz-form">
@@ -102,7 +102,7 @@
   </div>
   <div id="couponList" class="gz-card"><div class="gz-empty">Loading coupons…</div></div>
 </section>
-<section id="store" class="gz-section">
+<section id="store" class="gz-section" hidden aria-hidden="true" inert>
 <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">STOREFRONT BUILDER</div><h1>Your Store</h1><p>Customize your storefront, branding, contact details and content.</p></div><a id="storeLink" class="gz-btn light" href="#" target="_blank" rel="noopener">View Store ↗</a></div>
 <form id="profileForm" class="gz-form">
 <div class="gz-card"><h2 style="margin:0 0 5px">Store identity</h2><p style="color:#777;margin-top:0">These details appear on your public store.</p><div class="gz-two"><div class="gz-field"><label>Business name</label><input id="v_business_name"></div><div class="gz-field"><label>Brand / store name</label><input id="v_brand_name"></div></div><div class="gz-two"><div class="gz-field"><label>Store URL slug</label><input id="v_store_slug" placeholder="your-store-name"><small class="gz-slug-preview" style="display:block;color:#777;margin-top:5px">https://grabzone.tech/store/your-store-name</small><small style="display:block;color:#999;margin-top:4px">You can change this slug anytime. Only lowercase letters, numbers and hyphens are used.</small></div><div class="gz-field"><label>Store email</label><input id="v_store_email" type="email" placeholder="store@example.com"></div></div><div class="gz-two"><div class="gz-field"><label>Phone</label><input id="v_phone"></div><div class="gz-field"><label>Accent color</label><input id="v_accent_color" type="text" placeholder="#ff6b00"></div></div><div class="gz-field"><label>Tagline</label><input id="v_tagline" placeholder="A short line about your store"></div><div class="gz-field"><label>Description</label><textarea id="v_description" rows="4" placeholder="Tell customers about your store"></textarea></div></div>
@@ -114,7 +114,7 @@
 </form>
 <div id="vendorSectionsPanel"></div>
 </section>
-<section id="settings" class="gz-section">
+<section id="settings" class="gz-section" hidden aria-hidden="true" inert>
 <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">CONTROL PANEL</div><h1>Settings</h1><p>Manage your vendor account and storefront preferences.</p></div></div>
 <div class="gz-setting-grid">
 <div class="gz-setting-card"><h3>Account</h3><p>Your login email is controlled by GrabZone Admin. You can change your password here.</p><div class="gz-field"><label>Current password</label><input id="currentPassword" type="password" autocomplete="current-password"></div><div class="gz-two"><div class="gz-field"><label>New password</label><input id="newPassword" type="password" minlength="8" autocomplete="new-password"></div><div class="gz-field"><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></div></div><button class="gz-btn primary" onclick="changeVendorPassword()">Update password</button><span id="passwordMsg" style="display:block;margin-top:10px;color:#777"></span></div>
@@ -134,7 +134,7 @@
 </form>
 <div id="orderBody"></div>
 </div></div>
-<script src="/vendor-dashboard.js?v=20261011-sidebarfix3"></script>
-<script src="/vendor-product-editor.js?v=20261011-sidebarfix3"></script>
+<script src="/vendor-dashboard.js?v=20261011-exclusive-sections4"></script>
+<script src="/vendor-product-editor.js?v=20261011-exclusive-sections4"></script>
 </body>
 </html>
