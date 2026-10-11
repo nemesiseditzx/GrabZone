@@ -83,7 +83,7 @@ CREATE INDEX IF NOT EXISTS shipments_order_idx ON shipments(order_id,created_at)
 CREATE INDEX IF NOT EXISTS shipments_vendor_idx ON shipments(vendor_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS shipments_tracking_idx ON shipments(shipment_tracking_id);
 CREATE INDEX IF NOT EXISTS shipments_courier_tracking_idx ON shipments(courier_tracking_number);
-CREATE TABLE IF NOT EXISTS shipment_items (id TEXT PRIMARY KEY,shipment_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,product_name TEXT NOT NULL,quantity INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,UNIQUE(shipment_id,order_item_id));
+CREATE TABLE IF NOT EXISTS shipment_items (id TEXT PRIMARY KEY,shipment_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,product_name TEXT NOT NULL DEFAULT 'Product',quantity INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL DEFAULT '',UNIQUE(shipment_id,order_item_id));
 CREATE INDEX IF NOT EXISTS shipment_items_shipment_idx ON shipment_items(shipment_id);
 CREATE TABLE IF NOT EXISTS vendor_payouts (id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,vendor_order_id TEXT NOT NULL,gross_amount REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,net_amount REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'pending',paid_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS vendor_payouts_vendor_idx ON vendor_payouts(vendor_id,created_at DESC);
