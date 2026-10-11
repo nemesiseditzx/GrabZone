@@ -165,7 +165,9 @@ async function handle(req, e) {
       const old = oldBy.get(k);
       const id = old?.id || crypto.randomUUID();
       if (old) {
-        await e.DB.prepare("UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Disabled' ELSE status END,updated_at=? WHERE id=?")
+        // If a previously disabled combination is regenerated, make it selectable again.
+        // Preserve explicit stock/status settings for combinations that were already active.
+        await e.DB.prepare("UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Available' ELSE status END,updated_at=? WHERE id=?")
           .bind(t, id).run();
       } else {
         await e.DB.prepare(
@@ -206,19 +208,41 @@ async function handle(req, e) {
     if (!v) return json({ error: 'Variation not found.' }, 404);
     const status = ['Available', 'Out of Stock', 'Disabled'].includes(b.status) ? b.status : v.status;
     const hasStock=b.stock!==undefined&&b.stock!==null&&b.stock!=='';
-    const stock=hasStock?Math.max(0,Math.floor(Number(b.stock))):Number(v.stock||0);
+    const stockRaw=hasStock?Number(b.stock):Number(v.stock||0);
+    if(!Number.isFinite(stockRaw)||stockRaw<0||!Number.isInteger(stockRaw))return json({error:'Stock must be a valid non-negative whole number.'},400);
+    const stock=stockRaw;
+    const regularRaw=b.regular_price ?? v.regular_price;
+    const regular=Number(regularRaw);
+    if (!Number.isFinite(regular) || regular < 0) return json({ error: 'Regular price must be a valid non-negative number.' }, 400);
+    const saleRaw=b.sale_price === undefined ? v.sale_price : b.sale_price;
+    const sale=saleRaw === null || saleRaw === '' ? null : Number(saleRaw);
+    if (sale !== null && (!Number.isFinite(sale) || sale < 0)) return json({ error: 'Sale price must be a valid non-negative number.' }, 400);
+    if (hasStock && (!Number.isFinite(Number(b.stock)) || Number(b.stock) < 0)) return json({ error: 'Stock must be a valid non-negative number.' }, 400);
+    const minQtyRaw=b.min_qty === undefined ? v.min_qty : b.min_qty;
+    const minQty=Number(minQtyRaw || 1);
+    const maxQtyRaw=b.max_qty === undefined ? v.max_qty : b.max_qty;
+    const maxQty=maxQtyRaw === null || maxQtyRaw === '' ? null : Number(maxQtyRaw);
+    if (!Number.isInteger(minQty)||minQty<1||(maxQty!==null&&(!Number.isInteger(maxQty)||maxQty<minQty))) return json({ error: 'Maximum quantity must be empty or a whole number at least as large as the minimum quantity.' }, 400);
+    const oldRaw=b.old_price === undefined ? v.old_price : b.old_price;
+    const oldPrice=oldRaw===null||oldRaw===''?null:Number(oldRaw);
+    if(oldPrice!==null&&(!Number.isFinite(oldPrice)||oldPrice<0))return json({error:'Old price must be a valid non-negative number.'},400);
+    const threshold=Number(b.low_stock_threshold ?? v.low_stock_threshold ?? 0);
+    if(!Number.isInteger(threshold)||threshold<0)return json({error:'Low-stock threshold must be a non-negative whole number.'},400);
+    const stockMode=['tracked','untracked'].includes(String(b.stock_mode||'')) ? String(b.stock_mode) : (hasStock ? 'tracked' : String(v.stock_mode||'untracked'));
     await e.DB.prepare(
-      'UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,image_url=?,status=?,stock_mode=?,low_stock_threshold=?,min_qty=1,max_qty=NULL,updated_at=? WHERE id=?'
+      'UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,image_url=?,status=?,stock_mode=?,low_stock_threshold=?,min_qty=?,max_qty=?,updated_at=? WHERE id=?'
     ).bind(
       clean(b.sku ?? v.sku, 120),
-      Math.max(0, Number(b.regular_price ?? v.regular_price)),
-      b.sale_price === null || b.sale_price === '' ? null : Math.max(0, Number(b.sale_price)),
-      b.old_price === null || b.old_price === '' ? null : Math.max(0, Number(b.old_price)),
+      regular,
+      sale,
+      oldPrice,
       stock,
       clean(b.image_url ?? v.image_url, 2000),
       status,
-      (status === 'Out of Stock' || (hasStock && stock > 0)) ? 'tracked' : 'untracked',
-      (status === 'Out of Stock' || (hasStock && stock > 0)) ? 0 : Number(v.low_stock_threshold||0),
+      stockMode,
+      threshold,
+      minQty,
+      maxQty,
       now(), id
     ).run();
     if (Array.isArray(b.images)) {

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS order_items (id TEXT PRIMARY KEY,order_id TEXT NOT NU
 CREATE INDEX IF NOT EXISTS order_items_order_idx ON order_items(order_id,id);
 CREATE TABLE IF NOT EXISTS referral_codes (id TEXT PRIMARY KEY,admin_name TEXT NOT NULL,admin_phone TEXT,admin_email TEXT,code TEXT NOT NULL,benefit_type TEXT NOT NULL DEFAULT 'fixed',benefit_value REAL NOT NULL DEFAULT 0,min_order_amount REAL NOT NULL DEFAULT 0,max_discount_amount REAL,usage_limit INTEGER,used_count INTEGER NOT NULL DEFAULT 0,starts_at TEXT,expires_at TEXT,active INTEGER NOT NULL DEFAULT 1,note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,owner_name TEXT,commission_type TEXT NOT NULL DEFAULT 'percentage',commission_value REAL NOT NULL DEFAULT 0,referral_profit_percent REAL NOT NULL DEFAULT 50);
 CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_upper_idx ON referral_codes(upper(code));
-CREATE TABLE IF NOT EXISTS site_settings (id INTEGER PRIMARY KEY,store_name TEXT,tagline TEXT,currency TEXT,logo_url TEXT,favicon_url TEXT,hero_image_url TEXT,hero_eyebrow TEXT,hero_title TEXT,hero_title_em TEXT,hero_description TEXT,hero_button_text TEXT,hero_button_link TEXT,how_button_text TEXT,how_button_link TEXT,offer_title TEXT,offer_message TEXT,offer_code TEXT,collection_eyebrow TEXT,collection_title TEXT,how_eyebrow TEXT,how_title TEXT,step1_title TEXT,step1_body TEXT,step2_title TEXT,step2_body TEXT,step3_title TEXT,step3_body TEXT,referral_eyebrow TEXT,referral_title TEXT,referral_body TEXT,referral_button_text TEXT,footer_text TEXT,whatsapp TEXT,messenger TEXT,instagram TEXT,header_link1_label TEXT,header_link1_url TEXT,header_link2_label TEXT,header_link2_url TEXT,header_link3_label TEXT,header_link3_url TEXT,primary_color TEXT,page_background TEXT,custom_css TEXT,show_notice INTEGER NOT NULL DEFAULT 1,show_offer INTEGER NOT NULL DEFAULT 1,show_how INTEGER NOT NULL DEFAULT 1,show_referral INTEGER NOT NULL DEFAULT 1,updated_at TEXT,animations_enabled INTEGER NOT NULL DEFAULT 1,page_load INTEGER NOT NULL DEFAULT 1,scroll_reveal INTEGER NOT NULL DEFAULT 1,product_hover INTEGER NOT NULL DEFAULT 1,button_effects INTEGER NOT NULL DEFAULT 1,hero_animation INTEGER NOT NULL DEFAULT 1,floating_effects INTEGER NOT NULL DEFAULT 1,notice_animation INTEGER NOT NULL DEFAULT 1,animation_speed TEXT DEFAULT 'normal',magnetic_cursor INTEGER NOT NULL DEFAULT 1,text_reveal INTEGER NOT NULL DEFAULT 1,image_parallax INTEGER NOT NULL DEFAULT 1,scroll_velocity INTEGER NOT NULL DEFAULT 1,product_stagger INTEGER NOT NULL DEFAULT 1,marquee_motion INTEGER NOT NULL DEFAULT 1,header_scroll INTEGER NOT NULL DEFAULT 1,premium_hover_glow INTEGER NOT NULL DEFAULT 1,section_transitions INTEGER NOT NULL DEFAULT 1,product_entrance INTEGER NOT NULL DEFAULT 1,product_3d_tilt INTEGER NOT NULL DEFAULT 1,product_image_zoom INTEGER NOT NULL DEFAULT 1,product_image_parallax INTEGER NOT NULL DEFAULT 1,product_cursor_spotlight INTEGER NOT NULL DEFAULT 1,product_shine INTEGER NOT NULL DEFAULT 1,product_hover_lift INTEGER NOT NULL DEFAULT 1,product_featured_glow INTEGER NOT NULL DEFAULT 1,payment_methods TEXT,product_display_mode TEXT,product_shuffle_seed TEXT,product_display_updated_at TEXT);
+CREATE TABLE IF NOT EXISTS site_settings (id INTEGER PRIMARY KEY,store_name TEXT,tagline TEXT,currency TEXT,logo_url TEXT,favicon_url TEXT,hero_image_url TEXT,hero_eyebrow TEXT,hero_title TEXT,hero_title_em TEXT,hero_description TEXT,hero_button_text TEXT,hero_button_link TEXT,how_button_text TEXT,how_button_link TEXT,offer_title TEXT,offer_message TEXT,offer_code TEXT,collection_eyebrow TEXT,collection_title TEXT,how_eyebrow TEXT,how_title TEXT,step1_title TEXT,step1_body TEXT,step2_title TEXT,step2_body TEXT,step3_title TEXT,step3_body TEXT,referral_eyebrow TEXT,referral_title TEXT,referral_body TEXT,referral_button_text TEXT,footer_text TEXT,whatsapp TEXT,messenger TEXT,instagram TEXT,telegram TEXT,header_link1_label TEXT,header_link1_url TEXT,header_link2_label TEXT,header_link2_url TEXT,header_link3_label TEXT,header_link3_url TEXT,primary_color TEXT,page_background TEXT,custom_css TEXT,show_notice INTEGER NOT NULL DEFAULT 1,show_offer INTEGER NOT NULL DEFAULT 1,show_how INTEGER NOT NULL DEFAULT 1,show_referral INTEGER NOT NULL DEFAULT 1,updated_at TEXT,animations_enabled INTEGER NOT NULL DEFAULT 1,page_load INTEGER NOT NULL DEFAULT 1,scroll_reveal INTEGER NOT NULL DEFAULT 1,product_hover INTEGER NOT NULL DEFAULT 1,button_effects INTEGER NOT NULL DEFAULT 1,hero_animation INTEGER NOT NULL DEFAULT 1,floating_effects INTEGER NOT NULL DEFAULT 1,notice_animation INTEGER NOT NULL DEFAULT 1,animation_speed TEXT DEFAULT 'normal',magnetic_cursor INTEGER NOT NULL DEFAULT 1,text_reveal INTEGER NOT NULL DEFAULT 1,image_parallax INTEGER NOT NULL DEFAULT 1,scroll_velocity INTEGER NOT NULL DEFAULT 1,product_stagger INTEGER NOT NULL DEFAULT 1,marquee_motion INTEGER NOT NULL DEFAULT 1,header_scroll INTEGER NOT NULL DEFAULT 1,premium_hover_glow INTEGER NOT NULL DEFAULT 1,section_transitions INTEGER NOT NULL DEFAULT 1,product_entrance INTEGER NOT NULL DEFAULT 1,product_3d_tilt INTEGER NOT NULL DEFAULT 1,product_image_zoom INTEGER NOT NULL DEFAULT 1,product_image_parallax INTEGER NOT NULL DEFAULT 1,product_cursor_spotlight INTEGER NOT NULL DEFAULT 1,product_shine INTEGER NOT NULL DEFAULT 1,product_hover_lift INTEGER NOT NULL DEFAULT 1,product_featured_glow INTEGER NOT NULL DEFAULT 1,payment_methods TEXT,product_display_mode TEXT,product_shuffle_seed TEXT,product_display_updated_at TEXT);
 CREATE TABLE IF NOT EXISTS billboards (id TEXT PRIMARY KEY,title TEXT,eyebrow TEXT,message TEXT,image_url TEXT NOT NULL,button_text TEXT DEFAULT 'Shop Now →',link_url TEXT,active INTEGER NOT NULL DEFAULT 1,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS billboards_active_idx ON billboards(active,sort_order,created_at);
 CREATE TABLE IF NOT EXISTS billboard_settings (id INTEGER PRIMARY KEY,autoplay INTEGER NOT NULL DEFAULT 1,interval_ms INTEGER NOT NULL DEFAULT 5000,transition TEXT NOT NULL DEFAULT 'slide',show_arrows INTEGER NOT NULL DEFAULT 1,show_dots INTEGER NOT NULL DEFAULT 1,updated_at TEXT);
@@ -44,6 +44,37 @@ CREATE TABLE IF NOT EXISTS variations (id TEXT PRIMARY KEY,product_id TEXT NOT N
 CREATE INDEX IF NOT EXISTS variations_product_idx ON variations(product_id,status);
 CREATE TABLE IF NOT EXISTS vendor_email_settings (vendor_id TEXT PRIMARY KEY,order_notification_email TEXT,support_email TEXT,customer_email_notifications INTEGER NOT NULL DEFAULT 1,vendor_email_notifications INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS vendor_orders (id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,shipping_charge REAL NOT NULL DEFAULT 0,total REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'New',admin_note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id));
+
+CREATE TABLE IF NOT EXISTS vendor_order_items (
+  id TEXT PRIMARY KEY,
+  vendor_order_id TEXT NOT NULL,
+  order_item_id TEXT NOT NULL,
+  product_id TEXT,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price REAL NOT NULL DEFAULT 0,
+  line_total REAL NOT NULL DEFAULT 0,
+  variation_id TEXT,
+  variation_options TEXT,
+  variation_sku TEXT,
+  sku TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS vendor_order_items_order_item_unique
+  ON vendor_order_items(vendor_order_id, order_item_id);
+
+CREATE TABLE IF NOT EXISTS vendor_order_finalization_jobs (
+  id TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL UNIQUE,
+  payload_json TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS vendor_order_finalization_jobs_status_idx
+  ON vendor_order_finalization_jobs(status, created_at);
+
+
 CREATE INDEX IF NOT EXISTS vendor_orders_vendor_idx ON vendor_orders(vendor_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS vendor_orders_order_idx ON vendor_orders(order_id,vendor_id);
 CREATE INDEX IF NOT EXISTS vendor_orders_status_idx ON vendor_orders(vendor_id,status,created_at DESC);

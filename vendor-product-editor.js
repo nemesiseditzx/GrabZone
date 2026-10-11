@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
-const MB=1024*1024,MAX=10,MAX_VARIATIONS=200;const VP_SIZES=['XS','S','M','L','XL','XXL','3XL'];
+const MB=1024*1024,MAX=10,MAX_VARIATIONS=200;
+const notify=(message,type='error')=>{if(typeof window.gzVendorNotify==='function')window.gzVendorNotify(message,type);else console.error(message)};const VP_SIZES=['XS','S','M','L','XL','XXL','3XL'];
 const VP_COLORS=['Black','White','Grey','Brown','Beige','Tan','Cream','Khaki','Off White','Charcoal Black','Light Grey','Camel','Charcoal Grey','Dark Grey','Bronze','Mauve Brown','Mustard Grey','Pale Grey','Peach Beige','Rust Brown','Red','Maroon','Deep Red','Crimson','Rust','Wine','Wine Maroon','Pink','Magenta','Rose','Peach','Light Pink','Mauve Pink','Coral Pink','Dusty Pink','Dusty Rose','Magenta Pink','Raspberry Pink','Purple','Lavender','Mauve','Plum','Deep Purple','Light Purple','Violet','Blue','Sky Blue','Navy Blue','Navy','Light Blue','Denim','Royal Blue','Steel Blue','Dark Navy','Light Blue Denim','Dark Blue Denim','Teal Blue','Cornflower Blue','Dark Teal Blue','Denim Blue','Light Denim Blue','Pale Blue','Slate Blue','Teal','Aqua','Mint Aqua','Teal Green','Aqua Green','Green','Olive','Olive Green','Sage Green','Dark Green','Mint','Mint Green','Sea Green','Light Green','Pale Sage','Lime Green','Pale Mint','Sage','Mint Pista','Yellow','Orange','Mustard','Gold','Mustard Yellow','Pale Yellow','Multi'];
 
 const $=s=>document.querySelector(s);
@@ -15,7 +16,49 @@ function vpToggle(name,value,checked){const values=vpValues(name);if(checked){if
 function vpPreset(name,choices){const selected=new Set(vpValues(name));const chips=choices.map(v=>'<label class="vp-chip"><input type="checkbox" data-vp-opt="'+esc(name)+'" value="'+esc(v)+'" '+(selected.has(v)?'checked':'')+'><span>'+esc(v)+'</span></label>').join('');return '<div class="vp-preset-card"><div class="vp-preset-head"><b>'+esc(name)+'</b></div><div class="vp-chip-grid">'+chips+'</div></div>'}
 function collectOptionRows(){const boxes=[...document.querySelectorAll('#vpPresetOptions [data-vp-opt]')];const grouped={};boxes.forEach(input=>{const n=input.dataset.vpOpt;if(!grouped[n])grouped[n]=[];if(input.checked)grouped[n].push(input.value)});for(const [n,values] of Object.entries(grouped)){state.variationOptions=state.variationOptions.filter(o=>o.name.toLowerCase()!==n.toLowerCase());if(values.length)state.variationOptions.push({name:n,values})}}
 function toggleVariationPanel(){const panel=$('#vpVariationPanel');const isVariable=String($('#vpProductType')?.value||'simple').toLowerCase()==='variable';if(panel)panel.hidden=!isVariable;if(!isVariable){state.variationOptions=[];state.variations=[];const msg=$('#vpVariationMsg');if(msg)msg.textContent=''}else{renderOptionRows();renderVariationRows()}}
+function ensureVariationLayoutCSS(){
+ if(document.getElementById('gz-vp-variation-layout'))return;
+ const style=document.createElement('style');style.id='gz-vp-variation-layout';
+ style.textContent=`
+  .gz-main,#app,#products{width:100%!important;max-width:none!important;min-width:0;box-sizing:border-box}
+  #app{display:block!important;flex:1 1 auto!important;align-self:stretch!important}
+  #products{display:block!important;flex:1 1 100%!important;margin:0!important}
+  #products>.vp-top,#products>.vp-panel,#products>.vp-form-panel,#products .vp-panel,#products .vp-form-panel,#vpVariationPanel{width:100%!important;max-width:none!important;min-width:0;box-sizing:border-box}
+  #products .vp-form-panel,#products .vp-panel{align-self:stretch!important}
+  #vpVariationPanel .vp-variation-table-wrap{display:block;width:100%!important;max-width:none!important;box-sizing:border-box}
+  #vpVariationPanel{padding:clamp(14px,2vw,26px);border:1px solid #e5e7eb;border-radius:18px;background:linear-gradient(180deg,#fff,#fcfcfd);margin-top:18px}
+  #vpVariationPanel .vp-var-head{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+  #vpVariationPanel .vp-variation-table-wrap{width:100%;max-width:100%;overflow:auto;overscroll-behavior-x:contain;border:1px solid #dfe3e9;border-radius:14px;background:#fff}
+  #vpVariationPanel .vp-variation-table{width:100%;min-width:1760px;border-collapse:separate;border-spacing:0;table-layout:auto}
+  #vpVariationPanel .vp-variation-table th{position:sticky;top:0;z-index:2;background:#fff4eb;color:#754321;font-size:11px;font-weight:850;letter-spacing:.035em;white-space:nowrap}
+  #vpVariationPanel .vp-variation-table th,#vpVariationPanel .vp-variation-table td{padding:13px 12px;border-bottom:1px solid #edf0f3;vertical-align:middle}
+  #vpVariationPanel .vp-variation-table tbody tr{height:112px}
+  #vpVariationPanel .vp-variation-table tbody tr:hover{background:#fffaf6}
+  #vpVariationPanel .vp-variation-table td input,#vpVariationPanel .vp-variation-table td select{width:100%;min-width:94px;min-height:42px;box-sizing:border-box;border:1px solid #dce1e8;border-radius:10px;padding:9px 10px;font-size:13px;background:#fff}
+  #vpVariationPanel .vp-variation-table .vp-var-name{min-width:190px;max-width:250px;white-space:normal;line-height:1.5}
+  #vpVariationPanel .vp-variation-table td:nth-child(11){min-width:250px;width:250px}
+  #vpVariationPanel .vp-var-image-picker{min-width:220px}
+  #vpVariationPanel .vp-var-image-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:9px;align-items:start}
+  #vpVariationPanel .vp-var-image-choice{position:relative;display:flex;align-items:center;justify-content:center;width:60px;height:68px;padding:4px;border:2px solid #e1e5eb;border-radius:12px;background:#fff;cursor:pointer;overflow:hidden;transition:border-color .15s,box-shadow .15s,transform .15s}
+  #vpVariationPanel .vp-var-image-choice:hover{border-color:#ff9a54;transform:translateY(-1px)}
+  #vpVariationPanel .vp-var-image-choice.selected{border-color:#ff6b00;box-shadow:0 0 0 3px #ff6b001c}
+  #vpVariationPanel .vp-var-image-choice img{display:block;width:100%;height:100%;min-width:0;object-fit:contain;border-radius:7px;background:#f7f7f8}
+  #vpVariationPanel .vp-var-image-choice span{position:absolute;right:3px;bottom:3px;min-width:18px;height:18px;display:grid;place-items:center;border-radius:6px;background:#20242b;color:white;font-size:10px;font-weight:800}
+  #vpVariationPanel .vp-var-image-picker small{display:block;margin-top:7px;color:#747b86;font-size:10px;line-height:1.4}
+  #vpVariationPanel .vp-var-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0}
+  #vpVariationPanel .vp-var-actions input{min-height:42px;flex:1 1 240px;max-width:420px;box-sizing:border-box}
+  #vpVariationPanel .vp-var-msg{margin:10px 0}
+  @media(max-width:700px){
+   #vpVariationPanel{padding:12px}
+   #vpVariationPanel .vp-variation-table{min-width:1680px}
+   #vpVariationPanel .vp-variation-table th,#vpVariationPanel .vp-variation-table td{padding:10px 9px}
+   #vpVariationPanel .vp-var-image-grid{grid-template-columns:repeat(auto-fill,minmax(54px,1fr))}
+   #vpVariationPanel .vp-var-image-choice{width:56px;height:62px}
+  }`;
+ document.head.appendChild(style);
+}
 function build(){
+ ensureVariationLayoutCSS();
  const sec=$('#products');if(!sec||sec.dataset.vpReady)return;sec.dataset.vpReady='1';
  sec.innerHTML=`
   <div class="vp-top"><div><span class="vp-kicker"><i></i> CATALOG</span><h1>Products</h1><p>Create simple products or variable products with Color, Size, Material and any combination you need.</p></div><button class="gz-btn primary" id="vpNewTop" type="button">＋ Add Product</button></div>
@@ -45,7 +88,7 @@ function build(){
      <div class="vp-easy-setup"><b>Easy setup</b><div class="vp-setup-steps"><span>① Select Size values.</span><span>② Select common Colors or add another option.</span><span>③ Generate variations.</span></div></div><div id="vpPresetOptions"></div><div id="vpOptions"></div>
      <div class="vp-var-actions"><button type="button" class="gz-btn primary" id="vpGenerateVariations">Generate / Update Variations</button><input id="vpBulkPrice" type="number" min="0" step="0.01" placeholder="Apply regular price to all"><button type="button" class="gz-btn light" id="vpApplyBulk">Apply price to all</button></div>
      <div id="vpVariationMsg" class="vp-var-msg"></div>
-     <div class="vp-variation-table-wrap"><table class="vp-variation-table"><thead><tr><th>Variation</th><th>SKU</th><th>Regular</th><th>Old</th><th>Status</th><th>Product Image</th><th></th></tr></thead><tbody id="vpVariationRows"></tbody></table></div>
+     <div class="vp-variation-table-wrap"><table class="vp-variation-table"><thead><tr><th>Variation</th><th>SKU</th><th>Regular</th><th>Sale</th><th>Old</th><th>Stock</th><th>Stock Mode</th><th>Min Qty</th><th>Max Qty</th><th>Status</th><th>Product Image</th><th>Actions</th></tr></thead><tbody id="vpVariationRows"></tbody></table></div>
     </section>
     <div class="vp-actions"><button class="gz-btn primary" id="vpSubmit" type="submit">Upload &amp; Save Product</button><button type="button" class="gz-btn light" onclick="resetProductEditor()">Reset</button></div>
    </form>
@@ -67,7 +110,7 @@ async function editProduct(id){
  if(p.product_type==='variable'){await loadVariations(p.id)}else{state.variationOptions=[];state.variations=[];renderOptionRows();renderVariationRows()}
  window.scrollTo({top:$('#products').getBoundingClientRect().top+window.scrollY-20,behavior:'smooth'});
 }
-function handleFiles(){const files=[...($('#vpFiles').files||[])];if(files.length>MAX){alert('Maximum 10 images per product.');$('#vpFiles').value='';state.files=[];renderMedia();return}const bad=files.find(f=>f.size>MB||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));if(bad){alert(`${bad.name} is not a supported image or is larger than 1 MB.`);$('#vpFiles').value='';state.files=[];renderMedia();return}state.files=files;state.mainIndex=0;renderMedia()}
+function handleFiles(){const files=[...($('#vpFiles').files||[])];if(files.length>MAX){notify('Maximum 10 images per product.');$('#vpFiles').value='';state.files=[];renderMedia();return}const bad=files.find(f=>f.size>MB||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));if(bad){notify(`${bad.name} is not a supported image or is larger than 1 MB.`);$('#vpFiles').value='';state.files=[];renderMedia();return}state.files=files;state.mainIndex=0;renderMedia()}
 function removeSelectedImage(index){if(index<0)return;if(state.files.length){state.files.splice(index,1);if(state.mainIndex>=state.files.length)state.mainIndex=Math.max(0,state.files.length-1);if(state.mainIndex>index)state.mainIndex--;$('#vpFiles').value='';renderMedia();return}const imgs=[...(state.editing?.image_urls||[])].filter(Boolean);if(index>=imgs.length)return;imgs.splice(index,1);state.editing.image_urls=imgs;if(!imgs.length){state.editing.image_url='';state.mainIndex=0}else{if(!imgs.includes(state.editing.image_url))state.editing.image_url=imgs[0];state.mainIndex=Math.max(0,imgs.indexOf(state.editing.image_url))}renderMedia()}
 function setSelectedMain(index){if(index<0)return;if(state.files.length){state.mainIndex=index;renderMedia();return}const imgs=[...(state.editing?.image_urls||[])].filter(Boolean);if(!imgs[index])return;const chosen=imgs[index];state.editing.image_url=chosen;state.editing.image_urls=[chosen,...imgs.filter(x=>x!==chosen)];state.mainIndex=0;renderMedia()}
 function renderMedia(){
@@ -120,8 +163,8 @@ async function loadVariations(pid){
  catch(e){state.variationOptions=[];state.variations=[];renderOptionRows();renderVariationRows();if(msg)msg.textContent='⚠ '+e.message}
 }
 async function generateVariations(){
- collectOptionRows();if(!state.variationOptions.length)return alert('Add at least one option with values.');
- let count=1;for(const o of state.variationOptions)count*=o.values.length;if(count>MAX_VARIATIONS)return alert(`This will create ${count} variations. Maximum is ${MAX_VARIATIONS}.`);
+ collectOptionRows();if(!state.variationOptions.length)return notify('Add at least one option with values.');
+ let count=1;for(const o of state.variationOptions)count*=o.values.length;if(count>MAX_VARIATIONS)return notify(`This will create ${count} variations. Maximum is ${MAX_VARIATIONS}.`);
  const pid=$('#vpId').value.trim();if(!pid){message('Save the product first, then generate variations.',false);return}
  const msg=$('#vpVariationMsg');msg.textContent='Generating combinations…';
  try{const d=await api('/api/vendor/variations?product_id='+encodeURIComponent(pid),{method:'POST',body:JSON.stringify({options:state.variationOptions})});state.variations=d.variations||[];renderVariationRows();msg.textContent=`✓ ${d.count} variations generated.`;$('#vpProductType').value='variable'}catch(e){msg.textContent='⚠ '+e.message}
@@ -140,7 +183,7 @@ function renderVariationRows(){
    const labels=Object.entries(v.options||{}).map(([k,x])=>k+': '+x).join(' · ');
    const selected=v.image_url||'';
    const thumbs=productImages.length?productImages.map((url,i)=>'<button type="button" class="vp-var-image-choice '+(selected===url?'selected':'')+'" data-image-url="'+esc(url)+'" title="Use image '+(i+1)+'"><img src="'+esc(url)+'" alt="Product image '+(i+1)+'"><span>'+(i+1)+'</span></button>').join(''):'<span class="vp-no-images">No product images available</span>';
-   return '<tr data-variation-id="'+esc(v.id)+'"><td class="vp-var-name"><b>'+esc(labels||'Variation')+'</b></td><td><input data-v="sku" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" type="number" min="0" step="0.01" value="'+Number(v.regular_price??0)+'"></td><td><input data-v="old" type="number" min="0" step="0.01" value="'+(v.old_price??'')+'"></td><td><select data-v="status"><option '+(v.status==='Available'||!v.status?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><div class="vp-var-image-picker"><div class="vp-var-image-grid">'+thumbs+'</div><small>Select one of the product images for this variation.</small></div></td><td><button type="button" class="gz-btn light vp-save-variation">Save</button></td></tr>';
+   return '<tr data-variation-id="'+esc(v.id)+'"><td class="vp-var-name"><b>'+esc(labels||'Variation')+'</b></td><td><input data-v="sku" aria-label="Variation SKU" value="'+esc(v.sku||'')+'"></td><td><input data-v="regular" aria-label="Regular price" type="number" min="0" step="0.01" value="'+Number(v.regular_price??0)+'"></td><td><input data-v="sale" aria-label="Sale price" type="number" min="0" step="0.01" value="'+(v.sale_price??'')+'"></td><td><input data-v="old" aria-label="Old price" type="number" min="0" step="0.01" value="'+(v.old_price??'')+'"></td><td><input data-v="stock" aria-label="Stock quantity" type="number" min="0" step="1" value="'+Number(v.stock??0)+'"></td><td><select data-v="stockmode" aria-label="Stock tracking"><option value="tracked" '+(v.stock_mode==='tracked'?'selected':'')+'>Track stock</option><option value="untracked" '+(v.stock_mode!=='tracked'?'selected':'')+'>No stock tracking</option></select></td><td><input data-v="min" aria-label="Minimum quantity" type="number" min="1" step="1" value="'+Number(v.min_qty||1)+'"></td><td><input data-v="max" aria-label="Maximum quantity (optional)" type="number" min="1" step="1" value="'+(v.max_qty??'')+'"></td><td><select data-v="status" aria-label="Variation status"><option '+(v.status==='Available'||!v.status?'selected':'')+'>Available</option><option '+(v.status==='Out of Stock'?'selected':'')+'>Out of Stock</option><option '+(v.status==='Disabled'?'selected':'')+'>Disabled</option></select></td><td><div class="vp-var-image-picker"><div class="vp-var-image-grid">'+thumbs+'</div><small>Select one of the product images for this variation.</small></div></td><td><button type="button" class="gz-btn light vp-save-variation">Save</button><button type="button" class="gz-btn light vp-disable-variation">Delete</button></td></tr>';
  }).join('');
  body.querySelectorAll('.vp-var-image-choice').forEach(btn=>btn.onclick=async()=>{
    const row=btn.closest('tr'),id=row?.dataset.variationId,url=btn.dataset.imageUrl,v=state.variations.find(x=>String(x.id)===String(id));
@@ -153,10 +196,11 @@ function renderVariationRows(){
      await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({image_url:url})});
      btn.classList.add('saved');
    }catch(err){
-     btn.classList.remove('selected');alert(err.message);
+     btn.classList.remove('selected');notify(err.message);
    }finally{btn.disabled=false}
  });
  body.querySelectorAll('.vp-save-variation').forEach(btn=>btn.onclick=saveVariation);
+ body.querySelectorAll('.vp-disable-variation').forEach(btn=>btn.onclick=async()=>{const row=btn.closest('tr'),id=row?.dataset.variationId;if(!id||!confirm('Remove this variation from sale? Existing order history will be preserved.'))return;btn.disabled=true;try{await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'DELETE',body:JSON.stringify({product_id:$('#vpId').value})});const v=state.variations.find(x=>String(x.id)===String(id));if(v)v.status='Disabled';await loadVariations($('#vpId').value)}catch(err){notify(err.message)}finally{btn.disabled=false}});
 }
 async function saveVariation(e){
  const row=e.currentTarget.closest('tr'),id=row?.dataset.variationId;if(!id)return;
@@ -164,21 +208,22 @@ async function saveVariation(e){
  const v=state.variations.find(x=>String(x.id)===String(id));if(!v)return;
  btn.disabled=true;
  try{
-   await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({sku:val('sku'),regular_price:Number(val('regular')||0),old_price:val('old')===''?null:Number(val('old')),status:val('status'),image_url:v.image_url||''})});
-   v.sku=val('sku');v.regular_price=Number(val('regular')||0);v.old_price=val('old')===''?null:Number(val('old'));v.status=val('status');
+   const payload={sku:val('sku'),regular_price:Number(val('regular')||0),sale_price:val('sale')===''?null:Number(val('sale')),old_price:val('old')===''?null:Number(val('old')),stock:Number(val('stock')||0),stock_mode:val('stockmode'),min_qty:Number(val('min')||1),max_qty:val('max')===''?null:Number(val('max')),status:val('status'),image_url:v.image_url||''};
+   await api('/api/vendor/variations/'+encodeURIComponent(id)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify(payload)});
+   Object.assign(v,payload);
    btn.textContent='Saved ✓';setTimeout(()=>btn.textContent='Save',900);
- }catch(err){alert(err.message)}finally{btn.disabled=false}
+ }catch(err){notify(err.message)}finally{btn.disabled=false}
 }
 async function applyBulkPrice(){
- const price=$('#vpBulkPrice').value;if(price==='')return alert('Enter a regular price first.');
- const rows=[...document.querySelectorAll('#vpVariationRows tr[data-variation-id]')];if(!rows.length)return alert('Generate variations first.');
- try{for(const row of rows){await api('/api/vendor/variations/'+encodeURIComponent(row.dataset.variationId)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({regular_price:Number(price)})})}await loadVariations($('#vpId').value);$('#vpBulkPrice').value=''}catch(e){alert(e.message)}
+ const price=$('#vpBulkPrice').value;if(price==='')return notify('Enter a regular price first.');
+ const rows=[...document.querySelectorAll('#vpVariationRows tr[data-variation-id]')];if(!rows.length)return notify('Generate variations first.');
+ try{for(const row of rows){await api('/api/vendor/variations/'+encodeURIComponent(row.dataset.variationId)+'?product_id='+encodeURIComponent($('#vpId').value),{method:'PATCH',body:JSON.stringify({regular_price:Number(price)})})}await loadVariations($('#vpId').value);$('#vpBulkPrice').value=''}catch(e){notify(e.message)}
 }
 async function saveProduct(e){
  e.preventDefault();const btn=$('#vpSubmit');btn.disabled=true;message('Saving product…',true);
  try{
   const id=$('#vpId').value.trim();let urls=null,mainUrl=null;
-  if(state.files.length){if(state.files.length>MAX)throw Error('Maximum 10 images per product.');const uploaded=[];for(const f of state.files)uploaded.push(await upload(f));urls=uploaded;mainUrl=uploaded[state.mainIndex]||uploaded[0]}
+  if(state.files.length){if(state.files.length>MAX)throw Error('Maximum 10 images per product.');const uploaded=[];for(const f of state.files)uploaded.push(await window.uploadVendorImage(f,'product-image'));urls=uploaded;mainUrl=uploaded[state.mainIndex]||uploaded[0]}
   else if(state.editing){urls=(state.editing.image_urls||[]).filter(Boolean);mainUrl=urls[0]||state.editing.image_url||''}
   else throw Error('Please choose at least one product image.');
   const selectedProductType=String($('#vpProductType').value||'simple').toLowerCase()==='variable'?'variable':'simple';$('#vpProductType').value=selectedProductType;const body={name:$('#vpName').value.trim(),category:$('#vpCategory option:checked').textContent.trim(),price:Number($('#vpPrice').value),old_price:$('#vpOldPrice').value===''?null:Number($('#vpOldPrice').value),product_type:selectedProductType,category_id:$('#vpCategory').value||'',sku:$('#vpSku').value.trim(),tag:$('#vpTag').value.trim(),description:$('#vpDescription').value,published:$('#vpPublished').checked,image_url:mainUrl,image_urls:urls};

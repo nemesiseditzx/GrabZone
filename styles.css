@@ -2141,3 +2141,124 @@ body:has(#productDetail) > .header #storeName{
   visibility:visible!important;
   opacity:1!important;
 }
+
+
+/* GrabZone product detail gallery visibility + responsive alignment repair (2026-10-10). */
+body:has(#productDetail) #productDetail .detail-grid{
+  width:100%!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,.92fr)!important;
+  align-items:start!important;
+  gap:clamp(24px,4vw,56px)!important;
+}
+body:has(#productDetail) #productDetail .gallery{
+  width:100%!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:78px minmax(0,1fr)!important;
+  grid-template-areas:"thumbs main"!important;
+  align-items:start!important;
+  gap:14px!important;
+}
+body:has(#productDetail) #productDetail .gallery-thumbs{
+  grid-area:thumbs!important;
+  min-width:0!important;
+}
+body:has(#productDetail) #productDetail .gallery-main{
+  grid-area:main!important;
+  display:block!important;
+  position:relative!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:240px!important;
+  aspect-ratio:1/1!important;
+  height:auto!important;
+  overflow:hidden!important;
+  visibility:visible!important;
+  opacity:1!important;
+  background:#f6f6f4!important;
+  border:1px solid #e5e8eb!important;
+  border-radius:20px!important;
+}
+body:has(#productDetail) #productDetail .gallery-main #mainProductImage{
+  display:block!important;
+  position:relative!important;
+  z-index:1!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+body:has(#productDetail) #productDetail .gallery-nav{
+  z-index:5!important;
+}
+body:has(#productDetail) #productDetail .detail-grid>div:last-child{
+  min-width:0!important;
+  overflow-wrap:anywhere!important;
+}
+@media(max-width:900px){
+  body:has(#productDetail) #productDetail.detail{
+    width:calc(100% - 28px)!important;
+    max-width:760px!important;
+    padding:24px 0 60px!important;
+    box-sizing:border-box!important;
+  }
+  body:has(#productDetail) #productDetail .detail-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:26px!important;
+  }
+  body:has(#productDetail) #productDetail .gallery{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-areas:"main" "thumbs"!important;
+    gap:12px!important;
+  }
+  body:has(#productDetail) #productDetail .gallery-main{
+    width:100%!important;
+    min-height:0!important;
+    aspect-ratio:1/1!important;
+    max-height:min(112vw,560px)!important;
+    border-radius:18px!important;
+  }
+  body:has(#productDetail) #productDetail .gallery-thumbs{
+    width:100%!important;
+    display:flex!important;
+    flex-direction:row!important;
+    gap:9px!important;
+    overflow-x:auto!important;
+    padding:2px 1px 7px!important;
+    order:initial!important;
+  }
+  body:has(#productDetail) #productDetail .gallery-thumb{
+    flex:0 0 68px!important;
+    width:68px!important;
+    height:68px!important;
+  }
+  body:has(#productDetail) #productDetail .detail-grid>div:last-child{
+    width:100%!important;
+  }
+}
+@media(max-width:520px){
+  body:has(#productDetail) #productDetail.detail{
+    width:calc(100% - 24px)!important;
+    padding-top:18px!important;
+  }
+  body:has(#productDetail) #productDetail .detail-grid{
+    gap:22px!important;
+  }
+  body:has(#productDetail) #productDetail .gallery-main{
+    aspect-ratio:1/1!important;
+    max-height:calc(100vw - 24px)!important;
+  }
+  body:has(#productDetail) #productDetail h1{
+    font-size:clamp(32px,8.2vw,42px)!important;
+    line-height:1.04!important;
+    overflow-wrap:anywhere!important;
+  }
+}

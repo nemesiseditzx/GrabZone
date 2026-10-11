@@ -1,5 +1,6 @@
 var _gzHost = String(window.location.hostname || '').toLowerCase();
-var _gzDevWorker = _gzHost === 'vendor-system-dev-grabzone.nemesiseditzx984.workers.dev';
+// Preview Workers use their own origin so API calls stay on the matching backend instead of leaking to production.
+var _gzDevWorker = _gzHost.endsWith('.workers.dev');
 window.GRABZONE_CONFIG = {
   backendUrl: _gzDevWorker ? window.location.origin : "https://grabzone.nemesiseditzx984.workers.dev",
   storeName: "GRABZONE",

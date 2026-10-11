@@ -49,13 +49,19 @@
 <meta property="og:title" content="GrabZone Bangladesh | Online Shopping for Gadgets, Fashion & Essentials">
 <meta property="og:description" content="Shop gadgets, fashion, home essentials and everyday finds at GrabZone Bangladesh. Discover products, enjoy easy checkout, Cash on Delivery and GrabPoints rewards.">
 <meta property="og:url" content="https://grabzone.tech/">
+<meta property="og:image" content="https://grabzone.tech/grabzone-logo.svg">
+<meta property="og:image:alt" content="GrabZone official logo — GrabZone Online Store">
+<meta property="og:image:type" content="image/svg+xml">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://grabzone.tech/grabzone-logo.svg">
+<meta name="twitter:image:alt" content="GrabZone official logo — GrabZone Online Store">
 <meta name="twitter:title" content="GrabZone Bangladesh | Online Shopping for Gadgets, Fashion & Essentials">
 <meta name="twitter:description" content="Shop gadgets, fashion, home essentials and everyday finds at GrabZone Bangladesh. Discover products, enjoy easy checkout, Cash on Delivery and GrabPoints rewards.">
 
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/favicon.png">
-<link rel="stylesheet" href="/styles.css?v=20260928premium1">
+<link rel="stylesheet" href="/styles.css?v=20261010-gallery-alignment1">
 <link rel="stylesheet" href="grabzone-animations.css">
 <link rel="stylesheet" href="billboard.css">
   
@@ -382,6 +388,10 @@
 
     .contact-messenger-icon {
       background: linear-gradient(135deg, #00B2FF, #006AFF);
+    }
+
+    .contact-telegram-icon {
+      background: #229ED9;
     }
 
     .contact-messenger-icon svg {
@@ -1240,6 +1250,19 @@
           </span>
           <span class="contact-arrow">→</span>
         </a>
+
+        <a id="contactTelegram" class="contact-option" href="#" target="_blank" rel="noopener">
+          <span class="contact-icon contact-telegram-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path fill="currentColor" stroke="none" d="M21.7 4.4 18.5 20c-.2 1.1-.9 1.3-1.8.8l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.3-8.4c.4-.4-.1-.6-.6-.2L6 13.4l-4.9-1.5c-1.1-.3-1.1-1.1.2-1.6L20.4 3c.9-.3 1.7.2 1.3 1.4Z"></path>
+            </svg>
+          </span>
+          <span>
+            <strong>Telegram</strong>
+            <small data-i18n="contactTelegramText">Chat with us on Telegram</small>
+          </span>
+          <span class="contact-arrow">→</span>
+        </a>
       </div>
     </div>
   </div>
@@ -1313,6 +1336,8 @@
         Messenger
       </a>
 
+      <a id="tg" target="_blank" rel="noopener">Telegram</a>
+
     </div>
 
   </footer>
@@ -1325,7 +1350,7 @@
   <script src="config.js"></script>
 <script src="d1-client.js?v=20260902cloudflarefix1"></script>
 
-  <script src="store.js"></script>
+  <script src="store.js?v=20261010-telegram-gallery1"></script>
   <script src="billboard.js"></script>
 <script src="cart.js?v=20260919-status-only"></script>
 <script src="rewards.js?v=20260903rewardsfix7"></script>
@@ -1366,6 +1391,7 @@
         contactInstagramText: "Instagram-এ মেসেজ করুন",
         contactWhatsAppText: "WhatsApp-এ চ্যাট করুন",
         contactMessengerText: "Facebook-এ মেসেজ করুন",
+        contactTelegramText: "Telegram-এ মেসেজ করুন",
 
         dmOrder: "কার্ট দেখুন",
 
@@ -1465,6 +1491,7 @@
         contactInstagramText: "Message us on Instagram",
         contactWhatsAppText: "Chat with us on WhatsApp",
         contactMessengerText: "Message us on Facebook",
+        contactTelegramText: "Chat with us on Telegram",
 
         dmOrder: "View Cart",
 
@@ -1708,19 +1735,22 @@
       const footerInstagram = document.getElementById("ig");
       const footerWhatsApp = document.getElementById("wa");
       const footerMessenger = document.getElementById("ms");
+      const footerTelegram = document.getElementById("tg");
 
-      const instagram =
-        footerInstagram && footerInstagram.getAttribute("href") || "";
+      const configuredHref = element => {
+        const href = String(element?.getAttribute("href") || "").trim();
+        return href && href !== "#" && !/^javascript:/i.test(href) ? href : "";
+      };
 
-      const whatsapp =
-        footerWhatsApp && footerWhatsApp.getAttribute("href") || "";
-
-      const messenger =
-        footerMessenger && footerMessenger.getAttribute("href") || "";
+      const instagram = configuredHref(footerInstagram);
+      const whatsapp = configuredHref(footerWhatsApp);
+      const messenger = configuredHref(footerMessenger);
+      const telegram = configuredHref(footerTelegram);
 
       const ig = document.getElementById("contactInstagram");
       const wa = document.getElementById("contactWhatsApp");
       const ms = document.getElementById("contactMessenger");
+      const tg = document.getElementById("contactTelegram");
 
       if (ig) {
         ig.href = instagram || "#";
@@ -1738,6 +1768,12 @@
         ms.href = messenger || "#";
         ms.style.display = messenger ? "flex" : "none";
         ms.setAttribute("aria-hidden", messenger ? "false" : "true");
+      }
+
+      if (tg) {
+        tg.href = telegram || "#";
+        tg.style.display = telegram ? "flex" : "none";
+        tg.setAttribute("aria-hidden", telegram ? "false" : "true");
       }
       modal.classList.add("open");
       modal.setAttribute("aria-hidden", "false");

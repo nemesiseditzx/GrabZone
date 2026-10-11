@@ -72,6 +72,8 @@ document.head.appendChild(galleryNavStyle);
 let sb = null;
 let allProducts = [];
 let activeCategory = "All";
+let activeProductPage = 1;
+let lastProductFilterKey = null;
 let SITE = {};
 
 const C = window.GRABZONE_CONFIG || {};
@@ -141,6 +143,10 @@ function getSocialUrl(type) {
       C?.messenger ||
       ""
     );
+  }
+
+  if (type === "telegram") {
+    return SITE.telegram || SITE.telegram_url || SITE.telegram_link || C?.telegram || "";
   }
 
   return "";
@@ -765,7 +771,8 @@ function applySiteSettings() {
   [
     ["wa", SITE.whatsapp || C?.whatsapp],
     ["ig", SITE.instagram || C?.instagram],
-    ["ms", SITE.messenger || SITE.facebook || C?.messenger || C?.facebook]
+    ["ms", SITE.messenger || SITE.facebook || C?.messenger || C?.facebook],
+    ["tg", getSocialUrl("telegram")]
   ].forEach(([id, url]) => {
     setHref(id, url || "#");
   });
@@ -956,6 +963,8 @@ function renderProducts() {
     String(activeCategory || "All")
       .trim()
       .toLowerCase();
+  const filterKey = query + "\\u0000" + selectedCategory;
+  if (filterKey !== lastProductFilterKey) { activeProductPage = 1; lastProductFilterKey = filterKey; }
 
   /*
     Bangla search.
@@ -1042,6 +1051,28 @@ function renderProducts() {
       return synonyms.some(word => gzWordPattern(word).test(haystack));
     });
 
+  const gzFuzzyMatch = (haystack) => {
+    const tokens = query.split(/\s+/).filter(Boolean);
+    if (!tokens.length) return true;
+    const words = String(haystack || "").split(/[^a-z0-9\u0980-\u09ff]+/i).filter(Boolean);
+    const distance = (a, b) => {
+      if (a === b) return 0;
+      if (Math.abs(a.length - b.length) > 2) return 99;
+      let prev = Array.from({length:b.length + 1}, (_, i) => i);
+      for (let i = 1; i <= a.length; i++) {
+        const row = [i];
+        for (let j = 1; j <= b.length; j++) row[j] = Math.min(row[j-1] + 1, prev[j] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+        prev = row;
+      }
+      return prev[b.length];
+    };
+    return tokens.every(token => {
+      if (haystack.includes(token)) return true;
+      const limit = token.length >= 7 ? 2 : token.length >= 4 ? 1 : 0;
+      return limit > 0 && words.some(word => distance(token, word) <= limit);
+    });
+  };
+
   const filtered = allProducts.filter(product => {
     const category =
       String(product.category || "")
@@ -1061,11 +1092,16 @@ function renderProducts() {
 
     return (
       categoryMatches &&
-      (searchableText.includes(query) || gzBanglaMatch(searchableText))
+      (searchableText.includes(query) || gzBanglaMatch(searchableText) || gzFuzzyMatch(searchableText))
     );
   });
 
-  grid.innerHTML = filtered.map(product => {
+  const pageSize = 20;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  activeProductPage = Math.max(1, Math.min(activeProductPage, pageCount));
+  const pageRows = filtered.slice((activeProductPage - 1) * pageSize, activeProductPage * pageSize);
+
+  grid.innerHTML = pageRows.map(product => {
     const now=Date.now();
     const starts=product.flash_starts_at ? Date.parse(product.flash_starts_at) : NaN;
     const ends=product.flash_ends_at ? Date.parse(product.flash_ends_at) : NaN;
@@ -1092,10 +1128,11 @@ function renderProducts() {
       >
         <div class="product-image">
           <img
-            src="${escAttr(product.image_url)}"
+            src="${escAttr(product.image_url || '/favicon.png')}"
             alt="${escAttr(product.name)}"
             loading="lazy"
             decoding="async"
+            onerror="this.onerror=null;this.src='/favicon.png'"
           >
         </div>
 
@@ -1121,6 +1158,20 @@ ${flashActive ? '<div class="gz-flash-sale" data-flash-end="'+escAttr(product.fl
       </a>
     `;
   }).join("");
+
+  let pager = document.getElementById("gzHomeProductPagination");
+  if (!pager) {
+    pager = document.createElement("nav");
+    pager.id = "gzHomeProductPagination";
+    pager.setAttribute("aria-label", "Product pages");
+    pager.style.cssText = "display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:22px auto 36px;padding:0 14px";
+    grid.insertAdjacentElement("afterend", pager);
+  }
+  pager.innerHTML = filtered.length > pageSize
+    ? '<button type="button" data-page="prev" '+(activeProductPage <= 1 ? 'disabled' : '')+' style="border:1px solid #ddd;border-radius:9px;background:#fff;padding:9px 13px;font-weight:800;cursor:pointer">Previous</button><span style="font-size:11px;color:#777;font-weight:800">Showing '+((activeProductPage-1)*pageSize+1)+'–'+Math.min(activeProductPage*pageSize,filtered.length)+' of '+filtered.length+' products · Page '+activeProductPage+' of '+pageCount+'</span><button type="button" data-page="next" '+(activeProductPage >= pageCount ? 'disabled' : '')+' style="border:1px solid #ddd;border-radius:9px;background:#fff;padding:9px 13px;font-weight:800;cursor:pointer">Next</button>'
+    : '';
+  pager.querySelector('[data-page="prev"]')?.addEventListener('click', () => { activeProductPage = Math.max(1, activeProductPage - 1); renderProducts(); grid.scrollIntoView({behavior:'smooth',block:'start'}); });
+  pager.querySelector('[data-page="next"]')?.addEventListener('click', () => { activeProductPage = Math.min(pageCount, activeProductPage + 1); renderProducts(); grid.scrollIntoView({behavior:'smooth',block:'start'}); });
 
   const empty =
     document.getElementById("empty");
@@ -1607,24 +1658,30 @@ async function renderDetail() {
         : []);
 
   const dbGallery = Array.isArray(images)
-    ? images.filter(x => x && x.image_url)
+    ? images.filter(x => x && x.image_url).sort((a, b) =>
+        Number(Boolean(b.is_main)) - Number(Boolean(a.is_main)) ||
+        Number(a.sort_order || 0) - Number(b.sort_order || 0))
     : [];
 
-  const seenGallery = new Set();
-  const gallery = [...dbGallery, ...marketplaceImages, ...storedUrls.map((image_url, i) => ({
-    image_url,
-    is_main: i === 0
-  }))]
-    .filter(x => {
-      const url = String(x.image_url || "").trim();
-      if (!url || seenGallery.has(url)) return false;
-      seenGallery.add(url);
-      return true;
-    });
+  const dbHasMain = dbGallery.some(x => Boolean(x.is_main));
+  const candidates = [
+    ...(product.image_url ? [{ image_url: product.image_url, is_main: !dbHasMain }] : []),
+    ...dbGallery,
+    ...marketplaceImages,
+    ...storedUrls.map((image_url, i) => ({ image_url, is_main: i === 0 && !product.image_url && !dbHasMain }))
+  ].sort((a, b) => Number(Boolean(b.is_main)) - Number(Boolean(a.is_main)));
 
-  if (!gallery.length && product.image_url) {
+  const seenGallery = new Set();
+  const gallery = candidates.filter(x => {
+    const url = String(x.image_url || "").trim();
+    if (!url || seenGallery.has(url)) return false;
+    seenGallery.add(url);
+    return true;
+  });
+
+  if (!gallery.length) {
     gallery.push({
-      image_url: product.image_url,
+      image_url: product.image_url || '/favicon.png',
       is_main: true
     });
   }
@@ -1663,8 +1720,9 @@ async function renderDetail() {
               >
                 <img
                   src="${escAttr(
-                    image.image_url
+                    image.image_url || '/favicon.png'
                   )}"
+                  onerror="this.onerror=null;this.src=&#39;/favicon.png&#39;"
                   alt="${escAttr(
                     product.name
                   )} ${index + 1}"
@@ -1689,12 +1747,13 @@ async function renderDetail() {
   <img
     id="mainProductImage"
     src="${escAttr(
-      gallery[0].image_url
+      gallery[0].image_url || '/favicon.png'
     )}"
+    data-gz-gallery-fallback-index="1"
     alt="${escAttr(
       product.name
     )}"
-  >
+   onerror="window.gzGalleryImageError ? window.gzGalleryImageError(this) : (this.onerror=null,this.src='/favicon.png')">
 
   <button
     type="button"
@@ -1776,8 +1835,22 @@ async function renderDetail() {
 
   try{const er=await fetch('/api/rewards/eligibility?product_id='+encodeURIComponent(product.id),{cache:'no-store'});if(er.ok){const eligibility=await er.json();const badges=[];if(eligibility.rewards_eligible)badges.push('Rewards Eligible');if(eligibility.referral_eligible)badges.push('Referral Eligible');if(badges.length){const priceEl=element.querySelector('.detail-price');if(priceEl){const wrap=document.createElement('div');wrap.className='gz-product-benefit-badges';wrap.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:12px 0';wrap.innerHTML=badges.map(x=>'<span style="display:inline-flex;background:#e4f7ea;color:#16723b;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:900">'+x+'</span>').join('');priceEl.parentNode.insertBefore(wrap,priceEl)}}}}catch(e){console.warn('Rewards eligibility unavailable',e)}
 
-  window.__gallery =
-    gallery;
+  window.__gallery = gallery;
+  window.gzGalleryImageError = function(img) {
+    const items = window.__gallery || [];
+    let next = Number(img?.dataset?.gzGalleryFallbackIndex || 0);
+    while (next < items.length) {
+      const candidate = String(items[next]?.image_url || "").trim();
+      next += 1;
+      if (img?.dataset) img.dataset.gzGalleryFallbackIndex = String(next);
+      if (candidate && candidate !== img.src && !candidate.endsWith("/favicon.png")) {
+        img.src = candidate;
+        return;
+      }
+    }
+    img.onerror = null;
+    img.src = "/favicon.png";
+  };
   window.__gzProductRendered = true;
   window.dispatchEvent(new Event('grabzone:product-rendered'));
   if(typeof window.GZMountCustomerVariations==='function') window.GZMountCustomerVariations();
@@ -1856,8 +1929,11 @@ function showGalleryImage(index) {
         );
 
     if (mainImage) {
-        mainImage.src =
-            gallery[index].image_url;
+        mainImage.dataset.gzGalleryFallbackIndex = String(index + 1);
+        mainImage.onerror = () => window.gzGalleryImageError
+          ? window.gzGalleryImageError(mainImage)
+          : (mainImage.onerror = null, mainImage.src = "/favicon.png");
+        mainImage.src = gallery[index].image_url;
     }
 
     document
