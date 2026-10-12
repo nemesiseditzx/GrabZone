@@ -23,3 +23,10 @@ test('public variation endpoint batches option links and images across variation
   assert.ok(source.includes("SELECT variation_id,image_url FROM variation_images WHERE variation_id IN ('+marks+') ORDER BY sort_order,id"));
   assert.ok(source.includes('variation_images_variation_sort_idx'));
 });
+
+
+test('variation generation compares option links before deleting and reinserting them', () => {
+ const source=readFileSync(new URL('../vendor-system-v2.mjs',import.meta.url),'utf8');
+ assert.ok(source.includes('const same=current.length===wanted.length&&wanted.every(w=>current.some(c=>c.option_id===w.option_id&&c.option_value_id===w.option_value_id))'));
+ assert.ok(source.includes("if(!same){await e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?')"));
+});
