@@ -14,3 +14,12 @@ test('public variation endpoint batches option value reads by option IDs', () =>
   assert.ok(!fn.includes('CREATE TABLE IF NOT EXISTS vendor_product_images'), 'image table setup is not repeated per public variation request');
   assert.ok(source.includes('CREATE TABLE IF NOT EXISTS vendor_product_images'), 'image table is created by cached schema initialization');
 });
+
+
+test('public variation endpoint batches option links and images across variations', () => {
+  const source = readFileSync(new URL('../vendor-system-v2.mjs', import.meta.url), 'utf8');
+  assert.ok(source.includes("SELECT vo.variation_id,vo.option_id,vo.option_value_id,po.name,ov.value FROM variation_options vo JOIN product_options po"));
+  assert.ok(source.includes("WHERE vo.variation_id IN ('+marks+)"));
+  assert.ok(source.includes("SELECT variation_id,image_url FROM variation_images WHERE variation_id IN ('+marks+)"));
+  assert.ok(source.includes('variation_images_variation_sort_idx'));
+});
