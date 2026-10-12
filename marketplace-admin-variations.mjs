@@ -7,6 +7,30 @@ const json = (x, s = 200) => new Response(JSON.stringify(x), {
 
 async function q(e, s, p = []) { return e.DB.prepare(s).bind(...p).all(); }
 async function one(e, s, p = []) { return (await q(e, s, p)).results?.[0] || null; }
+// Rebuild variation links only when options_key maps unambiguously to every current option.
+// Resolve all links before writing so a failed match never leaves a partial link set.
+async function ensureVariationOptionLinks(e, productId, variation) {
+  const parts = String(variation?.options_key || '').split('|').filter(Boolean).map(part => {
+    const at = part.indexOf('=');
+    return at > 0 ? [part.slice(0, at).trim(), part.slice(at + 1).trim()] : null;
+  });
+  if (!parts.length || parts.some(x => !x) || new Set(parts.map(x => x[0])).size !== parts.length) return false;
+  const rows = (await q(e, 'SELECT po.id option_id,po.name,ov.id value_id,ov.value FROM product_options po LEFT JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? ORDER BY po.sort_order,ov.sort_order', [productId])).results || [];
+  const names = [...new Set(rows.map(x => x.name))];
+  if (!names.length || names.length !== parts.length || names.some(name => !parts.some(x => x[0] === name))) return false;
+  const mapped = [];
+  for (const [name, value] of parts) {
+    const match = rows.find(x => x.name === name && x.value === value && x.value_id);
+    if (!match) return false;
+    mapped.push({ option_id: match.option_id, value_id: match.value_id });
+  }
+  const current = (await q(e, 'SELECT option_id,option_value_id FROM variation_options WHERE variation_id=?', [variation.id])).results || [];
+  if (current.length === mapped.length && mapped.every(m => current.some(c => c.option_id === m.option_id && c.option_value_id === m.value_id))) return true;
+  const statements = [e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(variation.id), ...mapped.map(m => e.DB.prepare('INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(variation.id, m.option_id, m.value_id))];
+  await e.DB.batch(statements);
+  return true;
+}
+
 async function sha(v) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(v))))]
     .map(x => x.toString(16).padStart(2, '0')).join('');
@@ -205,6 +229,7 @@ async function handle(req, e) {
     const v = await one(e, 'SELECT * FROM product_variations WHERE id=? AND product_id=?', [id, pid]);
     if (!v) return json({ error: 'Variation not found.' }, 404);
     const status = ['Available', 'Out of Stock', 'Disabled'].includes(b.status) ? b.status : v.status;
+    if (status === 'Available' && !(await ensureVariationOptionLinks(e, pid, v))) return json({ error: 'Cannot mark variation Available: its options_key does not match every current product option. Correct the product options first.' }, 409);
     const hasStock=b.stock!==undefined&&b.stock!==null&&b.stock!=='';
     const stock=hasStock?Math.max(0,Math.floor(Number(b.stock))):Number(v.stock||0);
     await e.DB.prepare(
