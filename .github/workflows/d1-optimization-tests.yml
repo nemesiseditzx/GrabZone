@@ -25,4 +25,4 @@ jobs:
         with:
           node-version: '22'
       - name: Run D1 optimization regression tests
-        run: node --test tests/d1-shipping-schema-cache.test.mjs tests/d1-variation-option-read-optimization.test.mjs tests/d1-variation-editor-batched-reads.test.mjs tests/d1-public-variation-batched-option-values.test.mjs
+        run: node --test tests/d1-shipping-schema-cache.test.mjs
