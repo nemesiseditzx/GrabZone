@@ -31,3 +31,16 @@ test('integrity helper resolves all option values before changing existing links
     assert.ok(helper.includes('await e.DB.batch(statements)'), file + ': replace links in one D1 batch');
   }
 });
+
+test('variation generators validate option keys and commit regeneration atomically', () => {
+  for (const file of files) {
+    const source = readFileSync(new URL('../' + file, import.meta.url), 'utf8');
+    assert.ok(source.includes('function validateVariationInput('), file + ': generator preflight exists');
+    assert.ok(source.includes('Option names and values cannot contain = or |'), file + ': ambiguous option delimiters are rejected');
+    assert.ok(source.includes('await e.DB.batch(statements)'), file + ': option and variation updates use an atomic D1 batch');
+    const guard = source.indexOf('validateVariationInput(');
+    const write = source.indexOf("DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)", guard);
+    assert.ok(guard >= 0 && write > guard, file + ': validate input before destructive writes');
+    assert.ok(source.includes('no partial generation was committed'), file + ': batch failure returns an explicit error');
+  }
+});
