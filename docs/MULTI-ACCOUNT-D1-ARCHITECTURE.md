@@ -28,9 +28,15 @@ Official references:
 - D1 limits: https://developers.cloudflare.com/d1/platform/limits/
 - Workers limits: https://developers.cloudflare.com/workers/platform/limits/
 
-## Alternative integration to evaluate if the REST adapter fails
+## Required integration: one gateway Worker in each D1-owning account
 
-A narrowly scoped database gateway Worker can live with each D1 in its owning account and expose only authenticated, domain-specific operations. This would add small gateway Workers in the database accounts, so it is **not** the preferred first option if the requirement is that every Worker must be in the common account. Do not expose a generic public SQL execution endpoint. If this alternative is considered, it requires explicit approval and a security review.
+The user confirmed that each D1-owning account must also have a Worker. Therefore the target includes three small database gateway Workers—one in the Customer D1 account, one in the Marketplace D1 account, and one in the Admin D1 account—in addition to the three main application Workers in the shared application Worker account.
+
+Each gateway uses a native D1 binding to its same-account database and exposes only authenticated, fixed domain-specific operations. It must never accept arbitrary SQL or caller-selected account/database identifiers. The initial scaffold in `d1-account-gateway.mjs` implements authenticated liveness/readiness only; it deliberately does not expose application data operations.
+
+Use a unique high-entropy `D1_GATEWAY_TOKEN` secret per gateway, store it as a Worker secret in the gateway account and as a Worker secret in approved calling Workers, and never commit or share it in chat. Apply server-to-server access controls, request limits, sanitized errors, authorization propagation, idempotency for writes, and audit logging. Do not add real data operations until the query/table ownership inventory and service contracts are reviewed.
+
+The D1 REST adapter remains an isolated proof of concept, not the production access path. Evaluate it only if a later measured need justifies it; do not run both paths for authoritative writes.
 
 ## Data ownership and service boundaries
 
@@ -72,3 +78,12 @@ Keep the existing R2 integration until a separate storage decision is approved. 
 ## Known current repository gap
 
 The existing Wrangler configurations currently point at the same D1 database ID `ffaa2c49-c89e-439f-9a71-89144b07dfce`. The repository's main Worker entrypoint uses direct D1 binding APIs. Therefore the separate-account architecture is **not implemented yet**. Do not change the current D1 bindings to placeholders or claim separation before the adapter, real account resources and end-to-end tests exist.
+
+
+## User-confirmed gateway placement (2026-10-15)
+
+- The three D1 accounts have been created, according to the owner.
+- The owner explicitly requires a Worker in each D1 account.
+- The shared application Worker account still hosts Customer API, Marketplace API and Admin API.
+- Current `grabzone.tech` domain and current `grabzone-assets` R2 bucket remain unchanged.
+- `d1-account-gateway.mjs` is a readiness-only scaffold. It is not yet deployed and does not replace the app's direct D1 calls.
