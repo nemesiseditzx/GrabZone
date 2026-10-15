@@ -83,3 +83,15 @@ This document records implementation state, not a claim of completion. GitHub Ac
 - Key finding: the base schema does not show a general-purpose customer profile table; reward/member identity-like records and order contact fields are coupled to commerce logic. Therefore Customer D1 ownership cannot be finalized safely by simply moving a table group. Exact query/write-set inventory and service boundaries are required before migration.
 - The new R2 inventory is in `docs/R2-ASSET-ROUTING-INVENTORY.md`. Existing object key families and URLs must remain compatible.
 - Latest verified code-test commit at the time of this note: `b18376aa54918b7e9c1c697a137502122430a998` passed both validation workflows and the marketplace development Worker workflow. Newer documentation-only commits will trigger their own CI runs; check the exact latest SHA before claiming the current head is green.
+
+
+## User-confirmed gateway architecture and implementation (2026-10-15)
+
+- Owner confirmed the three D1-owning accounts already exist and selected three databases: Customer, Marketplace and Admin.
+- The three main application Workers remain in the shared Worker account; each D1-owning account must also have a same-account gateway Worker. Eventual target: three application Workers plus three D1 gateway Workers.
+- Keep `grabzone.tech` and the current `grabzone-assets` R2 bucket. No production DNS, production deployment, authoritative data migration or production binding changes are authorized by this confirmation.
+- Added `d1-account-gateway.mjs`: authenticated `GET /internal/health` and `GET /internal/ready` only. It uses a fixed `SELECT 1 AS ok`, has no arbitrary SQL endpoint, no CORS, rejects unknown routes/methods, and sanitizes failures.
+- Added `tests/d1-account-gateway.test.mjs` for authentication, unknown routes, method rejection, readiness and sanitized failure behavior.
+- Added `docs/D1-ACCOUNT-GATEWAY.md` with per-account deployment steps and required gates.
+- Gateway is a readiness-only scaffold. No actual gateway has been deployed and application SQL has not been rerouted. Domain-specific operations, service contracts, account-specific binding configuration, migration/backfill and development cutover remain incomplete.
+- D1 REST POC remains isolated and is not used for authoritative production data access.
