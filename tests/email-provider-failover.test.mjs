@@ -78,3 +78,34 @@ test('customer order confirmation can use Brevo when Resend is not configured',a
     assert.equal(call.body.to[0].email,'customer@example.test');
   }finally{globalThis.fetch=original;}
 });
+
+test('Mailtrap is used after definitive Resend and Brevo rejection when production sender is configured',async()=>{
+  const original=globalThis.fetch;
+  const calls=[];
+  globalThis.fetch=async(url,init={})=>{
+    calls.push({url:String(url),init});
+    if(String(url)==='https://api.resend.com/emails')return response(429,{message:'rate limited'});
+    if(String(url)==='https://api.brevo.com/v3/smtp/email')return response(429,{message:'rate limited'});
+    if(String(url)==='https://send.api.mailtrap.io/api/send')return response(200,{message_ids:['mailtrap-message-1']});
+    throw new Error('Unexpected provider '+url);
+  };
+  try{
+    const result=await sendEmailWithFallback({
+      RESEND_API_KEY:'test-resend',
+      BREVO_API_KEY:'test-brevo',
+      BREVO_FROM_EMAIL:'support@example.test',
+      MAILTRAP_API_TOKEN:'test-mailtrap',
+      MAILTRAP_FROM_EMAIL:'orders@example.test',
+      EMAIL_PROVIDER_ORDER:'resend,brevo,mailtrap'
+    },{
+      to:'customer@example.test',subject:'Order received',html:'<p>Order</p>',text:'Order'
+    });
+    assert.equal(result.ok,true);
+    assert.equal(result.provider,'mailtrap');
+    assert.equal(result.id,'mailtrap-message-1');
+    assert.deepEqual(result.attempts.map(x=>x.outcome),['rejected','rejected','accepted']);
+    assert.equal(calls.length,3);
+    assert.equal(calls[2].init.headers.Authorization,'Bearer test-mailtrap');
+    assert.equal(JSON.parse(calls[2].init.body).from.email,'orders@example.test');
+  }finally{globalThis.fetch=original;}
+});
