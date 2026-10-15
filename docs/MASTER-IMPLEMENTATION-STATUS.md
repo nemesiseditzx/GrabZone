@@ -75,3 +75,11 @@ This document records implementation state, not a claim of completion. GitHub Ac
 - One regression assertion initially failed because the expected error text did not match the implementation. The assertion was corrected, and the subsequent commit passed the regression workflow. No application D1 or R2 bindings were changed by this fix.
 - Current R2 source behavior includes vendor keys under `vendors/{vendorId}/...`, general upload keys under `grabzone/{date}/...`, and review photo keys under `grabzone/reviews/{date}/...`. Preserve these keys and URL behavior in any later storage abstraction.
 - Next implementation gate remains a disposable-account D1 REST contract/latency test and full table/query ownership inventory. Actual account IDs/tokens must be provisioned by the owner; no placeholders will be wired into application routes.
+
+
+## Additional D1 ownership analysis
+
+- Added `docs/D1-TABLE-OWNERSHIP-INITIAL.md` as a provisional table/domain inventory. It identifies the base schema's 30 tables, runtime-created tables, likely marketplace-owned transactional records, admin auth coupling, and unresolved customer/rewards ownership.
+- Key finding: the base schema does not show a general-purpose customer profile table; reward/member identity-like records and order contact fields are coupled to commerce logic. Therefore Customer D1 ownership cannot be finalized safely by simply moving a table group. Exact query/write-set inventory and service boundaries are required before migration.
+- The new R2 inventory is in `docs/R2-ASSET-ROUTING-INVENTORY.md`. Existing object key families and URLs must remain compatible.
+- Latest verified code-test commit at the time of this note: `b18376aa54918b7e9c1c697a137502122430a998` passed both validation workflows and the marketplace development Worker workflow. Newer documentation-only commits will trigger their own CI runs; check the exact latest SHA before claiming the current head is green.
