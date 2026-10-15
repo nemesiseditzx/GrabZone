@@ -15,4 +15,5 @@ test('global config does not inject a second storefront UI layer', () => {
   assert.doesNotMatch(config, /addJs\(['"]grabzone-pro-commerce-ui\.js/);
   const index = fs.readFileSync('index.html', 'utf8');
   assert.match(index, /config\.js\?v=20261015-single-ui-backend-routing/);
+  assert.match(index, /var isDev=host\\.endsWith\\('\\.workers\\.dev'\\)/);
 });
