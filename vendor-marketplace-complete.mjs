@@ -26,14 +26,24 @@ async function authSchema(env){
    `CREATE TABLE IF NOT EXISTS vendor_sessions(token_hash TEXT PRIMARY KEY,vendor_user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)`
   ];
   for(const sql of statements)await env.DB.prepare(sql).run();
-  for(const sql of [
+  // Existing main-site databases can have older auth tables. Add every column
+  // used by vendor login/session verification before running those queries.
+  const migrations=[
    `ALTER TABLE vendors ADD COLUMN slug TEXT`,
    `ALTER TABLE vendors ADD COLUMN brand_name TEXT NOT NULL DEFAULT 'Vendor'`,
    `ALTER TABLE vendors ADD COLUMN status TEXT NOT NULL DEFAULT 'Active'`,
+   `ALTER TABLE vendor_users ADD COLUMN vendor_id TEXT`,
+   `ALTER TABLE vendor_users ADD COLUMN email TEXT`,
+   `ALTER TABLE vendor_users ADD COLUMN password_hash TEXT`,
+   `ALTER TABLE vendor_users ADD COLUMN password_salt TEXT`,
    `ALTER TABLE vendor_users ADD COLUMN role TEXT NOT NULL DEFAULT 'vendor_admin'`,
    `ALTER TABLE vendor_users ADD COLUMN status TEXT NOT NULL DEFAULT 'Active'`,
+   `ALTER TABLE vendor_sessions ADD COLUMN token_hash TEXT`,
+   `ALTER TABLE vendor_sessions ADD COLUMN vendor_user_id TEXT`,
+   `ALTER TABLE vendor_sessions ADD COLUMN expires_at TEXT`,
    `ALTER TABLE vendor_sessions ADD COLUMN created_at TEXT NOT NULL DEFAULT ''`
-  ]){try{await env.DB.prepare(sql).run()}catch{}}
+  ];
+  for(const sql of migrations){try{await env.DB.prepare(sql).run()}catch{}}
  })();
  authReady=authReady.catch(err=>{authReady=null;console.error('GrabZone vendor auth schema initialization failed:',err);throw err});
  return authReady;
