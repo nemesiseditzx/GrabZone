@@ -66,3 +66,12 @@ This document records implementation state, not a claim of completion. GitHub Ac
 - Confirmed from repository source that all three current Wrangler configurations still point to the same D1 ID and R2 bucket; current application code uses native D1 binding APIs. The separate-account architecture remains incomplete.
 - Current observed Actions results for baseline commit `d4c2f76af00f73fa97c6faca2825ef2151652ff9` were successful for marketplace validation, vendor-system validation, and the marketplace development Worker workflow. These do not establish that the new POC tests pass until workflows complete for the new commit.
 - Next: wait for CI on the latest commit; correct any test failures; inventory direct D1 access and R2 object operations; then run a disposable D1 contract/latency test once actual test-account IDs and a least-privilege API token are configured as secrets. Do not wire the POC into application routes or migrate authoritative data before those gates pass.
+
+
+## Latest audit progress (2026-10-15)
+
+- Added `docs/R2-ASSET-ROUTING-INVENTORY.md` documenting source-observed R2 key families and read/write routes for vendor media, general uploads, review photos, and product multi-image URL references. It explicitly does not claim a complete live bucket inventory.
+- The corrected D1 REST POC tests passed in GitHub Actions at commit `b18376aa54918b7e9c1c697a137502122430a998`; the vendor-system syntax/regression workflow, marketplace validation workflow, and marketplace development Worker workflow all reported success for that commit.
+- One regression assertion initially failed because the expected error text did not match the implementation. The assertion was corrected, and the subsequent commit passed the regression workflow. No application D1 or R2 bindings were changed by this fix.
+- Current R2 source behavior includes vendor keys under `vendors/{vendorId}/...`, general upload keys under `grabzone/{date}/...`, and review photo keys under `grabzone/reviews/{date}/...`. Preserve these keys and URL behavior in any later storage abstraction.
+- Next implementation gate remains a disposable-account D1 REST contract/latency test and full table/query ownership inventory. Actual account IDs/tokens must be provisioned by the owner; no placeholders will be wired into application routes.
