@@ -51,3 +51,9 @@
 ## Verification state
 
 This document records implementation state, not a claim of completion. GitHub Actions results must be checked for the exact latest commit before reporting tests as passing. Real email delivery, Cloudflare account resources and production DNS are not verifiable from source code alone.
+
+
+## Full scalable architecture blueprint
+
+- Added `docs/GRABZONE-SCALABLE-FREE-TIER-ARCHITECTURE.md` on `vendor-system-dev` (planning document only). It covers the three-Worker / three-separate-D1-account target, data preservation and migration gates, a future R2 storage abstraction and multi-account expansion path, usage optimization, security, phased rollout, acceptance criteria, and explicit production safety gates.
+- This blueprint does not mean the architecture is implemented. The current D1 bindings and R2 bucket remain unchanged; no production data, DNS, secrets, or deployment were modified by this documentation commit.
