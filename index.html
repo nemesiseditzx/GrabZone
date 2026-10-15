@@ -24,7 +24,7 @@
 <script>
 (function(){
   var host=String(location.hostname||'').toLowerCase();
-  var isDev=host==='vendor-system-dev-grabzone.nemesiseditzx984.workers.dev';
+  var isDev=host.endsWith('.workers.dev');
   if(isDev)return;
   var s=document.createElement('script');
   s.async=true;
