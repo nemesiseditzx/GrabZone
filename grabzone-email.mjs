@@ -115,7 +115,7 @@ function b64url(str){
 }
 
 /** Send through the Gmail API using the refresh token this project already stores. */
-async function sendViaGmail(env,{to,subject,html,text}){
+async function sendViaGmail(env,{to,subject,html,text,fromName="GrabZone"}){
   const have=env.GOOGLE_CLIENT_ID&&env.GOOGLE_CLIENT_SECRET&&env.GOOGLE_REFRESH_TOKEN;
   if(!have)return {ok:false,skipped:"no-gmail-credentials"};
   try{
@@ -123,7 +123,7 @@ async function sendViaGmail(env,{to,subject,html,text}){
     const token=await tokenRes.json().catch(()=>({}));
     if(!tokenRes.ok||!token.access_token)return {ok:false,provider:"gmail",status:tokenRes.status,error:"Gmail token request failed",definitive:true};
     const boundary="gzb_"+Math.random().toString(36).slice(2);
-    const raw=["From: GrabZone Vendors <"+String(env.GMAIL_FROM_EMAIL||"support@grabzone.tech")+">","To: "+to,"Subject: "+subject,"MIME-Version: 1.0",`Content-Type: multipart/alternative; boundary="${boundary}"`,"","--"+boundary,"Content-Type: text/plain; charset=UTF-8","",text,"","--"+boundary,"Content-Type: text/html; charset=UTF-8","",html,"","--"+boundary+"--",""].join("\r\n");
+    const raw=["From: "+String(fromName||"GrabZone")+" <"+String(env.GMAIL_FROM_EMAIL||"support@grabzone.tech")+">","To: "+to,"Subject: "+subject,"MIME-Version: 1.0",`Content-Type: multipart/alternative; boundary="${boundary}"`,"","--"+boundary,"Content-Type: text/plain; charset=UTF-8","",text,"","--"+boundary,"Content-Type: text/html; charset=UTF-8","",html,"","--"+boundary+"--",""].join("\r\n");
     const res=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send",{method:"POST",headers:{Authorization:"Bearer "+token.access_token,"Content-Type":"application/json"},body:JSON.stringify({raw:b64url(raw)})});
     if(!res.ok){const detail=(await res.text()).slice(0,400);return {ok:false,provider:"gmail",status:res.status,error:detail,definitive:true}}
     const data=await res.json().catch(()=>({}));
