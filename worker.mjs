@@ -1,5 +1,5 @@
 /* GrabZone Cloudflare Worker backend: static assets + D1 + R2 + admin auth. */
-import { sendCustomerOrderConfirmation, sendEmailWithFallback } from './grabzone-email.mjs';
+import { sendCustomerOrderConfirmation, sendEmailWithFallback, configuredEmailProviderOrder } from './grabzone-email.mjs';
 import { notifyVendorsForOrder } from './vendor-order-notify.mjs';
 import { gzApplyCors, gzPreflight } from './cors-policy.mjs';
 import { handleRewardsEligibility } from './rewards-eligibility-api.mjs';
@@ -713,7 +713,7 @@ function base64UrlUtf8(value){
 }
 async function emailStatus(req,env){
  const s=await session(req,env);if(!s)return json({error:"Unauthorized."},401);
- const out={ok:false,sender:String(env.GMAIL_FROM_EMAIL||""),credentials_configured:["GOOGLE_CLIENT_ID","GOOGLE_CLIENT_SECRET","GOOGLE_REFRESH_TOKEN","GMAIL_FROM_EMAIL"].every(k=>!!String(env[k]||"").trim()),gmail:false,sheets:false};
+ const out={ok:false,sender:String(env.GMAIL_FROM_EMAIL||""),credentials_configured:["GOOGLE_CLIENT_ID","GOOGLE_CLIENT_SECRET","GOOGLE_REFRESH_TOKEN","GMAIL_FROM_EMAIL"].every(k=>!!String(env[k]||"").trim()),gmail:false,sheets:false,email_delivery:{provider_order:configuredEmailProviderOrder(env,"transactional"),providers:{resend:{configured:!!String(env.RESEND_API_KEY||"").trim()},brevo:{configured:!!String(env.BREVO_API_KEY||"").trim(),sender_configured:!!String(env.BREVO_FROM_EMAIL||env.ORDER_EMAIL_FROM||"").trim()},mailtrap:{configured:!!String(env.MAILTRAP_API_TOKEN||env.MAILTRAP_API_KEY||"").trim(),production_sender_configured:!!String(env.MAILTRAP_FROM_EMAIL||"").trim()},gmail:{configured:["GOOGLE_CLIENT_ID","GOOGLE_CLIENT_SECRET","GOOGLE_REFRESH_TOKEN"].every(k=>!!String(env[k]||"").trim())}}}};
  try{
   const token=await gmailToken(env);
   const pr=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile",{headers:{Authorization:"Bearer "+token}});
