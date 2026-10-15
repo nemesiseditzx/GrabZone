@@ -202,12 +202,11 @@ export async function sendEmailWithFallback(env,message,{category="transactional
 /**
  * New-order notification for one vendor.
  *
- * Provider chain: Resend first when configured, then the Gmail API when the
- * Google credentials are configured and Resend answered with a failure.
- * A network-level failure (timeout, connection reset) is treated as ambiguous
- * and does NOT fall through to the second provider, because the first provider
- * may already have accepted the message — that would be a duplicate. Ambiguous
- * failures are logged as failed and left for the retry path.
+ * Provider order defaults to Resend, Brevo, Mailtrap, then the existing Gmail API
+ * integration; EMAIL_PROVIDER_ORDER_TRANSACTIONAL can override that order.
+ * Definitive rejection can fall through to the next configured provider.
+ * Network-level failures and HTTP 5xx responses are ambiguous and stop immediate
+ * failover because the first provider may already have accepted the message.
  *
  * payload: {to,vendorName,orderNumber,placedAt,orderStatus,items,subtotal,shipping,total,panelUrl,customerName}
  * result : {ok:true,provider,status,id,attempts} | {skipped:"..."} | {ok:false,provider,status,error,definitive,attempts}
