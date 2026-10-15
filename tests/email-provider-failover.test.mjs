@@ -74,7 +74,7 @@ test('customer order confirmation can use Brevo when Resend is not configured',a
     assert.equal(result.provider,'brevo');
     assert.equal(call.url,'https://api.brevo.com/v3/smtp/email');
     assert.match(call.body.subject,/GZ-100/);
-    assert.match(call.body.html,/Cash on Delivery/);
+    assert.match(call.body.htmlContent,/Cash on Delivery/);
     assert.equal(call.body.to[0].email,'customer@example.test');
   }finally{globalThis.fetch=original;}
 });
