@@ -49,7 +49,7 @@ test('D1 REST PoC rejects invalid query input before making a request', async ()
       return new Response('{}');
     },
   });
-  await assert.rejects(client.query('  '), /non-empty SQL/);
+  await assert.rejects(client.query('  '), /non-empty string/);
   await assert.rejects(client.query('SELECT ?', 'not-an-array'), /parameters must be an array/);
   assert.equal(calls, 0);
 });
