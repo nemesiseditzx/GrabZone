@@ -17,6 +17,8 @@
 ## Changes made on this branch
 
 - Added a shared transactional email provider router in `grabzone-email.mjs`: default order Resend → Brevo → Mailtrap → existing Gmail API.
+- Routed customer order confirmations, vendor order notifications, GrabPoints/rewards emails and order-status updates through the shared transactional provider router.
+- Extended the protected `/api/email/status` diagnostic response with provider configuration flags and the configured provider order; this reports configuration, not live deliverability.
 - Added provider-order configuration using `EMAIL_PROVIDER_ORDER` and `EMAIL_PROVIDER_ORDER_TRANSACTIONAL`.
 - Explicit provider rejection (including 429 rate limits) may fall through. Network failures and HTTP 5xx responses stop immediate fallback as ambiguous to reduce duplicate delivery risk.
 - Added `tests/email-provider-failover.test.mjs` for failover, ambiguous outcomes, category order and customer order email routing.
