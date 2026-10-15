@@ -250,3 +250,8 @@ The architecture is not considered complete until all applicable checks pass:
 - R2 S3-compatible API: https://developers.cloudflare.com/r2/get-started/s3/
 - R2 authentication: https://developers.cloudflare.com/r2/api/tokens/
 - R2 pricing: https://developers.cloudflare.com/r2/pricing/
+
+
+## Confirmed account-gateway clarification (2026-10-15)
+
+The owner confirmed: D1 accounts are created; there are three D1s (Customer, Marketplace, Admin); the three main application Workers remain in one shared account; every D1-owning account also needs its own Worker; the current R2 bucket and `grabzone.tech` domain stay. This means six Workers in the eventual target (three application Workers plus three same-account D1 gateway Workers), unless a later reviewed architecture change explicitly changes that requirement. The gateway readiness scaffold is source-only and has not been deployed.
