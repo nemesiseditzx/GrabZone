@@ -139,6 +139,67 @@ export function gmailConfigured(env){
 }
 
 /**
+ * Shared transactional provider router.
+ * Provider order can be overridden with EMAIL_PROVIDER_ORDER or
+ * EMAIL_PROVIDER_ORDER_TRANSACTIONAL (comma-separated provider IDs).
+ * A network error or HTTP 5xx is ambiguous and stops failover to avoid duplicates.
+ */
+export function configuredEmailProviderOrder(env={}, category="transactional"){
+  const raw=env["EMAIL_PROVIDER_ORDER_"+String(category).toUpperCase()]||env.EMAIL_PROVIDER_ORDER||"resend,brevo,mailtrap,gmail";
+  const allowed=new Set(["resend","brevo","mailtrap","gmail"]);
+  const order=String(raw).split(",").map(x=>x.trim().toLowerCase()).filter((x,i,a)=>allowed.has(x)&&a.indexOf(x)===i);
+  return order.length?order:["resend","brevo","mailtrap","gmail"];
+}
+async function sendViaBrevo(env,{to,subject,html,text,fromName="GrabZone"}){
+  if(!env.BREVO_API_KEY)return {ok:false,skipped:"no-brevo-credentials",provider:"brevo"};
+  const from=String(env.BREVO_FROM_EMAIL||env.ORDER_EMAIL_FROM||"").trim();
+  if(!from)return {ok:false,skipped:"no-brevo-sender",provider:"brevo"};
+  try{
+    const res=await fetch("https://api.brevo.com/v3/smtp/email",{method:"POST",headers:{"api-key":String(env.BREVO_API_KEY),"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({sender:{name:fromName,email:from},to:[{email:to}],subject,htmlContent:html,textContent:text})});
+    const data=await res.json().catch(()=>({}));
+    if(res.ok)return {ok:true,provider:"brevo",status:res.status,id:data.messageId||null};
+    return {ok:false,provider:"brevo",status:res.status,error:"Brevo rejected the email request",definitive:res.status!==408&&res.status!==425&&res.status<500};
+  }catch(err){return {ok:false,provider:"brevo",error:String(err?.message||err),definitive:false};}
+}
+async function sendViaMailtrap(env,{to,subject,html,text,fromName="GrabZone"}){
+  const key=env.MAILTRAP_API_TOKEN||env.MAILTRAP_API_KEY;
+  if(!key)return {ok:false,skipped:"no-mailtrap-credentials",provider:"mailtrap"};
+  const from=String(env.MAILTRAP_FROM_EMAIL||"").trim();
+  if(!from)return {ok:false,skipped:"no-mailtrap-production-sender",provider:"mailtrap"};
+  try{
+    const res=await fetch("https://send.api.mailtrap.io/api/send",{method:"POST",headers:{"Authorization":"Bearer "+String(key),"Content-Type":"application/json"},body:JSON.stringify({from:{email:from,name:fromName},to:[{email:to}],subject,html,text})});
+    const data=await res.json().catch(()=>({}));
+    if(res.ok)return {ok:true,provider:"mailtrap",status:res.status,id:data.message_ids?.[0]||data.message_id||null};
+    return {ok:false,provider:"mailtrap",status:res.status,error:"Mailtrap rejected the email request",definitive:res.status!==408&&res.status!==425&&res.status<500};
+  }catch(err){return {ok:false,provider:"mailtrap",error:String(err?.message||err),definitive:false};}
+}
+async function sendViaResend(env,{to,subject,html,text,fromName="GrabZone"}){
+  if(!env.RESEND_API_KEY)return {ok:false,skipped:"no-resend-credentials",provider:"resend"};
+  const from=String(env.ORDER_EMAIL_FROM||"support@grabzone.tech").trim();
+  try{
+    const res=await fetch("https://api.resend.com/emails",{method:"POST",headers:{"Authorization":"Bearer "+String(env.RESEND_API_KEY),"Content-Type":"application/json"},body:JSON.stringify({from:fromName+" <"+from+">",to:[to],subject,html,text})});
+    const data=await res.json().catch(()=>({}));
+    if(res.ok)return {ok:true,provider:"resend",status:res.status,id:data.id||null};
+    return {ok:false,provider:"resend",status:res.status,error:"Resend rejected the email request",definitive:res.status!==408&&res.status!==425&&res.status<500};
+  }catch(err){return {ok:false,provider:"resend",error:String(err?.message||err),definitive:false};}
+}
+export async function sendEmailWithFallback(env,message,{category="transactional",gmailSender=sendViaGmail}={}){
+  const to=String(message?.to||"").trim();
+  if(!to||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(to))return {skipped:"no-recipient",attempts:[]};
+  const senders={resend:sendViaResend,brevo:sendViaBrevo,mailtrap:sendViaMailtrap,gmail:gmailSender};
+  const attempts=[];
+  for(const provider of configuredEmailProviderOrder(env,category)){
+    const result=await senders[provider](env,{...message,to});
+    if(result.skipped){attempts.push({provider,outcome:"not-configured"});continue;}
+    const outcome=result.ok?"accepted":result.definitive?"rejected":"ambiguous";
+    attempts.push({provider,status:result.status??null,outcome});
+    if(result.ok)return {...result,attempts};
+    if(!result.definitive)return {...result,attempts};
+  }
+  return {ok:false,skipped:attempts.length?"all-providers-failed":"no-provider",definitive:true,attempts};
+}
+
+/**
  * New-order notification for one vendor.
  *
  * Provider chain: Resend first when configured, then the Gmail API when the
@@ -155,49 +216,13 @@ export async function sendVendorOrderEmail(env,payload={}){
   const to=String(payload.to||"").trim();
   if(!to||!to.includes("@"))return {skipped:"no-recipient"};
   const {subject,html,text}=buildVendorOrderEmail(payload);
-  const attempts=[];
-
-  if(env.RESEND_API_KEY){
-    let resend;
-    try{
-      const res=await fetch("https://api.resend.com/emails",{method:"POST",headers:{"Authorization":"Bearer "+env.RESEND_API_KEY,"Content-Type":"application/json"},body:JSON.stringify({from:"GrabZone Vendors <support@grabzone.tech>",to:[to],subject,html,text})});
-      if(res.ok){
-        const data=await res.json().catch(()=>({}));
-        return {ok:true,provider:"resend",status:res.status,id:data.id||null,attempts:[{provider:"resend",status:res.status,outcome:"accepted"}]};
-      }
-      const detail=(await res.text()).slice(0,400);
-      console.error("Resend vendor order email rejected",res.status,detail);
-      resend={ok:false,provider:"resend",status:res.status,error:detail,definitive:true};
-    }catch(err){
-      console.error("Resend vendor order email network error",err);
-      resend={ok:false,provider:"resend",error:String(err?.message||err),definitive:false};
-    }
-    attempts.push({provider:"resend",status:resend.status??null,outcome:resend.definitive?"rejected":"ambiguous"});
-    if(!resend.definitive)return {...resend,attempts};
-    if(!gmailConfigured(env))return {...resend,attempts};
-    // Definitive rejection from Resend: the message was not accepted, so trying
-    // the second provider cannot duplicate it.
-    const gmail=await sendViaGmail(env,{to,subject,html,text});
-    attempts.push({provider:"gmail",status:gmail.status??null,outcome:gmail.ok?"accepted":(gmail.definitive?"rejected":"ambiguous")});
-    if(gmail.ok)return {ok:true,provider:"gmail",status:gmail.status,id:gmail.id||null,fallbackFrom:"resend",attempts};
-    if(gmail.skipped==="no-gmail-credentials")return {...resend,attempts};
-    return {ok:false,provider:"gmail",status:gmail.status??null,error:gmail.error||resend.error||"send failed",definitive:gmail.definitive!==false,fallbackFrom:"resend",attempts};
-  }
-
-  const gmail=await sendViaGmail(env,{to,subject,html,text});
-  if(gmail.skipped==="no-gmail-credentials")return {skipped:"no-provider"};
-  attempts.push({provider:"gmail",status:gmail.status??null,outcome:gmail.ok?"accepted":(gmail.definitive?"rejected":"ambiguous")});
-  return gmail.ok?{...gmail,attempts}:{...gmail,attempts};
+  return sendEmailWithFallback(env,{to,subject,html,text,fromName:"GrabZone Vendors"},{category:"transactional"});
 }
 
 export async function sendCustomerOrderConfirmation(env,{to,customerName,orderNumber,items,subtotal,shipping,total,tracking}){
-  if(!env.RESEND_API_KEY||!to)return {skipped:true};
+  if(!to)return {skipped:true};
   const rows=(items||[]).map(x=>`<tr><td style="padding:10px;border-bottom:1px solid #eee">${esc(x.product_name||"Product")}</td><td style="padding:10px;text-align:center;border-bottom:1px solid #eee">${Math.max(1,Number(x.quantity||1))}</td><td style="padding:10px;text-align:right;border-bottom:1px solid #eee">${money(x.line_total??Number(x.unit_price||0)*Number(x.quantity||1))}</td></tr>`).join("");
   const trackingUrl="https://grabzone.tech/track-order.html?tracking="+encodeURIComponent(tracking||"");
   const html=`<!doctype html><html><body style="margin:0;background:#f6f7f9;font-family:Arial,sans-serif;color:#171717"><div style="max-width:620px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden"><div style="padding:26px;background:#111;color:#fff"><div style="font-size:12px;letter-spacing:2px;color:#ffb36b;font-weight:bold">GRABZONE · ORDER CONFIRMATION</div><h1 style="margin:12px 0 4px;font-size:25px">Thanks for your order!</h1><div style="color:#ddd">Hi ${esc(customerName||"there")}, we've received your order.</div></div><div style="padding:24px"><p><strong>Order number:</strong> ${esc(orderNumber||"")}</p><table style="width:100%;border-collapse:collapse"><thead><tr><th align="left" style="padding:10px;border-bottom:2px solid #ddd">Item</th><th style="padding:10px;border-bottom:2px solid #ddd">Qty</th><th align="right" style="padding:10px;border-bottom:2px solid #ddd">Amount</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:18px;text-align:right;line-height:1.9"><div>Subtotal: ${money(subtotal)}</div><div>Delivery: ${money(shipping)}</div><div style="font-size:19px;font-weight:bold">Total: ${money(total)}</div></div><p style="margin:26px 0"><a href="${trackingUrl}" style="display:inline-block;background:#ff6b00;color:#fff;text-decoration:none;padding:13px 20px;border-radius:9px;font-weight:bold">Track your order</a></p><p style="color:#666;font-size:13px">Payment method: Cash on Delivery. We'll contact you to confirm your order.</p><div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;text-align:center;font-size:12px;color:#777;line-height:1.7">Need help? Contact GrabZone Support: <a href="mailto:support@grabzone.tech" style="color:#e2570b;font-weight:700">support@grabzone.tech</a><br>Follow us: <a href="https://t.me/grabzoneofficial" style="color:#e2570b;font-weight:700">Telegram</a> · <a href="https://www.facebook.com/grabzoneofficial/" style="color:#e2570b;font-weight:700">Facebook</a> · <a href="https://www.instagram.com/grabzoneofficial/" style="color:#e2570b;font-weight:700">Instagram</a></div></div></div></body></html>`;
-  try{
-    const res=await fetch("https://api.resend.com/emails",{method:"POST",headers:{"Authorization":"Bearer "+env.RESEND_API_KEY,"Content-Type":"application/json"},body:JSON.stringify({from:"GrabZone Orders <support@grabzone.tech>",to:[String(to).trim()],subject:`GrabZone order received — ${orderNumber||""}`.trim(),html})});
-    if(!res.ok){console.error("Resend customer order email failed",res.status,(await res.text()).slice(0,400));return {ok:false,status:res.status};}
-    return {ok:true};
-  }catch(err){console.error("Resend customer order email error",err);return {ok:false};}
-}
+  const text=`GrabZone order received — ${orderNumber||""}. Total: ${money(total)}. Track your order: ${trackingUrl}`;
+  return sendEmailWithFallback(env,{to:String(to).trim(),subject:`GrabZone order received — ${orderNumber||""}`.trim(),html,text,fromName:"GrabZone Orders"},{category:"transactional"});
