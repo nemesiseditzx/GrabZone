@@ -25,8 +25,13 @@ test('public variation endpoint batches option links and images across variation
 });
 
 
-test('variation generation compares option links before deleting and reinserting them', () => {
+test('variation regeneration batches option-link replacement with matrix updates', () => {
  const source=readFileSync(new URL('../vendor-system-v2.mjs',import.meta.url),'utf8');
- assert.ok(source.includes('const same=current.length===wanted.length&&wanted.every(w=>current.some(c=>c.option_id===w.option_id&&c.option_value_id===w.option_value_id))'));
- assert.ok(source.includes("if(!same){await e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?')"));
+ const start=source.indexOf("async function variations(req,e)");
+ const end=source.indexOf("async function profile(",start);
+ const handler=source.slice(start,end);
+ assert.ok(handler.includes("DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)"));
+ assert.ok(handler.includes("INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)"));
+ assert.ok(handler.includes("await e.DB.batch(statements)"), 'option and variation changes use one atomic batch');
+ assert.ok(handler.includes("no partial generation was committed"), 'batch failures are surfaced');
 });
