@@ -57,3 +57,12 @@ This document records implementation state, not a claim of completion. GitHub Ac
 
 - Added `docs/GRABZONE-SCALABLE-FREE-TIER-ARCHITECTURE.md` on `vendor-system-dev` (planning document only). It covers the three-Worker / three-separate-D1-account target, data preservation and migration gates, a future R2 storage abstraction and multi-account expansion path, usage optimization, security, phased rollout, acceptance criteria, and explicit production safety gates.
 - This blueprint does not mean the architecture is implemented. The current D1 bindings and R2 bucket remain unchanged; no production data, DNS, secrets, or deployment were modified by this documentation commit.
+
+
+## Active architecture implementation — Phase 0 / POC
+
+- Added `docs/PHASE-0-AUDIT.md` with verified source-configuration findings and current safety gates.
+- Added `d1-rest-poc.mjs` and `tests/d1-rest-poc.test.mjs` as an isolated server-side D1 REST proof of concept. It is not imported into any Worker entrypoint and does not change live database access.
+- Confirmed from repository source that all three current Wrangler configurations still point to the same D1 ID and R2 bucket; current application code uses native D1 binding APIs. The separate-account architecture remains incomplete.
+- Current observed Actions results for baseline commit `d4c2f76af00f73fa97c6faca2825ef2151652ff9` were successful for marketplace validation, vendor-system validation, and the marketplace development Worker workflow. These do not establish that the new POC tests pass until workflows complete for the new commit.
+- Next: wait for CI on the latest commit; correct any test failures; inventory direct D1 access and R2 object operations; then run a disposable D1 contract/latency test once actual test-account IDs and a least-privilege API token are configured as secrets. Do not wire the POC into application routes or migrate authoritative data before those gates pass.
