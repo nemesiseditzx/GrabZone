@@ -9,6 +9,8 @@
 
 - The current primary Wrangler config (`wrangler.jsonc`) deploys Worker `grabzone` from `marketplace-stable-entry.mjs`.
 - Existing development configs also point at the same D1 database ID (`ffaa2c49-c89e-439f-9a71-89144b07dfce`) and the same R2 bucket (`grabzone-assets`).
+- Updated user requirement: keep all three main application Workers in one designated Worker account, while placing Customer D1, Marketplace D1 and Admin D1 in three separate D1-owning accounts. The implementation needs a verified cross-account access layer; ordinary Wrangler D1 bindings must not be assumed to cross account boundaries.
+- Detailed target, security controls and migration gates are documented in `docs/MULTI-ACCOUNT-D1-ARCHITECTURE.md`.
 - `wrangler.marketplace-dev.jsonc` and `wrangler.vendor-preview.jsonc` are additional configurations, but there are no dedicated Customer API and Admin API Wrangler configurations yet.
 - Therefore, the requested three-Worker / three-distinct-D1 architecture is **not yet implemented**. Do not describe it as complete, and do not substitute the same D1 ID into all three bindings.
 - The repository's GitHub Actions currently run syntax/regression checks and a development Worker deployment workflow on pushes to this branch. This is not authorization to deploy production.
@@ -37,13 +39,14 @@
 
 ## Required blockers before three-Worker rollout
 
-1. Provision three distinct D1 databases in the intended Cloudflare account and record their actual IDs; no Cloudflare resource-management tool is available in this implementation session.
-2. Confirm isolated preview bindings and migration/backfill plan before changing authoritative data ownership.
-3. Define Customer and Admin Worker entry points, service-to-service authentication, routes, secret bindings and failure behavior.
-4. Add dedicated Wrangler configs only after real D1 IDs exist; do not use fake IDs or reuse the current shared ID to claim separation.
-5. Test customer auth, vendor isolation, COD checkout, admin authorization, email failover, UI rendering and row-read/write behavior.
-6. Verify actual provider credentials, domain authentication and controlled test deliveries.
-7. Review the branch's CI and development deployment results. Production remains untouched unless separately authorized.
+1. Provision the three D1-owning accounts/databases and record actual IDs; confirm the arrangement complies with Cloudflare terms and account controls.
+2. Prototype and benchmark the cross-account D1 REST adapter against disposable data before replacing direct D1 bindings.
+3. Inventory database calls, table ownership and cross-domain joins/transactions; finalize Customer and Admin Worker entrypoints, routes and service authentication.
+4. Add configuration only after real account/database IDs and least-privilege tokens exist; never commit secrets or fake IDs.
+5. Implement reviewed data migration/backfill, reconciliation and rollback before changing authoritative data ownership.
+6. Test customer auth, vendor isolation, COD checkout, admin authorization, email failover, UI rendering and row-read/write behavior.
+7. Verify actual provider credentials, domain authentication and controlled test deliveries.
+8. Review CI and isolated development deployment results. Production remains untouched unless separately authorized.
 
 ## Verification state
 
