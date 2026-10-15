@@ -1,0 +1,36 @@
+name: Variation Link Integrity Tests
+
+on:
+  pull_request:
+    branches:
+      - vendor-system-dev
+    paths:
+      - 'vendor-marketplace-complete.mjs'
+      - 'vendor-system-v2.mjs'
+      - 'marketplace-admin-variations.mjs'
+      - 'tests/variation-link-integrity.test.mjs'
+      - '.github/workflows/variation-link-integrity-tests.yml'
+  push:
+    branches:
+      - fix/variation-link-integrity-2026-10-12
+
+permissions:
+  contents: read
+
+jobs:
+  variation-link-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax-check changed handlers
+        run: |
+          node --check vendor-marketplace-complete.mjs
+          node --check vendor-system-v2.mjs
+          node --check marketplace-admin-variations.mjs
+      - name: Run variation-link integrity regression tests
+        run: node --test tests/variation-link-integrity.test.mjs
