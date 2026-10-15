@@ -8,6 +8,7 @@ import vendorGenerator from './vendor-system-generator.mjs';
 import vendorStore from './vendor-store-v2.mjs';
 import adminVariations from './marketplace-admin-variations.mjs';
 import marketplaceComplete from './vendor-marketplace-complete.mjs';
+import { runD1SetupOnce } from './d1-schema-cache.mjs';
 const json=(x,s=200,h={})=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, must-revalidate',...h}});const now=()=>new Date().toISOString();function cookie(req,n){for(const p of(req.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}async function sha(v){return[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}async function one(e,s,p=[]){return(await e.DB.prepare(s).bind(...p).all()).results?.[0]||null}async function admin(req,e){const t=cookie(req,'gz_admin_session');return t?one(e,"SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>?",[await sha(t),now()]):null}async function vendor(req,e){const t=cookie(req,'gz_vendor_session');return t?one(e,"SELECT vu.id,vu.vendor_id,vu.email,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active'",[await sha(t),now()]):null}
 const marketplaceSecret=e=>String(e.MARKETPLACE_AUTH_SECRET||e.D1_AUTH_SECRET||e.GRABZONE_ADMIN_PASSWORD||'');async function verifyUploadToken(t,e){try{const parts=String(t||'').split('.');if(parts.length!==2)return null;const sec=marketplaceSecret(e);if(!sec)return null;const decode=s=>{s=String(s).replace(/-/g,'+').replace(/_/g,'/');s+='='.repeat((4-s.length%4)%4);return Uint8Array.from(atob(s),c=>c.charCodeAt(0))};const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(sec),{name:'HMAC',hash:'SHA-256'},false,['verify']);if(!await crypto.subtle.verify('HMAC',k,decode(parts[1]),new TextEncoder().encode(parts[0])))return null;const payload=JSON.parse(new TextDecoder().decode(decode(parts[0])));if(payload.scope!=='vendor-upload'||Number(payload.exp||0)<Date.now()/1000||!payload.session_hash)return null;const u=await one(e,"SELECT vu.id,vu.vendor_id,vu.email,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE vu.id=? AND s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active' LIMIT 1",[payload.sub,payload.session_hash,now()]);return u&&String(u.vendor_id)===String(payload.vendor_id)?u:null}catch{return null}}
 async function publicVariations(req,e){
@@ -16,21 +17,25 @@ async function publicVariations(req,e){
  const pid=String(u.searchParams.get('product_id')||'').trim();
  if(!pid)return json({error:'product_id is required.'},400);
  try{
-  // Read existing tables with SELECT * so older D1 schemas do not cause a 500
-  // merely because one legacy column is missing.
-  await e.DB.prepare(`CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});
-  await e.DB.prepare(`CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});
-  await e.DB.prepare(`CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,options TEXT,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`).run().catch(()=>{});
-  await e.DB.prepare(`CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))`).run().catch(()=>{});
-  await e.DB.prepare(`CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`).run().catch(()=>{});
+  // Create legacy-compatible variation tables once per D1 binding per isolate,
+  // rather than issuing schema writes on every public product-detail request.
+  await runD1SetupOnce(e.DB,'public-variation-schema',async()=>{
+   await e.DB.batch([
+    e.DB.prepare(`CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`),
+    e.DB.prepare(`CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`),
+    e.DB.prepare(`CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,options TEXT,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`),
+    e.DB.prepare(`CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))`),
+    e.DB.prepare(`CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`),
+    e.DB.prepare(`CREATE TABLE IF NOT EXISTS product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_main INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)`),
+    e.DB.prepare(`CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)`)
+   ]);
+  });
 
   const product=await one(e,'SELECT * FROM products WHERE id=? LIMIT 1',[pid]);
   if(!product)return json({error:'Product not found.'},404);
   if(Number(product.published??1)!==1)return json({error:'Product not found.'},404);
   try {
-   await e.DB.prepare('CREATE TABLE IF NOT EXISTS product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_main INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
    const imageRows=(await e.DB.prepare('SELECT image_url FROM product_images WHERE product_id=? ORDER BY sort_order,id').bind(pid).all()).results||[];
-   await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
    const vendorImageRows=(await e.DB.prepare('SELECT image_url FROM vendor_product_images WHERE product_id=? ORDER BY sort_order,id').bind(pid).all()).results||[];
    const dbUrls=[...imageRows,...vendorImageRows].map(x=>String(x.image_url||'').trim()).filter(Boolean);
    let storedUrls=[];
@@ -96,8 +101,11 @@ async function publicVariations(req,e){
 async function shippingSettings(req,e){
  const p=new URL(req.url).pathname;
  if(p!=='/api/marketplace/shipping-settings')return null;
- await e.DB.prepare("ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 130").run().catch(()=>{});
- await e.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee) VALUES(1,130)").run().catch(()=>{});
+ await runD1SetupOnce(e.DB,'shipping-settings-schema',async()=>{
+  const columns=(await e.DB.prepare('PRAGMA table_info(site_settings)').all()).results||[];
+  if(!columns.some(column=>column.name==='global_shipping_fee'))await e.DB.prepare("ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 130").run();
+  await e.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee) VALUES(1,130)").run();
+ });
  if(req.method==='GET'){
   const row=(await e.DB.prepare("SELECT global_shipping_fee FROM site_settings WHERE id=1 LIMIT 1").all()).results?.[0];
   const fee=Number(row?.global_shipping_fee);
