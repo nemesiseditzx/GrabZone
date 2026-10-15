@@ -185,7 +185,7 @@ async function sendViaResend(env,{to,subject,html,text,fromName="GrabZone"}){
 }
 export async function sendEmailWithFallback(env,message,{category="transactional",gmailSender=sendViaGmail}={}){
   const to=String(message?.to||"").trim();
-  if(!to||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(to))return {skipped:"no-recipient",attempts:[]};
+  if(!to||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to))return {skipped:"no-recipient",attempts:[]};
   const senders={resend:sendViaResend,brevo:sendViaBrevo,mailtrap:sendViaMailtrap,gmail:gmailSender};
   const attempts=[];
   for(const provider of configuredEmailProviderOrder(env,category)){
