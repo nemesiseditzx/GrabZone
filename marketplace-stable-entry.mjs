@@ -93,11 +93,15 @@ async function publicVariations(req,e){
   return json({error:'Variations could not be loaded.',detail:String(err?.message||err)},500);
  }
 }
+let shippingSchemaReady=null;
 async function shippingSettings(req,e){
  const p=new URL(req.url).pathname;
  if(p!=='/api/marketplace/shipping-settings')return null;
- await e.DB.prepare("ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 130").run().catch(()=>{});
- await e.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee) VALUES(1,130)").run().catch(()=>{});
+ if(!shippingSchemaReady)shippingSchemaReady=(async()=>{
+  await e.DB.prepare("ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 130").run().catch(()=>{});
+  await e.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee) VALUES(1,130)").run();
+ })().catch(err=>{shippingSchemaReady=null;throw err});
+ try{await shippingSchemaReady}catch(err){console.error('Shipping settings schema initialization failed',err);return json({error:'Shipping settings could not be initialized.'},500)}
  if(req.method==='GET'){
   const row=(await e.DB.prepare("SELECT global_shipping_fee FROM site_settings WHERE id=1 LIMIT 1").all()).results?.[0];
   const fee=Number(row?.global_shipping_fee);
