@@ -7,6 +7,30 @@ const json = (x, s = 200) => new Response(JSON.stringify(x), {
 
 async function q(e, s, p = []) { return e.DB.prepare(s).bind(...p).all(); }
 async function one(e, s, p = []) { return (await q(e, s, p)).results?.[0] || null; }
+// Rebuild variation links only when options_key maps unambiguously to every current option.
+// Resolve all links before writing so a failed match never leaves a partial link set.
+async function ensureVariationOptionLinks(e, productId, variation) {
+  const parts = String(variation?.options_key || '').split('|').filter(Boolean).map(part => {
+    const at = part.indexOf('=');
+    return at > 0 ? [part.slice(0, at).trim(), part.slice(at + 1).trim()] : null;
+  });
+  if (!parts.length || parts.some(x => !x) || new Set(parts.map(x => x[0])).size !== parts.length) return false;
+  const rows = (await q(e, 'SELECT po.id option_id,po.name,ov.id value_id,ov.value FROM product_options po LEFT JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? ORDER BY po.sort_order,ov.sort_order', [productId])).results || [];
+  const names = [...new Set(rows.map(x => x.name))];
+  if (!names.length || names.length !== parts.length || names.some(name => !parts.some(x => x[0] === name))) return false;
+  const mapped = [];
+  for (const [name, value] of parts) {
+    const match = rows.find(x => x.name === name && x.value === value && x.value_id);
+    if (!match) return false;
+    mapped.push({ option_id: match.option_id, value_id: match.value_id });
+  }
+  const current = (await q(e, 'SELECT option_id,option_value_id FROM variation_options WHERE variation_id=?', [variation.id])).results || [];
+  if (current.length === mapped.length && mapped.every(m => current.some(c => c.option_id === m.option_id && c.option_value_id === m.value_id))) return true;
+  const statements = [e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(variation.id), ...mapped.map(m => e.DB.prepare('INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(variation.id, m.option_id, m.value_id))];
+  await e.DB.batch(statements);
+  return true;
+}
+
 async function sha(v) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(v))))]
     .map(x => x.toString(16).padStart(2, '0')).join('');
@@ -66,6 +90,12 @@ function key(x) {
   return Object.entries(x).sort((a, b) => a[0].localeCompare(b[0]))
     .map(([a, b]) => `${a}=${b}`).join('|').slice(0, 1000);
 }
+function validateVariationInput(options, rows, makeKey) {
+  if (!Array.isArray(options) || !options.length || options.some(o => !o.name || /[=|]/.test(o.name) || o.values.some(v => !v || /[=|]/.test(v)))) return false;
+  const rawKeys = rows.map(row => Object.entries(row).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>k+'='+v).join('|'));
+  return rawKeys.every(k => k.length <= 1000) && new Set(rawKeys).size === rawKeys.length && new Set(rows.map(makeKey)).size === rows.length;
+}
+
 async function product(e, id) { return one(e, 'SELECT * FROM products WHERE id=?', [id]); }
 async function load(e, id) {
   const v = await one(e, 'SELECT * FROM product_variations WHERE id=?', [id]);
@@ -120,44 +150,30 @@ async function handle(req, e) {
     if (!os.length) return json({ error: 'Add at least one option with values.' }, 400);
     const rows = combos(os);
     if (rows.length > 200) return json({ error: 'Maximum 200 generated variations per product.' }, 400);
+    if (!validateVariationInput(os, rows, key)) return json({ error: 'Option names and values cannot contain = or |, and generated option keys must be unique and at most 1000 characters.' }, 400);
 
-    const existing = (await q(e,
-      'SELECT id,options_key FROM product_variations WHERE product_id=?', [pid])).results || [];
+    const existing = (await q(e, 'SELECT id,options_key FROM product_variations WHERE product_id=?', [pid])).results || [];
     const oldBy = new Map(existing.map(x => [x.options_key, x]));
-    const t = now();
-
-    // Replace only the option definitions for this product. Variation records are preserved by options_key.
+    const t = now(), keep = new Set(), statements = [];
     const oldOptions = (await q(e, 'SELECT id FROM product_options WHERE product_id=?', [pid])).results || [];
     const oldOptionIds = oldOptions.map(x => x.id);
+    statements.push(e.DB.prepare('DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)').bind(pid));
     if (oldOptionIds.length) {
       const placeholders = oldOptionIds.map(() => '?').join(',');
-      const oldValues = (await q(e, `SELECT id FROM option_values WHERE option_id IN (${placeholders})`, oldOptionIds)).results || [];
-      const oldValueIds = oldValues.map(x => x.id);
-      const variationIds = (await q(e, 'SELECT id FROM product_variations WHERE product_id=?', [pid])).results || [];
-      for (const v of variationIds) await e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(v.id).run();
-      if (oldValueIds.length) await e.DB.prepare(`DELETE FROM option_values WHERE id IN (${oldValueIds.map(() => '?').join(',')})`).bind(...oldValueIds).run();
-      await e.DB.prepare(`DELETE FROM product_options WHERE id IN (${placeholders})`).bind(...oldOptionIds).run();
+      statements.push(e.DB.prepare('DELETE FROM option_values WHERE option_id IN (' + placeholders + ')').bind(...oldOptionIds));
+      statements.push(e.DB.prepare('DELETE FROM product_options WHERE product_id=?').bind(pid));
     }
 
-    const newOptionIds = new Map();
+    const map = new Map();
     for (const o of os) {
       const oid = crypto.randomUUID();
-      newOptionIds.set(o.name, oid);
-      await e.DB.prepare(
-        'INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)'
-      ).bind(oid, pid, o.name, o.sort_order, t, t).run();
+      statements.push(e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid, pid, o.name, o.sort_order, t, t));
       for (let i = 0; i < o.values.length; i++) {
-        await e.DB.prepare(
-          'INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)'
-        ).bind(crypto.randomUUID(), oid, o.values[i], i, t, t).run();
+        const valueId = crypto.randomUUID();
+        statements.push(e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(valueId, oid, o.values[i], i, t, t));
+        map.set(o.name + '\u0000' + o.values[i], { option_id: oid, value_id: valueId });
       }
     }
-
-    const optionRows = (await q(e,
-      'SELECT po.id,po.name,ov.id value_id,ov.value FROM product_options po JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? ORDER BY po.sort_order,ov.sort_order',
-      [pid])).results || [];
-    const map = new Map(optionRows.map(x => [`${x.name}\u0000${x.value}`, { option_id: x.id, value_id: x.value_id }]));
-    const keep = new Set();
 
     for (const selected of rows) {
       const k = key(selected);
@@ -165,37 +181,30 @@ async function handle(req, e) {
       const old = oldBy.get(k);
       const id = old?.id || crypto.randomUUID();
       if (old) {
-        await e.DB.prepare("UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Disabled' ELSE status END,updated_at=? WHERE id=?")
-          .bind(t, id).run();
+        statements.push(e.DB.prepare("UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Disabled' ELSE status END,updated_at=? WHERE id=?").bind(t, id));
       } else {
-        await e.DB.prepare(
-          'INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
-        ).bind(id, pid, '', Number(b.default_price ?? productRow.price ?? 0), null, null, 0, 'untracked', 5, '', 'Available', 1, null, k, t, t).run();
+        statements.push(e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id, pid, '', Number(b.default_price ?? productRow.price ?? 0), null, null, 0, 'untracked', 5, '', 'Available', 1, null, k, t, t));
       }
       for (const o of os) {
-        const m = map.get(`${o.name}\u0000${selected[o.name]}`);
-        if (m) await e.DB.prepare(
-          'INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)'
-        ).bind(id, m.option_id, m.value_id).run();
+        const m = map.get(o.name + '\u0000' + selected[o.name]);
+        if (!m) return json({ error: 'Could not resolve every option value; no changes were saved.' }, 409);
+        statements.push(e.DB.prepare('INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(id, m.option_id, m.value_id));
       }
     }
-
-    for (const x of existing) {
-      if (!keep.has(x.options_key)) await e.DB.prepare(
-        "UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?"
-      ).bind(t, x.id).run();
+    for (const x of existing) if (!keep.has(x.options_key)) statements.push(e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?").bind(t, x.id));
+    if (statements.length > 950) return json({ error: 'This option set is too large to save safely in one atomic batch.' }, 400);
+    try {
+      await e.DB.batch(statements);
+    } catch (err) {
+      console.error('admin variation generation batch failed', err);
+      return json({ error: 'Variation options could not be saved; no partial generation was committed.' }, 500);
     }
-    const generated = (await q(e,
-      "SELECT * FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at,id",
-      [pid])).results || [];
+
+    const generated = (await q(e, "SELECT * FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at,id", [pid])).results || [];
     for (const v of generated) {
       v.options = {};
-      for (const x of (await q(e,
-        'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',
-        [v.id])).results || []) v.options[x.name] = x.value;
-      v.images = (await q(e,
-        'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id',
-        [v.id])).results?.map(x => x.image_url) || [];
+      for (const x of (await q(e, 'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order', [v.id])).results || []) v.options[x.name] = x.value;
+      v.images = (await q(e, 'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id', [v.id])).results?.map(x => x.image_url) || [];
     }
     return json({ ok: true, count: rows.length, options: os, variations: generated });
   }
@@ -205,6 +214,7 @@ async function handle(req, e) {
     const v = await one(e, 'SELECT * FROM product_variations WHERE id=? AND product_id=?', [id, pid]);
     if (!v) return json({ error: 'Variation not found.' }, 404);
     const status = ['Available', 'Out of Stock', 'Disabled'].includes(b.status) ? b.status : v.status;
+    if (status === 'Available' && !(await ensureVariationOptionLinks(e, pid, v))) return json({ error: 'Cannot mark variation Available: its options_key does not match every current product option. Correct the product options first.' }, 409);
     const hasStock=b.stock!==undefined&&b.stock!==null&&b.stock!=='';
     const stock=hasStock?Math.max(0,Math.floor(Number(b.stock))):Number(v.stock||0);
     await e.DB.prepare(
