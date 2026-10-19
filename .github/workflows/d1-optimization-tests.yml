@@ -1,0 +1,28 @@
+name: D1 Optimization Regression Tests
+
+on:
+  pull_request:
+    branches:
+      - vendor-system-dev
+    paths:
+      - 'worker.mjs'
+      - 'vendor-system-v2.mjs'
+      - 'tests/d1-*.test.mjs'
+      - '.github/workflows/d1-optimization-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d1-optimization-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Run D1 optimization regression tests
+        run: node --test tests/d1-shipping-schema-cache.test.mjs tests/d1-variation-option-read-optimization.test.mjs tests/d1-variation-editor-batched-reads.test.mjs tests/d1-public-variation-batched-option-values.test.mjs
