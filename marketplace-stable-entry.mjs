@@ -45,24 +45,60 @@ async function publicVariations(req,e){
 
   const options=(await e.DB.prepare('SELECT * FROM product_options WHERE product_id=?').bind(pid).all()).results||[];
   options.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||String(a.id||'').localeCompare(String(b.id||'')));
-  for(const o of options){
-   o.values=(await e.DB.prepare('SELECT * FROM option_values WHERE option_id=?').bind(o.id).all()).results||[];
-   o.values.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||String(a.id||'').localeCompare(String(b.id||'')));
+
+  // Bulk-load option values once instead of issuing one D1 query per option.
+  const optionIds=options.map(o=>o.id).filter(Boolean);
+  const optionValues=optionIds.length
+   ? ((await e.DB.prepare(`SELECT * FROM option_values WHERE option_id IN (${optionIds.map(()=>'?').join(',')}) ORDER BY sort_order,id`).bind(...optionIds).all()).results||[])
+   : [];
+  const valuesByOption=new Map();
+  for(const value of optionValues){
+   const list=valuesByOption.get(value.option_id)||[];
+   list.push(value);
+   valuesByOption.set(value.option_id,list);
   }
+  for(const o of options)o.values=valuesByOption.get(o.id)||[];
 
   const rawVariations=(await e.DB.prepare('SELECT * FROM product_variations WHERE product_id=?').bind(pid).all()).results||[];
+  const activeVariations=rawVariations.filter(v=>String(v.status||'Available').toLowerCase()!=='disabled');
+  const variationIds=activeVariations.map(v=>v.id).filter(Boolean);
+
+  // Bulk-load normalized variation options and images once for all variations.
+  let normalizedRows=[],imageRows=[];
+  if(variationIds.length){
+   try{
+    normalizedRows=(await e.DB.prepare(`SELECT vo.variation_id,vo.option_id,vo.option_value_id,po.name,ov.value
+      FROM variation_options vo
+      LEFT JOIN product_options po ON po.id=vo.option_id
+      LEFT JOIN option_values ov ON ov.id=vo.option_value_id
+      WHERE vo.variation_id IN (${variationIds.map(()=>'?').join(',')})`).bind(...variationIds).all()).results||[];
+   }catch{}
+   try{
+    imageRows=(await e.DB.prepare(`SELECT variation_id,image_url FROM variation_images
+      WHERE variation_id IN (${variationIds.map(()=>'?').join(',')})
+      ORDER BY sort_order,id`).bind(...variationIds).all()).results||[];
+   }catch{}
+  }
+  const normalizedByVariation=new Map();
+  for(const x of normalizedRows){
+   if(!x.name||!x.value)continue;
+   const obj=normalizedByVariation.get(x.variation_id)||{};
+   obj[x.name]=x.value;
+   normalizedByVariation.set(x.variation_id,obj);
+  }
+  const imagesByVariation=new Map();
+  for(const x of imageRows){
+   if(!x.image_url)continue;
+   const list=imagesByVariation.get(x.variation_id)||[];
+   list.push(x.image_url);
+   imagesByVariation.set(x.variation_id,list);
+  }
+
   const variations=[];
-  for(const v of rawVariations){
-   if(String(v.status||'Available').toLowerCase()==='disabled')continue;
+  for(const v of activeVariations){
    v.status=v.status||'Available';
    const legacyOptions=v.options;
-   v.options={};
-
-   // Primary source: normalized variation_options rows.
-   try{
-    const rows=(await e.DB.prepare('SELECT vo.option_id,vo.option_value_id,po.name,ov.value FROM variation_options vo LEFT JOIN product_options po ON po.id=vo.option_id LEFT JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=?').bind(v.id).all()).results||[];
-    for(const x of rows)if(x.name&&x.value)v.options[x.name]=x.value;
-   }catch{}
+   v.options=normalizedByVariation.get(v.id)||{};
 
    // Legacy source: JSON options stored directly on the variation.
    if(!Object.keys(v.options).length&&legacyOptions){
@@ -80,10 +116,8 @@ async function publicVariations(req,e){
     }
    }
 
-   try{
-    v.images=(await e.DB.prepare('SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id').bind(v.id).all()).results?.map(x=>x.image_url).filter(Boolean)||[];
-   }catch{v.images=[]}
-   if(!v.image_url&&v.images?.[0])v.image_url=v.images[0];
+   v.images=imagesByVariation.get(v.id)||[];
+   if(!v.image_url&&v.images[0])v.image_url=v.images[0];
    variations.push(v);
   }
 
