@@ -617,20 +617,30 @@ if(voucherCode){
  addWriteGuard();
 }
 for(const item of items){
+ const tracked=String(item.stock_mode||"untracked").toLowerCase()==="tracked";
  if(item.variation_id){
-  statements.push(env.DB.prepare("UPDATE product_variations SET stock=CASE WHEN lower(COALESCE(stock_mode,'untracked'))='tracked' THEN stock-? ELSE stock END,updated_at=? WHERE id=? AND product_id=? AND status='Available' AND (lower(COALESCE(stock_mode,'untracked'))!='tracked' OR stock>=?)")
-   .bind(item.quantity,t,String(item.variation_id),String(item.product_id),item.quantity));
+  if(tracked){
+   statements.push(env.DB.prepare("UPDATE product_variations SET stock=stock-?,updated_at=? WHERE id=? AND product_id=? AND status='Available' AND lower(COALESCE(stock_mode,'untracked'))='tracked' AND stock>=?")
+    .bind(item.quantity,t,String(item.variation_id),String(item.product_id),item.quantity));
+  }else{
+   statements.push(env.DB.prepare("UPDATE product_variations SET updated_at=? WHERE id=? AND product_id=? AND status='Available' AND lower(COALESCE(stock_mode,'untracked'))!='tracked'")
+    .bind(t,String(item.variation_id),String(item.product_id)));
+  }
   addWriteGuard();
-  if(String(item.stock_mode||"untracked").toLowerCase()==="tracked"){
+  if(tracked){
    statements.push(env.DB.prepare("INSERT INTO order_inventory_movements(id,order_id,order_item_id,product_id,variation_id,quantity,movement_type,created_at) VALUES(?,?,?,?,?,?,?,?)")
     .bind(crypto.randomUUID(),id,String(item.id),String(item.product_id),String(item.variation_id),Number(item.quantity),"sale",t));
   }
- }else if(String(item.stock_mode||"untracked").toLowerCase()==="tracked"){
-  statements.push(env.DB.prepare("UPDATE products SET stock=stock-?,updated_at=? WHERE id=? AND published=1 AND stock>=?")
+ }else if(tracked){
+  statements.push(env.DB.prepare("UPDATE products SET stock=stock-?,updated_at=? WHERE id=? AND published=1 AND stock_mode='tracked' AND stock>=?")
    .bind(item.quantity,t,String(item.product_id),item.quantity));
   addWriteGuard();
   statements.push(env.DB.prepare("INSERT INTO order_inventory_movements(id,order_id,order_item_id,product_id,variation_id,quantity,movement_type,created_at) VALUES(?,?,?,?,?,?,?,?)")
    .bind(crypto.randomUUID(),id,String(item.id),String(item.product_id),null,Number(item.quantity),"sale",t));
+ }else{
+  statements.push(env.DB.prepare("UPDATE products SET updated_at=? WHERE id=? AND published=1 AND COALESCE(stock_mode,'untracked')!='tracked'")
+   .bind(t,String(item.product_id)));
+  addWriteGuard();
  }
 }
 if(idempotencyKey){
