@@ -325,13 +325,13 @@ if(table==="orders"&&previousOrder&&String(inputValues.status||"").trim().toLowe
   if(reward>0){
    const referrer=(await q(env,"SELECT id,phone,email,name,member_id FROM rewards_members WHERE id=? AND status='Active' LIMIT 1",[referred.referrer_member_id])).results?.[0];
    if(referrer){
-    await env.DB.prepare("INSERT OR IGNORE INTO customer_points(phone,points,total_earned,total_redeemed,updated_at) VALUES(?,0,0,0,?)").bind(referrer.phone,now()).run();
-    const tx=crypto.randomUUID(),t0=now(),before=Number((await q(env,"SELECT points FROM customer_points WHERE phone=? LIMIT 1",[referrer.phone])).results?.[0]?.points||0);
-    const ins=await env.DB.prepare("INSERT OR IGNORE INTO grabpoints_ledger(id,phone,order_id,points,type,reference,reason,balance_after,qualifying_points,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)").bind(tx,referrer.phone,previousOrder.id,reward,"referral:"+referred.id,"REF-"+String(previousOrder.order_number||previousOrder.id),"Referral reward",before+reward,reward,t0).run();
-    if(Number(ins?.meta?.changes||0)===1){
-     await env.DB.prepare("UPDATE customer_points SET points=points+?,total_earned=total_earned+?,updated_at=? WHERE phone=?").bind(reward,reward,t0,referrer.phone).run();
-     await env.DB.prepare("UPDATE member_referrals SET status='rewarded',qualifying_order_id=?,reward_points=?,qualified_at=?,rewarded_at=? WHERE id=? AND status='pending'").bind(previousOrder.id,reward,t0,t0,referred.id).run();
-    }
+    const t0=now(),tx=crypto.randomUUID();
+    await env.DB.prepare("INSERT OR IGNORE INTO customer_points(phone,points,total_earned,total_redeemed,updated_at) VALUES(?,0,0,0,?)").bind(referrer.phone,t0).run();
+    await env.DB.batch([
+     env.DB.prepare("INSERT OR IGNORE INTO grabpoints_ledger(id,phone,order_id,points,type,reference,reason,balance_after,qualifying_points,created_at) SELECT ?,?,?,?, ?,?,?,points+?,?,? FROM customer_points WHERE phone=?").bind(tx,referrer.phone,previousOrder.id,reward,"referral:"+referred.id,"REF-"+String(previousOrder.order_number||previousOrder.id),"Referral reward",reward,reward,t0,referrer.phone),
+     env.DB.prepare("UPDATE customer_points SET points=points+?,total_earned=total_earned+?,updated_at=? WHERE phone=? AND changes()=1").bind(reward,reward,t0,referrer.phone),
+     env.DB.prepare("UPDATE member_referrals SET status='rewarded',qualifying_order_id=?,reward_points=?,qualified_at=?,rewarded_at=? WHERE id=? AND status='pending' AND changes()=1").bind(previousOrder.id,reward,t0,t0,referred.id)
+    ]);
    }
   }else{
    await env.DB.prepare("UPDATE member_referrals SET status='qualified',qualifying_order_id=?,qualified_at=? WHERE id=? AND status='pending'").bind(previousOrder.id,now(),referred.id).run();
