@@ -14,6 +14,12 @@ test('vendor marketplace schema setup is batched and default vendor backfill is 
   assert.ok(!vendorSchema.includes('for(const x of s)await env.DB.prepare(x).run()'));
 });
 
+test('schema upgrades do not rewrite historical GrabPoints ledger entries', () => {
+  assert.ok(worker.includes('ALTER TABLE grabpoints_ledger ADD COLUMN qualifying_points INTEGER NOT NULL DEFAULT 0'));
+  assert.ok(!worker.includes('grabpoints-qualifying-backfill'));
+  assert.ok(!worker.includes('UPDATE grabpoints_ledger SET qualifying_points=points'));
+});
+
 test('D1 cold-start schema work is batched and expensive backfills run once', () => {
   assert.ok(worker.includes('env.DB.batch(D1_SCHEMA.slice(1).map(sql=>env.DB.prepare(sql)))'));
   assert.ok(worker.includes('PRAGMA table_info("+table+")'));
