@@ -245,7 +245,8 @@ export default {
       if (r) return r;
       return next(req);
     } catch (err) {
-      return json({ error: err?.message || 'Admin variations failed' }, 500);
+      console.error('Admin variations request failed',err);
+      return json({ error: 'Admin variations failed' }, 500);
     }
   }
 };
