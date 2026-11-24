@@ -122,7 +122,7 @@ test('vendor schema setup retries failed D1 migrations instead of caching a fals
   assert.match(source, /duplicate column name\|already exists/);
   assert.match(source, /schemaPromise=null;console\.error\('Vendor variation schema initialization failed:'/);
   assert.match(source, /CREATE TABLE IF NOT EXISTS vendor_product_images/);
-  assert.doesNotMatch(source.slice(source.indexOf("if(p==='/api/vendor/variations')"), source.indexOf("if(p==='/api/vendor/profile')")), /\\.run\\(\\)\\.catch\\(\\(\\)=>\\{\\}\\)/);
+  assert.doesNotMatch(source.slice(source.indexOf("if(p==='/api/vendor/variations')"), source.indexOf("if(p==='/api/vendor/profile')")), /\.run\(\)\.catch\(\(\)=>\{\}\)/);
 });
 
 
