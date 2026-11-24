@@ -22,7 +22,7 @@ async function categoriesV2(req,env,ctx){
       if(!exists)return json({ok:true,categories:[]});
       const rows=await all(env,'SELECT id,name,slug FROM marketplace_categories ORDER BY name COLLATE NOCASE');
       return json({ok:true,categories:rows});
-    }catch(err){return json({error:'Categories could not be loaded.',detail:String(err?.message||err)},500)}
+    }catch(err){console.error('Vendor preview categories GET failed',err);return json({error:'Categories could not be loaded.'},500)}
   }
   if(req.method==='POST'){
     let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
