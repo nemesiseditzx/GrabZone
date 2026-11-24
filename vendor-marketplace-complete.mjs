@@ -49,29 +49,80 @@ async function authSchema(env){
  return authReady;
 }
 let ready;
-async function schema(env){if(ready)return ready;ready=(async()=>{
-const s=[
-`CREATE TABLE IF NOT EXISTS vendors(id TEXT PRIMARY KEY,slug TEXT UNIQUE NOT NULL,business_name TEXT NOT NULL,brand_name TEXT NOT NULL,email TEXT NOT NULL,phone TEXT,logo_url TEXT,banner_url TEXT,description TEXT,tagline TEXT,accent_color TEXT DEFAULT '#ff6b00',status TEXT NOT NULL DEFAULT 'Active',shipping_fee REAL NOT NULL DEFAULT 130,commission_type TEXT NOT NULL DEFAULT 'percentage',commission_value REAL NOT NULL DEFAULT 10,homepage_visible INTEGER NOT NULL DEFAULT 1,featured INTEGER NOT NULL DEFAULT 0,social_links TEXT DEFAULT '{}',contact_info TEXT DEFAULT '{}',announcement TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS vendor_users(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,password_salt TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'vendor_admin',status TEXT NOT NULL DEFAULT 'Active',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS vendor_sessions(token_hash TEXT PRIMARY KEY,vendor_user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS vendor_products(product_id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,category TEXT,status TEXT DEFAULT 'Active',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL DEFAULT 0,shipping_fee REAL DEFAULT 0,commission_amount REAL DEFAULT 0,vendor_earnings REAL DEFAULT 0,status TEXT DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id))`,
-`CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,variation_id TEXT,variation_options TEXT,variation_sku TEXT,sku TEXT,quantity INTEGER NOT NULL,unit_price REAL DEFAULT 0,line_total REAL DEFAULT 0)`,
-`CREATE TABLE IF NOT EXISTS shipments(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,courier TEXT,tracking_id TEXT,tracking_url TEXT,status TEXT DEFAULT 'Pending',note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS shipment_items(id TEXT PRIMARY KEY,shipment_id TEXT NOT NULL,order_item_id TEXT NOT NULL,quantity INTEGER NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS vendor_store_sections(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,section_type TEXT NOT NULL,title TEXT,body TEXT,sort_order INTEGER DEFAULT 0,enabled INTEGER DEFAULT 1,data_json TEXT DEFAULT '{}',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS marketplace_audit_log(id TEXT PRIMARY KEY,actor_type TEXT NOT NULL,actor_id TEXT,action TEXT NOT NULL,vendor_id TEXT,details TEXT,created_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS marketplace_settings(id INTEGER PRIMARY KEY,enabled INTEGER DEFAULT 1,default_shipping REAL DEFAULT 130,show_brands INTEGER DEFAULT 1,show_vendor_badges INTEGER DEFAULT 1,updated_at TEXT NOT NULL)`,
-`CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT UNIQUE NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`];
-for(const x of s)await env.DB.prepare(x).run();
-await env.DB.prepare("INSERT OR IGNORE INTO marketplace_settings(id,enabled,default_shipping,show_brands,show_vendor_badges,updated_at) VALUES(1,1,130,1,1,?)").bind(now()).run();
-for(const x of [`ALTER TABLE vendor_users ADD COLUMN role TEXT NOT NULL DEFAULT 'vendor_admin'`,`ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0`,`ALTER TABLE product_variations ADD COLUMN sale_price REAL`,`ALTER TABLE product_variations ADD COLUMN old_price REAL`,`ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'`,`ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0`,`ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1`,`ALTER TABLE product_variations ADD COLUMN max_qty INTEGER`,`ALTER TABLE product_variations ADD COLUMN options_key TEXT NOT NULL DEFAULT ''`]){try{await env.DB.prepare(x).run()}catch{}}
-for(const x of [`ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN sku TEXT`,`CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,`CREATE INDEX IF NOT EXISTS product_variations_product_idx ON product_variations(product_id)`]){try{await env.DB.prepare(x).run()}catch{}}
-for(const x of [`ALTER TABLE products ADD COLUMN vendor_id TEXT`,`ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0`,`ALTER TABLE products ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'`,`ALTER TABLE products ADD COLUMN sku TEXT`,`ALTER TABLE products ADD COLUMN sale_price REAL`,`ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0`,`ALTER TABLE products ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1`,`ALTER TABLE products ADD COLUMN max_qty INTEGER`,`ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'simple'`,`ALTER TABLE products ADD COLUMN category_id TEXT`,`ALTER TABLE order_items ADD COLUMN vendor_id TEXT`,`ALTER TABLE order_items ADD COLUMN variation_id TEXT`,`ALTER TABLE order_items ADD COLUMN variation_options TEXT`,`ALTER TABLE order_items ADD COLUMN variation_sku TEXT`]){try{await env.DB.prepare(x).run()}catch{}}
-await env.DB.prepare(`INSERT OR IGNORE INTO marketplace_settings(id,updated_at) VALUES(1,?)`).bind(now()).run();
-let gz=await one(env,"SELECT id FROM vendors WHERE slug='grabzone'");if(!gz){const id=crypto.randomUUID(),t=now();await env.DB.prepare(`INSERT INTO vendors(id,slug,business_name,brand_name,email,status,shipping_fee,commission_value,featured,homepage_visible,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id,'grabzone','GrabZone','GrabZone',String(env.GMAIL_FROM_EMAIL||'support@grabzone.tech'),'Active',130,0,1,1,t,t).run();gz={id}}
-await env.DB.prepare('UPDATE products SET vendor_id=? WHERE vendor_id IS NULL').bind(gz.id).run();
-})();ready=ready.catch(err=>{ready=null;console.error('GrabZone marketplace schema initialization failed; next request may retry:',err);throw err});return ready}
+async function schema(env){
+ if(ready)return ready;
+ ready=(async()=>{
+  const base=[
+   `CREATE TABLE IF NOT EXISTS vendors(id TEXT PRIMARY KEY,slug TEXT UNIQUE NOT NULL,business_name TEXT NOT NULL,brand_name TEXT NOT NULL,email TEXT NOT NULL,phone TEXT,logo_url TEXT,banner_url TEXT,description TEXT,tagline TEXT,accent_color TEXT DEFAULT '#ff6b00',status TEXT NOT NULL DEFAULT 'Active',shipping_fee REAL NOT NULL DEFAULT 130,commission_type TEXT NOT NULL DEFAULT 'percentage',commission_value REAL NOT NULL DEFAULT 10,homepage_visible INTEGER NOT NULL DEFAULT 1,featured INTEGER NOT NULL DEFAULT 0,social_links TEXT DEFAULT '{}',contact_info TEXT DEFAULT '{}',announcement TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS vendor_users(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,password_salt TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'vendor_admin',status TEXT NOT NULL DEFAULT 'Active',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS vendor_sessions(token_hash TEXT PRIMARY KEY,vendor_user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS vendor_products(product_id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,category TEXT,status TEXT DEFAULT 'Active',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL DEFAULT 0,shipping_fee REAL DEFAULT 0,commission_amount REAL DEFAULT 0,vendor_earnings REAL DEFAULT 0,status TEXT DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,vendor_id))`,
+   `CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,variation_id TEXT,variation_options TEXT,variation_sku TEXT,sku TEXT,quantity INTEGER NOT NULL,unit_price REAL DEFAULT 0,line_total REAL DEFAULT 0)`,
+   `CREATE TABLE IF NOT EXISTS shipments(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,courier TEXT,tracking_id TEXT,tracking_url TEXT,status TEXT DEFAULT 'Pending',note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS shipment_items(id TEXT PRIMARY KEY,shipment_id TEXT NOT NULL,order_item_id TEXT NOT NULL,quantity INTEGER NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS vendor_store_sections(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,section_type TEXT NOT NULL,title TEXT,body TEXT,sort_order INTEGER DEFAULT 0,enabled INTEGER DEFAULT 1,data_json TEXT DEFAULT '{}',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS marketplace_audit_log(id TEXT PRIMARY KEY,actor_type TEXT NOT NULL,actor_id TEXT,action TEXT NOT NULL,vendor_id TEXT,details TEXT,created_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS marketplace_settings(id INTEGER PRIMARY KEY,enabled INTEGER DEFAULT 1,default_shipping REAL DEFAULT 130,show_brands INTEGER DEFAULT 1,show_vendor_badges INTEGER DEFAULT 1,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS marketplace_categories(id TEXT PRIMARY KEY,name TEXT NOT NULL,slug TEXT UNIQUE NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   `CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+   "CREATE INDEX IF NOT EXISTS product_variations_product_idx ON product_variations(product_id)",
+   "CREATE TABLE IF NOT EXISTS schema_migrations(name TEXT PRIMARY KEY,applied_at TEXT NOT NULL)",
+   "INSERT OR IGNORE INTO marketplace_settings(id,enabled,default_shipping,show_brands,show_vendor_badges,updated_at) VALUES(1,1,130,1,1,?)"
+  ];
+  await env.DB.batch(base.map((sql,index)=>index===base.length-1?env.DB.prepare(sql).bind(now()):env.DB.prepare(sql)));
+
+  const migrations=[
+   ["vendor_users","role","ALTER TABLE vendor_users ADD COLUMN role TEXT NOT NULL DEFAULT 'vendor_admin'"],
+   ["product_variations","regular_price","ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0"],
+   ["product_variations","sale_price","ALTER TABLE product_variations ADD COLUMN sale_price REAL"],
+   ["product_variations","old_price","ALTER TABLE product_variations ADD COLUMN old_price REAL"],
+   ["product_variations","stock_mode","ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'"],
+   ["product_variations","low_stock_threshold","ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0"],
+   ["product_variations","min_qty","ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1"],
+   ["product_variations","max_qty","ALTER TABLE product_variations ADD COLUMN max_qty INTEGER"],
+   ["product_variations","options_key","ALTER TABLE product_variations ADD COLUMN options_key TEXT NOT NULL DEFAULT ''"],
+   ["vendor_order_items","variation_id","ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT"],
+   ["vendor_order_items","variation_options","ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT"],
+   ["vendor_order_items","variation_sku","ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT"],
+   ["vendor_order_items","sku","ALTER TABLE vendor_order_items ADD COLUMN sku TEXT"],
+   ["products","vendor_id","ALTER TABLE products ADD COLUMN vendor_id TEXT"],
+   ["products","stock","ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0"],
+   ["products","stock_mode","ALTER TABLE products ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'"],
+   ["products","sku","ALTER TABLE products ADD COLUMN sku TEXT"],
+   ["products","sale_price","ALTER TABLE products ADD COLUMN sale_price REAL"],
+   ["products","low_stock_threshold","ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0"],
+   ["products","min_qty","ALTER TABLE products ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1"],
+   ["products","max_qty","ALTER TABLE products ADD COLUMN max_qty INTEGER"],
+   ["products","product_type","ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'simple'"],
+   ["products","category_id","ALTER TABLE products ADD COLUMN category_id TEXT"],
+   ["order_items","vendor_id","ALTER TABLE order_items ADD COLUMN vendor_id TEXT"],
+   ["order_items","variation_id","ALTER TABLE order_items ADD COLUMN variation_id TEXT"],
+   ["order_items","variation_options","ALTER TABLE order_items ADD COLUMN variation_options TEXT"],
+   ["order_items","variation_sku","ALTER TABLE order_items ADD COLUMN variation_sku TEXT"]
+  ];
+  const tables=[...new Set(migrations.map(row=>row[0]))];
+  const info=await env.DB.batch(tables.map(table=>env.DB.prepare("PRAGMA table_info("+table+")")));
+  const columns=new Map();
+  for(let i=0;i<tables.length;i++)columns.set(tables[i],new Set((info[i]?.results||[]).map(row=>String(row.name))));
+  const pending=migrations.filter(([table,column])=>!columns.get(table)?.has(column)).map(row=>env.DB.prepare(row[2]));
+  if(pending.length)await env.DB.batch(pending);
+
+  const gz=await one(env,"SELECT id FROM vendors WHERE slug='grabzone' LIMIT 1");
+  let defaultVendor=gz;
+  if(!defaultVendor){
+   const id=crypto.randomUUID(),t=now();
+   await env.DB.prepare(`INSERT INTO vendors(id,slug,business_name,brand_name,email,status,shipping_fee,commission_value,featured,homepage_visible,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id,'grabzone','GrabZone','GrabZone',String(env.GMAIL_FROM_EMAIL||'support@grabzone.tech'),'Active',130,0,1,1,t,t).run();
+   defaultVendor={id};
+  }
+  const t=now();
+  await env.DB.batch([
+   env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('products-default-vendor-backfill',?)").bind(t),
+   env.DB.prepare("UPDATE products SET vendor_id=? WHERE vendor_id IS NULL AND changes()=1").bind(defaultVendor.id)
+  ]);
+ })().catch(err=>{ready=null;console.error('GrabZone marketplace schema initialization failed; next request may retry:',err);throw err});
+ return ready;
+}
 async function admin(req,e){const raw=cookie(req,'gz_admin_session');if(raw){const x=await one(e,"SELECT u.id,u.email FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.expires_at>?",[await sha(raw),now()]);if(x)return x}const b=(req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'');const p=await verify(b,secret(e));return p?.sub?{id:p.sub,email:p.email}:null}
 async function vu(req,e){const cookieToken=cookie(req,'gz_vendor_session'),bearer=(req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();for(const raw of [...new Set([cookieToken,bearer].filter(Boolean))]){const u=await one(e,"SELECT vu.id,vu.email,vu.vendor_id,vu.role,v.brand_name,v.slug,v.status vendor_status FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active'",[await sha(raw),now()]);if(u)return u}return null}
 async function audit(e,t,a,action,v,d){await e.DB.prepare('INSERT INTO marketplace_audit_log(id,actor_type,actor_id,action,vendor_id,details,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),t,a,action,v,d?JSON.stringify(d):null,now()).run().catch(()=>{})}
