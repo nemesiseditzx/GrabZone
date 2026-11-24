@@ -39,6 +39,11 @@ test('unexpected backend exceptions are not returned to API clients', () => {
       /detail\s*:\s*String\(err\??\.message/,
       file + ' must not expose exception details',
     );
+    assert.doesNotMatch(
+      source,
+      /error\s*:\s*e\?\.message/,
+      file + ' must not return raw e.message values',
+    );
   }
 });
 
