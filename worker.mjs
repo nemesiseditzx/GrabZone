@@ -552,11 +552,11 @@ for(let index=0;index<allocationRows.length;index++){
 let guardIndex=0;
 const addWriteGuard=()=>statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) VALUES(?,changes())").bind(id+":check:"+guardIndex++));
 if(code){
- statements.push(env.DB.prepare("UPDATE referral_codes SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?) AND active=1 AND (usage_limit IS NULL OR used_count<usage_limit)").bind(t,code));
+ statements.push(env.DB.prepare("UPDATE referral_codes SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?) AND active=1 AND (usage_limit IS NULL OR used_count<usage_limit) AND (starts_at IS NULL OR starts_at<=?) AND (expires_at IS NULL OR expires_at>=?)").bind(t,code,t,t));
  addWriteGuard();
 }
 if(vendorCoupon.code){
- statements.push(env.DB.prepare("UPDATE vendor_coupons SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?) AND vendor_id=? AND active=1 AND (usage_limit IS NULL OR used_count<usage_limit)").bind(t,vendorCoupon.code,vendorCoupon.vendor_id));
+ statements.push(env.DB.prepare("UPDATE vendor_coupons SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?) AND vendor_id=? AND active=1 AND (usage_limit IS NULL OR used_count<usage_limit) AND (starts_at IS NULL OR starts_at<=?) AND (expires_at IS NULL OR expires_at>?) AND EXISTS(SELECT 1 FROM vendors WHERE vendors.id=vendor_coupons.vendor_id AND vendors.status='Active')").bind(t,vendorCoupon.code,vendorCoupon.vendor_id,t,t));
  addWriteGuard();
 }
 if(mysteryToken){
