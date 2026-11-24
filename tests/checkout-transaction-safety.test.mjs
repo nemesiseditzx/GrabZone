@@ -14,6 +14,11 @@ test('vendor marketplace schema setup is batched and default vendor backfill is 
   assert.ok(!vendorSchema.includes('for(const x of s)await env.DB.prepare(x).run()'));
 });
 
+test('referral reward reversals respect the original rolling tier window', () => {
+  assert.ok(worker.includes('SELECT created_at FROM grabpoints_ledger WHERE order_id=? AND phone=? AND type=?'));
+  assert.ok(worker.includes('qualifyingReverse=Number.isFinite(referralEarnTime)&&referralEarnTime>=Date.now()-365*24*60*60*1000?-reward:0'));
+});
+
 test('Delivered cashback uses deterministic earning attempts and one atomic balance/allocation batch', () => {
   assert.ok(worker.includes('earnType="earn:order:"+String(previousOrder.id)+":"+(Number(earnState.attempts||0)+1)'));
   assert.ok(worker.includes('WHERE phone=? AND changes()=1'));
