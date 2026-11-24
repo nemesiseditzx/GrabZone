@@ -4,6 +4,8 @@ if(window.__gzAdminVariationUI)return;
 window.__gzAdminVariationUI=1;
 
 const $=s=>document.querySelector(s);
+function notify(message,error=false){let host=document.getElementById('gzAdminVarToast');if(!host){host=document.createElement('div');host.id='gzAdminVarToast';host.style.cssText='position:fixed;right:18px;bottom:18px;z-index:100130;display:grid;gap:8px;max-width:min(380px,calc(100vw - 36px))';document.body.appendChild(host)}const node=document.createElement('div');node.textContent=message;node.style.cssText='padding:12px 15px;border-radius:12px;background:'+(error?'#991b1b':'#111')+';color:#fff;box-shadow:0 10px 28px rgba(0,0,0,.18);font:700 13px/1.45 system-ui,sans-serif';host.appendChild(node);setTimeout(()=>node.remove(),3500)}
+
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 async function api(url,opt={}){
@@ -99,7 +101,7 @@ function ensureManager(){
     form.insertAdjacentElement('afterend',box);
     $('#gzAvManage').onclick=()=>{
       const id=$('#gzAvProductSelect')?.value;
-      if(!id)return alert('Select a product first.');
+      if(!id)return notify('Select a product first.');
       const name=$('#gzAvProductSelect')?.selectedOptions?.[0]?.textContent||'Product';
       openVariationManager(id,name);
     };
@@ -131,22 +133,22 @@ function renderVariationEditor(pid,d,name){
   };
   $('#gzAvGenerate').onclick=async()=>{
     const options=[...document.querySelectorAll('#gzAvOpts .gz-av-opt')].map(r=>({name:r.querySelector('.gz-av-name').value,values:r.querySelector('.gz-av-values').value.split(',').map(x=>x.trim()).filter(Boolean)})).filter(x=>x.name&&x.values.length);
-    if(!options.length)return alert('Add at least one option with values.');
+    if(!options.length)return notify('Add at least one option with values.');
     try{
       const r=await api('/api/marketplace/admin/variations',{method:'POST',body:JSON.stringify({product_id:pid,options})});
-      alert(`${r.count} variations generated.`);await openVariationManager(pid,name);
-    }catch(e){alert(e.message)}
+      notify(`${r.count} variations generated.`);await openVariationManager(pid,name);
+    }catch(e){notify(e.message)}
   };
   $('#gzAvBulk').onclick=async()=>{
     const regular=$('#gzAvPrice').value;
     const rows=[...body.querySelectorAll('.gz-av-table tbody tr[data-id]')];
-    if(!rows.length)return alert('There are no variations to update.');
-    try{for(const tr of rows){if(regular!=='')await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify({product_id:pid,regular_price:Number(regular)})});}await openVariationManager(pid,name)}catch(e){alert(e.message)}
+    if(!rows.length)return notify('There are no variations to update.');
+    try{for(const tr of rows){if(regular!=='')await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify({product_id:pid,regular_price:Number(regular)})});}await openVariationManager(pid,name)}catch(e){notify(e.message)}
   };
   body.querySelectorAll('.gz-av-save').forEach(button=>button.onclick=async()=>{
     const tr=button.closest('tr'),value=k=>tr.querySelector('[data-k="'+k+'"]')?.value??'';
     const payload={product_id:pid,sku:value('sku'),regular_price:Number(value('regular')||0),old_price:value('old')===''?null:Number(value('old')),status:value('status'),image_url:value('image')};
-    try{await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify(payload)});button.textContent='Saved ✓';setTimeout(()=>button.textContent='Save',900)}catch(e){alert(e.message)}
+    try{await api('/api/marketplace/admin/variations/'+encodeURIComponent(tr.dataset.id),{method:'PATCH',body:JSON.stringify(payload)});button.textContent='Saved ✓';setTimeout(()=>button.textContent='Save',900)}catch(e){notify(e.message)}
   });
 
 }
