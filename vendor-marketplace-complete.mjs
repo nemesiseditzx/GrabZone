@@ -530,25 +530,13 @@ if(req.method==='GET'){
   }
   return json({products:rows,page,limit,total:count,pages:Math.max(1,Math.ceil(count/limit))});
  }
- const productIds=rows.map(x=>String(x.id));
- const productMap=new Map(rows.map(x=>[String(x.id),x]));
- const chunks=(arr,size=80)=>{const out=[];for(let i=0;i<arr.length;i+=size)out.push(arr.slice(i,i+size));return out;};
- for(const p0 of rows){p0.category_id=p0.resolved_category_id||p0.category_id||null;delete p0.resolved_category_id;p0.variations=[];let legacy=[];try{legacy=Array.isArray(p0.image_urls)?p0.image_urls:(typeof p0.image_urls==='string'?JSON.parse(p0.image_urls||'[]'):[])}catch{}p0.image_urls=[...new Set([...legacy,p0.image_url||''].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10);}
- const variationMap=new Map(),variationIds=[];
- for(const ids of chunks(productIds)){try{const list=(await q(e,`SELECT * FROM product_variations WHERE product_id IN (${ids.map(()=>'?').join(',')}) ORDER BY created_at,id`,ids)).results||[];for(const v of list){v.price=v.regular_price;v.options={};variationIds.push(String(v.id));variationMap.set(String(v.id),v);const p0=productMap.get(String(v.product_id));if(p0)p0.variations.push(v);}}catch{}}
- for(const ids of chunks(variationIds)){try{const list=(await q(e,`SELECT vo.variation_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id IN (${ids.map(()=>'?').join(',')}) ORDER BY po.sort_order,ov.sort_order`,ids)).results||[];for(const x of list){const v=variationMap.get(String(x.variation_id));if(v)v.options[x.name]=x.value;}}catch{}}
- try{
-  await e.DB.prepare('CREATE TABLE IF NOT EXISTS product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,is_main INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
-  await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
-  for(const ids of chunks(productIds)){
-   const [legacy,modern]=await Promise.all([
-    q(e,`SELECT product_id,image_url FROM product_images WHERE product_id IN (${ids.map(()=>'?').join(',')}) ORDER BY sort_order,id`,ids).catch(()=>({results:[]})),
-    q(e,`SELECT product_id,image_url FROM vendor_product_images WHERE product_id IN (${ids.map(()=>'?').join(',')}) ORDER BY sort_order,id`,ids).catch(()=>({results:[]}))
-   ]);
-   for(const x of [...(legacy.results||[]),...(modern.results||[])]){const p0=productMap.get(String(x.product_id));if(p0)p0.image_urls.push(String(x.image_url||'').trim());}
-  }
- }catch{}
- for(const p0 of rows)p0.image_urls=[...new Set(p0.image_urls.map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10);
+ // This endpoint powers the product table. Keep it intentionally light:
+ // the editor loads full images and variations only when a product is opened.
+ for(const p0 of rows){
+  p0.category_id=p0.resolved_category_id||p0.category_id||null;
+  delete p0.resolved_category_id;
+  p0.image_urls=p0.image_url?[p0.image_url]:[];
+ }
  return json({products:rows,page,limit,total:count,pages:Math.max(1,Math.ceil(count/limit))});
 }
 let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
