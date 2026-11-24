@@ -333,8 +333,8 @@ if(table==="orders"&&previousOrder&&String(inputValues.status||"").trim().toLowe
  // Referral rewards are configured by admins; zero disables automatic issuance.
  const referred=(await q(env,"SELECT id,referrer_member_id,referred_member_id FROM member_referrals WHERE referred_member_id=(SELECT id FROM rewards_members WHERE phone=? LIMIT 1) AND status='pending' LIMIT 1",[normalizeRewardPhone(previousOrder.phone)])).results?.[0];
  if(referred){
-  const cfg=(await q(env,"SELECT referral_reward_points FROM rewards_settings WHERE id=1 LIMIT 1")).results?.[0];
-  const reward=Math.max(0,Math.floor(Number(cfg?.referral_reward_points||0)));
+  const cfg=(await q(env,"SELECT enabled,referral_reward_points FROM rewards_settings WHERE id=1 LIMIT 1")).results?.[0];
+  const reward=Number(cfg?.enabled??1)===1?Math.max(0,Math.floor(Number(cfg?.referral_reward_points||0))):0;
   if(reward>0){
    const referrer=(await q(env,"SELECT id,phone,email,name,member_id FROM rewards_members WHERE id=? AND status='Active' LIMIT 1",[referred.referrer_member_id])).results?.[0];
    if(referrer){
