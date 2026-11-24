@@ -197,3 +197,32 @@ test('admin product table returns lightweight product rows without loading varia
   assert.doesNotMatch(get, /SELECT \* FROM product_variations/);
   assert.doesNotMatch(get, /FROM variation_options/);
 });
+
+
+test('public variation recovery batches legacy option and variation repair writes', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-system-v2.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf('async function publicVariation(');
+  const end = source.indexOf('async function orderGuard(', start);
+  const fn = source.slice(start, end);
+  assert.match(fn, /await e\.DB\.batch\(statements\)/);
+  assert.match(fn, /const linkRepairs=\[\]/);
+  assert.match(fn, /await e\.DB\.batch\(linkRepairs\)/);
+  assert.doesNotMatch(fn, /await e\.DB\.prepare\('INSERT OR IGNORE INTO variation_options[^\n]*\.run\(\)/);
+});
+
+test('admin variation generator validates keys and bounds D1 batch statements', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../marketplace-admin-variations.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf("if (req.method === 'POST')");
+  const end = source.indexOf("if (req.method === 'PATCH')", start);
+  const post = source.slice(start, end);
+  assert.match(post, /generatedKeys/);
+  assert.match(post, /generatedKeys\.some\(value => !value \|\| value\.length > 1000\)/);
+  assert.match(post, /statements\.length > 900/);
+  assert.match(post, /await e\.DB\.batch\(statements\)/);
+});
