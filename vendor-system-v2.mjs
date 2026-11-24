@@ -65,6 +65,30 @@ function combinations(opts){
  }
  return rows;
 }
+async function hydrateOptionValues(e,options){
+ const byId=new Map();
+ for(const option of options){option.values=[];byId.set(String(option.id),option)}
+ const ids=[...byId.keys()];
+ for(let i=0;i<ids.length;i+=80){
+  const chunk=ids.slice(i,i+80),marks=chunk.map(()=>'?').join(',');
+  const rows=(await q(e,'SELECT * FROM option_values WHERE option_id IN ('+marks+') ORDER BY option_id,sort_order,id',chunk)).results||[];
+  for(const row of rows)byId.get(String(row.option_id))?.values.push(row);
+ }
+}
+async function hydrateVariationRows(e,variations){
+ const byId=new Map();
+ for(const variation of variations){variation.options={};variation.images=[];byId.set(String(variation.id),variation)}
+ const ids=[...byId.keys()];
+ for(let i=0;i<ids.length;i+=80){
+  const chunk=ids.slice(i,i+80),marks=chunk.map(()=>'?').join(',');
+  const [links,images]=await Promise.all([
+   q(e,'SELECT vo.variation_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id IN ('+marks+') ORDER BY vo.variation_id,po.sort_order,ov.sort_order',chunk),
+   q(e,'SELECT variation_id,image_url FROM variation_images WHERE variation_id IN ('+marks+') ORDER BY variation_id,sort_order,id',chunk)
+  ]);
+  for(const row of links.results||[]){const variation=byId.get(String(row.variation_id));if(variation)variation.options[row.name]=row.value}
+  for(const row of images.results||[]){const variation=byId.get(String(row.variation_id));if(variation&&row.image_url)variation.images.push(row.image_url)}
+ }
+}
 async function productOwner(e,id,vid){return one(e,'SELECT id,name,price,old_price,image_url,stock,published,vendor_id FROM products WHERE id=? AND vendor_id=?',[id,vid])}
 async function saveOptions(e,pid,options){await e.DB.prepare('DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)').bind(pid).run().catch(()=>{});await e.DB.prepare('DELETE FROM option_values WHERE option_id IN (SELECT id FROM product_options WHERE product_id=?)').bind(pid).run().catch(()=>{});await e.DB.prepare('DELETE FROM product_options WHERE product_id=?').bind(pid).run().catch(()=>{});for(const o of options){const oid=crypto.randomUUID(),t=now();await e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid,pid,o.name,o.sort_order,t,t).run();for(let i=0;i<o.values.length;i++)await e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),oid,o.values[i],i,t,t).run()}}
 async function loadVariation(e,id){const v=await one(e,'SELECT * FROM product_variations WHERE id=?',[id]);if(!v)return null;v.options={};for(const x of(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[id])).results||[])v.options[x.name]=x.value;v.images=(await q(e,'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id',[id])).results?.map(x=>x.image_url)||[];return v}
@@ -75,7 +99,7 @@ async function variations(req,e){
  const u=await vendor(req,e);
  if(!u)return json({error:'Unauthorized'},401);
  await schema(e);
- const url=new URL(req.url);if(req.method==='GET'){const pid=clean(url.searchParams.get('product_id'),120);if(!pid)return json({error:'product_id is required.'},400);if(!(await productOwner(e,pid,u.vendor_id)))return json({error:'Product not found.'},404);const opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[pid])).results||[];for(const o of opts)o.values=(await q(e,'SELECT * FROM option_values WHERE option_id=? ORDER BY sort_order,id',[o.id])).results||[];const vs=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at',[pid])).results||[];for(const v of vs){v.options={};for(const x of(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=?',[v.id])).results||[])v.options[x.name]=x.value;v.images=(await q(e,'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id',[v.id])).results?.map(x=>x.image_url)||[]}return json({enabled:vs.length>0||opts.length>0,options:opts,variations:vs})}
+ const url=new URL(req.url);if(req.method==='GET'){const pid=clean(url.searchParams.get('product_id'),120);if(!pid)return json({error:'product_id is required.'},400);if(!(await productOwner(e,pid,u.vendor_id)))return json({error:'Product not found.'},404);const opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[pid])).results||[];await hydrateOptionValues(e,opts);const vs=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at',[pid])).results||[];await hydrateVariationRows(e,vs);return json({enabled:vs.length>0||opts.length>0,options:opts,variations:vs})}
 const b=await req.clone().json().catch(()=>null);if(!b||typeof b!=='object')return json({error:'Invalid JSON'},400);const pid=clean(b.product_id||url.searchParams.get('product_id'),120),owner=await productOwner(e,pid,u.vendor_id);if(!owner)return json({error:'Product not found or not owned by this vendor.'},404);if(req.method==='DELETE'){const id=clean(url.pathname.split('/').pop(),120);const v=await one(e,'SELECT * FROM product_variations WHERE id=? AND product_id=?',[id,pid]);if(!v)return json({error:'Variation not found.'},404);await e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?").bind(now(),id).run();return json({ok:true})}
 if(req.method==='POST'){
  const opts=normalizeOptions(b.options);
@@ -235,7 +259,7 @@ async function coupons(req,e){
 async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marketplace/variations')return null;await schema(e);const id=clean(new URL(req.url).searchParams.get('product_id'),120);if(!id)return json({error:'product_id is required.'},400);const product=await one(e,'SELECT * FROM products WHERE id=?',[id]);if(!product||!product.published)return json({error:'Product not found.'},404);
  product.image_urls=((await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? AND vendor_id=? ORDER BY sort_order,id',[id,product.vendor_id])).results||[]).map(x=>x.image_url).filter(Boolean);
  if(!product.image_urls.length&&product.image_url)product.image_urls=[product.image_url];let opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[id])).results||[];
- for(const o of opts)o.values=(await q(e,'SELECT id,value,sort_order FROM option_values WHERE option_id=? ORDER BY sort_order,id',[o.id])).results||[];
+ await hydrateOptionValues(e,opts);
  // Recover variable products whose old option definitions were never saved.
  // The editor's Size Details format is used only when the product is explicitly variable.
  if(!opts.length&&String(product.product_type||'').toLowerCase()==='variable'){
@@ -246,7 +270,7 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
      await e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid,id,'Size',0,t,t).run();
      for(let i=0;i<found.length;i++)await e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),oid,found[i],i,t,t).run();
      opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[id])).results||[];
-     for(const o of opts)o.values=(await q(e,'SELECT id,value,sort_order FROM option_values WHERE option_id=? ORDER BY sort_order,id',[o.id])).results||[];
+     await hydrateOptionValues(e,opts);
    }
  }let vs=(await q(e,"SELECT id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
  // Repair products that have saved option definitions but never got variation rows.
@@ -280,6 +304,7 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
    }
    vs=(await q(e,"SELECT id,sku,regular_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
  }
+ await hydrateVariationRows(e,vs);
  for(const v of vs){
    const links=(await q(e,'SELECT vo.option_id,vo.option_value_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=?',[v.id])).results||[];
 
