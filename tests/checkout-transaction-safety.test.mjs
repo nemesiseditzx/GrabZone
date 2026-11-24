@@ -19,6 +19,13 @@ test('order, items, rewards, coupon claims and variation stock commit in one gua
   assert.ok(worker.includes("UPDATE product_variations SET stock=CASE WHEN lower(COALESCE(stock_mode,'untracked'))='tracked' THEN stock-? ELSE stock END"));
 });
 
+test('simple product stock is tracked, reserved, and restored with the same movement journal', () => {
+  assert.ok(worker.includes("ALTER TABLE products ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'"));
+  assert.ok(worker.includes("UPDATE products SET stock=stock-?,updated_at=? WHERE id=? AND published=1 AND stock_mode='tracked' AND stock>=?"));
+  assert.ok(worker.includes("UPDATE products SET stock=stock+?,updated_at=? WHERE id=? AND changes()=1"));
+  assert.ok(worker.includes('String(item.stock_mode||"untracked").toLowerCase()==="tracked"'));
+});
+
 test('checkout request key is stored with the order transaction and replay-safe', () => {
   assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS order_idempotency'));
   assert.ok(worker.includes('INSERT INTO order_idempotency(idempotency_key,request_hash,order_id,created_at)'));
