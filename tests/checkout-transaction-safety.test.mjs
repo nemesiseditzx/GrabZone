@@ -27,6 +27,15 @@ test('checkout request key is stored with the order transaction and replay-safe'
   assert.ok(checkout.includes('sessionStorage.removeItem(CHECKOUT_REQUEST_KEY)'));
 });
 
+test('tracked variation stock is journaled and restored once on cancellation', () => {
+  assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS order_inventory_movements'));
+  assert.ok(worker.includes('UNIQUE(order_item_id,movement_type)'));
+  assert.ok(worker.includes('movement_type,"sale"'));
+  assert.ok(worker.includes('movement_type,\'restock\''));
+  assert.ok(worker.includes('AND changes()=1'));
+  assert.ok(worker.includes('NOT EXISTS(SELECT 1 FROM order_inventory_movements restock'));
+});
+
 test('checkout snapshots variation options, SKU and image from D1, not browser payload', () => {
   assert.ok(worker.includes('SELECT po.name,ov.value FROM variation_options vo'));
   assert.ok(worker.includes('variation_options:variationOptions,variation_sku:variationSku'));
