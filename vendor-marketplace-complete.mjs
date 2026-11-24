@@ -103,7 +103,7 @@ async function schema(env){
    ["order_items","variation_sku","ALTER TABLE order_items ADD COLUMN variation_sku TEXT"]
   ];
   const tables=[...new Set(migrations.map(row=>row[0]))];
-  const info=await env.DB.batch(tables.map(table=>env.DB.prepare("PRAGMA table_info("+table+")")));
+  const info=await Promise.all(tables.map(table=>env.DB.prepare("PRAGMA table_info("+table+")").all()));
   const columns=new Map();
   for(let i=0;i<tables.length;i++)columns.set(tables[i],new Set((info[i]?.results||[]).map(row=>String(row.name))));
   const pending=migrations.filter(([table,column])=>!columns.get(table)?.has(column)).map(row=>env.DB.prepare(row[2]));
