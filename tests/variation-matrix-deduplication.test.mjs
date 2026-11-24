@@ -80,3 +80,34 @@ test('variation list hydration uses bounded bulk queries instead of per-row read
   assert.match(source, /await hydrateVariations\(e, variations\)/);
   assert.match(source, /await hydrateVariations\(e, generated\)/);
 });
+
+
+test('vendor variation matrix replacement is atomic and retains existing variation data', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-system-v2.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf("if(req.method==='POST'){const opts=normalizeOptions(b.options);");
+  const end = source.indexOf("if(req.method==='PATCH')", start);
+  assert.ok(start >= 0 && end > start, 'vendor variation POST handler must exist');
+  const post = source.slice(start, end);
+  assert.match(post, /await e\.DB\.batch\(statements\)/);
+  assert.doesNotMatch(post, /\.run\(\)/);
+  assert.match(post, /DELETE FROM variation_options/);
+  assert.match(post, /DELETE FROM option_values/);
+  assert.match(post, /DELETE FROM product_options/);
+  assert.match(post, /Keep the original ID, SKU, stock, price, image and Disabled state/);
+  assert.match(post, /duplicateIds\.has\(old\.id\)/);
+  assert.match(post, /statements\.length>900/);
+});
+
+test('vendor variation option labels reject ambiguous key delimiters and bound matrix expansion', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-system-v2.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /\[=\|\]/);
+  assert.match(source, /rows\.length\*o\.values\.length>200/);
+  assert.match(source, /keys\.some\(k=>k\.length>1000\)/);
+  assert.match(source, /Default variation price must be a valid non-negative number/);
+});
