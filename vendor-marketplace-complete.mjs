@@ -506,7 +506,7 @@ if(p==='/api/admin/product-audit'&&req.method==='GET'){
   for(const x of (links.results||[])){const v=variationMap.get(String(x.variation_id));if(v)v.options[x.name]=x.value}
   for(const x of (imgs.results||[])){const v=variationMap.get(String(x.variation_id));if(v&&x.image_url)v.images.push(String(x.image_url).trim())}
  }
- for(const p0 of products){p0.images=[...new Set([...(p0.image_url?[p0.image_url]:[]),...p0.images].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10);p0.variations=p0.variations.map(v=>({...v,images:[...new Set(v.images)].slice(0,10)}))}
+ for(const p0 of products){p0.images=[...new Set([...(p0.image_url?[p0.image_url]:[]),...p0.images].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,30);p0.variations=p0.variations.map(v=>({...v,images:[...new Set(v.images)].slice(0,10)}))}
  return json({ok:true,count:products.length,limit:requested,vendor_id:vid||null,products});
 }
 if(p==='/api/vendor/admin/products'&&(req.method==='GET'||req.method==='POST'||req.method==='PATCH'||req.method==='DELETE')){
