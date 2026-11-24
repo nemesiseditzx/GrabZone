@@ -519,28 +519,77 @@ if(idempotencyKey){
 const vendorIds=new Set(),shippingFallback=await getGlobalShipping(env);const t=now();
 const sequence=(await q(env,"UPDATE order_sequence SET last_value=MAX(last_value,(SELECT COALESCE(MAX(order_no),0) FROM orders))+1 WHERE id=1 RETURNING last_value AS n")).results?.[0];
 const n=Number(sequence?.n||0);if(!n)throw new Error("Could not reserve an order number.");
-const id=crypto.randomUUID(),orderNumber="GZ-"+String(n).padStart(4,"0"),tracking="GZ-"+crypto.randomUUID().replace(/-/g,"").slice(0,16).toUpperCase();const items=[];let subtotal=0;for(const x of p.items){const pr=(await q(env,"SELECT * FROM products WHERE id=? AND published=1 LIMIT 1",[String(x.product_id||"")])).results?.[0];if(!pr)throw new Error("One of the selected products is no longer available.");if(pr.product_type==="variable"&&!x.variation_id)throw new Error(`${pr.name} requires a variation selection.`);if(pr.vendor_id){const vv=(await q(env,"SELECT status FROM vendors WHERE id=? LIMIT 1",[String(pr.vendor_id)])).results?.[0];if(vv&&String(vv.status||"Active")!=="Active")throw new Error(`${pr.name} is currently unavailable.`);vendorIds.add(String(pr.vendor_id));}const qty=Math.max(1,parseInt(x.quantity,10)||1);const minQty=Math.max(1,Number(pr.min_qty||1)),maxQty=pr.max_qty==null?null:Number(pr.max_qty);if(qty<minQty)throw new Error(pr.name+": minimum quantity is "+minQty+".");if(maxQty!==null&&qty>maxQty)throw new Error(pr.name+": maximum quantity is "+maxQty+".");if(!x.variation_id&&String(pr.stock_mode||"untracked").toLowerCase()==="tracked"&&Number(pr.stock||0)<qty)throw new Error(pr.name+": only "+Math.max(0,Number(pr.stock||0))+" left in stock.");const flashStart=pr.flash_starts_at?Date.parse(pr.flash_starts_at):NaN,flashEnd=pr.flash_ends_at?Date.parse(pr.flash_ends_at):NaN;const flashActive=!!pr.flash_enabled&&Number(pr.flash_price)>0&&Number(pr.flash_price)<Number(pr.price||0)&&(!Number.isFinite(flashStart)||Date.now()>=flashStart)&&Number.isFinite(flashEnd)&&Date.now()<flashEnd;const productRegular=Number(pr.price||0),productSale=Number(pr.sale_price||0);let unit=flashActive?Number(pr.flash_price):(productSale>0&&productSale<productRegular?productSale:productRegular);
-if(x.variation_id){
- let variationOptions={},variationSku=null,productImage=pr.image_url,variationStockMode=String(pr.stock_mode||"untracked").toLowerCase();
-if(x.variation_id){
- const vv=(await q(env,"SELECT regular_price,sale_price,status,sku,image_url,stock,stock_mode,min_qty,max_qty FROM product_variations WHERE id=? AND product_id=? LIMIT 1",[String(x.variation_id),String(pr.id)])).results?.[0];
- if(!vv||String(vv.status)!=="Available")throw new Error("One selected variation is no longer available.");
- const vStockMode=String(vv.stock_mode||'untracked').toLowerCase();
- variationStockMode=vStockMode;
- const vStock=Number(vv.stock||0);
- const vMin=Math.max(1,Number(vv.min_qty||1));
- const vMax=vv.max_qty==null?null:Number(vv.max_qty);
- if(qty<vMin)throw new Error(`${pr.name}: minimum quantity for this variation is ${vMin}.`);
- if(vMax!==null&&qty>vMax)throw new Error(`${pr.name}: maximum quantity for this variation is ${vMax}.`);
- if(vStockMode==='tracked'&&vStock<qty)throw new Error(`${pr.name}: the selected variation only has ${Math.max(0,vStock)} left in stock.`);
- const regular=Number(vv.regular_price||0),sale=Number(vv.sale_price||0);
- unit=sale>0&&sale<regular?sale:regular;
- variationSku=vv.sku||null;
- productImage=vv.image_url||pr.image_url;
- const optionRows=(await q(env,"SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order",[String(x.variation_id)])).results||[];
- for(const option of optionRows)variationOptions[option.name]=option.value;
+const id=crypto.randomUUID(),orderNumber="GZ-"+String(n).padStart(4,"0"),tracking="GZ-"+crypto.randomUUID().replace(/-/g,"").slice(0,16).toUpperCase();const items=[];let subtotal=0;
+const productIds=[...new Set(p.items.map(item=>String(item.product_id||"").trim()).filter(Boolean))];
+const productMap=new Map();
+for(let i=0;i<productIds.length;i+=90){
+ const chunk=productIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
+ const rows=(await q(env,`SELECT * FROM products WHERE published=1 AND id IN (${marks})`,chunk)).results||[];
+ for(const row of rows)productMap.set(String(row.id),row);
 }
-const line=unit*qty;subtotal+=line;items.push({id:crypto.randomUUID(),product_id:pr.id,product_name:pr.name,image_url:productImage,quantity:qty,unit_price:unit,line_total:line,variation_id:x.variation_id||null,variation_options:variationOptions,variation_sku:variationSku,stock_mode:variationStockMode,vendor_id:pr.vendor_id||null,unit_cost:Number(pr.cost_price||0),additional_cost:Number(pr.additional_cost||0)})}await ensureVendorCouponSchema(env);
+const variationIds=[...new Set(p.items.map(item=>String(item.variation_id||"").trim()).filter(Boolean))];
+const variationMap=new Map();
+for(let i=0;i<variationIds.length;i+=90){
+ const chunk=variationIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
+ const rows=(await q(env,`SELECT id,product_id,regular_price,sale_price,status,sku,image_url,stock,stock_mode,min_qty,max_qty FROM product_variations WHERE id IN (${marks})`,chunk)).results||[];
+ for(const row of rows)variationMap.set(String(row.id),row);
+}
+const variationOptionsMap=new Map();
+for(let i=0;i<variationIds.length;i+=90){
+ const chunk=variationIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
+ const rows=(await q(env,`SELECT vo.variation_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id IN (${marks}) ORDER BY po.sort_order,ov.sort_order`,chunk)).results||[];
+ for(const row of rows){
+  const key=String(row.variation_id);
+  if(!variationOptionsMap.has(key))variationOptionsMap.set(key,{});
+  variationOptionsMap.get(key)[row.name]=row.value;
+ }
+}
+const requestedVendors=[...new Set([...productMap.values()].map(row=>String(row.vendor_id||"").trim()).filter(Boolean))];
+const vendorStatusMap=new Map();
+for(let i=0;i<requestedVendors.length;i+=90){
+ const chunk=requestedVendors.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
+ const rows=(await q(env,`SELECT id,status FROM vendors WHERE id IN (${marks})`,chunk)).results||[];
+ for(const row of rows)vendorStatusMap.set(String(row.id),String(row.status||"Active"));
+}
+for(const x of p.items){
+ const productId=String(x.product_id||"").trim(),pr=productMap.get(productId);
+ if(!pr)throw new Error("One of the selected products is no longer available.");
+ if(pr.product_type==="variable"&&!x.variation_id)throw new Error(`${pr.name} requires a variation selection.`);
+ const vendorId=String(pr.vendor_id||"").trim();
+ if(vendorId){
+  if(!vendorStatusMap.has(vendorId)||vendorStatusMap.get(vendorId)!=="Active")throw new Error(`${pr.name} is currently unavailable.`);
+  vendorIds.add(vendorId);
+ }
+ const qty=Math.max(1,parseInt(x.quantity,10)||1);
+ const minQty=Math.max(1,Number(pr.min_qty||1)),maxQty=pr.max_qty==null?null:Number(pr.max_qty);
+ if(qty<minQty)throw new Error(pr.name+": minimum quantity is "+minQty+".");
+ if(maxQty!==null&&qty>maxQty)throw new Error(pr.name+": maximum quantity is "+maxQty+".");
+ if(!x.variation_id&&String(pr.stock_mode||"untracked").toLowerCase()==="tracked"&&Number(pr.stock||0)<qty)throw new Error(pr.name+": only "+Math.max(0,Number(pr.stock||0))+" left in stock.");
+ const flashStart=pr.flash_starts_at?Date.parse(pr.flash_starts_at):NaN,flashEnd=pr.flash_ends_at?Date.parse(pr.flash_ends_at):NaN;
+ const flashActive=!!pr.flash_enabled&&Number(pr.flash_price)>0&&Number(pr.flash_price)<Number(pr.price||0)&&(!Number.isFinite(flashStart)||Date.now()>=flashStart)&&Number.isFinite(flashEnd)&&Date.now()<flashEnd;
+ const productRegular=Number(pr.price||0),productSale=Number(pr.sale_price||0);
+ let unit=flashActive?Number(pr.flash_price):(productSale>0&&productSale<productRegular?productSale:productRegular);
+ let variationOptions={},variationSku=null,productImage=pr.image_url,variationStockMode=String(pr.stock_mode||"untracked").toLowerCase();
+ if(x.variation_id){
+  const variationId=String(x.variation_id),vv=variationMap.get(variationId);
+  if(!vv||String(vv.product_id)!==String(pr.id)||String(vv.status)!=="Available")throw new Error("One selected variation is no longer available.");
+  const vStockMode=String(vv.stock_mode||"untracked").toLowerCase();
+  variationStockMode=vStockMode;
+  const vStock=Number(vv.stock||0),vMin=Math.max(1,Number(vv.min_qty||1)),vMax=vv.max_qty==null?null:Number(vv.max_qty);
+  if(qty<vMin)throw new Error(`${pr.name}: minimum quantity for this variation is ${vMin}.`);
+  if(vMax!==null&&qty>vMax)throw new Error(`${pr.name}: maximum quantity for this variation is ${vMax}.`);
+  if(vStockMode==="tracked"&&vStock<qty)throw new Error(`${pr.name}: the selected variation only has ${Math.max(0,vStock)} left in stock.`);
+  const regular=Number(vv.regular_price||0),sale=Number(vv.sale_price||0);
+  unit=sale>0&&sale<regular?sale:regular;
+  variationSku=vv.sku||null;
+  productImage=vv.image_url||pr.image_url;
+  variationOptions={...(variationOptionsMap.get(variationId)||{})};
+ }
+ const line=unit*qty;
+ subtotal+=line;
+ items.push({id:crypto.randomUUID(),product_id:pr.id,product_name:pr.name,image_url:productImage,quantity:qty,unit_price:unit,line_total:line,variation_id:x.variation_id||null,variation_options:variationOptions,variation_sku:variationSku,stock_mode:variationStockMode,vendor_id:pr.vendor_id||null,unit_cost:Number(pr.cost_price||0),additional_cost:Number(pr.additional_cost||0)});
+}
+await ensureVendorCouponSchema(env);
 const vendorCoupon=await resolveVendorCoupon(env,p.vendor_coupon_code,items);
 const code=String(p.referral_code||"").trim().toUpperCase()||null;let discount=0,admin=null;if(code){const r=(await q(env,"SELECT * FROM referral_codes WHERE upper(code)=upper(?) AND active=1 LIMIT 1",[code])).results?.[0];if(!r)throw new Error("Invalid or inactive referral code.");if(r.starts_at&&new Date(r.starts_at)>new Date())throw new Error("This referral code is not active yet.");if(r.expires_at&&new Date(r.expires_at)<new Date())throw new Error("This referral code has expired.");if(r.usage_limit!==null&&Number(r.used_count||0)>=Number(r.usage_limit))throw new Error("This referral code has reached its usage limit.");if(subtotal<Number(r.min_order_amount||0))throw new Error("Minimum order amount for this referral code is ৳"+Number(r.min_order_amount||0)+".");discount=r.benefit_type==="percentage"?Math.round(subtotal*Number(r.benefit_value||0)/100*100)/100:Number(r.benefit_value||0);if(r.max_discount_amount!==null)discount=Math.min(discount,Number(r.max_discount_amount));discount=Math.max(0,Math.min(discount,subtotal));admin=r.admin_name||null}const mysteryToken=String(p.mystery_token||"").trim().toUpperCase();let mysteryDiscount=0;if(mysteryToken){const mr=(await q(env,"SELECT discount,expires_at,used FROM mystery_claims WHERE token=? LIMIT 1",[mysteryToken])).results?.[0];if(!mr||Number(mr.used)!==0||new Date(mr.expires_at)<=new Date())throw new Error("Your Mystery Deal has expired or was already used.");mysteryDiscount=Math.min(subtotal,subtotal*Number(mr.discount||0)/100);}const voucherCode=String(p.rewards_voucher_code||"").trim().toUpperCase();let voucherDiscount=0,voucher=null;if(String(p.grabpoints_redeem||"").trim())throw new Error("Direct GrabPoints checkout redemption is no longer supported. Redeem GP on the Rewards page first.");if(voucherCode){const phone=normalizeRewardPhone(p.phone);voucher=(await q(env,"SELECT * FROM rewards_vouchers WHERE code=? LIMIT 1",[voucherCode])).results?.[0];if(!voucher)throw new Error("Reward voucher not found.");if(String(voucher.phone)!==phone)throw new Error("This reward voucher belongs to a different Rewards account.");if(voucher.status!=="UNUSED")throw new Error("This reward voucher has already been used.");if(voucher.expires_at&&new Date(voucher.expires_at)<=new Date())throw new Error("This reward voucher has expired.");voucherDiscount=Math.min(subtotal,Number(voucher.value||0));if(voucherDiscount<=0)throw new Error("This reward voucher has no usable value.");}
 let shipping=0;if(vendorIds.size){const ids=[...vendorIds],marks=ids.map(()=>'?').join(',');const vs=(await q(env,`SELECT id,shipping_fee FROM vendors WHERE id IN (${marks})`,ids)).results||[];const feeMap=new Map(vs.map(v=>[String(v.id),v.shipping_fee]));for(const id of ids)shipping+=Number(feeMap.get(String(id))??shippingFallback);}else shipping=shippingFallback;const total=Math.max(0,subtotal+shipping-discount-voucherDiscount-mysteryDiscount-vendorCoupon.discount);// Commit the order, line items, reward allocations, coupon/voucher claims and
