@@ -173,7 +173,7 @@ if(req.method==='POST'){
   }
  }
  for(const old of existing){
-  if(old.options_key&&!String(old._original_options_key||'').trim()){
+  if(old.options_key&&!duplicateIds.has(old.id)&&!String(old._original_options_key||'').trim()){
    statements.push(e.DB.prepare('UPDATE product_variations SET options_key=? WHERE id=?').bind(old.options_key,old.id));
   }
   if(duplicateIds.has(old.id)||!keep.has(String(old.options_key||''))){
