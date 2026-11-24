@@ -658,8 +658,8 @@ const requestedVendors=[...new Set([...productMap.values()].map(row=>String(row.
 const vendorStatusMap=new Map();
 for(let i=0;i<requestedVendors.length;i+=90){
  const chunk=requestedVendors.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
- const rows=(await q(env,`SELECT id,status FROM vendors WHERE id IN (${marks})`,chunk)).results||[];
- for(const row of rows)vendorStatusMap.set(String(row.id),String(row.status||"Active"));
+ const rows=(await q(env,`SELECT id,status,COALESCE(shipping_fee,130) AS shipping_fee FROM vendors WHERE id IN (${marks})`,chunk)).results||[];
+ for(const row of rows)vendorStatusMap.set(String(row.id),{status:String(row.status||"Active"),shipping_fee:Number(row.shipping_fee??130)});
 }
 for(const x of p.items){
  const productId=String(x.product_id||"").trim(),pr=productMap.get(productId);
@@ -667,7 +667,7 @@ for(const x of p.items){
  if(pr.product_type==="variable"&&!x.variation_id)throw new Error(`${pr.name} requires a variation selection.`);
  const vendorId=String(pr.vendor_id||"").trim();
  if(vendorId){
-  if(!vendorStatusMap.has(vendorId)||vendorStatusMap.get(vendorId)!=="Active")throw new Error(`${pr.name} is currently unavailable.`);
+  if(!vendorStatusMap.has(vendorId)||vendorStatusMap.get(vendorId).status!=="Active")throw new Error(`${pr.name} is currently unavailable.`);
   vendorIds.add(vendorId);
  }
  const qty=Math.max(1,parseInt(x.quantity,10)||1);
@@ -721,7 +721,7 @@ const referralEligibleSubtotal=items.reduce((sum,item)=>{
 await ensureVendorCouponSchema(env);
 const vendorCoupon=await resolveVendorCoupon(env,p.vendor_coupon_code,items);
 const code=String(p.referral_code||"").trim().toUpperCase()||null;let discount=0,admin=null;if(code){const r=(await q(env,"SELECT * FROM referral_codes WHERE upper(code)=upper(?) AND active=1 LIMIT 1",[code])).results?.[0];if(!r)throw new Error("Invalid or inactive referral code.");if(r.starts_at&&new Date(r.starts_at)>new Date())throw new Error("This referral code is not active yet.");if(r.expires_at&&new Date(r.expires_at)<new Date())throw new Error("This referral code has expired.");if(r.usage_limit!==null&&Number(r.used_count||0)>=Number(r.usage_limit))throw new Error("This referral code has reached its usage limit.");if(subtotal<Number(r.min_order_amount||0))throw new Error("Minimum order amount for this referral code is ৳"+Number(r.min_order_amount||0)+".");discount=r.benefit_type==="percentage"?Math.round(referralEligibleSubtotal*Number(r.benefit_value||0)/100*100)/100:Number(r.benefit_value||0);if(r.max_discount_amount!==null)discount=Math.min(discount,Number(r.max_discount_amount));discount=Math.max(0,Math.min(discount,referralEligibleSubtotal));admin=r.admin_name||null}const mysteryToken=String(p.mystery_token||"").trim().toUpperCase();let mysteryDiscount=0;if(mysteryToken){const mr=(await q(env,"SELECT discount,expires_at,used FROM mystery_claims WHERE token=? LIMIT 1",[mysteryToken])).results?.[0];if(!mr||Number(mr.used)!==0||new Date(mr.expires_at)<=new Date())throw new Error("Your Mystery Deal has expired or was already used.");mysteryDiscount=Math.min(subtotal,subtotal*Number(mr.discount||0)/100);}const voucherCode=String(p.rewards_voucher_code||"").trim().toUpperCase();let voucherDiscount=0,voucher=null;if(String(p.grabpoints_redeem||"").trim())throw new Error("Direct GrabPoints checkout redemption is no longer supported. Redeem GP on the Rewards page first.");if(voucherCode){const phone=normalizeRewardPhone(p.phone);voucher=(await q(env,"SELECT * FROM rewards_vouchers WHERE code=? LIMIT 1",[voucherCode])).results?.[0];if(!voucher)throw new Error("Reward voucher not found.");if(String(voucher.phone)!==phone)throw new Error("This reward voucher belongs to a different Rewards account.");if(voucher.status!=="UNUSED")throw new Error("This reward voucher has already been used.");if(voucher.expires_at&&new Date(voucher.expires_at)<=new Date())throw new Error("This reward voucher has expired.");voucherDiscount=Math.min(subtotal,Number(voucher.value||0));if(voucherDiscount<=0)throw new Error("This reward voucher has no usable value.");}
-let shipping=0;if(vendorIds.size){const ids=[...vendorIds],marks=ids.map(()=>'?').join(',');const vs=(await q(env,`SELECT id,shipping_fee FROM vendors WHERE id IN (${marks})`,ids)).results||[];const feeMap=new Map(vs.map(v=>[String(v.id),v.shipping_fee]));for(const id of ids)shipping+=Number(feeMap.get(String(id))??shippingFallback);}else shipping=shippingFallback;const total=Math.max(0,subtotal+shipping-discount-voucherDiscount-mysteryDiscount-vendorCoupon.discount);// Commit the order, line items, reward allocations, coupon/voucher claims and
+let shipping=0;if(vendorIds.size){for(const id of vendorIds){const vendor=vendorStatusMap.get(String(id));shipping+=Number(vendor?.shipping_fee??shippingFallback);}}else shipping=shippingFallback;const total=Math.max(0,subtotal+shipping-discount-voucherDiscount-mysteryDiscount-vendorCoupon.discount);// Commit the order, line items, reward allocations, coupon/voucher claims and
 // variation inventory updates together. A failed conditional write must abort the
 // whole batch; the assertion table's CHECK constraint makes zero-row updates fail.
 const orderFields=[
