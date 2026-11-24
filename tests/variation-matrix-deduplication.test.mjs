@@ -49,8 +49,8 @@ test('variation matrix replacement is committed as one atomic D1 batch', async (
   assert.ok(postStart >= 0 && postEnd > postStart, 'POST matrix handler must be present');
   const post = source.slice(postStart, postEnd);
 
-  assert.match(post, /await e\\.DB\\.batch\\(statements\\)/);
-  assert.doesNotMatch(post, /\\.run\\(\\)/);
+  assert.match(post, /await e\.DB\.batch\(statements\)/);
+  assert.doesNotMatch(post, /\.run\(\)/);
   assert.match(post, /DELETE FROM variation_options/);
   assert.match(post, /DELETE FROM option_values/);
   assert.match(post, /UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Available'/);
