@@ -91,7 +91,7 @@ async function loadDashboardAnalytics(){
     // SQLite/D1 has a bounded bind-parameter count. Read recent order lines
     // in safe chunks so the dashboard remains accurate without scanning history.
     const itemIdBatches=[];
-    for(let i=0;i<activeOrderIds.length;i+=400)itemIdBatches.push(activeOrderIds.slice(i,i+400));
+    for(let i=0;i<activeOrderIds.length;i+=90)itemIdBatches.push(activeOrderIds.slice(i,i+90));
     const itemResults=await Promise.all(itemIdBatches.map(ids=>
       sb.from("order_items").select("order_id,product_name,quantity,unit_price,line_total").in("order_id",ids)
     ));
