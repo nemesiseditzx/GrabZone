@@ -71,3 +71,33 @@ test('vendor product create and image replacement use atomic D1 batches with a 3
   assert.match(route, /INSERT INTO vendor_product_images/);
   assert.doesNotMatch(route, /\.slice\(0,10\)/);
 });
+
+
+test('vendor admin product listing is paginated and supports server-side search', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf("if(p==='/api/vendor/admin/products'");
+  const end = source.indexOf("if(p==='/api/vendor/admin/order-delete'", start);
+  assert.ok(start >= 0 && end > start, 'vendor admin product route exists');
+  const route = source.slice(start, end);
+  assert.match(route, /searchParams\.get\('page'\)/);
+  assert.match(route, /searchParams\.get\('limit'\)/);
+  assert.match(route, /searchParams\.get\('search'\)/);
+  assert.match(route, /COUNT\(\*\) n FROM products/);
+  assert.match(route, /LIMIT \? OFFSET \?/);
+  assert.match(route, /pages:Math\.max\(1,Math\.ceil\(count\/limit\)\)/);
+});
+
+test('vendor product editor loads bounded pages and exposes next/previous navigation', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-control-product-editor.js', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /limit:'50'/);
+  assert.match(source, /search:.*gzFpmSearch/);
+  assert.match(source, /gzFpmPrev/);
+  assert.match(source, /gzFpmNext/);
+  assert.match(source, /Page '\+currentPage\+' of '\+totalPages/);
+});
