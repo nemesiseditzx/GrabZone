@@ -14,6 +14,16 @@ test('vendor marketplace schema setup is batched and default vendor backfill is 
   assert.ok(!vendorSchema.includes('for(const x of s)await env.DB.prepare(x).run()'));
 });
 
+test('delivered cashback excludes all discounts and delivery from eligible spend', () => {
+  assert.ok(worker.includes('previousOrder.grabpoints_discount'));
+  assert.ok(worker.includes('previousOrder.rewards_voucher_discount'));
+  assert.ok(worker.includes('previousOrder.mystery_discount'));
+  assert.ok(worker.includes('previousOrder.vendor_coupon_discount'));
+  assert.ok(worker.includes('eligible_vendor_gross'));
+  assert.ok(worker.includes('eligible products'));
+  assert.ok(worker.includes('Delivery charge is never included.'));
+});
+
 test('schema upgrades do not rewrite historical GrabPoints ledger entries', () => {
   assert.ok(worker.includes('ALTER TABLE grabpoints_ledger ADD COLUMN qualifying_points INTEGER NOT NULL DEFAULT 0'));
   assert.ok(!worker.includes('grabpoints-qualifying-backfill'));
