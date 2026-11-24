@@ -110,6 +110,13 @@ test('checkout and vendor/admin workflows do not use native dialogs', () => {
   }
 });
 
+test('referral discounts are based only on referral-eligible item subtotal', () => {
+  assert.ok(worker.includes('const referralEligibleSubtotal=items.reduce'));
+  assert.ok(worker.includes('Math.round(referralEligibleSubtotal*Number(r.benefit_value||0)/100*100)/100'));
+  assert.ok(worker.includes('Math.min(discount,referralEligibleSubtotal)'));
+  assert.ok(!worker.includes('const referralEligibleSubtotal=allocationRows.reduce'));
+});
+
 test('checkout snapshots variation options, SKU and image from D1, not browser payload', () => {
   assert.ok(worker.includes('SELECT po.name,ov.value FROM variation_options vo'));
   assert.ok(worker.includes('variation_options:variationOptions,variation_sku:variationSku'));
