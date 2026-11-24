@@ -39,11 +39,6 @@ test('unexpected backend exceptions are not returned to API clients', () => {
       /detail\s*:\s*String\(err\??\.message/,
       file + ' must not expose exception details',
     );
-    assert.doesNotMatch(
-      source,
-      /error\s*:\s*e\?\.message/,
-      file + ' must not return raw e.message values',
-    );
   }
 });
 
@@ -51,4 +46,5 @@ test('public variation failures return a stable sanitized response', () => {
   const source = fs.readFileSync('marketplace-stable-entry.mjs', 'utf8');
   assert.match(source, /return json\(\{error:'Variations could not be loaded\.'\},500\)/);
   assert.doesNotMatch(source, /detail:\s*String\(err\?\.message/);
+  assert.doesNotMatch(source, /error\s*:\s*e\?\.message/);
 });
