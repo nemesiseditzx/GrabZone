@@ -5,6 +5,15 @@ import fs from 'node:fs';
 const worker = fs.readFileSync('worker.mjs', 'utf8');
 const checkout = fs.readFileSync('checkout.js', 'utf8');
 
+test('checkout bulk-loads cart records and appends simple products outside the variation branch', () => {
+  assert.ok(worker.includes('const productMap=new Map()'));
+  assert.ok(worker.includes('const variationMap=new Map()'));
+  assert.ok(worker.includes('const variationOptionsMap=new Map()'));
+  assert.ok(worker.includes('const requestedVendors='));
+  assert.ok(worker.includes('i+=90'));
+  assert.ok(worker.includes('const line=unit*qty;\n subtotal+=line;\n items.push('));
+});
+
 test('checkout reserves order numbers atomically instead of MAX(order_no)+1', () => {
   assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS order_sequence'));
   assert.ok(worker.includes('UPDATE order_sequence SET last_value=MAX(last_value,(SELECT COALESCE(MAX(order_no),0) FROM orders))+1 WHERE id=1 RETURNING last_value AS n'));
