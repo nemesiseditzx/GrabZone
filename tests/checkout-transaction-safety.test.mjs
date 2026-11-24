@@ -31,7 +31,7 @@ test('tracked variation stock is journaled and restored once on cancellation', (
   assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS order_inventory_movements'));
   assert.ok(worker.includes('UNIQUE(order_item_id,movement_type)'));
   assert.ok(worker.includes('Number(item.quantity),"sale",t'));
-  assert.ok(worker.includes('movement_type,\'restock\''));
+  assert.ok(worker.includes('Number(movement.quantity||0),"restock",now()'));
   assert.ok(worker.includes('AND changes()=1'));
   assert.ok(worker.includes('NOT EXISTS(SELECT 1 FROM order_inventory_movements restock'));
 });
