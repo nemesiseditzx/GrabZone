@@ -38,3 +38,21 @@ test('regenerated combinations reactivate their existing disabled row', async ()
     /SET status=CASE WHEN status='Disabled' THEN 'Available' ELSE status END,updated_at=\?/,
   );
 });
+
+test('variation matrix replacement is committed as one atomic D1 batch', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../marketplace-admin-variations.mjs', import.meta.url),
+    'utf8',
+  );
+  const postStart = source.indexOf("if (req.method === 'POST')");
+  const postEnd = source.indexOf('const generated = (await q(e,', postStart);
+  assert.ok(postStart >= 0 && postEnd > postStart, 'POST matrix handler must be present');
+  const post = source.slice(postStart, postEnd);
+
+  assert.match(post, /await e\\.DB\\.batch\\(statements\\)/);
+  assert.doesNotMatch(post, /\\.run\\(\\)/);
+  assert.match(post, /DELETE FROM variation_options/);
+  assert.match(post, /DELETE FROM option_values/);
+  assert.match(post, /UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Available'/);
+  assert.match(post, /INSERT INTO variation_options/);
+});
