@@ -39,3 +39,12 @@ test('consolidated marketplace entrypoint injects vendor editor and upload auth 
   assert.match(entry, /vendor-control-product-editor\.js/);
   assert.match(entry, /marketplace-vendor-control-v2/);
 });
+
+test('multi-image writes are atomic and product image reads use bounded chunks', () => {
+  const source = fs.readFileSync('marketplace-image-policy-entry.mjs', 'utf8');
+  assert.match(source, /runD1SetupOnce\(env\.DB,'vendor-product-images-schema'/);
+  assert.match(source, /await env\.DB\.batch\(statements\)/);
+  assert.match(source, /for\(let i=0;i<ids\.length;i\+=90\)/);
+  assert.match(source, /vendor_product_images WHERE product_id IN/);
+  assert.doesNotMatch(source, /for\(let i=0;i<clean\.length;i\+\+\)await env\.DB\.prepare/);
+});
