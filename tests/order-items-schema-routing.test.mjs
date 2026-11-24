@@ -18,4 +18,7 @@ test('order_items schema persists vendor and variation fields required by checko
 test('vendor routing reads persisted vendor and variation data from order_items', () => {
   assert.match(source, /SELECT id,product_id,product_name,image_url,quantity,unit_price,line_total,variation_id,variation_options,variation_sku,vendor_id FROM order_items/);
   assert.match(source, /vendor_id:item\\.vendor_id\\|\\|null/);
+  assert.match(source, /order-items-vendor-backfill/);
+  assert.match(source, /UPDATE order_items SET vendor_id=\\(SELECT vendor_id FROM products/);
+  assert.match(source, /order_items_vendor_order_idx/);
 });
