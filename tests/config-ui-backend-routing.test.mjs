@@ -128,3 +128,38 @@ test('vendor variation DELETE accepts an empty request body while enforcing vend
   assert.match(source, /productOwner\(e,pid,u\.vendor_id\)/);
   assert.match(source, /if\(req\.method==='DELETE'\)/);
 });
+
+
+test('legacy vendor product endpoint paginates and filters records in D1', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf("if(p==='/api/vendor/products'){");
+  const end = source.indexOf("if(p==='/api/vendor/profile')", start);
+  const route = source.slice(start, end);
+  assert.match(route, /searchParams\.get\('page'\)/);
+  assert.match(route, /searchParams\.get\('limit'\)/);
+  assert.match(route, /searchParams\.get\('search'\)/);
+  assert.match(route, /searchParams\.get\('filter'\)/);
+  assert.match(route, /COUNT\(\*\) n FROM products/);
+  assert.match(route, /LIMIT \? OFFSET \?/);
+  assert.match(route, /pages:Math\.max\(1,Math\.ceil\(total\/limit\)\)/);
+});
+
+test('legacy vendor dashboard uses paginated search and filter controls', async () => {
+  const js = (await import('node:fs')).readFileSync(
+    new URL('../vendor-dashboard.js', import.meta.url),
+    'utf8',
+  );
+  const html = (await import('node:fs')).readFileSync(
+    new URL('../vendor-dashboard.html', import.meta.url),
+    'utf8',
+  );
+  assert.match(js, /limit:'50'/);
+  assert.match(js, /scheduleProductSearch\(\)/);
+  assert.match(js, /gzProductsPrev/);
+  assert.match(js, /gzProductsNext/);
+  assert.match(html, /oninput="scheduleProductSearch\(\)"/);
+  assert.match(html, /onchange="loadProducts\(1\)"/);
+});
