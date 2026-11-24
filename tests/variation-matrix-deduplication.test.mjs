@@ -164,3 +164,38 @@ test('complete vendor variation schema setup is cached and retries actual D1 err
   assert.match(source, /Vendor variation schema setup failed:/);
   assert.doesNotMatch(source.slice(source.indexOf("if(p==='/api/vendor/variations')"), source.indexOf("if(p==='/api/vendor/profile')"), /\.run\(\)\.catch\(\(\)=>\{\}\)/);
 });
+
+
+test('vendor and public variation endpoints batch option, link and image hydration', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-system-v2.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /async function hydrateOptionValues\(e,options\)/);
+  assert.match(source, /async function hydrateVariationRows\(e,variations\)/);
+  assert.match(source, /for\(let i=0;i<ids\.length;i\+=80\)/);
+  assert.match(source, /variation\.\_optionLinks\.push/);
+  const publicStart = source.indexOf('async function publicVariation(');
+  const publicEnd = source.indexOf('async function orderGuard(', publicStart);
+  const publicHandler = source.slice(publicStart, publicEnd);
+  assert.match(publicHandler, /await hydrateVariationRows\(e,vs\)/);
+  assert.doesNotMatch(publicHandler, /WHERE vo\.variation_id=\?'/);
+  assert.doesNotMatch(publicHandler, /WHERE variation_id=\? ORDER BY sort_order,id/);
+});
+
+test('admin product table returns lightweight product rows without loading variation matrices', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf("if(p==='/api/vendor/admin/products'");
+  const end = source.indexOf("if(p==='/api/vendor/admin/order-delete'", start);
+  const route = source.slice(start, end);
+  const getStart = route.indexOf("if(req.method==='GET'){");
+  const getEnd = route.indexOf("\nlet b={};", getStart);
+  const get = route.slice(getStart, getEnd);
+  assert.match(get, /LIMIT \? OFFSET \?/);
+  assert.match(get, /This endpoint powers the product table/);
+  assert.doesNotMatch(get, /SELECT \* FROM product_variations/);
+  assert.doesNotMatch(get, /FROM variation_options/);
+});
