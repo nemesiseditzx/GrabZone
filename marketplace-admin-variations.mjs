@@ -88,12 +88,23 @@ async function schema(e) {
 }
 
 function opts(b) {
-  const seen=new Set();
-  return (Array.isArray(b) ? b : []).map((o, i) => ({
-    name: clean(o?.name, 80),
-    values: [...new Set((Array.isArray(o?.values) ? o.values : []).map(v => clean(v, 120)).filter(Boolean))],
-    sort_order: i
-  })).filter(o => o.name && o.values.length && !/[=|]/.test(o.name) && !o.values.some(v => /[=|]/.test(v)) && !seen.has(o.name) && seen.add(o.name));
+  const seenNames=new Set();
+  return (Array.isArray(b) ? b : []).map((o, i) => {
+    const name=clean(o?.name,80).normalize('NFKC');
+    const seenValues=new Set();
+    const values=(Array.isArray(o?.values)?o.values:[]).map(v=>clean(v,120).normalize('NFKC')).filter(v=>{
+      const k=v.toLocaleLowerCase();
+      if(!v||seenValues.has(k))return false;
+      seenValues.add(k);
+      return true;
+    });
+    return {name,values,sort_order:i};
+  }).filter(o=>{
+    const k=o.name.toLocaleLowerCase();
+    if(!o.name||!o.values.length||/[=|]/.test(o.name)||o.values.some(v=>/[=|]/.test(v))||seenNames.has(k))return false;
+    seenNames.add(k);
+    return true;
+  });
 }
 function combos(os) {
   let r = [{}];
@@ -116,7 +127,17 @@ export function indexExistingVariations(rows) {
   const byKey = new Map();
   const duplicateIds = new Set();
   for (const row of ordered) {
-    const key = String(row?.options_key || '').trim();
+    let key=String(row?.options_key||'').trim();
+    if(!key&&row?.options){
+      try{
+        const legacy=typeof row.options==='string'?JSON.parse(row.options):row.options;
+        if(legacy&&typeof legacy==='object'&&!Array.isArray(legacy)){
+          const pairs=Object.entries(legacy).map(([name,value])=>[clean(name,80),clean(value,120)]).filter(([name,value])=>name&&value);
+          if(pairs.length)key=pairs.sort((a,b)=>a[0].localeCompare(b[0])).map(([name,value])=>name+'='+value).join('|');
+        }
+      }catch{}
+    }
+    row.options_key=key;
     if (!key || byKey.has(key)) {
       if (row?.id) duplicateIds.add(row.id);
       continue;
@@ -229,9 +250,12 @@ async function handle(req, e) {
     if (!rows || rows.length > 200) return json({ error: 'Maximum 200 generated variations per product.' }, 400);
     const generatedKeys = rows.map(key);
     if (generatedKeys.some(value => !value || value.length > 1000) || new Set(generatedKeys).size !== generatedKeys.length) return json({ error: 'Generated variation keys are invalid or duplicated.' }, 400);
+    const defaultPrice=Number(b.default_price ?? productRow.price ?? 0);
+    if(!Number.isFinite(defaultPrice)||defaultPrice<0)return json({error:'Default variation price must be a valid non-negative number.'},400);
 
     const existing = (await q(e,
-      'SELECT id,options_key,status,created_at FROM product_variations WHERE product_id=? ORDER BY created_at,id', [pid])).results || [];
+      'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at,id', [pid])).results || [];
+    for(const row of existing)row._original_options_key=row.options_key;
     const { byKey: oldBy, duplicateIds } = indexExistingVariations(existing);
     const t = now();
 
@@ -281,7 +305,7 @@ async function handle(req, e) {
       } else {
         statements.push(e.DB.prepare(
           'INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
-        ).bind(id, pid, '', Number(b.default_price ?? productRow.price ?? 0), null, null, 0, 'untracked', 5, '', 'Available', 1, null, k, t, t));
+        ).bind(id, pid, '', defaultPrice, null, null, 0, 'untracked', 5, '', 'Available', 1, null, k, t, t));
       }
 
       for (const o of os) {
@@ -294,6 +318,10 @@ async function handle(req, e) {
     }
 
     for (const x of existing) {
+      // Backfill a recoverable legacy JSON option map before the old option rows are replaced.
+      if(x.options_key&&!String(x._original_options_key||'').trim()){
+        statements.push(e.DB.prepare('UPDATE product_variations SET options_key=? WHERE id=?').bind(x.options_key,x.id));
+      }
       if (duplicateIds.has(x.id) || !keep.has(x.options_key)) {
         statements.push(e.DB.prepare(
           "UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?"
@@ -315,23 +343,33 @@ async function handle(req, e) {
     const id = clean(u.pathname.split('/').pop(), 120);
     const v = await one(e, 'SELECT * FROM product_variations WHERE id=? AND product_id=?', [id, pid]);
     if (!v) return json({ error: 'Variation not found.' }, 404);
-    const status = ['Available', 'Out of Stock', 'Disabled'].includes(b.status) ? b.status : v.status;
+    if(b.status!==undefined&&!['Available','Out of Stock','Disabled'].includes(b.status))return json({error:'Invalid variation status.'},400);
+    const status = b.status!==undefined?b.status:v.status;
     if (status === 'Available' && !(await ensureVariationOptionLinks(e, pid, v))) return json({ error: 'Cannot mark variation Available: its option links do not match the current product options.' }, 409);
     const hasStock=b.stock!==undefined&&b.stock!==null&&b.stock!=='';
-    const stock=hasStock?Math.max(0,Math.floor(Number(b.stock))):Number(v.stock||0);
+    const stockInput=hasStock?Number(b.stock):Number(v.stock||0);
+    const regularPrice=Number(b.regular_price??v.regular_price);
+    const salePrice=b.sale_price===undefined?v.sale_price:(b.sale_price===null||b.sale_price===''?null:Number(b.sale_price));
+    const oldPrice=b.old_price===undefined?v.old_price:(b.old_price===null||b.old_price===''?null:Number(b.old_price));
+    const threshold=Number(b.low_stock_threshold??v.low_stock_threshold??0);
+    if(!Number.isInteger(stockInput)||stockInput<0||stockInput>1000000000)return json({error:'Stock must be a whole number between 0 and 1,000,000,000.'},400);
+    if(!Number.isFinite(regularPrice)||regularPrice<0||!Number.isFinite(threshold)||threshold<0||!Number.isInteger(threshold))return json({error:'Enter valid non-negative variation price and stock threshold values.'},400);
+    if(salePrice!==null&&(!Number.isFinite(salePrice)||salePrice<0))return json({error:'Sale price must be empty or a valid non-negative number.'},400);
+    if(oldPrice!==null&&(!Number.isFinite(oldPrice)||oldPrice<0))return json({error:'Old price must be empty or a valid non-negative number.'},400);
+    const stockMode=status==='Out of Stock'||hasStock||String(v.stock_mode||'').toLowerCase()==='tracked'?'tracked':'untracked';
     await e.DB.prepare(
-      'UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,image_url=?,status=?,stock_mode=?,low_stock_threshold=?,min_qty=1,max_qty=NULL,updated_at=? WHERE id=?'
+      'UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,image_url=?,status=?,stock_mode=?,low_stock_threshold=?,min_qty=1,max_qty=NULL,updated_at=? WHERE id=? AND product_id=?'
     ).bind(
       clean(b.sku ?? v.sku, 120),
-      Math.max(0, Number(b.regular_price ?? v.regular_price)),
-      b.sale_price === null || b.sale_price === '' ? null : Math.max(0, Number(b.sale_price)),
-      b.old_price === null || b.old_price === '' ? null : Math.max(0, Number(b.old_price)),
-      stock,
+      regularPrice,
+      salePrice,
+      oldPrice,
+      stockInput,
       clean(b.image_url ?? v.image_url, 2000),
       status,
-      (status === 'Out of Stock' || (hasStock && stock > 0)) ? 'tracked' : 'untracked',
-      (status === 'Out of Stock' || (hasStock && stock > 0)) ? 0 : Number(v.low_stock_threshold||0),
-      now(), id
+      stockMode,
+      threshold,
+      now(), id, pid
     ).run();
     if (Array.isArray(b.images)) {
       const images = [...new Set(b.images.map(x => clean(x, 2000)).filter(Boolean))].slice(0, 30);
