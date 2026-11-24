@@ -7,6 +7,19 @@ const json = (x, s = 200) => new Response(JSON.stringify(x), {
 
 async function q(e, s, p = []) { return e.DB.prepare(s).bind(...p).all(); }
 async function one(e, s, p = []) { return (await q(e, s, p)).results?.[0] || null; }
+async function ensureVariationOptionLinks(e, productId, variation) {
+ const parts=String(variation?.options_key||'').split('|').filter(Boolean).map(part=>{const at=part.indexOf('=');return at>0?[part.slice(0,at).trim(),part.slice(at+1).trim()]:null});
+ if(!parts.length||parts.some(x=>!x)||new Set(parts.map(x=>x[0])).size!==parts.length)return false;
+ const rows=(await q(e,'SELECT po.id option_id,po.name,ov.id value_id,ov.value FROM product_options po LEFT JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? ORDER BY po.sort_order,ov.sort_order',[productId])).results||[];
+ const names=[...new Set(rows.map(x=>String(x.name)))];
+ if(!names.length||names.length!==parts.length||names.some(name=>!parts.some(x=>x[0]===name)))return false;
+ const mapped=[];
+ for(const [name,value] of parts){const matches=rows.filter(x=>x.name===name&&x.value===value&&x.value_id);if(matches.length!==1)return false;mapped.push({option_id:matches[0].option_id,option_value_id:matches[0].value_id})}
+ const current=(await q(e,'SELECT option_id,option_value_id FROM variation_options WHERE variation_id=?',[variation.id])).results||[];
+ if(current.length===mapped.length&&mapped.every(m=>current.some(c=>String(c.option_id)===String(m.option_id)&&String(c.option_value_id)===String(m.option_value_id))))return true;
+ await e.DB.batch([e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(variation.id),...mapped.map(m=>e.DB.prepare('INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(variation.id,m.option_id,m.option_value_id))]);
+ return true;
+}
 async function sha(v) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(v))))]
     .map(x => x.toString(16).padStart(2, '0')).join('');
@@ -299,6 +312,7 @@ async function handle(req, e) {
     const v = await one(e, 'SELECT * FROM product_variations WHERE id=? AND product_id=?', [id, pid]);
     if (!v) return json({ error: 'Variation not found.' }, 404);
     const status = ['Available', 'Out of Stock', 'Disabled'].includes(b.status) ? b.status : v.status;
+    if (status === 'Available' && !(await ensureVariationOptionLinks(e, pid, v))) return json({ error: 'Cannot mark variation Available: its option links do not match the current product options.' }, 409);
     const hasStock=b.stock!==undefined&&b.stock!==null&&b.stock!=='';
     const stock=hasStock?Math.max(0,Math.floor(Number(b.stock))):Number(v.stock||0);
     await e.DB.prepare(
@@ -316,10 +330,13 @@ async function handle(req, e) {
       now(), id
     ).run();
     if (Array.isArray(b.images)) {
-      await e.DB.prepare('DELETE FROM variation_images WHERE variation_id=?').bind(id).run();
-      for (let i = 0; i < Math.min(10, b.images.length); i++) await e.DB.prepare(
+      const images = [...new Set(b.images.map(x => clean(x, 2000)).filter(Boolean))].slice(0, 30);
+      const t = now();
+      const statements = [e.DB.prepare('DELETE FROM variation_images WHERE variation_id=?').bind(id)];
+      for (let i = 0; i < images.length; i++) statements.push(e.DB.prepare(
         'INSERT INTO variation_images(id,variation_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?)'
-      ).bind(crypto.randomUUID(), id, clean(b.images[i], 2000), i, now()).run();
+      ).bind(crypto.randomUUID(), id, images[i], i, t));
+      await e.DB.batch(statements);
     }
     return json({ ok: true, variation: await load(e, id) });
   }
