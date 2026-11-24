@@ -512,8 +512,14 @@ if(p==='/api/vendor/admin/products'&&(req.method==='GET'||req.method==='POST'||r
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const u=new URL(req.url),vid=clean(u.searchParams.get('vendor_id'),100);
 if(req.method==='GET'){
- const rows=(await q(e,`SELECT p.*,COALESCE(c.name,c2.name) category_name,COALESCE(c.slug,c2.slug) category_slug,COALESCE(p.category_id,c2.id) resolved_category_id,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN marketplace_categories c2 ON lower(trim(c2.name))=lower(trim(p.category)) LEFT JOIN vendors v ON v.id=p.vendor_id WHERE (?='' OR p.vendor_id=?) ORDER BY p.created_at DESC`,[vid||'',vid||''])).results||[];
- if(!rows.length)return json({products:[]});
+ const page=Math.max(1,Math.floor(Number(u.searchParams.get('page')||1)));
+ const limit=Math.max(10,Math.min(100,Math.floor(Number(u.searchParams.get('limit')||50))));
+ const search=clean(u.searchParams.get('search')||'',120);
+ const like='%'+search.replace(/[\\\\%_]/g,'\\\\$&')+'%';
+ const where="(?='' OR p.vendor_id=?) AND (?='' OR p.name LIKE ? ESCAPE '\\\\' OR COALESCE(p.sku,'') LIKE ? ESCAPE '\\\\')";
+ const count=Number((await one(e,'SELECT COUNT(*) n FROM products p WHERE '+where,[vid||'',vid||'',search,like,like]))?.n||0);
+ const rows=(await q(e,`SELECT p.*,COALESCE(c.name,c2.name) category_name,COALESCE(c.slug,c2.slug) category_slug,COALESCE(p.category_id,c2.id) resolved_category_id,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN marketplace_categories c2 ON lower(trim(c2.name))=lower(trim(p.category)) LEFT JOIN vendors v ON v.id=p.vendor_id WHERE ${where} ORDER BY p.created_at DESC,p.id DESC LIMIT ? OFFSET ?`,[vid||'',vid||'',search,like,like,limit,(page-1)*limit])).results||[];
+ if(!rows.length)return json({products:[],page,limit,total:count,pages:Math.max(1,Math.ceil(count/limit))});
  // Main Admin's all-products view only needs summary fields. Avoid loading every
  // product's variation and image tables in this unfiltered request.
  if(!vid){
@@ -522,7 +528,7 @@ if(req.method==='GET'){
    delete p0.resolved_category_id;
    p0.image_urls=p0.image_url?[p0.image_url]:[];
   }
-  return json({products:rows});
+  return json({products:rows,page,limit,total:count,pages:Math.max(1,Math.ceil(count/limit))});
  }
  const productIds=rows.map(x=>String(x.id));
  const productMap=new Map(rows.map(x=>[String(x.id),x]));
@@ -543,7 +549,7 @@ if(req.method==='GET'){
   }
  }catch{}
  for(const p0 of rows)p0.image_urls=[...new Set(p0.image_urls.map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10);
- return json({products:rows});
+ return json({products:rows,page,limit,total:count,pages:Math.max(1,Math.ceil(count/limit))});
 }
 let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)}
 const productId=clean(b.id,100);
