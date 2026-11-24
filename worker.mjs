@@ -775,7 +775,7 @@ for(const item of items){
    statements.push(env.DB.prepare("UPDATE product_variations SET stock=stock-?,updated_at=? WHERE id=? AND product_id=? AND status='Available' AND lower(COALESCE(stock_mode,'untracked'))='tracked' AND stock>=?")
     .bind(item.quantity,t,String(item.variation_id),String(item.product_id),item.quantity));
   }else{
-   statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) SELECT ?,CASE WHEN EXISTS(SELECT 1 FROM product_variations WHERE id=? AND product_id=? AND status='Available' AND lower(COALESCE(stock_mode,'untracked'))!='tracked') THEN 1 ELSE 0 END ON CONFLICT(id) DO UPDATE SET ok=excluded.ok")
+   statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) VALUES(?,CASE WHEN EXISTS(SELECT 1 FROM product_variations WHERE id=? AND product_id=? AND status='Available' AND lower(COALESCE(stock_mode,'untracked'))!='tracked') THEN 1 ELSE 0 END) ON CONFLICT(id) DO UPDATE SET ok=excluded.ok")
     .bind(id+":check",String(item.variation_id),String(item.product_id)));
   }
   if(tracked)addWriteGuard();
@@ -790,7 +790,7 @@ for(const item of items){
   statements.push(env.DB.prepare("INSERT INTO order_inventory_movements(id,order_id,order_item_id,product_id,variation_id,quantity,movement_type,created_at) VALUES(?,?,?,?,?,?,?,?)")
    .bind(crypto.randomUUID(),id,String(item.id),String(item.product_id),null,Number(item.quantity),"sale",t));
  }else{
-  statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) SELECT ?,CASE WHEN EXISTS(SELECT 1 FROM products WHERE id=? AND published=1 AND COALESCE(stock_mode,'untracked')!='tracked') THEN 1 ELSE 0 END ON CONFLICT(id) DO UPDATE SET ok=excluded.ok")
+  statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) VALUES(?,CASE WHEN EXISTS(SELECT 1 FROM products WHERE id=? AND published=1 AND COALESCE(stock_mode,'untracked')!='tracked') THEN 1 ELSE 0 END) ON CONFLICT(id) DO UPDATE SET ok=excluded.ok")
    .bind(id+":check",String(item.product_id)));
  }
 }
