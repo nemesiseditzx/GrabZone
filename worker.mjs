@@ -755,7 +755,7 @@ for(let index=0;index<allocationRows.length;index++){
  let lineReferralDiscount=0;
  if(referralEligible&&lineSubtotal>0&&referralEligibleSubtotal>0){
   lineReferralDiscount=index===lastReferralIndex
-   ?Math.max(0,Math.round((allocatableReferralDiscount-allocatedReferralDiscount)*100)/100)
+   ?Math.min(lineSubtotal,Math.max(0,Math.round((allocatableReferralDiscount-allocatedReferralDiscount)*100)/100))
    :Math.min(lineSubtotal,Math.round((allocatableReferralDiscount*lineSubtotal/referralEligibleSubtotal)*100)/100);
   allocatedReferralDiscount+=lineReferralDiscount;
  }
