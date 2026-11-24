@@ -101,3 +101,30 @@ test('vendor product editor loads bounded pages and exposes next/previous naviga
   assert.match(source, /gzFpmNext/);
   assert.match(source, /Page '\+currentPage\+' of '\+totalPages/);
 });
+
+
+test('vendor product deletion removes dependent variation and option rows in one atomic batch', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf("if(p==='/api/vendor/admin/products'");
+  const end = source.indexOf("if(p==='/api/vendor/admin/order-delete'", start);
+  const route = source.slice(start, end);
+  const deletion = route.slice(route.indexOf("if(req.method==='DELETE')"), route.indexOf("if(req.method==='PATCH')"));
+  assert.match(deletion, /await e\.DB\.batch\(statements\)/);
+  for (const table of ['variation_images','variation_options','product_variations','option_values','product_options','product_images','vendor_product_images','products']) {
+    assert.match(deletion, new RegExp('DELETE FROM ' + table));
+  }
+  assert.doesNotMatch(deletion, /\.run\(\)\.catch/);
+});
+
+test('vendor variation DELETE accepts an empty request body while enforcing vendor ownership', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-system-v2.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /req\.method!=='DELETE'&&!parsed/);
+  assert.match(source, /productOwner\(e,pid,u\.vendor_id\)/);
+  assert.match(source, /if\(req\.method==='DELETE'\)/);
+});
