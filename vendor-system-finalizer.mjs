@@ -7,15 +7,27 @@ async function one(e,s,p=[]){return(await q(e,s,p)).results?.[0]||null}
 async function sha(v){return[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v))))].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function cookie(r,n){for(const p of(r.headers.get('Cookie')||'').split(';')){const a=p.trim().split('=');if(a[0]===n)return decodeURIComponent(a.slice(1).join('='))}return ''}
 async function vendor(r,e){const t=cookie(r,'gz_vendor_session')||(r.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!t)return null;return one(e,"SELECT vu.id,vu.vendor_id,vu.email,vu.role,v.slug,v.brand_name FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active' LIMIT 1",[await sha(t),now()])}
+let vendorOrderTablesPromise;
 async function ensureVendorOrderTables(e){
- await e.DB.prepare("CREATE TABLE IF NOT EXISTS order_inventory_movements(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT NOT NULL,variation_id TEXT,quantity INTEGER NOT NULL,movement_type TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(order_item_id,movement_type))").run();
- await e.DB.prepare("CREATE INDEX IF NOT EXISTS order_inventory_movements_order_idx ON order_inventory_movements(order_id,movement_type)").run();
- await e.DB.prepare("CREATE TABLE IF NOT EXISTS checkout_write_assertions(id TEXT PRIMARY KEY,ok INTEGER NOT NULL CHECK(ok=1))").run();
- await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
- await e.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN vendor_notified_at TEXT").run().catch(()=>{});
- await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT)").run().catch(()=>{});
+ if(vendorOrderTablesPromise)return vendorOrderTablesPromise;
+ vendorOrderTablesPromise=(async()=>{
+  await e.DB.prepare("CREATE TABLE IF NOT EXISTS order_inventory_movements(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT NOT NULL,variation_id TEXT,quantity INTEGER NOT NULL,movement_type TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(order_item_id,movement_type))").run();
+  await e.DB.prepare("CREATE INDEX IF NOT EXISTS order_inventory_movements_order_idx ON order_inventory_movements(order_id,movement_type)").run();
+  await e.DB.prepare("CREATE TABLE IF NOT EXISTS checkout_write_assertions(id TEXT PRIMARY KEY,ok INTEGER NOT NULL CHECK(ok=1))").run();
+  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
+  await e.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN vendor_notified_at TEXT").run().catch(()=>{});
+  await e.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT)").run().catch(()=>{});
+ })().catch(err=>{vendorOrderTablesPromise=null;throw err});
+ return vendorOrderTablesPromise;
 }
-async function schema(e){for(const sql of ["ALTER TABLE order_items ADD COLUMN variation_id TEXT","ALTER TABLE order_items ADD COLUMN variation_options TEXT","ALTER TABLE order_items ADD COLUMN variation_sku TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT","ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'","ALTER TABLE shipments ADD COLUMN customer_notified_at TEXT","CREATE INDEX IF NOT EXISTS order_items_variation_idx ON order_items(variation_id)","CREATE INDEX IF NOT EXISTS vendor_order_items_variation_idx ON vendor_order_items(variation_id)"])await e.DB.prepare(sql).run().catch(()=>{});}
+let vendorFinalizerSchemaPromise;
+async function schema(e){
+ if(vendorFinalizerSchemaPromise)return vendorFinalizerSchemaPromise;
+ vendorFinalizerSchemaPromise=(async()=>{
+  for(const sql of ["ALTER TABLE order_items ADD COLUMN variation_id TEXT","ALTER TABLE order_items ADD COLUMN variation_options TEXT","ALTER TABLE order_items ADD COLUMN variation_sku TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT","ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT","ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'","ALTER TABLE shipments ADD COLUMN customer_notified_at TEXT","CREATE INDEX IF NOT EXISTS order_items_variation_idx ON order_items(variation_id)","CREATE INDEX IF NOT EXISTS vendor_order_items_variation_idx ON vendor_order_items(variation_id)"])await e.DB.prepare(sql).run().catch(()=>{});
+ })().catch(err=>{vendorFinalizerSchemaPromise=null;throw err});
+ return vendorFinalizerSchemaPromise;
+}
 function qty(x){return Math.max(1,Math.floor(Number(x||1)))}
 async function reserveInventory(e,items){
  const held=[];
