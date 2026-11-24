@@ -58,8 +58,14 @@ async function schema(e) {
     const columns = (await e.DB.prepare("PRAGMA table_info(product_variations)").all()).results || [];
     const names = new Set(columns.map(column => String(column.name)));
     const migrations = [];
-    if (!names.has('options_key')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN options_key TEXT"));
+    if (!names.has('options_key')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN options_key TEXT NOT NULL DEFAULT ''"));
     if (!names.has('stock_mode')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'"));
+    if (!names.has('low_stock_threshold')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 5"));
+    if (!names.has('regular_price')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0"));
+    if (!names.has('sale_price')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN sale_price REAL"));
+    if (!names.has('old_price')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN old_price REAL"));
+    if (!names.has('min_qty')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1"));
+    if (!names.has('max_qty')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN max_qty INTEGER"));
     if (migrations.length) await e.DB.batch(migrations);
 
     const t = now();
