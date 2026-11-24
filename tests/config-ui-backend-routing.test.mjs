@@ -213,3 +213,18 @@ test('admin vendor list uses aggregated counts instead of per-vendor D1 query lo
   assert.doesNotMatch(route, /for\(const v of vs\)/);
   assert.doesNotMatch(route, /SELECT COUNT\(\*\) n FROM products WHERE vendor_id=\?/);
 });
+
+
+test('switching a product to simple disables legacy variations without deleting their history', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf('async function saveVariations(');
+  const end = source.indexOf("if(p==='/api/vendor/admin/order-delete'", start);
+  const fn = source.slice(start, end);
+  assert.match(fn, /if\(rows\.length===0\)/);
+  assert.match(fn, /UPDATE product_variations SET status='Disabled'/);
+  assert.match(fn, /await e\.DB\.batch\(\[/);
+  assert.doesNotMatch(fn, /DELETE FROM product_variations/);
+});
