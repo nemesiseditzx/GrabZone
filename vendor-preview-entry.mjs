@@ -133,4 +133,4 @@ export default{fetch:async(req,env,ctx)=>{try{
     return new Response(html,{status:response.status,statusText:response.statusText,headers:h});
   }
   return response;
-}catch(err){return json({error:err?.message||'Vendor preview failed'},500)}}};
+}catch(err){console.error('Vendor preview failed',err);return json({error:'Vendor preview failed'},500)}}};
