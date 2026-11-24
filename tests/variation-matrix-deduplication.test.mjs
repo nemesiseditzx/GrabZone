@@ -27,3 +27,14 @@ test('variation matrix treats missing legacy keys as rows to disable, not reusab
   assert.equal(byKey.get('Size=M').id, 'valid');
   assert.deepEqual([...duplicateIds].sort(), ['legacy-empty', 'legacy-null']);
 });
+
+test('regenerated combinations reactivate their existing disabled row', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../marketplace-admin-variations.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(
+    source,
+    /SET status=CASE WHEN status='Disabled' THEN 'Available' ELSE status END,updated_at=\?/,
+  );
+});
