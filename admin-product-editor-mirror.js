@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const MB=1024*1024,MAX=10,MAX_VARIATIONS=200;const VP_SIZES=['XS','S','M','L','XL','XXL','3XL'];
+const MB=1024*1024,MAX=30,MAX_VARIATIONS=200;const VP_SIZES=['XS','S','M','L','XL','XXL','3XL'];
 const VP_COLORS=['Black','White','Grey','Brown','Beige','Tan','Cream','Khaki','Off White','Charcoal Black','Light Grey','Camel','Charcoal Grey','Dark Grey','Bronze','Mauve Brown','Mustard Grey','Pale Grey','Peach Beige','Rust Brown','Red','Maroon','Deep Red','Crimson','Rust','Wine','Wine Maroon','Pink','Magenta','Rose','Peach','Light Pink','Mauve Pink','Coral Pink','Dusty Pink','Dusty Rose','Magenta Pink','Raspberry Pink','Purple','Lavender','Mauve','Plum','Deep Purple','Light Purple','Violet','Blue','Sky Blue','Navy Blue','Navy','Light Blue','Denim','Royal Blue','Steel Blue','Dark Navy','Light Blue Denim','Dark Blue Denim','Teal Blue','Cornflower Blue','Dark Teal Blue','Denim Blue','Light Denim Blue','Pale Blue','Slate Blue','Teal','Aqua','Mint Aqua','Teal Green','Aqua Green','Green','Olive','Olive Green','Sage Green','Dark Green','Mint','Mint Green','Sea Green','Light Green','Pale Sage','Lime Green','Pale Mint','Sage','Mint Pista','Yellow','Orange','Mustard','Gold','Mustard Yellow','Pale Yellow','Multi'];
 
 const $=s=>document.querySelector(s);
