@@ -694,6 +694,7 @@ if(fn==="rewards_admin_settings"){
  }
  if([gp,earn,value,mysteryEnabled,mysteryMin,mysteryMax].some(v=>v!==null)){
   await env.DB.prepare("UPDATE site_settings SET grabpoints_enabled=COALESCE(?,grabpoints_enabled),grabpoints_earn_rate=COALESCE(?,grabpoints_earn_rate),grabpoints_value=COALESCE(?,grabpoints_value),mystery_enabled=COALESCE(?,mystery_enabled),mystery_min_percent=COALESCE(?,mystery_min_percent),mystery_max_percent=COALESCE(?,mystery_max_percent),updated_at=? WHERE id=1").bind(gp,earn,value,mysteryEnabled,mysteryMin,mysteryMax,now()).run();
+  if(value!==null)await env.DB.prepare("UPDATE rewards_settings SET gp_value_bdt=?,updated_at=? WHERE id=1").bind(value,now()).run();
  }
  return{data:{ok:true}};
 }
