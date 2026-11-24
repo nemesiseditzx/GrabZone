@@ -110,6 +110,11 @@ test('checkout and vendor/admin workflows do not use native dialogs', () => {
   }
 });
 
+test('mixed vendor and GrabZone carts include both shipping components', () => {
+  assert.ok(worker.includes('if(!vendorIds.size||items.some(item=>!String(item.vendor_id||"").trim()))shipping+=shippingFallback'));
+  assert.ok(worker.includes('vendor?.shipping_fee??shippingFallback'));
+});
+
 test('referral discounts are based only on referral-eligible item subtotal', () => {
   assert.ok(worker.includes('const referralEligibleSubtotal=items.reduce'));
   assert.ok(worker.includes('Math.round(referralEligibleSubtotal*Number(r.benefit_value||0)/100*100)/100'));
