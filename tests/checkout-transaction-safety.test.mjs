@@ -61,10 +61,10 @@ test('checkout and vendor/admin workflows do not use native dialogs', () => {
   const vendorFinal = fs.readFileSync('vendor-system-final-ui.js', 'utf8');
   const vendorUI = fs.readFileSync('vendor-system-v2-ui.js', 'utf8');
   const adminVariationUI = fs.readFileSync('marketplace-admin-variations-ui.js', 'utf8');
-  assert.doesNotMatch(checkout, /window\\.confirm\\(/);
+  assert.doesNotMatch(checkout, /window\.confirm\(/);
   for (const source of [vendorFinal, vendorUI, adminVariationUI]) {
-    assert.doesNotMatch(source, /prompt\\(/);
-    assert.doesNotMatch(source, /alert\\(/);
+    assert.doesNotMatch(source, /prompt\(/);
+    assert.doesNotMatch(source, /alert\(/);
   }
 });
 
