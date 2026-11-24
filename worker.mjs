@@ -310,6 +310,7 @@ async function ensureVendorOrderTables(env){
   await env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 0").run().catch(()=>{});
   await env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0").run().catch(()=>{});
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT)").run().catch(()=>{});
+  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS vendor_orders_order_vendor_unique ON vendor_orders(order_id,vendor_id)").run().catch(err=>console.error("Vendor order uniqueness index unavailable",err));
 }
 async function ensureVendorCouponSchema(env){
  await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_coupons(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,code TEXT NOT NULL,discount_type TEXT NOT NULL DEFAULT 'fixed',discount_value REAL NOT NULL DEFAULT 0,min_order_amount REAL NOT NULL DEFAULT 0,max_discount_amount REAL,usage_limit INTEGER,used_count INTEGER NOT NULL DEFAULT 0,starts_at TEXT,expires_at TEXT,active INTEGER NOT NULL DEFAULT 1,note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
@@ -345,55 +346,72 @@ async function resolveVendorCoupon(env,code,items){
 async function routeOrderToVendors(env,orderId,items){
   await ensureVendorOrderTables(env);
   const groups=new Map();
-  for(const item of items){
-    const p=await q(env,"SELECT p.vendor_id,COALESCE(v.brand_name,v.business_name,v.slug,'GrabZone Vendor') vendor_name,v.email vendor_email,COALESCE(v.order_notification_email,'') notify_email,COALESCE(v.shipping_fee,130) shipping_fee,COALESCE(v.commission_type,'percentage') commission_type,COALESCE(v.commission_value,0) commission_value FROM products p LEFT JOIN vendors v ON v.id=p.vendor_id WHERE p.id=? LIMIT 1",[item.product_id]);
-    const row=p.results?.[0];
-    if(!row?.vendor_id)continue;
-    const vid=String(row.vendor_id);
-    if(!groups.has(vid))groups.set(vid,{vendor_id:vid,vendor_name:row.vendor_name,vendor_email:row.vendor_email||"",shipping_fee:Number(row.shipping_fee??130),commission_type:String(row.commission_type||'percentage'),commission_value:Number(row.commission_value||0),items:[]});
+  const vendorIds=[...new Set((items||[]).map(item=>String(item.vendor_id||"").trim()).filter(Boolean))];
+  const vendorMap=new Map();
+  for(let i=0;i<vendorIds.length;i+=90){
+    const chunk=vendorIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
+    const rows=(await q(env,`SELECT id,COALESCE(brand_name,business_name,slug,'GrabZone Vendor') vendor_name,email vendor_email,COALESCE(order_notification_email,'') notify_email,COALESCE(shipping_fee,130) shipping_fee,COALESCE(commission_type,'percentage') commission_type,COALESCE(commission_value,0) commission_value FROM vendors WHERE id IN (${marks})`,chunk)).results||[];
+    for(const row of rows)vendorMap.set(String(row.id),row);
+  }
+  for(const item of items||[]){
+    const vid=String(item.vendor_id||"").trim();
+    if(!vid)continue;
+    const row=vendorMap.get(vid);
+    if(!row)continue;
+    if(!groups.has(vid))groups.set(vid,{vendor_id:vid,vendor_name:row.vendor_name,vendor_email:row.vendor_email||"",notify_email:row.notify_email||"",shipping_fee:Number(row.shipping_fee??130),commission_type:String(row.commission_type||"percentage"),commission_value:Number(row.commission_value||0),items:[]});
     groups.get(vid).items.push(item);
   }
-  const orderNumber=(await q(env,"SELECT order_number FROM orders WHERE id=? LIMIT 1",[orderId])).results?.[0]?.order_number||orderId;
-  const orderCoupon=(await q(env,"SELECT vendor_coupon_code,vendor_coupon_vendor_id,vendor_coupon_discount FROM orders WHERE id=? LIMIT 1",[orderId])).results?.[0]||{};
-  const notifyList=[];
-   const voCols=new Set(((await q(env,"PRAGMA table_info(vendor_orders)")).results||[]).map(x=>x.name));
-  const viCols=new Set(((await q(env,"PRAGMA table_info(vendor_order_items)")).results||[]).map(x=>x.name));
-  for(const g of groups.values()){
-    const existing=await q(env,"SELECT id FROM vendor_orders WHERE order_id=? AND vendor_id=? LIMIT 1",[orderId,g.vendor_id]);
-    if(existing.results?.length){
-      // The vendor order already exists (created elsewhere on the checkout path).
-      // Queue the notification anyway so a previously failed send is retried; the
-      // notification log keeps a vendor who already received it from getting two.
-      const known=g.items.reduce((n,x)=>n+Number(x.line_total??Number(x.unit_price||0)*Number(x.quantity||1)),0);
-      const knownShip=Math.max(0,Number(g.shipping_fee??130));
-      const existingId=existing.results[0].id;
-      const discountAmount=String(orderCoupon.vendor_coupon_vendor_id||'')===String(g.vendor_id)?Math.min(known,Math.max(0,Number(orderCoupon.vendor_coupon_discount||0))):0;
-      const existingRow=await one(env,"SELECT commission_amount FROM vendor_orders WHERE id=? LIMIT 1",[existingId]);
-      const existingCommission=Number(existingRow?.commission_amount||0);
-      await env.DB.prepare("UPDATE vendor_orders SET discount_amount=?,coupon_code=?,vendor_earnings=?,delivery_charge=?,shipping_fee=?,updated_at=? WHERE id=?")
-        .bind(discountAmount,discountAmount?String(orderCoupon.vendor_coupon_code||""):null,Math.max(0,known-discountAmount-existingCommission),knownShip,knownShip,now(),existingId).run();
-      notifyList.push({vendorId:g.vendor_id,vendorName:g.vendor_name,recipient:String(g.notify_email||g.vendor_email||"").trim(),vendorOrderId:existingId,items:g.items,subtotal:known,discount:discountAmount,shipping:knownShip,total:Math.max(0,known-discountAmount)+knownShip});
-      continue;
-    }
-    const subtotal=g.items.reduce((n,x)=>n+Number(x.line_total??Number(x.unit_price||0)*Number(x.quantity||1)),0);
-    const discountAmount=String(orderCoupon.vendor_coupon_vendor_id||'')===String(g.vendor_id)?Math.min(subtotal,Math.max(0,Number(orderCoupon.vendor_coupon_discount||0))):0;
-    const commission=g.commission_type==="percentage"?Math.round(subtotal*Math.max(0,g.commission_value)/100*100)/100:Math.min(subtotal,Math.max(0,g.commission_value));
-    const vendorShipping=Math.max(0,Number(g.shipping_fee??130));
-    const vo={id:crypto.randomUUID(),order_id:orderId,vendor_id:g.vendor_id,subtotal,discount_amount:discountAmount,coupon_code:discountAmount?String(orderCoupon.vendor_coupon_code||""):null,commission_amount:commission,vendor_earnings:Math.max(0,subtotal-discountAmount-commission),shipping_fee:vendorShipping,delivery_charge:vendorShipping,status:"Processing",created_at:now(),updated_at:now()};
-    const fields=Object.keys(vo).filter(k=>voCols.has(k));
-    if(!fields.includes("id")||!fields.includes("order_id")||!fields.includes("vendor_id"))continue;
-    await env.DB.prepare("INSERT INTO vendor_orders("+fields.join(",")+") VALUES("+fields.map(()=>"?").join(",")+")").bind(...fields.map(k=>vo[k])).run();
-    for(const item of g.items){
-      const vi={id:crypto.randomUUID(),vendor_order_id:vo.id,order_item_id:item.id,product_id:item.product_id,quantity:Number(item.quantity||1),unit_price:Number(item.unit_price||0),line_total:Number(item.line_total??Number(item.unit_price||0)*Number(item.quantity||1)),variation_id:item.variation_id||null,variation_options:item.variation_options?JSON.stringify(item.variation_options):null,variation_sku:item.variation_sku||item.sku||null};
-      const fields2=Object.keys(vi).filter(k=>viCols.has(k));
-      if(!fields2.includes("id")||!fields2.includes("vendor_order_id")||!fields2.includes("order_item_id"))continue;
-      await env.DB.prepare("INSERT INTO vendor_order_items("+fields2.join(",")+") VALUES("+fields2.map(()=>"?").join(",")+")").bind(...fields2.map(k=>vi[k])).run();
-    }
-    notifyList.push({vendorId:g.vendor_id,vendorName:g.vendor_name,recipient:String(g.notify_email||g.vendor_email||"").trim(),vendorOrderId:vo.id,items:g.items,subtotal,discount:discountAmount,shipping:vendorShipping,total:Math.max(0,subtotal-discountAmount)+vendorShipping});
+  if(!groups.size)return;
+  const [meta,orderCoupon,voInfo,viInfo,existingRows]=await Promise.all([
+    one(env,"SELECT order_number,created_at,status,customer_name FROM orders WHERE id=? LIMIT 1",[orderId]),
+    one(env,"SELECT vendor_coupon_code,vendor_coupon_vendor_id,vendor_coupon_discount FROM orders WHERE id=? LIMIT 1",[orderId]),
+    q(env,"PRAGMA table_info(vendor_orders)"),
+    q(env,"PRAGMA table_info(vendor_order_items)"),
+    q(env,"SELECT id,vendor_id,commission_amount FROM vendor_orders WHERE order_id=?",[orderId])
+  ]);
+  const orderNumber=meta?.order_number||orderId;
+  const voCols=new Set((voInfo.results||[]).map(x=>x.name));
+  const viCols=new Set((viInfo.results||[]).map(x=>x.name));
+  const existingByVendor=new Map();
+  for(const row of existingRows.results||[])if(!existingByVendor.has(String(row.vendor_id)))existingByVendor.set(String(row.vendor_id),row);
+  const existingVendorOrderIds=[...existingByVendor.values()].map(row=>String(row.id));
+  const existingItemIds=new Set();
+  for(let i=0;i<existingVendorOrderIds.length;i+=90){
+    const chunk=existingVendorOrderIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
+    const rows=(await q(env,`SELECT order_item_id FROM vendor_order_items WHERE vendor_order_id IN (${marks})`,chunk)).results||[];
+    for(const row of rows)existingItemIds.add(String(row.order_item_id));
   }
+  const statements=[];
+  const notifyList=[];
+  for(const group of groups.values()){
+    const subtotal=group.items.reduce((sum,item)=>sum+Number(item.line_total??Number(item.unit_price||0)*Number(item.quantity||1)),0);
+    const discountAmount=String(orderCoupon?.vendor_coupon_vendor_id||"")===String(group.vendor_id)?Math.min(subtotal,Math.max(0,Number(orderCoupon?.vendor_coupon_discount||0))):0;
+    const existing=existingByVendor.get(String(group.vendor_id));
+    const vendorOrderId=existing?.id||crypto.randomUUID();
+    const vendorShipping=Math.max(0,Number(group.shipping_fee??130));
+    if(existing){
+      const commission=Number(existing.commission_amount||0);
+      statements.push(env.DB.prepare("UPDATE vendor_orders SET subtotal=?,discount_amount=?,coupon_code=?,vendor_earnings=?,delivery_charge=?,shipping_fee=?,updated_at=? WHERE id=?")
+        .bind(subtotal,discountAmount,discountAmount?String(orderCoupon?.vendor_coupon_code||""):null,Math.max(0,subtotal-discountAmount-commission),vendorShipping,vendorShipping,now(),vendorOrderId));
+    }else{
+      const commission=group.commission_type==="percentage"?Math.round(subtotal*Math.max(0,group.commission_value)/100*100)/100:Math.min(subtotal,Math.max(0,group.commission_value));
+      const row={id:vendorOrderId,order_id:orderId,vendor_id:group.vendor_id,subtotal,discount_amount:discountAmount,coupon_code:discountAmount?String(orderCoupon?.vendor_coupon_code||""):null,commission_amount:commission,vendor_earnings:Math.max(0,subtotal-discountAmount-commission),shipping_fee:vendorShipping,delivery_charge:vendorShipping,status:"Processing",created_at:now(),updated_at:now()};
+      const fields=Object.keys(row).filter(key=>voCols.has(key));
+      if(!fields.includes("id")||!fields.includes("order_id")||!fields.includes("vendor_id"))throw new Error("Vendor order schema is incomplete.");
+      statements.push(env.DB.prepare("INSERT INTO vendor_orders("+fields.join(",")+") VALUES("+fields.map(()=>"?").join(",")+")").bind(...fields.map(key=>row[key])));
+    }
+    for(const item of group.items){
+      if(existingItemIds.has(String(item.id)))continue;
+      const row={id:crypto.randomUUID(),vendor_order_id:vendorOrderId,order_item_id:item.id,product_id:item.product_id,quantity:Number(item.quantity||1),unit_price:Number(item.unit_price||0),line_total:Number(item.line_total??Number(item.unit_price||0)*Number(item.quantity||1)),variation_id:item.variation_id||null,variation_options:item.variation_options?JSON.stringify(item.variation_options):null,variation_sku:item.variation_sku||null};
+      const fields=Object.keys(row).filter(key=>viCols.has(key));
+      if(!fields.includes("id")||!fields.includes("vendor_order_id")||!fields.includes("order_item_id"))throw new Error("Vendor order item schema is incomplete.");
+      statements.push(env.DB.prepare("INSERT INTO vendor_order_items("+fields.join(",")+") VALUES("+fields.map(()=>"?").join(",")+")").bind(...fields.map(key=>row[key])));
+    }
+    notifyList.push({vendorId:group.vendor_id,vendorName:group.vendor_name,recipient:String(group.notify_email||group.vendor_email||"").trim(),vendorOrderId,items:group.items,subtotal,discount:discountAmount,shipping:vendorShipping,total:Math.max(0,subtotal-discountAmount)+vendorShipping});
+  }
+  if(statements.length)await env.DB.batch(statements);
   if(notifyList.length){
-   const meta=(await q(env,"SELECT order_number,created_at,status,customer_name FROM orders WHERE id=? LIMIT 1",[orderId])).results?.[0]||{};
-   await notifyVendorsForOrder(env,{orderId,orderNumber:meta.order_number||orderNumber,placedAt:meta.created_at||now(),orderStatus:meta.status||"Confirmed",customerName:meta.customer_name||"",vendors:notifyList});
+    await notifyVendorsForOrder(env,{orderId,orderNumber,placedAt:meta?.created_at||now(),orderStatus:meta?.status||"Confirmed",customerName:meta?.customer_name||"",vendors:notifyList});
   }
 }
 function referralCookie(req){const raw=req.headers.get("Cookie")||"";for(const p of raw.split(";")){const x=p.trim().split("=");if(x[0]==="gz_referral_session")return decodeURIComponent(x.slice(1).join("="))}return ""}
