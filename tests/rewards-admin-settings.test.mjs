@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const worker = fs.readFileSync('worker.mjs', 'utf8');
 const admin = fs.readFileSync('admin.js', 'utf8');
+const rewardsAdmin = fs.readFileSync('rewards-admin.js', 'utf8');
 const html = fs.readFileSync('admin.html', 'utf8');
 
 test('membership tier settings validate and batch-save thresholds and cashback rates', () => {
@@ -13,15 +14,16 @@ test('membership tier settings validate and batch-save thresholds and cashback r
   assert.ok(worker.includes('Each higher membership tier must require more qualifying GP.'));
   assert.ok(worker.includes('env.DB.batch(current.map(row=>'));
   assert.ok(worker.includes('cashback_percent=?'));
+  assert.ok(worker.includes('benefits=?,updated_at=? WHERE tier=?'));
 });
 
-test('admin growth panel exposes editable membership thresholds and cashback', () => {
-  assert.ok(html.includes('id="growthTierEditor"'));
-  assert.ok(html.includes('gzSaveGrowthTiers()'));
-  assert.ok(html.includes('Historical orders and previously earned points are not recalculated'));
-  assert.ok(admin.includes('data-tier-min'));
-  assert.ok(admin.includes('data-tier-cashback'));
-  assert.ok(admin.includes('async function gzSaveGrowthTiers()'));
+test('existing Points & Membership admin panel exposes editable thresholds, cashback and benefits', () => {
+  assert.ok(html.includes('id="tab-loyalty"'));
+  assert.ok(html.includes('Points & Membership'));
+  assert.ok(rewardsAdmin.includes('gzTierMin'));
+  assert.ok(rewardsAdmin.includes('gzTierDisc'));
+  assert.ok(rewardsAdmin.includes('gzTierBen'));
+  assert.ok(rewardsAdmin.includes('p_tiers:out'));
 });
 test('Mystery Deal admin controls persist to the same D1 settings read by checkout', () => {
   assert.ok(worker.includes('mystery_enabled,mystery_min_percent,mystery_max_percent FROM site_settings'));
