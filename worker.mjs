@@ -27,12 +27,9 @@ const D1_SCHEMA=["PRAGMA foreign_keys = ON","CREATE TABLE IF NOT EXISTS products
 "CREATE TABLE IF NOT EXISTS referral_profit_orders (id TEXT PRIMARY KEY,referral_code TEXT NOT NULL,order_id TEXT NOT NULL UNIQUE,order_number TEXT NOT NULL,order_amount REAL NOT NULL DEFAULT 0,eligible_revenue REAL NOT NULL DEFAULT 0,total_cost REAL NOT NULL DEFAULT 0,net_profit REAL NOT NULL DEFAULT 0,referral_percent REAL NOT NULL DEFAULT 50,referral_profit REAL NOT NULL DEFAULT 0,grabzone_profit REAL NOT NULL DEFAULT 0,cost_entered INTEGER NOT NULL DEFAULT 0,profit_status TEXT NOT NULL DEFAULT 'pending',payout_status TEXT NOT NULL DEFAULT 'unpaid',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS referral_profit_orders_code_idx ON referral_profit_orders(referral_code,created_at DESC)","CREATE INDEX IF NOT EXISTS referral_profit_orders_status_idx ON referral_profit_orders(referral_code,profit_status,payout_status,created_at DESC)","CREATE TABLE IF NOT EXISTS referral_profit_items (id TEXT PRIMARY KEY,referral_profit_order_id TEXT NOT NULL,order_item_id TEXT,product_id TEXT,product_name TEXT NOT NULL,quantity INTEGER NOT NULL DEFAULT 1,selling_revenue REAL NOT NULL DEFAULT 0,allocated_discount REAL NOT NULL DEFAULT 0,eligible_revenue REAL NOT NULL DEFAULT 0,unit_cost REAL NOT NULL DEFAULT 0,additional_cost REAL NOT NULL DEFAULT 0,total_cost REAL NOT NULL DEFAULT 0,net_profit REAL NOT NULL DEFAULT 0,created_at TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS referral_profit_items_order_idx ON referral_profit_items(referral_profit_order_id)","CREATE TABLE IF NOT EXISTS referral_portal_accounts (id TEXT PRIMARY KEY,email TEXT NOT NULL UNIQUE,name TEXT, password_hash TEXT,password_salt TEXT,active INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS referral_portal_accounts_active_idx ON referral_portal_accounts(active,created_at DESC)","CREATE INDEX IF NOT EXISTS referral_codes_admin_email_idx ON referral_codes(admin_email)","CREATE TABLE IF NOT EXISTS referral_portal_sessions (token_hash TEXT PRIMARY KEY,referral_code TEXT NOT NULL,account_id TEXT,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)","CREATE INDEX IF NOT EXISTS referral_portal_sessions_code_idx ON referral_portal_sessions(referral_code,expires_at)","CREATE TABLE IF NOT EXISTS referral_payouts (id TEXT PRIMARY KEY,referral_code TEXT NOT NULL,amount REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'paid',reference TEXT,note TEXT,created_at TEXT NOT NULL,paid_at TEXT)","CREATE INDEX IF NOT EXISTS referral_payouts_code_idx ON referral_payouts(referral_code,created_at DESC)","INSERT OR IGNORE INTO billboard_settings (id) VALUES (1)"];
 let schemaPromise=null;
 async function ensureShippingSetting(env){
-  await env.DB.prepare("ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 130").run().catch(()=>{});
-  const row=(await env.DB.prepare("SELECT global_shipping_fee FROM site_settings WHERE id=1 LIMIT 1").all()).results?.[0];
-  if(!row) await env.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee) VALUES(1,130)").run().catch(()=>{});
+  await env.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee) VALUES(1,130)").run().catch(()=>{});
 }
 async function getGlobalShipping(env){
-  await ensureShippingSetting(env);
   const row=(await env.DB.prepare("SELECT global_shipping_fee FROM site_settings WHERE id=1 LIMIT 1").all()).results?.[0];
   const fee=Number(row?.global_shipping_fee);
   return Number.isFinite(fee)&&fee>=0?fee:130;
@@ -40,23 +37,118 @@ async function getGlobalShipping(env){
 async function ensureSchema(env){
  if(!env.DB)throw new Error("Cloudflare D1 binding DB is missing.");
  if(!schemaPromise){
-  schemaPromise=(async()=>{for(const sql of D1_SCHEMA)await env.DB.prepare(sql).run();for(const sql of ["ALTER TABLE site_settings ADD COLUMN referral_profit_percent REAL NOT NULL DEFAULT 50","ALTER TABLE referral_codes ADD COLUMN portal_password_hash TEXT","ALTER TABLE referral_codes ADD COLUMN portal_password_salt TEXT","ALTER TABLE referral_codes ADD COLUMN portal_active INTEGER NOT NULL DEFAULT 1","ALTER TABLE referral_codes ADD COLUMN referral_profit_percent REAL NOT NULL DEFAULT 50","ALTER TABLE referral_profit_orders ADD COLUMN cost_entered INTEGER NOT NULL DEFAULT 0","ALTER TABLE referral_portal_sessions ADD COLUMN account_id TEXT","ALTER TABLE products ADD COLUMN flash_price REAL","ALTER TABLE products ADD COLUMN flash_starts_at TEXT","ALTER TABLE products ADD COLUMN flash_ends_at TEXT","ALTER TABLE products ADD COLUMN flash_enabled INTEGER NOT NULL DEFAULT 0","ALTER TABLE products ADD COLUMN stock INTEGER NOT NULL DEFAULT 0","ALTER TABLE products ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'","ALTER TABLE products ADD COLUMN vendor_id TEXT","ALTER TABLE products ADD COLUMN sku TEXT","ALTER TABLE products ADD COLUMN sale_price REAL","ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 5","ALTER TABLE products ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1","ALTER TABLE products ADD COLUMN max_qty INTEGER","ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'simple'","ALTER TABLE products ADD COLUMN category_id TEXT","ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0","ALTER TABLE product_variations ADD COLUMN old_price REAL","ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'","ALTER TABLE product_variations ADD COLUMN options_key TEXT","ALTER TABLE product_variations ADD COLUMN sale_price REAL","ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1","ALTER TABLE product_variations ADD COLUMN max_qty INTEGER","ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0"]){try{await env.DB.prepare(sql).run()}catch{}}await env.DB.prepare("UPDATE products SET stock_mode='tracked' WHERE stock_mode='untracked' AND COALESCE(stock,0)>0").run().catch(()=>{});for(const sql of ["ALTER TABLE product_reviews ADD COLUMN photo_url TEXT","ALTER TABLE products ADD COLUMN drop_enabled INTEGER NOT NULL DEFAULT 0","ALTER TABLE products ADD COLUMN drop_starts_at TEXT","ALTER TABLE products ADD COLUMN drop_ends_at TEXT"]){try{await env.DB.prepare(sql).run()}catch{}}for(const sql of ["ALTER TABLE site_settings ADD COLUMN billboard_animation INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN rewards_auth_animation INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN rewards_redeem_animation INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN rewards_redeem_sound INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN mobile_nav_animation INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN store_page_animation INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN cart_animation INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN modal_animation INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN micro_interactions INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN global_transitions INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN mystery_enabled INTEGER NOT NULL DEFAULT 0","ALTER TABLE site_settings ADD COLUMN mystery_min_percent REAL NOT NULL DEFAULT 5","ALTER TABLE site_settings ADD COLUMN mystery_max_percent REAL NOT NULL DEFAULT 15"]){try{await env.DB.prepare(sql).run()}catch{}}for(const sql of ["ALTER TABLE site_settings ADD COLUMN grabpoints_enabled INTEGER NOT NULL DEFAULT 1","ALTER TABLE site_settings ADD COLUMN grabpoints_earn_rate REAL NOT NULL DEFAULT 10","ALTER TABLE site_settings ADD COLUMN grabpoints_value REAL NOT NULL DEFAULT 0.1","ALTER TABLE rewards_settings ADD COLUMN referral_reward_points INTEGER NOT NULL DEFAULT 0","ALTER TABLE orders ADD COLUMN grabpoints_opt_in INTEGER NOT NULL DEFAULT 0","ALTER TABLE orders ADD COLUMN grabpoints_redeemed INTEGER NOT NULL DEFAULT 0","ALTER TABLE orders ADD COLUMN grabpoints_discount REAL NOT NULL DEFAULT 0","ALTER TABLE orders ADD COLUMN mystery_discount REAL NOT NULL DEFAULT 0"]){try{await env.DB.prepare(sql).run()}catch{}}
-   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_users(id TEXT PRIMARY KEY,email TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,password_salt TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run();
-   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_sessions(token_hash TEXT PRIMARY KEY,admin_user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)").run();
-   await env.DB.prepare("CREATE TABLE IF NOT EXISTS rewards_auth_config(id INTEGER PRIMARY KEY CHECK(id=1),secret TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run();
-   await env.DB.prepare("CREATE TABLE IF NOT EXISTS rewards_members(id TEXT PRIMARY KEY,member_id TEXT NOT NULL UNIQUE,name TEXT NOT NULL,phone TEXT NOT NULL UNIQUE,email TEXT NOT NULL UNIQUE,pin_hash TEXT NOT NULL,pin_salt TEXT NOT NULL,pin_encrypted TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'Active',tier_override TEXT,tier_override_reason TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,last_login_at TEXT)").run();
-   await env.DB.prepare("CREATE TABLE IF NOT EXISTS membership_tiers(tier TEXT PRIMARY KEY,min_points INTEGER NOT NULL,discount_percent REAL NOT NULL DEFAULT 0,cashback_percent REAL NOT NULL DEFAULT 0,benefits TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL)").run();
-   await env.DB.prepare("CREATE TABLE IF NOT EXISTS rewards_otp(id TEXT PRIMARY KEY,email TEXT NOT NULL,code_hash TEXT NOT NULL,expires_at TEXT NOT NULL,used INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)").run();
-   await env.DB.prepare("ALTER TABLE membership_tiers ADD COLUMN cashback_percent REAL NOT NULL DEFAULT 0").run().catch(()=>{});await env.DB.prepare("UPDATE membership_tiers SET cashback_percent=discount_percent WHERE cashback_percent=0 AND discount_percent>0").run().catch(()=>{});await env.DB.prepare("CREATE INDEX IF NOT EXISTS rewards_otp_email_idx ON rewards_otp(email,created_at DESC)").run();await env.DB.prepare("CREATE TABLE IF NOT EXISTS rewards_vouchers(code TEXT PRIMARY KEY,member_id TEXT NOT NULL,phone TEXT NOT NULL,email TEXT NOT NULL,points_redeemed INTEGER NOT NULL,value REAL NOT NULL,status TEXT NOT NULL DEFAULT 'UNUSED',expires_at TEXT NOT NULL,used_at TEXT,used_order_id TEXT,created_at TEXT NOT NULL)").run();await env.DB.prepare("CREATE INDEX IF NOT EXISTS rewards_vouchers_member_idx ON rewards_vouchers(member_id,created_at DESC)").run();await env.DB.prepare("CREATE INDEX IF NOT EXISTS rewards_vouchers_phone_idx ON rewards_vouchers(phone,status,expires_at)").run();await env.DB.prepare("CREATE INDEX IF NOT EXISTS rewards_vouchers_status_idx ON rewards_vouchers(status,expires_at)").run();
-   await env.DB.prepare("CREATE TABLE IF NOT EXISTS rewards_audit_log(id TEXT PRIMARY KEY,member_id TEXT,admin_id TEXT,action TEXT NOT NULL,reason TEXT,details TEXT,created_at TEXT NOT NULL)").run();
-   await env.DB.prepare("CREATE INDEX IF NOT EXISTS rewards_audit_member_idx ON rewards_audit_log(member_id,created_at DESC)").run();
-   await env.DB.prepare("ALTER TABLE grabpoints_ledger ADD COLUMN reference TEXT").run().catch(()=>{});
-   await env.DB.prepare("ALTER TABLE grabpoints_ledger ADD COLUMN reason TEXT").run().catch(()=>{});
-   await env.DB.prepare("ALTER TABLE grabpoints_ledger ADD COLUMN admin_id TEXT").run().catch(()=>{});
-   await env.DB.prepare("ALTER TABLE grabpoints_ledger ADD COLUMN balance_after INTEGER").run().catch(()=>{});await env.DB.prepare("ALTER TABLE grabpoints_ledger ADD COLUMN qualifying_points INTEGER NOT NULL DEFAULT 0").run().catch(()=>{});await env.DB.prepare("UPDATE grabpoints_ledger SET qualifying_points=points WHERE type='earn' AND qualifying_points=0").run().catch(()=>{});await env.DB.prepare("CREATE TABLE IF NOT EXISTS rewards_tx_guard(ok INTEGER PRIMARY KEY CHECK(ok=1))").run();await env.DB.prepare("UPDATE rewards_vouchers SET status='UNUSED',used_at=NULL,used_order_id=NULL WHERE status IN ('ACTIVE','USED') AND (used_order_id IS NULL OR NOT EXISTS (SELECT 1 FROM orders WHERE id=used_order_id))").run().catch(()=>{});await env.DB.prepare("ALTER TABLE orders ADD COLUMN rewards_voucher_code TEXT").run().catch(()=>{});await env.DB.prepare("ALTER TABLE orders ADD COLUMN rewards_voucher_discount REAL NOT NULL DEFAULT 0").run().catch(()=>{});
-   const tierNow=now();
-   await env.DB.prepare("INSERT OR IGNORE INTO membership_tiers(tier,min_points,discount_percent,cashback_percent,benefits,updated_at) VALUES('Member',0,1,1,'1% GrabPoints cashback on eligible product purchases; earn and redeem GrabPoints.',?),('Silver',500,2,2,'2% GrabPoints cashback on eligible product purchases; Silver member offers.',?),('Gold',2000,3,3,'3% GrabPoints cashback on eligible product purchases; Gold member offers; bonus GP campaigns.',?),('Platinum',5000,5,5,'5% GrabPoints cashback on eligible product purchases; Platinum member offers; exclusive promotions.',?)").bind(tierNow,tierNow,tierNow,tierNow).run();
-   await env.DB.prepare("UPDATE membership_tiers SET min_points=CASE tier WHEN 'Member' THEN 0 WHEN 'Silver' THEN 500 WHEN 'Gold' THEN 2000 WHEN 'Platinum' THEN 5000 ELSE min_points END,cashback_percent=CASE tier WHEN 'Member' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Gold' THEN 3 WHEN 'Platinum' THEN 5 ELSE cashback_percent END,discount_percent=CASE tier WHEN 'Member' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Gold' THEN 3 WHEN 'Platinum' THEN 5 ELSE discount_percent END,benefits=CASE tier WHEN 'Member' THEN '1% GrabPoints cashback on eligible product purchases; earn and redeem GrabPoints.' WHEN 'Silver' THEN '2% GrabPoints cashback on eligible product purchases; Silver member offers.' WHEN 'Gold' THEN '3% GrabPoints cashback on eligible product purchases; Gold member offers; bonus GP campaigns.' WHEN 'Platinum' THEN '5% GrabPoints cashback on eligible product purchases; Platinum member offers; exclusive promotions.' ELSE benefits END,updated_at=? WHERE (tier='Member' AND min_points=0 AND discount_percent=0) OR (tier='Silver' AND min_points=1000 AND discount_percent=2) OR (tier='Gold' AND min_points=5000 AND discount_percent=5) OR (tier='Platinum' AND min_points=15000 AND discount_percent=7)").bind(tierNow).run();
+  schemaPromise=(async()=>{
+   // D1 batches execute sequentially in one transaction and count as one
+   // Worker-to-D1 query, keeping cold-start schema work below the Free limit.
+   await env.DB.prepare(D1_SCHEMA[0]).run();
+   if(D1_SCHEMA.length>1)await env.DB.batch(D1_SCHEMA.slice(1).map(sql=>env.DB.prepare(sql)));
+
+   const extraSchema=[
+    "CREATE TABLE IF NOT EXISTS admin_users(id TEXT PRIMARY KEY,email TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,password_salt TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS admin_sessions(token_hash TEXT PRIMARY KEY,admin_user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS rewards_auth_config(id INTEGER PRIMARY KEY CHECK(id=1),secret TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS rewards_members(id TEXT PRIMARY KEY,member_id TEXT NOT NULL UNIQUE,name TEXT NOT NULL,phone TEXT NOT NULL UNIQUE,email TEXT NOT NULL UNIQUE,pin_hash TEXT NOT NULL,pin_salt TEXT NOT NULL,pin_encrypted TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'Active',tier_override TEXT,tier_override_reason TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,last_login_at TEXT)",
+    "CREATE TABLE IF NOT EXISTS membership_tiers(tier TEXT PRIMARY KEY,min_points INTEGER NOT NULL,discount_percent REAL NOT NULL DEFAULT 0,cashback_percent REAL NOT NULL DEFAULT 0,benefits TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS rewards_otp(id TEXT PRIMARY KEY,email TEXT NOT NULL,code_hash TEXT NOT NULL,expires_at TEXT NOT NULL,used INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS rewards_otp_email_idx ON rewards_otp(email,created_at DESC)",
+    "CREATE TABLE IF NOT EXISTS rewards_vouchers(code TEXT PRIMARY KEY,member_id TEXT NOT NULL,phone TEXT NOT NULL,email TEXT NOT NULL,points_redeemed INTEGER NOT NULL,value REAL NOT NULL,status TEXT NOT NULL DEFAULT 'UNUSED',expires_at TEXT NOT NULL,used_at TEXT,used_order_id TEXT,created_at TEXT NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS rewards_vouchers_member_idx ON rewards_vouchers(member_id,created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS rewards_vouchers_phone_idx ON rewards_vouchers(phone,status,expires_at)",
+    "CREATE INDEX IF NOT EXISTS rewards_vouchers_status_idx ON rewards_vouchers(status,expires_at)",
+    "CREATE TABLE IF NOT EXISTS rewards_audit_log(id TEXT PRIMARY KEY,member_id TEXT,admin_id TEXT,action TEXT NOT NULL,reason TEXT,details TEXT,created_at TEXT NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS rewards_audit_member_idx ON rewards_audit_log(member_id,created_at DESC)",
+    "CREATE TABLE IF NOT EXISTS rewards_tx_guard(ok INTEGER PRIMARY KEY CHECK(ok=1))"
+   ];
+   await env.DB.batch(extraSchema.map(sql=>env.DB.prepare(sql)));
+
+   const migrations=[
+    ["site_settings","global_shipping_fee","ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 130"],
+    ["site_settings","referral_profit_percent","ALTER TABLE site_settings ADD COLUMN referral_profit_percent REAL NOT NULL DEFAULT 50"],
+    ["site_settings","billboard_animation","ALTER TABLE site_settings ADD COLUMN billboard_animation INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","rewards_auth_animation","ALTER TABLE site_settings ADD COLUMN rewards_auth_animation INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","rewards_redeem_animation","ALTER TABLE site_settings ADD COLUMN rewards_redeem_animation INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","rewards_redeem_sound","ALTER TABLE site_settings ADD COLUMN rewards_redeem_sound INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","mobile_nav_animation","ALTER TABLE site_settings ADD COLUMN mobile_nav_animation INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","store_page_animation","ALTER TABLE site_settings ADD COLUMN store_page_animation INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","cart_animation","ALTER TABLE site_settings ADD COLUMN cart_animation INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","modal_animation","ALTER TABLE site_settings ADD COLUMN modal_animation INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","micro_interactions","ALTER TABLE site_settings ADD COLUMN micro_interactions INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","global_transitions","ALTER TABLE site_settings ADD COLUMN global_transitions INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","mystery_enabled","ALTER TABLE site_settings ADD COLUMN mystery_enabled INTEGER NOT NULL DEFAULT 0"],
+    ["site_settings","mystery_min_percent","ALTER TABLE site_settings ADD COLUMN mystery_min_percent REAL NOT NULL DEFAULT 5"],
+    ["site_settings","mystery_max_percent","ALTER TABLE site_settings ADD COLUMN mystery_max_percent REAL NOT NULL DEFAULT 15"],
+    ["site_settings","grabpoints_enabled","ALTER TABLE site_settings ADD COLUMN grabpoints_enabled INTEGER NOT NULL DEFAULT 1"],
+    ["site_settings","grabpoints_earn_rate","ALTER TABLE site_settings ADD COLUMN grabpoints_earn_rate REAL NOT NULL DEFAULT 10"],
+    ["site_settings","grabpoints_value","ALTER TABLE site_settings ADD COLUMN grabpoints_value REAL NOT NULL DEFAULT 0.1"],
+    ["referral_codes","portal_password_hash","ALTER TABLE referral_codes ADD COLUMN portal_password_hash TEXT"],
+    ["referral_codes","portal_password_salt","ALTER TABLE referral_codes ADD COLUMN portal_password_salt TEXT"],
+    ["referral_codes","portal_active","ALTER TABLE referral_codes ADD COLUMN portal_active INTEGER NOT NULL DEFAULT 1"],
+    ["referral_codes","referral_profit_percent","ALTER TABLE referral_codes ADD COLUMN referral_profit_percent REAL NOT NULL DEFAULT 50"],
+    ["referral_profit_orders","cost_entered","ALTER TABLE referral_profit_orders ADD COLUMN cost_entered INTEGER NOT NULL DEFAULT 0"],
+    ["referral_portal_sessions","account_id","ALTER TABLE referral_portal_sessions ADD COLUMN account_id TEXT"],
+    ["products","flash_price","ALTER TABLE products ADD COLUMN flash_price REAL"],
+    ["products","flash_starts_at","ALTER TABLE products ADD COLUMN flash_starts_at TEXT"],
+    ["products","flash_ends_at","ALTER TABLE products ADD COLUMN flash_ends_at TEXT"],
+    ["products","flash_enabled","ALTER TABLE products ADD COLUMN flash_enabled INTEGER NOT NULL DEFAULT 0"],
+    ["products","stock","ALTER TABLE products ADD COLUMN stock INTEGER NOT NULL DEFAULT 0"],
+    ["products","stock_mode","ALTER TABLE products ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'"],
+    ["products","vendor_id","ALTER TABLE products ADD COLUMN vendor_id TEXT"],
+    ["products","sku","ALTER TABLE products ADD COLUMN sku TEXT"],
+    ["products","sale_price","ALTER TABLE products ADD COLUMN sale_price REAL"],
+    ["products","low_stock_threshold","ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 5"],
+    ["products","min_qty","ALTER TABLE products ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1"],
+    ["products","max_qty","ALTER TABLE products ADD COLUMN max_qty INTEGER"],
+    ["products","product_type","ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'simple'"],
+    ["products","category_id","ALTER TABLE products ADD COLUMN category_id TEXT"],
+    ["products","drop_enabled","ALTER TABLE products ADD COLUMN drop_enabled INTEGER NOT NULL DEFAULT 0"],
+    ["products","drop_starts_at","ALTER TABLE products ADD COLUMN drop_starts_at TEXT"],
+    ["products","drop_ends_at","ALTER TABLE products ADD COLUMN drop_ends_at TEXT"],
+    ["product_variations","regular_price","ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0"],
+    ["product_variations","old_price","ALTER TABLE product_variations ADD COLUMN old_price REAL"],
+    ["product_variations","stock_mode","ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'"],
+    ["product_variations","options_key","ALTER TABLE product_variations ADD COLUMN options_key TEXT"],
+    ["product_variations","sale_price","ALTER TABLE product_variations ADD COLUMN sale_price REAL"],
+    ["product_variations","min_qty","ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1"],
+    ["product_variations","max_qty","ALTER TABLE product_variations ADD COLUMN max_qty INTEGER"],
+    ["product_variations","low_stock_threshold","ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0"],
+    ["product_reviews","photo_url","ALTER TABLE product_reviews ADD COLUMN photo_url TEXT"],
+    ["rewards_settings","referral_reward_points","ALTER TABLE rewards_settings ADD COLUMN referral_reward_points INTEGER NOT NULL DEFAULT 0"],
+    ["orders","grabpoints_opt_in","ALTER TABLE orders ADD COLUMN grabpoints_opt_in INTEGER NOT NULL DEFAULT 0"],
+    ["orders","grabpoints_redeemed","ALTER TABLE orders ADD COLUMN grabpoints_redeemed INTEGER NOT NULL DEFAULT 0"],
+    ["orders","grabpoints_discount","ALTER TABLE orders ADD COLUMN grabpoints_discount REAL NOT NULL DEFAULT 0"],
+    ["orders","mystery_discount","ALTER TABLE orders ADD COLUMN mystery_discount REAL NOT NULL DEFAULT 0"],
+    ["orders","rewards_voucher_code","ALTER TABLE orders ADD COLUMN rewards_voucher_code TEXT"],
+    ["orders","rewards_voucher_discount","ALTER TABLE orders ADD COLUMN rewards_voucher_discount REAL NOT NULL DEFAULT 0"],
+    ["membership_tiers","cashback_percent","ALTER TABLE membership_tiers ADD COLUMN cashback_percent REAL NOT NULL DEFAULT 0"],
+    ["grabpoints_ledger","reference","ALTER TABLE grabpoints_ledger ADD COLUMN reference TEXT"],
+    ["grabpoints_ledger","reason","ALTER TABLE grabpoints_ledger ADD COLUMN reason TEXT"],
+    ["grabpoints_ledger","admin_id","ALTER TABLE grabpoints_ledger ADD COLUMN admin_id TEXT"],
+    ["grabpoints_ledger","balance_after","ALTER TABLE grabpoints_ledger ADD COLUMN balance_after INTEGER"],
+    ["grabpoints_ledger","qualifying_points","ALTER TABLE grabpoints_ledger ADD COLUMN qualifying_points INTEGER NOT NULL DEFAULT 0"]
+   ];
+   const tableNames=[...new Set(migrations.map(row=>row[0]))];
+   const tableInfo=await env.DB.batch(tableNames.map(table=>env.DB.prepare("PRAGMA table_info("+table+")")));
+   const columnsByTable=new Map();
+   for(let i=0;i<tableNames.length;i++){
+    columnsByTable.set(tableNames[i],new Set((tableInfo[i]?.results||[]).map(column=>String(column.name))));
+   }
+   const pendingMigrations=migrations.filter(([table,column])=>!columnsByTable.get(table)?.has(column)).map(row=>env.DB.prepare(row[2]));
+   if(pendingMigrations.length)await env.DB.batch(pendingMigrations);
+
+   const t=now();
+   const finalStatements=[
+    env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('products-stock-mode-backfill',?)").bind(t),
+    env.DB.prepare("UPDATE products SET stock_mode='tracked' WHERE stock_mode='untracked' AND COALESCE(stock,0)>0 AND changes()=1"),
+    env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('membership-cashback-backfill',?)").bind(t),
+    env.DB.prepare("UPDATE membership_tiers SET cashback_percent=discount_percent WHERE cashback_percent=0 AND discount_percent>0 AND changes()=1"),
+    env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('grabpoints-qualifying-backfill',?)").bind(t),
+    env.DB.prepare("UPDATE grabpoints_ledger SET qualifying_points=points WHERE type='earn' AND qualifying_points=0 AND changes()=1"),
+    env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('voucher-status-repair',?)").bind(t),
+    env.DB.prepare("UPDATE rewards_vouchers SET status='UNUSED',used_at=NULL,used_order_id=NULL WHERE status IN ('ACTIVE','USED') AND (used_order_id IS NULL OR NOT EXISTS (SELECT 1 FROM orders WHERE id=used_order_id)) AND changes()=1"),
+    env.DB.prepare("INSERT OR IGNORE INTO membership_tiers(tier,min_points,discount_percent,cashback_percent,benefits,updated_at) VALUES('Member',0,1,1,'1% GrabPoints cashback on eligible product purchases; earn and redeem GrabPoints.',?),('Silver',500,2,2,'2% GrabPoints cashback on eligible product purchases; Silver member offers.',?),('Gold',2000,3,3,'3% GrabPoints cashback on eligible product purchases; Gold member offers; bonus GP campaigns.',?),('Platinum',5000,5,5,'5% GrabPoints cashback on eligible product purchases; Platinum member offers; exclusive promotions.',?)").bind(t,t,t,t),
+    env.DB.prepare("UPDATE membership_tiers SET min_points=CASE tier WHEN 'Member' THEN 0 WHEN 'Silver' THEN 500 WHEN 'Gold' THEN 2000 WHEN 'Platinum' THEN 5000 ELSE min_points END,cashback_percent=CASE tier WHEN 'Member' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Gold' THEN 3 WHEN 'Platinum' THEN 5 ELSE cashback_percent END,discount_percent=CASE tier WHEN 'Member' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Gold' THEN 3 WHEN 'Platinum' THEN 5 ELSE discount_percent END,benefits=CASE tier WHEN 'Member' THEN '1% GrabPoints cashback on eligible product purchases; earn and redeem GrabPoints.' WHEN 'Silver' THEN '2% GrabPoints cashback on eligible product purchases; Silver member offers.' WHEN 'Gold' THEN '3% GrabPoints cashback on eligible product purchases; Gold member offers; bonus GP campaigns.' WHEN 'Platinum' THEN '5% GrabPoints cashback on eligible product purchases; Platinum member offers; exclusive promotions.' ELSE benefits END,updated_at=? WHERE (tier='Member' AND min_points=0 AND discount_percent=0) OR (tier='Silver' AND min_points=1000 AND discount_percent=2) OR (tier='Gold' AND min_points=5000 AND discount_percent=5) OR (tier='Platinum' AND min_points=15000 AND discount_percent=7)").bind(t)
+   ];
+   await env.DB.batch(finalStatements);
   })().catch(e=>{schemaPromise=null;throw e});
  }
  return schemaPromise;
