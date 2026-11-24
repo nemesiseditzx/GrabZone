@@ -25,6 +25,14 @@ test('referral reward reversals respect the original rolling tier window', () =>
   assert.ok(worker.includes('qualifyingReverse=Number.isFinite(referralEarnTime)&&referralEarnTime>=Date.now()-365*24*60*60*1000?-reward:0'));
 });
 
+test('Delivered rewards use a retryable processing marker without retroactively changing old orders', () => {
+  assert.ok(worker.includes('rewards_processed_at TEXT'));
+  assert.ok(worker.includes("delivered-rewards-legacy-mark"));
+  assert.ok(worker.includes("lower(status)='delivered' AND rewards_processed_at IS NULL"));
+  assert.ok(worker.includes('&&!previousOrder.rewards_processed_at'));
+  assert.ok(worker.includes("UPDATE orders SET rewards_processed_at=NULL WHERE id=?"));
+});
+
 test('Delivered cashback uses deterministic earning attempts and one atomic balance/allocation batch', () => {
   assert.ok(worker.includes('earnType="earn:order:"+String(previousOrder.id)+":"+(Number(earnState.attempts||0)+1)'));
   assert.ok(worker.includes('WHERE phone=? AND changes()=1'));
