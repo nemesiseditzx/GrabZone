@@ -111,3 +111,16 @@ test('vendor variation option labels reject ambiguous key delimiters and bound m
   assert.match(source, /keys\.some\(k=>k\.length>1000\)/);
   assert.match(source, /Default variation price must be a valid non-negative number/);
 });
+
+
+test('vendor schema setup retries failed D1 migrations instead of caching a false success', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-system-v2.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /async function applySchemaStatement\(e,sql\)/);
+  assert.match(source, /duplicate column name\|already exists/);
+  assert.match(source, /schemaPromise=null;console\.error\('Vendor variation schema initialization failed:'/);
+  assert.match(source, /CREATE TABLE IF NOT EXISTS vendor_product_images/);
+  assert.doesNotMatch(source.slice(source.indexOf('async function publicVariation'), source.indexOf('async function orderGuard')), /CREATE TABLE IF NOT EXISTS vendor_product_images/);
+});
