@@ -49,7 +49,7 @@ test('order, items, rewards, coupon claims and variation stock commit in one gua
   assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS checkout_write_assertions'));
   assert.ok(worker.includes('INSERT INTO checkout_write_assertions(id,ok) VALUES(?,changes())'));
   assert.ok(worker.includes('await env.DB.batch(statements)'));
-  assert.ok(worker.includes('DELETE FROM checkout_write_assertions WHERE id LIKE ?'));
+  assert.ok(worker.includes('DELETE FROM checkout_write_assertions WHERE id=?'));
   assert.ok(worker.includes("UPDATE product_variations SET stock=stock-?,updated_at=? WHERE id=? AND product_id=? AND status='Available' AND lower(COALESCE(stock_mode,'untracked'))='tracked' AND stock>=?"));
 });
 
