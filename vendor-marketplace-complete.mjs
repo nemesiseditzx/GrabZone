@@ -375,41 +375,62 @@ if(p==='/api/vendor/variations'){
  let b={};try{b=await req.json()}catch{return json({error:'Invalid JSON'},400)};
  if(req.method==='POST'){
   const os=(Array.isArray(b.options)?b.options:[]).map((o,i)=>({name:clean(o?.name,80),values:[...new Set((Array.isArray(o?.values)?o.values:[]).map(v=>clean(v,120)).filter(Boolean))],sort_order:i})).filter(o=>o.name&&o.values.length);
-  const seen=new Set();for(const o of os)if(seen.has(o.name.toLowerCase()))return json({error:'Option names must be unique.'},400);else seen.add(o.name.toLowerCase());
+  const seen=new Set();
+  for(const o of os){const normalized=o.name.toLocaleLowerCase();if(/[=|]/.test(o.name)||o.values.some(v=>/[=|]/.test(v)))return json({error:'Option names and values cannot contain = or |.'},400);if(seen.has(normalized))return json({error:'Option names must be unique.'},400);seen.add(normalized)}
   if(!os.length)return json({error:'Add at least one option with values.'},400);
-  let combos=[{}];for(const o of os){const next=[];for(const base of combos)for(const value of o.values)next.push({...base,[o.name]:value});combos=next}
-  if(combos.length>200)return json({error:'Maximum 200 generated variations per product.'},400);
-  const existing=(await q(e,'SELECT id,options_key FROM product_variations WHERE product_id=?',[pid])).results||[];
-  const oldBy=new Map(existing.map(x=>[x.options_key,x])),t=now();
-  const oldOpts=(await q(e,'SELECT id FROM product_options WHERE product_id=?',[pid])).results||[];
-  const oldIds=oldOpts.map(x=>x.id);
-  if(oldIds.length){
-   const ph=oldIds.map(()=>'?').join(',');
-   const oldVals=(await q(e,'SELECT id FROM option_values WHERE option_id IN ('+ph+')',oldIds)).results||[];
-   const valIds=oldVals.map(x=>x.id);
-   const oldVars=(await q(e,'SELECT id FROM product_variations WHERE product_id=?',[pid])).results||[];
-   for(const v of oldVars)await e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(v.id).run().catch(()=>{});
-   if(valIds.length)await e.DB.prepare('DELETE FROM option_values WHERE id IN ('+valIds.map(()=>'?').join(',')+')').bind(...valIds).run().catch(()=>{});
-   await e.DB.prepare('DELETE FROM product_options WHERE id IN ('+ph+')').bind(...oldIds).run().catch(()=>{});
+  let combos=[{}];
+  for(const o of os){if(combos.length*o.values.length>200)return json({error:'Maximum 200 generated variations per product.'},400);const next=[];for(const base of combos)for(const value of o.values)next.push({...base,[o.name]:value});combos=next}
+  const keys=combos.map(selected=>Object.entries(selected).sort((a,b)=>a[0].localeCompare(b[0])).map(([name,value])=>name+'='+value).join('|'));
+  if(keys.some(k=>!k||k.length>1000)||new Set(keys).size!==keys.length)return json({error:'Generated variation keys are invalid or duplicated.'},400);
+  const existing=(await q(e,'SELECT id,options_key,status,created_at FROM product_variations WHERE product_id=? ORDER BY created_at,id',[pid])).results||[];
+  const byKey=new Map(),duplicateIds=new Set();
+  for(const row of existing){
+   const key=String(row.options_key||'');if(!key){duplicateIds.add(row.id);continue}
+   const prior=byKey.get(key);if(!prior){byKey.set(key,row);continue}
+   const keep=row.status!=='Disabled'&&prior.status==='Disabled'?row:prior;
+   duplicateIds.add(keep===row?prior.id:row.id);byKey.set(key,keep);
   }
-  const optionIds=new Map();
+  const t=now(),statements=[];
+  statements.push(e.DB.prepare('DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)').bind(pid));
+  statements.push(e.DB.prepare('DELETE FROM option_values WHERE option_id IN (SELECT id FROM product_options WHERE product_id=?)').bind(pid));
+  statements.push(e.DB.prepare('DELETE FROM product_options WHERE product_id=?').bind(pid));
+  const optionValueMap=new Map();
   for(const o of os){
-   const oid=crypto.randomUUID();optionIds.set(o.name,oid);
-   await e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid,pid,o.name,o.sort_order,t,t).run();
-   for(let i=0;i<o.values.length;i++)await e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),oid,o.values[i],i,t,t).run();
+   const optionId=crypto.randomUUID();
+   statements.push(e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(optionId,pid,o.name,o.sort_order,t,t));
+   for(let i=0;i<o.values.length;i++){
+    const value=o.values[i],valueId=crypto.randomUUID();
+    optionValueMap.set(o.name+'\\u0000'+value,{option_id:optionId,value_id:valueId});
+    statements.push(e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(valueId,optionId,value,i,t,t));
+   }
   }
-  const optionRows=(await q(e,'SELECT po.id,po.name,ov.id value_id,ov.value FROM product_options po JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? ORDER BY po.sort_order,ov.sort_order',[pid])).results||[];
-  const map=new Map(optionRows.map(x=>[x.name+'\u0000'+x.value,{option_id:x.id,value_id:x.value_id}]));
   const keep=new Set();
-  for(const selected of combos){
-   const key=Object.entries(selected).sort((a,b)=>a[0].localeCompare(b[0])).map(([a,v])=>a+'='+v).join('|').slice(0,1000);keep.add(key);
-   const old=oldBy.get(key),id=old?.id||crypto.randomUUID();
-   if(old)await e.DB.prepare('UPDATE product_variations SET status=CASE WHEN status="Disabled" THEN "Available" ELSE status END,updated_at=? WHERE id=?').bind(t,id).run();
-   else await e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,pid,'',Number(owner.price||0),null,null,0,'untracked',5,'','Available',1,null,key,t,t).run();
-   for(const o of os){const m=map.get(o.name+'\u0000'+selected[o.name]);if(m)await e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(id,m.option_id,m.value_id).run();}
+  for(let i=0;i<combos.length;i++){
+   const selected=combos[i],key=keys[i];keep.add(key);
+   const old=byKey.get(key),id=old?.id||crypto.randomUUID();
+   if(old)statements.push(e.DB.prepare('UPDATE product_variations SET updated_at=? WHERE id=?').bind(t,id));
+   else statements.push(e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,pid,'',Number(owner.price||0),null,null,0,'untracked',5,'','Available',1,null,key,t,t));
+   for(const o of os){
+    const link=optionValueMap.get(o.name+'\\u0000'+selected[o.name]);
+    if(!link)return json({error:'Generated variation references an unknown option value.'},409);
+    statements.push(e.DB.prepare('INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(id,link.option_id,link.value_id));
+   }
   }
-  for(const x of existing)if(!keep.has(x.options_key))await e.DB.prepare('UPDATE product_variations SET status="Disabled",updated_at=? WHERE id=?').bind(t,x.id).run();
+  for(const old of existing)if(duplicateIds.has(old.id)||!keep.has(String(old.options_key||'')))statements.push(e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?").bind(t,old.id));
+  if(statements.length>900)return json({error:'This option matrix is too large for one safe database update. Reduce the number of option values.'},400);
+  await e.DB.batch(statements);
   const rows=(await q(e,"SELECT * FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at,id",[pid])).results||[];
+  const ids=rows.map(v=>String(v.id)),map=new Map(rows.map(v=>[String(v.id),v]));
+  for(const v of rows){v.options={};v.images=[]}
+  for(let offset=0;offset<ids.length;offset+=80){
+   const chunk=ids.slice(offset,offset+80),marks=chunk.map(()=>'?').join(',');
+   const [links,images]=await Promise.all([
+    q(e,'SELECT vo.variation_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id IN ('+marks+') ORDER BY vo.variation_id,po.sort_order,ov.sort_order',chunk),
+    q(e,'SELECT variation_id,image_url FROM variation_images WHERE variation_id IN ('+marks+') ORDER BY variation_id,sort_order,id',chunk)
+   ]);
+   for(const x of links.results||[]){const v=map.get(String(x.variation_id));if(v)v.options[x.name]=x.value}
+   for(const x of images.results||[]){const v=map.get(String(x.variation_id));if(v&&x.image_url)v.images.push(x.image_url)}
+  }
   return json({ok:true,count:combos.length,options:os,variations:rows});
  }
  if(req.method==='PATCH'){
