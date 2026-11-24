@@ -408,19 +408,27 @@ const body=upgraded?"<p>Congratulations! Your Rewards membership moved from <b>"
 await sendRewardsEmail(env,member.email,subject,title,body+rewardEmailTierCard(toTier),direction,false,toTier,member.name,member.member_id);
 return true;
 }
+let vendorOrderSchemaPromise;
 async function ensureVendorOrderTables(env){
-  await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,discount_amount REAL NOT NULL DEFAULT 0,coupon_code TEXT,shipping_fee REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
-  const vendorOrderColumns=(await env.DB.prepare("PRAGMA table_info(vendor_orders)").all()).results||[];
-  const vendorOrderColumnSet=new Set(vendorOrderColumns.map(column=>String(column.name)));
-  const vendorOrderMigrations=[];
-  if(!vendorOrderColumnSet.has("shipping_fee"))vendorOrderMigrations.push(env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 0"));
-  if(!vendorOrderColumnSet.has("delivery_charge"))vendorOrderMigrations.push(env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0"));
-  if(!vendorOrderColumnSet.has("discount_amount"))vendorOrderMigrations.push(env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0"));
-  if(!vendorOrderColumnSet.has("coupon_code"))vendorOrderMigrations.push(env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN coupon_code TEXT"));
-  if(vendorOrderMigrations.length)await env.DB.batch(vendorOrderMigrations);
-  await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT)").run().catch(()=>{});
-  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS vendor_orders_order_vendor_unique ON vendor_orders(order_id,vendor_id)").run().catch(err=>console.error("Vendor order uniqueness index unavailable",err));
-  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS vendor_order_items_order_item_unique ON vendor_order_items(order_item_id)").run().catch(err=>console.error("Vendor order item uniqueness index unavailable",err));
+ if(!vendorOrderSchemaPromise){
+  vendorOrderSchemaPromise=(async()=>{
+   await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_orders(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,vendor_id TEXT NOT NULL,subtotal REAL NOT NULL DEFAULT 0,discount_amount REAL NOT NULL DEFAULT 0,coupon_code TEXT,shipping_fee REAL NOT NULL DEFAULT 0,commission_amount REAL NOT NULL DEFAULT 0,vendor_earnings REAL NOT NULL DEFAULT 0,delivery_charge REAL NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'Processing',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT)")
+   ]);
+   const columns=(await env.DB.prepare("PRAGMA table_info(vendor_orders)").all()).results||[];
+   const names=new Set(columns.map(column=>String(column.name)));
+   const migrations=[];
+   if(!names.has("shipping_fee"))migrations.push(env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 0"));
+   if(!names.has("delivery_charge"))migrations.push(env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0"));
+   if(!names.has("discount_amount"))migrations.push(env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0"));
+   if(!names.has("coupon_code"))migrations.push(env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN coupon_code TEXT"));
+   if(migrations.length)await env.DB.batch(migrations);
+   await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS vendor_orders_order_vendor_unique ON vendor_orders(order_id,vendor_id)").run().catch(err=>console.error("Vendor order uniqueness index unavailable",err));
+   await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS vendor_order_items_order_item_unique ON vendor_order_items(order_item_id)").run().catch(err=>console.error("Vendor order item uniqueness index unavailable",err));
+  })().catch(err=>{vendorOrderSchemaPromise=null;throw err});
+ }
+ return vendorOrderSchemaPromise;
 }
 async function ensureVendorCouponSchema(env){await ensureSchema(env);}
 function vendorCouponCode(v){return String(v??'').trim().toUpperCase().slice(0,40).replace(/[^A-Z0-9_-]/g,'')}
