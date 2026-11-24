@@ -188,7 +188,7 @@ async function handle(req, e) {
       for (let i = 0; i < o.values.length; i++) {
         const value = o.values[i];
         const valueId = crypto.randomUUID();
-        optionValueMap.set(`${o.name}\\u0000${value}`, {
+        optionValueMap.set(`${o.name}\u0000${value}`, {
           option_id: oid,
           value_id: valueId
         });
@@ -217,7 +217,7 @@ async function handle(req, e) {
       }
 
       for (const o of os) {
-        const option = optionValueMap.get(`${o.name}\\u0000${selected[o.name]}`);
+        const option = optionValueMap.get(`${o.name}\u0000${selected[o.name]}`);
         if (!option) throw new Error('Generated variation references an unknown option value.');
         statements.push(e.DB.prepare(
           'INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)'
