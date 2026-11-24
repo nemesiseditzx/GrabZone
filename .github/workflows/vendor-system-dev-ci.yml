@@ -92,5 +92,7 @@ jobs:
           done
       - name: Run regression tests
         run: node --test tests/*.test.mjs
-      - name: Validate Worker bundle without deploying
-        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/grabzone-wrangler-dry-run
+      - name: Validate consolidated development Worker bundle
+        run: npx --yes wrangler@4 deploy --dry-run --config wrangler.marketplace-dev.jsonc --outdir /tmp/grabzone-marketplace-dev-dry-run
+      - name: Validate production config bundle without deploying
+        run: npx --yes wrangler@4 deploy --dry-run --config wrangler.jsonc --outdir /tmp/grabzone-wrangler-dry-run
