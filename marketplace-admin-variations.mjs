@@ -39,8 +39,28 @@ async function schema(e) {
       `CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`,
       `CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)`
     ]) await e.DB.prepare(sql).run().catch(() => {});
+    // Older installations may predate the generated matrix key. Add it before
+    // indexing so the repair works against both fresh and upgraded D1 schemas.
+    await e.DB.prepare("ALTER TABLE product_variations ADD COLUMN options_key TEXT").run().catch(() => {});
     await e.DB.prepare("ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'").run().catch(() => {});
     await e.DB.prepare("UPDATE product_variations SET stock_mode='tracked' WHERE stock_mode='untracked' AND (COALESCE(stock,0)>0 OR status='Out of Stock')").run().catch(() => {});
+    // Repair legacy duplicate active combinations before enforcing uniqueness.
+    // Keep one deterministic row per product/options key and disable extras.
+    await e.DB.prepare(`UPDATE product_variations
+      SET status='Disabled',updated_at=CURRENT_TIMESTAMP
+      WHERE id IN (
+        SELECT id FROM (
+          SELECT id,ROW_NUMBER() OVER (
+            PARTITION BY product_id,options_key ORDER BY created_at,id
+          ) AS duplicate_rank
+          FROM product_variations
+          WHERE status!='Disabled' AND options_key IS NOT NULL AND trim(options_key)!=''
+        )
+        WHERE duplicate_rank>1
+      )`).run().catch(() => {});
+    await e.DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS product_variations_active_options_key_unique
+      ON product_variations(product_id,options_key)
+      WHERE status!='Disabled' AND options_key IS NOT NULL AND options_key!=''`).run().catch(() => {});
   })().catch(err => { schemaPromise = null; throw err; });
   return schemaPromise;
 }
@@ -62,6 +82,27 @@ function combos(os) {
   }
   return r;
 }
+export function indexExistingVariations(rows) {
+  const ordered = [...(Array.isArray(rows) ? rows : [])].sort((a, b) => {
+    const aDisabled = String(a?.status || '').toLowerCase() === 'disabled' ? 1 : 0;
+    const bDisabled = String(b?.status || '').toLowerCase() === 'disabled' ? 1 : 0;
+    return aDisabled - bDisabled
+      || String(a?.created_at || '').localeCompare(String(b?.created_at || ''))
+      || String(a?.id || '').localeCompare(String(b?.id || ''));
+  });
+  const byKey = new Map();
+  const duplicateIds = new Set();
+  for (const row of ordered) {
+    const key = String(row?.options_key || '').trim();
+    if (!key || byKey.has(key)) {
+      if (row?.id) duplicateIds.add(row.id);
+      continue;
+    }
+    byKey.set(key, row);
+  }
+  return { byKey, duplicateIds };
+}
+
 function key(x) {
   return Object.entries(x).sort((a, b) => a[0].localeCompare(b[0]))
     .map(([a, b]) => `${a}=${b}`).join('|').slice(0, 1000);
@@ -122,8 +163,8 @@ async function handle(req, e) {
     if (rows.length > 200) return json({ error: 'Maximum 200 generated variations per product.' }, 400);
 
     const existing = (await q(e,
-      'SELECT id,options_key FROM product_variations WHERE product_id=?', [pid])).results || [];
-    const oldBy = new Map(existing.map(x => [x.options_key, x]));
+      'SELECT id,options_key,status,created_at FROM product_variations WHERE product_id=? ORDER BY created_at,id', [pid])).results || [];
+    const { byKey: oldBy, duplicateIds } = indexExistingVariations(existing);
     const t = now();
 
     // Replace only the option definitions for this product. Variation records are preserved by options_key.
@@ -181,7 +222,7 @@ async function handle(req, e) {
     }
 
     for (const x of existing) {
-      if (!keep.has(x.options_key)) await e.DB.prepare(
+      if (duplicateIds.has(x.id) || !keep.has(x.options_key)) await e.DB.prepare(
         "UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?"
       ).bind(t, x.id).run();
     }
