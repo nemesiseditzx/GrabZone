@@ -124,3 +124,43 @@ test('vendor schema setup retries failed D1 migrations instead of caching a fals
   assert.match(source, /CREATE TABLE IF NOT EXISTS vendor_product_images/);
   assert.doesNotMatch(source.slice(source.indexOf('async function publicVariation'), source.indexOf('async function orderGuard')), /CREATE TABLE IF NOT EXISTS vendor_product_images/);
 });
+
+
+test('complete vendor API replaces its variation matrix in one bounded D1 batch', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  const route = source.indexOf("if(p==='/api/vendor/variations')");
+  const start = source.indexOf("if(req.method==='POST'){", route);
+  const end = source.indexOf("if(req.method==='PATCH'){", start);
+  assert.ok(route >= 0 && start > route && end > start, 'complete vendor variation handlers exist');
+  const post = source.slice(start, end);
+  assert.match(post, /await e\.DB\.batch\(statements\)/);
+  assert.doesNotMatch(post, /\.run\(\)/);
+  assert.match(post, /DELETE FROM variation_options/);
+  assert.match(post, /DELETE FROM option_values/);
+  assert.match(post, /DELETE FROM product_options/);
+  assert.match(post, /duplicateIds\.has|duplicateIds/);
+  assert.match(post, /statements\.length>900/);
+});
+
+test('variation availability guards and image gallery writes are safe across all API handlers', async () => {
+  for (const file of ['vendor-system-v2.mjs', 'vendor-marketplace-complete.mjs', 'marketplace-admin-variations.mjs']) {
+    const source = (await import('node:fs')).readFileSync(new URL('../' + file, import.meta.url), 'utf8');
+    assert.match(source, /async function ensureVariationOptionLinks\(/, file);
+    assert.match(source, /Cannot mark variation Available: its option links do not match the current product options\./, file);
+    assert.match(source, /slice\(0, ?30\)/, file);
+  }
+});
+
+test('complete vendor variation schema setup is cached and retries actual D1 errors', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /const vendorVariationSchemaCache=new WeakMap\(\)/);
+  assert.match(source, /vendorVariationSchemaCache\.delete\(e\.DB\)/);
+  assert.match(source, /Vendor variation schema setup failed:/);
+  assert.doesNotMatch(source.slice(source.indexOf("if(p==='/api/vendor/variations')"), source.indexOf("if(p==='/api/vendor/profile')"), /\.run\(\)\.catch\(\(\)=>\{\}\)/);
+});
