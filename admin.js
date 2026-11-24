@@ -76,25 +76,24 @@ async function loadDashboardAnalytics(){
   if(msg)msg.textContent="Loading live analytics…";
   try{
     if(!sb)throw new Error("Database service is not configured.");
-    const [ordersResult,itemsResult,productsResult]=await Promise.all([
-      sb.from("orders").select("id,order_number,customer_name,email,phone,subtotal,total,status,created_at").order("created_at",{ascending:false}),
-      sb.from("order_items").select("order_id,product_name,quantity,unit_price,line_total"),
-      sb.from("products").select("id,name,price,published,created_at")
-    ]);
-    if(ordersResult.error)throw ordersResult.error;
-    if(itemsResult.error)throw itemsResult.error;
-    if(productsResult.error)throw productsResult.error;
-
-    const allOrders=Array.isArray(ordersResult.data)?ordersResult.data:[];
-    const allItems=Array.isArray(itemsResult.data)?itemsResult.data:[];
-    const products=Array.isArray(productsResult.data)?productsResult.data:[];
-
     const now=new Date();
     const cutoff=new Date(now.getTime()-29*24*60*60*1000);
-    const orders=allOrders.filter(o=>{
-      const d=new Date(o.created_at);
-      return !Number.isNaN(d.getTime())&&d>=cutoff;
-    });
+    // Keep dashboard reads bounded to the same 30-day reporting window shown
+    // by the KPIs. Fetch order items only for those recent, non-cancelled orders
+    // instead of scanning the complete order_items table on every dashboard load.
+    const ordersResult=await sb.from("orders")
+      .select("id,order_number,customer_name,email,phone,subtotal,total,status,created_at")
+      .gte("created_at",cutoff.toISOString())
+      .order("created_at",{ascending:false})
+      .limit(500);
+    if(ordersResult.error)throw ordersResult.error;
+    const orders=Array.isArray(ordersResult.data)?ordersResult.data:[];
+    const activeOrderIds=orders.filter(o=>o.status!=="Cancelled").map(o=>o.id).filter(Boolean);
+    const itemsResult=activeOrderIds.length
+      ?await sb.from("order_items").select("order_id,product_name,quantity,unit_price,line_total").in("order_id",activeOrderIds)
+      :{data:[],error:null};
+    if(itemsResult.error)throw itemsResult.error;
+    const allItems=Array.isArray(itemsResult.data)?itemsResult.data:[];
 
     const money=n=>"৳"+Number(n||0).toLocaleString("en-BD",{maximumFractionDigits:0});
     const statusList=["New","Contacting","Confirmed","Processing","Shipped","Delivered","Cancelled"];
