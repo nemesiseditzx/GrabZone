@@ -21,6 +21,9 @@ const files = [
   'marketplace-admin-wrapper.mjs',
   'vendor-preview-entry.mjs',
   'vendor-marketplace-enhancements.mjs',
+  'vendor-marketplace-complete.mjs',
+  'vendor-system-finalizer.mjs',
+  'vendor-marketplace-final.mjs',
 ];
 
 test('unexpected backend exceptions are not returned to API clients', () => {
