@@ -144,6 +144,8 @@ async function ensureSchema(env){
    const t=now();
    const finalStatements=[
     env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('products-stock-mode-backfill',?)").bind(t),
+    env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('variation-matrix-duplicate-repair',?)").bind(t),
+    env.DB.prepare("UPDATE product_variations SET status='Disabled' WHERE id IN (SELECT id FROM (SELECT id,ROW_NUMBER() OVER (PARTITION BY product_id,options_key ORDER BY created_at,id) AS duplicate_rank FROM product_variations WHERE status!='Disabled' AND options_key IS NOT NULL AND trim(options_key)!='') WHERE duplicate_rank>1) AND changes()=1"),
     env.DB.prepare("UPDATE products SET stock_mode='tracked' WHERE stock_mode='untracked' AND COALESCE(stock,0)>0 AND changes()=1"),
     env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('membership-cashback-backfill',?)").bind(t),
     env.DB.prepare("UPDATE membership_tiers SET cashback_percent=discount_percent WHERE cashback_percent=0 AND discount_percent>0 AND changes()=1"),
@@ -155,6 +157,7 @@ async function ensureSchema(env){
     env.DB.prepare("UPDATE membership_tiers SET min_points=CASE tier WHEN 'Member' THEN 0 WHEN 'Silver' THEN 500 WHEN 'Gold' THEN 2000 WHEN 'Platinum' THEN 5000 ELSE min_points END,cashback_percent=CASE tier WHEN 'Member' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Gold' THEN 3 WHEN 'Platinum' THEN 5 ELSE cashback_percent END,discount_percent=CASE tier WHEN 'Member' THEN 1 WHEN 'Silver' THEN 2 WHEN 'Gold' THEN 3 WHEN 'Platinum' THEN 5 ELSE discount_percent END,benefits=CASE tier WHEN 'Member' THEN '1% GrabPoints cashback on eligible product purchases; earn and redeem GrabPoints.' WHEN 'Silver' THEN '2% GrabPoints cashback on eligible product purchases; Silver member offers.' WHEN 'Gold' THEN '3% GrabPoints cashback on eligible product purchases; Gold member offers; bonus GP campaigns.' WHEN 'Platinum' THEN '5% GrabPoints cashback on eligible product purchases; Platinum member offers; exclusive promotions.' ELSE benefits END,updated_at=? WHERE (tier='Member' AND min_points=0 AND discount_percent=0) OR (tier='Silver' AND min_points=1000 AND discount_percent=2) OR (tier='Gold' AND min_points=5000 AND discount_percent=5) OR (tier='Platinum' AND min_points=15000 AND discount_percent=7)").bind(t)
    ];
    await env.DB.batch(finalStatements);
+   await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS product_variations_active_options_key_unique ON product_variations(product_id,options_key) WHERE status!='Disabled' AND options_key IS NOT NULL AND options_key!=''").run().catch(err=>console.error("Variation matrix uniqueness index unavailable",err));
   })().catch(e=>{schemaPromise=null;throw e});
  }
  return schemaPromise;
