@@ -27,6 +27,20 @@ test('checkout request key is stored with the order transaction and replay-safe'
   assert.ok(checkout.includes('sessionStorage.removeItem(CHECKOUT_REQUEST_KEY)'));
 });
 
+test('vendor order routing uses order snapshots and bulk D1 reads', () => {
+  const start = worker.indexOf('async function routeOrderToVendors');
+  const end = worker.indexOf('function referralCookie', start);
+  const route = worker.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.ok(route.includes('item.vendor_id'));
+  assert.ok(route.includes('FROM vendors WHERE id IN'));
+  assert.ok(route.includes('SELECT vendor_order_id,order_item_id FROM vendor_order_items WHERE vendor_order_id IN'));
+  assert.ok(route.includes('await env.DB.batch(statements)'));
+  assert.ok(route.includes('UPDATE vendor_order_items SET vendor_order_id=? WHERE order_item_id=?'));
+  assert.ok(worker.includes('vendor_orders_order_vendor_unique'));
+  assert.ok(worker.includes('vendor_order_items_order_item_unique'));
+});
+
 test('tracked variation stock is journaled and restored once on cancellation', () => {
   assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS order_inventory_movements'));
   assert.ok(worker.includes('UNIQUE(order_item_id,movement_type)'));
