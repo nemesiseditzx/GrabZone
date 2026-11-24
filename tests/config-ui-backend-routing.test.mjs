@@ -208,7 +208,7 @@ test('admin vendor list uses aggregated counts instead of per-vendor D1 query lo
   const end = source.indexOf("if(p.startsWith('/api/vendor/admin/vendors/')&&req.method==='DELETE')", start);
   const route = source.slice(start, end);
   assert.match(route, /GROUP BY vendor_id\) pc/);
-  assert.match(route, /GROUP BY vendor_id\) oc/);
+  assert.match(route, /GROUP BY vo\.vendor_id\) oc/);
   assert.match(route, /LEFT JOIN vendor_users vu/);
   assert.doesNotMatch(route, /for\(const v of vs\)/);
   assert.doesNotMatch(route, /SELECT COUNT\(\*\) n FROM products WHERE vendor_id=\?/);
