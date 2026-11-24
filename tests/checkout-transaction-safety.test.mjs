@@ -14,6 +14,15 @@ test('vendor marketplace schema setup is batched and default vendor backfill is 
   assert.ok(!vendorSchema.includes('for(const x of s)await env.DB.prepare(x).run()'));
 });
 
+test('Delivered cashback uses deterministic earning attempts and one atomic balance/allocation batch', () => {
+  assert.ok(worker.includes('earnType="earn:order:"+String(previousOrder.id)+":"+(Number(earnState.attempts||0)+1)'));
+  assert.ok(worker.includes('WHERE phone=? AND changes()=1'));
+  assert.ok(worker.includes('WHERE id=? AND changes()=1'));
+  assert.ok(worker.includes('const awardCommitted=Number(earnedBatch?.[0]?.meta?.changes||0)===1'));
+  assert.ok(worker.includes('let pts=0,rate=0,cashbackValue=0,eligibleSubtotal=0,tInfo=null,tierBefore=null'));
+  assert.ok(worker.includes('tierAfter.tier!==tierBefore'));
+});
+
 test('delivered cashback excludes all discounts and delivery from eligible spend', () => {
   assert.ok(worker.includes('previousOrder.grabpoints_discount'));
   assert.ok(worker.includes('previousOrder.rewards_voucher_discount'));
