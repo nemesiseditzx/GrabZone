@@ -690,7 +690,7 @@ if(fn==="rewards_admin_settings"){
  if(value!==null&&(!Number.isFinite(value)||value<=0))throw new Error("The value of 1 GP must be greater than zero.");
  if(mysteryEnabled!==null&&![0,1].includes(mysteryEnabled))throw new Error("Mystery Deal enabled must be ON or OFF.");
  if(mysteryMin!==null||mysteryMax!==null){
-  if(mysteryMin===null||mysteryMax===null||!Number.isFinite(mysteryMin)||!Number.isFinite(mysteryMax)||mysteryMin<0||mysteryMax>100||mysteryMin>mysteryMax)throw new Error("Enter a valid Mystery Deal range from 0% to 100%.");
+  if(mysteryMin===null||mysteryMax===null||!Number.isFinite(mysteryMin)||!Number.isFinite(mysteryMax)||mysteryMin<1||mysteryMax<1||mysteryMax>100||mysteryMin>mysteryMax)throw new Error("Enter a valid Mystery Deal range from 0% to 100%.");
  }
  if([gp,earn,value,mysteryEnabled,mysteryMin,mysteryMax].some(v=>v!==null)){
   await env.DB.prepare("UPDATE site_settings SET grabpoints_enabled=COALESCE(?,grabpoints_enabled),grabpoints_earn_rate=COALESCE(?,grabpoints_earn_rate),grabpoints_value=COALESCE(?,grabpoints_value),mystery_enabled=COALESCE(?,mystery_enabled),mystery_min_percent=COALESCE(?,mystery_min_percent),mystery_max_percent=COALESCE(?,mystery_max_percent),updated_at=? WHERE id=1").bind(gp,earn,value,mysteryEnabled,mysteryMin,mysteryMax,now()).run();
