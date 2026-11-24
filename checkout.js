@@ -6,6 +6,20 @@ const d1=window.grabzoneD1||null;
 
 const CART_KEY='grabzone_cart_v2';
 const BUY_NOW_KEY='grabzone_buy_now_v2';
+const CHECKOUT_REQUEST_KEY='grabzone_checkout_request_id_v1';
+function checkoutRequestId(){
+  try{
+    let key=sessionStorage.getItem(CHECKOUT_REQUEST_KEY)||'';
+    if(!/^[A-Za-z0-9_-]{16,100}$/.test(key)){
+      key=crypto.randomUUID?crypto.randomUUID():('gz_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2));
+      sessionStorage.setItem(CHECKOUT_REQUEST_KEY,key);
+    }
+    return key;
+  }catch{
+    return crypto.randomUUID?crypto.randomUUID():('gz_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2));
+  }
+}
+
 const currency=C.currency||'৳';
 let marketplaceShipping=0,shippingBreakdown=[],marketplaceProductsLoaded=false;
 async function loadMarketplaceShipping(){
@@ -496,6 +510,7 @@ async function submit(e){
   const b=$('placeOrderBtn');b.disabled=true;b.textContent='Placing order…';msg('');
   const shipping=shippingForLocation();
   const payload={
+    idempotency_key:checkoutRequestId(),
     customer_name:d.customer_name,email:d.email,phone:d.phone,division:d.division,
     district:d.district,upazila:d.upazila,address:d.address,
     referral_code:d.referral_code||null,vendor_coupon_code:vendorCouponState.code||null,rewards_voucher_code:d.rewards_voucher_code||null,payment_method:'Cash on Delivery',
@@ -523,6 +538,7 @@ async function submit(e){
     if(!privateTrackingId)throw new Error('Order was created, but the private Tracking ID could not be generated. Please contact GrabZone support.');
 
     localStorage.removeItem(CART_KEY);localStorage.removeItem(BUY_NOW_KEY);
+    try{sessionStorage.removeItem(CHECKOUT_REQUEST_KEY)}catch{}
     $('checkoutForm').hidden=true;$('checkoutSuccess').hidden=false;document.querySelector('.checkout-layout')?.classList.add('checkout-completed');const summaryCard=document.querySelector('.summary-card');if(summaryCard)summaryCard.hidden=true;
     $('successOrderNumber').textContent=order.order_number;
     $('successTrackingId').textContent=privateTrackingId;
