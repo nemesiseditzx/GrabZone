@@ -216,10 +216,10 @@ const productForm=(p={},isNew=false)=>{
    <label class="full">Description<textarea name="description" style="min-height:150px">${val(p.description)}</textarea></label>
   </div>
   <div class="gzmp-card gzmp-media-card">
-   <div class="gzmp-toolbar"><div><h3 class="gzmp-section-title">Product media</h3><p class="gzmp-section-sub">Upload up to 10 images. Every image must be 1 MB or smaller. Click an image to make it the main image.</p></div></div>
+   <div class="gzmp-toolbar"><div><h3 class="gzmp-section-title">Product media</h3><p class="gzmp-section-sub">Upload up to 30 images. Every image must be 1 MB or smaller. Click an image to make it the main image.</p></div></div>
    <div class="gzmp-media-preview" id="gzmpMediaPreview">No images selected</div>
    <label class="gzmp-upload-btn">▣ Choose up to 10 product images<input id="gzmpProductFiles" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label>
-   <div id="gzmpMediaNote" class="gzmp-note">Maximum 10 images · Maximum 1 MB per image.</div>
+   <div id="gzmpMediaNote" class="gzmp-note">Maximum 30 images · Maximum 1 MB per image.</div>
    <div id="gzmpMediaGallery" class="gzmp-media-gallery"></div>
    <input type="hidden" name="image_url" id="gzmpImageUrl" value="${val(p.image_url||existing[0]||'')}">
    <input type="hidden" name="image_urls" id="gzmpImageUrls" value="">
@@ -310,7 +310,7 @@ const openProductEditor=async(p={},isNew=true)=>{
    b.vendor_id=activeVendor;
    const files=adminMediaState.files;
    if(files.length){const uploaded=[];for(const file of files)uploaded.push(await uploadAdminImage(file,'product-image',activeVendor));adminMediaState.existing=uploaded;b.image_urls=uploaded;b.image_url=uploaded[adminMediaState.mainIndex]||uploaded[0]}
-   else{b.image_urls=adminMediaState.existing.slice(0,10);b.image_url=b.image_url||adminMediaState.existing[0]||''}
+   else{b.image_urls=adminMediaState.existing.slice(0,30);b.image_url=b.image_url||adminMediaState.existing[0]||''}
    b.price=Number(b.price||0);b.old_price=b.old_price===''?null:Number(b.old_price);b.published=b.published==='true';b.category_id=b.category_id||null;
    delete b.sale_price;delete b.stock;delete b.low_stock_threshold;delete b.min_qty;delete b.max_qty;
    if(b.product_type==='variable'){if(!adminVariationState.length)throw Error('Variable product needs generated variations. Add options and click Generate / Update Variations.');b.variations=adminVariationState}else b.variations=[];
@@ -322,7 +322,7 @@ const openProductEditor=async(p={},isNew=true)=>{
 };
 const handleAdminMediaFiles=()=>{
  const input=$('gzmpProductFiles');const files=[...(input?.files||[])];
- if(files.length>10){alert('Maximum 10 images per product.');input.value='';adminMediaState.files=[];renderAdminMedia();return}
+ if(files.length>30){alert('Maximum 30 images per product.');input.value='';adminMediaState.files=[];renderAdminMedia();return}
  const bad=files.find(f=>f.size>1024*1024||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));
  if(bad){alert(`${bad.name} is not a supported image or is larger than 1 MB.`);input.value='';adminMediaState.files=[];renderAdminMedia();return}
  adminMediaState.files=files;adminMediaState.mainIndex=0;renderAdminMedia();
@@ -331,7 +331,7 @@ const renderAdminMedia=()=>{
  const preview=$('gzmpMediaPreview'),gallery=$('gzmpMediaGallery'),note=$('gzmpMediaNote');if(!preview||!gallery)return;
  gallery.innerHTML='';
  const urls=adminMediaState.files.length?adminMediaState.files.map(f=>URL.createObjectURL(f)):adminMediaState.existing;
- if(!urls.length){preview.textContent='No images selected';note.textContent='Maximum 10 images · Maximum 1 MB per image.';return}
+ if(!urls.length){preview.textContent='No images selected';note.textContent='Maximum 30 images · Maximum 1 MB per image.';return}
  note.textContent=adminMediaState.files.length?adminMediaState.files.map((f,i)=>`${i===adminMediaState.mainIndex?'★ ':''}${f.name} (${Math.ceil(f.size/1024)} KB)`).join(' · '):`${urls.length} existing image${urls.length>1?'s':''}. Choose new files above to replace them.`;
  preview.innerHTML=`<img src="${esc(urls[adminMediaState.mainIndex]||urls[0])}" alt=""><span class="gzmp-main-label">MAIN IMAGE</span>`;
  urls.forEach((url,i)=>{const b=document.createElement('button');b.type='button';b.className='gzmp-media-thumb '+(i===adminMediaState.mainIndex?'main':'');b.title='Click to make main image';b.innerHTML=`<img src="${esc(url)}" alt="">`;b.onclick=()=>{adminMediaState.mainIndex=i;renderAdminMedia()};gallery.appendChild(b)});adminRenderVariations();
