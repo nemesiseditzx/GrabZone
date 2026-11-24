@@ -33,3 +33,16 @@ test('failed D1 setup is not cached and can be retried',async()=>{
   assert.equal(value,'recovered');
   assert.equal(calls,2);
 });
+
+
+test('shipping settings row initialization is cached per D1 binding and retries on failure', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../worker.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /const shippingSettingSetup=new WeakMap\(\)/);
+  assert.match(source, /shippingSettingSetup\.get\(env\.DB\)/);
+  assert.match(source, /shippingSettingSetup\.set\(env\.DB,setup\)/);
+  assert.match(source, /shippingSettingSetup\.delete\(env\.DB\)/);
+  assert.doesNotMatch(source, /INSERT OR IGNORE INTO site_settings\(id,global_shipping_fee\) VALUES\(1,130\)\"\)\.run\(\)\.catch/);
+});
