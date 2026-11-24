@@ -194,4 +194,4 @@ async function shipmentControl(req,e){
   return json({ok:true,shipment:await shipmentRow(e,sid),order_status:(await one(e,'SELECT status FROM orders WHERE id=?',[vo.order_id]))?.status||st});
 }
 
-export async function handleVendorAdminApi(req,e){try{return await orderData(req,e)||await shipmentControl(req,e)||await overview(req,e)||await orderStatus(req,e)||await products(req,e)||await categories(req,e)||await sections(req,e)}catch(err){return json({error:err?.message||'Vendor admin API failed'},500)}}
+export async function handleVendorAdminApi(req,e){try{return await orderData(req,e)||await shipmentControl(req,e)||await overview(req,e)||await orderStatus(req,e)||await products(req,e)||await categories(req,e)||await sections(req,e)}catch(err){console.error('Vendor admin API failed',err);return json({error:'Vendor admin API failed'},500)}}
