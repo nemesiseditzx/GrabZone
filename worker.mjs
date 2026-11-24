@@ -311,6 +311,7 @@ async function ensureVendorOrderTables(env){
   await env.DB.prepare("ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0").run().catch(()=>{});
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_order_items(id TEXT PRIMARY KEY,vendor_order_id TEXT NOT NULL,order_item_id TEXT NOT NULL,product_id TEXT,quantity INTEGER NOT NULL DEFAULT 1,unit_price REAL NOT NULL DEFAULT 0,line_total REAL NOT NULL DEFAULT 0,variation_id TEXT,variation_options TEXT,variation_sku TEXT)").run().catch(()=>{});
   await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS vendor_orders_order_vendor_unique ON vendor_orders(order_id,vendor_id)").run().catch(err=>console.error("Vendor order uniqueness index unavailable",err));
+  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS vendor_order_items_order_item_unique ON vendor_order_items(order_item_id)").run().catch(err=>console.error("Vendor order item uniqueness index unavailable",err));
 }
 async function ensureVendorCouponSchema(env){
  await env.DB.prepare("CREATE TABLE IF NOT EXISTS vendor_coupons(id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,code TEXT NOT NULL,discount_type TEXT NOT NULL DEFAULT 'fixed',discount_value REAL NOT NULL DEFAULT 0,min_order_amount REAL NOT NULL DEFAULT 0,max_discount_amount REAL,usage_limit INTEGER,used_count INTEGER NOT NULL DEFAULT 0,starts_at TEXT,expires_at TEXT,active INTEGER NOT NULL DEFAULT 1,note TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)").run().catch(()=>{});
@@ -375,11 +376,11 @@ async function routeOrderToVendors(env,orderId,items){
   const existingByVendor=new Map();
   for(const row of existingRows.results||[])if(!existingByVendor.has(String(row.vendor_id)))existingByVendor.set(String(row.vendor_id),row);
   const existingVendorOrderIds=[...existingByVendor.values()].map(row=>String(row.id));
-  const existingItemIds=new Set();
+  const existingItemVendorOrder=new Map();
   for(let i=0;i<existingVendorOrderIds.length;i+=90){
     const chunk=existingVendorOrderIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
-    const rows=(await q(env,`SELECT order_item_id FROM vendor_order_items WHERE vendor_order_id IN (${marks})`,chunk)).results||[];
-    for(const row of rows)existingItemIds.add(String(row.order_item_id));
+    const rows=(await q(env,`SELECT vendor_order_id,order_item_id FROM vendor_order_items WHERE vendor_order_id IN (${marks})`,chunk)).results||[];
+    for(const row of rows)if(!existingItemVendorOrder.has(String(row.order_item_id)))existingItemVendorOrder.set(String(row.order_item_id),String(row.vendor_order_id));
   }
   const statements=[];
   const notifyList=[];
@@ -401,7 +402,7 @@ async function routeOrderToVendors(env,orderId,items){
       statements.push(env.DB.prepare("INSERT INTO vendor_orders("+fields.join(",")+") VALUES("+fields.map(()=>"?").join(",")+")").bind(...fields.map(key=>row[key])));
     }
     for(const item of group.items){
-      if(existingItemIds.has(String(item.id)))continue;
+      if(existingItemVendorOrder.get(String(item.id))===String(vendorOrderId))continue;
       const row={id:crypto.randomUUID(),vendor_order_id:vendorOrderId,order_item_id:item.id,product_id:item.product_id,quantity:Number(item.quantity||1),unit_price:Number(item.unit_price||0),line_total:Number(item.line_total??Number(item.unit_price||0)*Number(item.quantity||1)),variation_id:item.variation_id||null,variation_options:item.variation_options?JSON.stringify(item.variation_options):null,variation_sku:item.variation_sku||null};
       const fields=Object.keys(row).filter(key=>viCols.has(key));
       if(!fields.includes("id")||!fields.includes("vendor_order_id")||!fields.includes("order_item_id"))throw new Error("Vendor order item schema is incomplete.");
