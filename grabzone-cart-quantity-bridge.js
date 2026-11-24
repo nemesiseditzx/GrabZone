@@ -66,8 +66,8 @@
         if(!product)return;
         const q=document.createElement('div');q.className='gz-checkout-qty';
         q.innerHTML='<button type="button" data-gz-dec>−</button><b>'+Number(product.quantity||1)+'</b><button type="button" data-gz-inc>+</button>';
-        q.querySelector('[data-gz-dec]').onclick=()=>changeCheckoutQty(product.product_id,-1);
-        q.querySelector('[data-gz-inc]').onclick=()=>changeCheckoutQty(product.product_id,1);
+        q.querySelector('[data-gz-dec]').onclick=()=>changeCheckoutQty({product_id:product.product_id,variation_id:product.variation_id},-1);
+        q.querySelector('[data-gz-inc]').onclick=()=>changeCheckoutQty({product_id:product.product_id,variation_id:product.variation_id},1);
         item.querySelector('.checkout-item-info')?.appendChild(q);
       });
     };
