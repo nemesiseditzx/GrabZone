@@ -108,6 +108,57 @@ function key(x) {
     .map(([a, b]) => `${a}=${b}`).join('|').slice(0, 1000);
 }
 async function product(e, id) { return one(e, 'SELECT * FROM products WHERE id=?', [id]); }
+async function hydrateProductOptions(e, options) {
+  const byId = new Map();
+  for (const option of options) {
+    option.values = [];
+    byId.set(String(option.id), option);
+  }
+  const ids = [...byId.keys()];
+  for (let i = 0; i < ids.length; i += 90) {
+    const chunk = ids.slice(i, i + 90);
+    const placeholders = chunk.map(() => '?').join(',');
+    const rows = (await q(e,
+      `SELECT * FROM option_values WHERE option_id IN (${placeholders}) ORDER BY sort_order,id`,
+      chunk)).results || [];
+    for (const row of rows) byId.get(String(row.option_id))?.values.push(row);
+  }
+}
+
+async function hydrateVariations(e, variations) {
+  const byId = new Map();
+  for (const variation of variations) {
+    variation.options = {};
+    variation.images = [];
+    byId.set(String(variation.id), variation);
+  }
+  const ids = [...byId.keys()];
+  for (let i = 0; i < ids.length; i += 90) {
+    const chunk = ids.slice(i, i + 90);
+    const placeholders = chunk.map(() => '?').join(',');
+    const optionRows = (await q(e,
+      `SELECT vo.variation_id,po.name,ov.value
+       FROM variation_options vo
+       JOIN product_options po ON po.id=vo.option_id
+       JOIN option_values ov ON ov.id=vo.option_value_id
+       WHERE vo.variation_id IN (${placeholders})
+       ORDER BY po.sort_order,ov.sort_order`,
+      chunk)).results || [];
+    for (const row of optionRows) {
+      const variation = byId.get(String(row.variation_id));
+      if (variation) variation.options[row.name] = row.value;
+    }
+    const imageRows = (await q(e,
+      `SELECT variation_id,image_url FROM variation_images
+       WHERE variation_id IN (${placeholders})
+       ORDER BY sort_order,id`,
+      chunk)).results || [];
+    for (const row of imageRows) {
+      byId.get(String(row.variation_id))?.images.push(row.image_url);
+    }
+  }
+}
+
 async function load(e, id) {
   const v = await one(e, 'SELECT * FROM product_variations WHERE id=?', [id]);
   if (!v) return null;
@@ -136,18 +187,10 @@ async function handle(req, e) {
     if (!productRow) return json({ error: 'Product not found.' }, 404);
     const options = (await q(e,
       'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id', [pid])).results || [];
-    for (const o of options) o.values = (await q(e,
-      'SELECT * FROM option_values WHERE option_id=? ORDER BY sort_order,id', [o.id])).results || [];
+    await hydrateProductOptions(e, options);
     const variations = (await q(e,
       'SELECT * FROM product_variations WHERE product_id=? AND status!=\'Disabled\' ORDER BY created_at', [pid])).results || [];
-    for (const v of variations) {
-      v.options = {};
-      for (const x of (await q(e,
-        'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=?',
-        [v.id])).results || []) v.options[x.name] = x.value;
-      v.images = (await q(e,
-        'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id', [v.id])).results?.map(x => x.image_url) || [];
-    }
+    await hydrateVariations(e, variations);
     return json({ product: productRow, enabled: options.length > 0 || variations.length > 0, options, variations });
   }
 
@@ -238,15 +281,7 @@ async function handle(req, e) {
     const generated = (await q(e,
       "SELECT * FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at,id",
       [pid])).results || [];
-    for (const v of generated) {
-      v.options = {};
-      for (const x of (await q(e,
-        'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',
-        [v.id])).results || []) v.options[x.name] = x.value;
-      v.images = (await q(e,
-        'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id',
-        [v.id])).results?.map(x => x.image_url) || [];
-    }
+    await hydrateVariations(e, generated);
     return json({ ok: true, count: rows.length, options: os, variations: generated });
   }
 
