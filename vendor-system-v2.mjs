@@ -77,15 +77,15 @@ async function hydrateOptionValues(e,options){
 }
 async function hydrateVariationRows(e,variations){
  const byId=new Map();
- for(const variation of variations){variation.options={};variation.images=[];byId.set(String(variation.id),variation)}
+ for(const variation of variations){variation.options={};variation.images=[];variation._optionLinks=[];byId.set(String(variation.id),variation)}
  const ids=[...byId.keys()];
  for(let i=0;i<ids.length;i+=80){
   const chunk=ids.slice(i,i+80),marks=chunk.map(()=>'?').join(',');
   const [links,images]=await Promise.all([
-   q(e,'SELECT vo.variation_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id IN ('+marks+') ORDER BY vo.variation_id,po.sort_order,ov.sort_order',chunk),
+   q(e,'SELECT vo.variation_id,vo.option_id,vo.option_value_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id IN ('+marks+') ORDER BY vo.variation_id,po.sort_order,ov.sort_order',chunk),
    q(e,'SELECT variation_id,image_url FROM variation_images WHERE variation_id IN ('+marks+') ORDER BY variation_id,sort_order,id',chunk)
   ]);
-  for(const row of links.results||[]){const variation=byId.get(String(row.variation_id));if(variation)variation.options[row.name]=row.value}
+  for(const row of links.results||[]){const variation=byId.get(String(row.variation_id));if(variation){variation.options[row.name]=row.value;variation._optionLinks.push({option_id:row.option_id,option_value_id:row.option_value_id,name:row.name,value:row.value})}}
   for(const row of images.results||[]){const variation=byId.get(String(row.variation_id));if(variation&&row.image_url)variation.images.push(row.image_url)}
  }
 }
@@ -99,7 +99,7 @@ async function variations(req,e){
  const u=await vendor(req,e);
  if(!u)return json({error:'Unauthorized'},401);
  await schema(e);
- const url=new URL(req.url);if(req.method==='GET'){const pid=clean(url.searchParams.get('product_id'),120);if(!pid)return json({error:'product_id is required.'},400);if(!(await productOwner(e,pid,u.vendor_id)))return json({error:'Product not found.'},404);const opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[pid])).results||[];await hydrateOptionValues(e,opts);const vs=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at',[pid])).results||[];await hydrateVariationRows(e,vs);return json({enabled:vs.length>0||opts.length>0,options:opts,variations:vs})}
+ const url=new URL(req.url);if(req.method==='GET'){const pid=clean(url.searchParams.get('product_id'),120);if(!pid)return json({error:'product_id is required.'},400);if(!(await productOwner(e,pid,u.vendor_id)))return json({error:'Product not found.'},404);const opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[pid])).results||[];await hydrateOptionValues(e,opts);const vs=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at',[pid])).results||[];await hydrateVariationRows(e,vs);for(const v of vs)delete v._optionLinks;return json({enabled:vs.length>0||opts.length>0,options:opts,variations:vs})}
 const b=await req.clone().json().catch(()=>null);if(!b||typeof b!=='object')return json({error:'Invalid JSON'},400);const pid=clean(b.product_id||url.searchParams.get('product_id'),120),owner=await productOwner(e,pid,u.vendor_id);if(!owner)return json({error:'Product not found or not owned by this vendor.'},404);if(req.method==='DELETE'){const id=clean(url.pathname.split('/').pop(),120);const v=await one(e,'SELECT * FROM product_variations WHERE id=? AND product_id=?',[id,pid]);if(!v)return json({error:'Variation not found.'},404);await e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?").bind(now(),id).run();return json({ok:true})}
 if(req.method==='POST'){
  const opts=normalizeOptions(b.options);
@@ -306,7 +306,7 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
  }
  await hydrateVariationRows(e,vs);
  for(const v of vs){
-   const links=(await q(e,'SELECT vo.option_id,vo.option_value_id,po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=?',[v.id])).results||[];
+   const links=v._optionLinks||[];
 
    /*
      Repair older variation rows whose option links were lost while the
@@ -325,13 +325,13 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
        if(!ov) continue;
        const exists=links.some(x=>String(x.option_id)===String(o.id));
        if(exists) continue;
-       await e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(v.id,o.id,ov.id).run();
+       await e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(v.id,o.id,ov.id).run();links.push({option_id:o.id,option_value_id:ov.id,name:o.name,value:ov.value});
      }
    }
 
    v.options={};
-   for(const x of(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[v.id])).results||[])v.options[x.name]=x.value;
-   v.images=(await q(e,'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id',[v.id])).results?.map(x=>x.image_url)||[];
+   for(const x of links)v.options[x.name]=x.value;
+   delete v._optionLinks;
  }
  return json({product,options:opts,variations:vs})}
 async function orderGuard(req,e,next){if(new URL(req.url).pathname!=='/api/d1'||req.method!=='POST')return null;const b=await req.clone().json().catch(()=>null);if(b?.fn!=='create_public_order')return null;const payload=b.args?.payload||b.payload||{},items=Array.isArray(payload.items)?payload.items:[];if(!items.length)return null;await schema(e);const nextItems=[];for(const raw of items){const item={...raw},qty=Math.max(1,Math.floor(Number(item.quantity||1)));if(item.variation_id){const v=await one(e,"SELECT pv.id,pv.product_id,pv.sku,pv.regular_price,pv.sale_price,pv.old_price,pv.image_url,pv.status,p.name,p.sku product_sku,p.published,p.vendor_id,ven.status vendor_status FROM product_variations pv JOIN products p ON p.id=pv.product_id LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE pv.id=?",[clean(item.variation_id,120)]);if(!v||!v.published||v.status!=='Available'||v.vendor_status&&v.vendor_status!=='Active')return json({error:'One selected variation is no longer available.'},409);const regular=Math.max(0,Number(v.regular_price||0)),sale=Math.max(0,Number(v.sale_price||0));const unit=sale>0&&sale<regular?sale:regular;item.product_id=v.product_id;item.unit_price=unit;item.price=unit;item.line_total=unit*qty;item.product_name=v.name;item.image_url=v.image_url||item.image_url;item.sku=v.sku||v.product_sku||item.sku;const optionRows=(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[v.id])).results||[];const resolvedOptions={};for(const x of optionRows)resolvedOptions[x.name]=x.value;item.variation_options=Object.keys(resolvedOptions).length?resolvedOptions:(item.variation_options&&typeof item.variation_options==='object'?item.variation_options:{});}else{const p=await one(e,"SELECT p.*,ven.status vendor_status FROM products p LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE p.id=?",[clean(item.product_id||item.id,120)]);if(!p||!p.published||p.vendor_status&&p.vendor_status!=='Active')return json({error:'One selected product is no longer available.'},409);if(p.product_type==='variable')return json({error:p.name+' requires a variation selection.'},409);if(!Number.isFinite(Number(p.price))||Number(p.price)<0)return json({error:'Invalid price for '+p.name+'.'},409);const unit=Number(p.price||0);item.product_id=p.id;item.unit_price=unit;item.price=unit;item.line_total=unit*qty;item.product_name=p.name;item.image_url=p.image_url||item.image_url;item.sku=p.sku||item.sku;}nextItems.push(item)}
