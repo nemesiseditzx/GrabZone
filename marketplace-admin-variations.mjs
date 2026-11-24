@@ -325,7 +325,7 @@ async function handle(req, e) {
 
     for (const x of existing) {
       // Backfill a recoverable legacy JSON option map before the old option rows are replaced.
-      if(x.options_key&&!String(x._original_options_key||'').trim()){
+      if(x.options_key&&!duplicateIds.has(x.id)&&!String(x._original_options_key||'').trim()){
         statements.push(e.DB.prepare('UPDATE product_variations SET options_key=? WHERE id=?').bind(x.options_key,x.id));
       }
       if (duplicateIds.has(x.id) || !keep.has(x.options_key)) {
