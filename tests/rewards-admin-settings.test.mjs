@@ -23,3 +23,10 @@ test('admin growth panel exposes editable membership thresholds and cashback', (
   assert.ok(admin.includes('data-tier-cashback'));
   assert.ok(admin.includes('async function gzSaveGrowthTiers()'));
 });
+test('Mystery Deal admin controls persist to the same D1 settings read by checkout', () => {
+  assert.ok(worker.includes('mystery_enabled,mystery_min_percent,mystery_max_percent FROM site_settings'));
+  assert.ok(worker.includes('mystery_enabled=COALESCE(?,mystery_enabled)'));
+  assert.ok(admin.includes('p_mystery_enabled:x.mysteryEnabled'));
+  assert.ok(admin.includes('p_mystery_min_percent:x.mysteryMin'));
+  assert.ok(admin.includes('p_mystery_max_percent:x.mysteryMax'));
+});
