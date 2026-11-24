@@ -31,36 +31,45 @@ let schemaPromise;
 async function schema(e) {
   if (schemaPromise) return schemaPromise;
   schemaPromise = (async () => {
-    for (const sql of [
+    const base = [
       `CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
       `CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
-      `CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(product_id,options_key))`,
+      `CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(product_id,options_key))`,
       `CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))`,
       `CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`,
-      `CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)`
-    ]) await e.DB.prepare(sql).run().catch(() => {});
-    // Older installations may predate the generated matrix key. Add it before
-    // indexing so the repair works against both fresh and upgraded D1 schemas.
-    await e.DB.prepare("ALTER TABLE product_variations ADD COLUMN options_key TEXT").run().catch(() => {});
-    await e.DB.prepare("ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'").run().catch(() => {});
-    await e.DB.prepare("UPDATE product_variations SET stock_mode='tracked' WHERE stock_mode='untracked' AND (COALESCE(stock,0)>0 OR status='Out of Stock')").run().catch(() => {});
-    // Repair legacy duplicate active combinations before enforcing uniqueness.
-    // Keep one deterministic row per product/options key and disable extras.
-    await e.DB.prepare(`UPDATE product_variations
-      SET status='Disabled',updated_at=CURRENT_TIMESTAMP
-      WHERE id IN (
-        SELECT id FROM (
-          SELECT id,ROW_NUMBER() OVER (
-            PARTITION BY product_id,options_key ORDER BY created_at,id
-          ) AS duplicate_rank
-          FROM product_variations
-          WHERE status!='Disabled' AND options_key IS NOT NULL AND trim(options_key)!=''
-        )
-        WHERE duplicate_rank>1
-      )`).run().catch(() => {});
+      `CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)`,
+      `CREATE TABLE IF NOT EXISTS schema_migrations(name TEXT PRIMARY KEY,applied_at TEXT NOT NULL)`
+    ];
+    await e.DB.batch(base.map(sql => e.DB.prepare(sql)));
+
+    const columns = (await e.DB.prepare("PRAGMA table_info(product_variations)").all()).results || [];
+    const names = new Set(columns.map(column => String(column.name)));
+    const migrations = [];
+    if (!names.has('options_key')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN options_key TEXT"));
+    if (!names.has('stock_mode')) migrations.push(e.DB.prepare("ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'"));
+    if (migrations.length) await e.DB.batch(migrations);
+
+    const t = now();
+    await e.DB.batch([
+      e.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('product-variation-stock-mode-backfill',?)").bind(t),
+      e.DB.prepare("UPDATE product_variations SET stock_mode='tracked' WHERE stock_mode='untracked' AND (COALESCE(stock,0)>0 OR status='Out of Stock') AND changes()=1"),
+      e.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('variation-matrix-duplicate-repair',?)").bind(t),
+      e.DB.prepare(`UPDATE product_variations
+        SET status='Disabled',updated_at=CURRENT_TIMESTAMP
+        WHERE id IN (
+          SELECT id FROM (
+            SELECT id,ROW_NUMBER() OVER (
+              PARTITION BY product_id,options_key ORDER BY created_at,id
+            ) AS duplicate_rank
+            FROM product_variations
+            WHERE status!='Disabled' AND options_key IS NOT NULL AND trim(options_key)!=''
+          )
+          WHERE duplicate_rank>1
+        ) AND changes()=1`)
+    ]);
     await e.DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS product_variations_active_options_key_unique
       ON product_variations(product_id,options_key)
-      WHERE status!='Disabled' AND options_key IS NOT NULL AND options_key!=''`).run().catch(() => {});
+      WHERE status!='Disabled' AND options_key IS NOT NULL AND options_key!=''`).run().catch(err => console.error('Variation matrix uniqueness index unavailable', err));
   })().catch(err => { schemaPromise = null; throw err; });
   return schemaPromise;
 }
