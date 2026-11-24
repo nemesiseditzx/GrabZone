@@ -792,10 +792,9 @@ for(const x of p.items){
 // Snapshot reward eligibility in bulk so checkout does not issue two reads per item.
 const vendorProductIds=[...new Set(items.filter(item=>item.vendor_id).map(item=>String(item.product_id||"")).filter(Boolean))];
 const eligibilityByProduct=new Map();
-let globallyEnabled=true;
+const globalRewardsSettings=(await q(env,"SELECT enabled FROM rewards_settings WHERE id=1 LIMIT 1")).results?.[0];
+const globallyEnabled=Number(globalRewardsSettings?.enabled??1)===1;
 if(vendorProductIds.length){
- const global=(await q(env,"SELECT enabled FROM rewards_settings WHERE id=1 LIMIT 1")).results?.[0];
- globallyEnabled=Number(global?.enabled??1)===1;
  for(let i=0;i<vendorProductIds.length;i+=90){
   const chunk=vendorProductIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
   const rows=(await q(env,`SELECT p.id,COALESCE(vrs.rewards_enabled,0) rewards_enabled,COALESCE(vrs.referral_enabled,0) referral_enabled FROM products p LEFT JOIN vendor_rewards_settings vrs ON vrs.vendor_id=p.vendor_id WHERE p.id IN (${marks})`,chunk)).results||[];
@@ -805,7 +804,7 @@ if(vendorProductIds.length){
 const referralEligibleSubtotal=items.reduce((sum,item)=>{
  const vendorId=String(item.vendor_id||"");
  const eligibility=eligibilityByProduct.get(String(item.product_id||""));
- const eligible=!vendorId||(globallyEnabled&&Number(eligibility?.referral_enabled)===1);
+ const eligible=globallyEnabled&&(!vendorId||Number(eligibility?.referral_enabled)===1);
  return sum+(eligible?Number(item.line_total||0):0);
 },0);
 await ensureVendorCouponSchema(env);
@@ -832,8 +831,8 @@ const allocationRows=[];
 for(const item of items){
  const vendorId=String(item.vendor_id||"");
  const eligibility=eligibilityByProduct.get(String(item.product_id||""));
- const rewardsEligible=vendorId?(globallyEnabled&&Number(eligibility?.rewards_enabled)===1?1:0):1;
- const referralEligible=vendorId?(globallyEnabled&&Number(eligibility?.referral_enabled)===1?1:0):1;
+ const rewardsEligible=globallyEnabled&&(!vendorId||Number(eligibility?.rewards_enabled)===1)?1:0;
+ const referralEligible=globallyEnabled&&(!vendorId||Number(eligibility?.referral_enabled)===1)?1:0;
  allocationRows.push({item,vendorId,rewardsEligible,referralEligible,lineSubtotal:Math.max(0,Number(item.line_total||0))});
 }
 
