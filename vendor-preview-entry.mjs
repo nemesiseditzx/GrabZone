@@ -36,7 +36,7 @@ async function categoriesV2(req,env,ctx){
       const id=crypto.randomUUID(),t=new Date().toISOString();
       await env.DB.prepare('INSERT INTO marketplace_categories(id,name,slug,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id,name,slug,t,t).run();
       return json({ok:true,category:{id,name,slug}},201);
-    }catch(err){return json({error:'Category could not be saved.',detail:String(err?.message||err)},500)}
+    }catch(err){console.error('Vendor preview categories POST failed',err);return json({error:'Category could not be saved.'},500)}
   }
   return json({error:'Method not allowed'},405);
 }
