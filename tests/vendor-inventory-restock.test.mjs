@@ -28,6 +28,7 @@ test('restock is atomic and idempotent for both products and variations', () => 
   assert.match(helper, /changes\(\)=1/);
   assert.match(helper, /await e\.DB\.batch\(statements\)/);
   assert.doesNotMatch(helper, /return true/);
+  assert.doesNotMatch(helper, /CREATE TABLE IF NOT EXISTS/);
 });
 
 test('vendor status reads the prior status and prevents reopening a cancelled order', () => {
