@@ -513,8 +513,9 @@ if(p==='/api/vendor/admin/products'&&(req.method==='GET'||req.method==='POST'||r
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
 const u=new URL(req.url),vid=clean(u.searchParams.get('vendor_id'),100);
 if(req.method==='GET'){
- const page=Math.max(1,Math.floor(Number(u.searchParams.get('page')||1)));
- const limit=Math.max(10,Math.min(100,Math.floor(Number(u.searchParams.get('limit')||50))));
+ const pageValue=Number(u.searchParams.get('page')||1),limitValue=Number(u.searchParams.get('limit')||50);
+ const page=Number.isFinite(pageValue)?Math.max(1,Math.floor(pageValue)):1;
+ const limit=Number.isFinite(limitValue)?Math.max(10,Math.min(100,Math.floor(limitValue))):50;
  const search=clean(u.searchParams.get('search')||'',120);
  const like='%'+search+'%';
  const where="(?='' OR p.vendor_id=?) AND (?='' OR p.name LIKE ? OR COALESCE(p.sku,'') LIKE ?)";
@@ -724,8 +725,9 @@ if(p==='/api/vendor/categories'){
 }
 if(p==='/api/vendor/dashboard')return json({vendor:{id:vid,brand_name:u.brand_name,slug:u.slug},metrics:{products:Number((await one(e,'SELECT COUNT(*) n FROM products WHERE vendor_id=?',[vid]))?.n||0),orders:Number((await one(e,'SELECT COUNT(DISTINCT vo.order_id) n FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=?',[vid]))?.n||0),sales:Number((await one(e,'SELECT COALESCE(SUM(vo.subtotal),0) n FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=?',[vid]))?.n||0),earnings:Number((await one(e,'SELECT COALESCE(SUM(vo.vendor_earnings),0) n FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=?',[vid]))?.n||0),commission:Number((await one(e,'SELECT COALESCE(SUM(vo.commission_amount),0) n FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=?',[vid]))?.n||0),low_stock:Number((await one(e,'SELECT COUNT(*) n FROM products WHERE vendor_id=? AND stock<=5',[vid]))?.n||0)}});
 if(p==='/api/vendor/products'){if(req.method==='GET'){
- const page=Math.max(1,Math.floor(Number(new URL(req.url).searchParams.get('page')||1)));
- const limit=Math.max(10,Math.min(100,Math.floor(Number(new URL(req.url).searchParams.get('limit')||50))));
+ const listUrl=new URL(req.url),pageValue=Number(listUrl.searchParams.get('page')||1),limitValue=Number(listUrl.searchParams.get('limit')||50);
+ const page=Number.isFinite(pageValue)?Math.max(1,Math.floor(pageValue)):1;
+ const limit=Number.isFinite(limitValue)?Math.max(10,Math.min(100,Math.floor(limitValue))):50;
  const search=clean(new URL(req.url).searchParams.get('search')||'',120),filter=String(new URL(req.url).searchParams.get('filter')||'all');
  const like='%'+search+'%';
  const filterSql="(?='all' OR (?='published' AND p.published=1) OR (?='hidden' AND p.published=0) OR (?='low' AND COALESCE(p.stock,0)<=5))";
