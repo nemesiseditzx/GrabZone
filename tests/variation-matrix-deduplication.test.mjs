@@ -59,13 +59,13 @@ test('variation matrix replacement is committed as one atomic D1 batch', async (
 
 
 
-test('worker repairs legacy active duplicates before enforcing the partial unique index', () => {
+test('worker repairs legacy active duplicates before enforcing the partial unique index', async () => {
   const worker = (await import('node:fs')).readFileSync(
     new URL('../worker.mjs', import.meta.url),
     'utf8',
   );
   assert.match(worker, /variation-matrix-duplicate-repair/);
-  assert.match(worker, /ROW_NUMBER\\(\\) OVER \\(PARTITION BY product_id,options_key/);
+  assert.match(worker, /ROW_NUMBER\(\) OVER \(PARTITION BY product_id,options_key/);
   assert.match(worker, /product_variations_active_options_key_unique/);
 });
 
