@@ -45,3 +45,10 @@ test('inventory movement schema is ensured before vendor order status updates', 
   assert.match(source, /CREATE TABLE IF NOT EXISTS checkout_write_assertions/);
   assert.match(source, /async function logHeld[\s\S]*COUNT\(\*\) n FROM order_inventory_movements/);
 });
+
+test('vendor finalizer schema work is cached per isolate and retries real D1 failures', () => {
+  assert.match(source, /let vendorFinalizerSchemaPromise/);
+  assert.match(source, /if\(vendorFinalizerSchemaPromise\)return vendorFinalizerSchemaPromise/);
+  assert.match(source, /vendorFinalizerSchemaPromise=null;throw err/);
+  assert.match(source, /duplicate column name\|already exists/);
+});
