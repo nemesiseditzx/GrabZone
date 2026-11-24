@@ -50,46 +50,48 @@ async function publicVariations(req,e){
 
   const options=(await e.DB.prepare('SELECT * FROM product_options WHERE product_id=?').bind(pid).all()).results||[];
   options.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||String(a.id||'').localeCompare(String(b.id||'')));
-  for(const o of options){
-   o.values=(await e.DB.prepare('SELECT * FROM option_values WHERE option_id=?').bind(o.id).all()).results||[];
-   o.values.sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)||String(a.id||'').localeCompare(String(b.id||'')));
+  const optionValueMap=new Map();
+  const optionIds=options.map(option=>String(option.id));
+  for(let i=0;i<optionIds.length;i+=90){
+   const chunk=optionIds.slice(i,i+90),marks=chunk.map(()=>'?').join(',');
+   const rows=(await e.DB.prepare(`SELECT * FROM option_values WHERE option_id IN (${marks}) ORDER BY option_id,sort_order,id`).bind(...chunk).all()).results||[];
+   for(const row of rows){if(!optionValueMap.has(String(row.option_id)))optionValueMap.set(String(row.option_id),[]);optionValueMap.get(String(row.option_id)).push(row)}
   }
+  for(const option of options)option.values=optionValueMap.get(String(option.id))||[];
 
   const rawVariations=(await e.DB.prepare('SELECT * FROM product_variations WHERE product_id=?').bind(pid).all()).results||[];
-  const variations=[];
-  for(const v of rawVariations){
-   if(String(v.status||'Available').toLowerCase()==='disabled')continue;
+  const variations=rawVariations.filter(v=>String(v.status||'Available').toLowerCase()!=='disabled');
+  const variationOptionMap=new Map(),variationImageMap=new Map();
+  const variationIds=variations.map(v=>String(v.id));
+  for(let i=0;i<variationIds.length;i+=90){
+   const chunk=variationIds.slice(i,i+90),marks=chunk.map(()=>'?').join(',');
+   try{
+    const rows=(await e.DB.prepare(`SELECT vo.variation_id,po.name,ov.value FROM variation_options vo LEFT JOIN product_options po ON po.id=vo.option_id LEFT JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id IN (${marks}) ORDER BY po.sort_order,ov.sort_order`).bind(...chunk).all()).results||[];
+    for(const row of rows)if(row.name&&row.value){if(!variationOptionMap.has(String(row.variation_id)))variationOptionMap.set(String(row.variation_id),{});variationOptionMap.get(String(row.variation_id))[row.name]=row.value}
+   }catch{}
+   try{
+    const rows=(await e.DB.prepare(`SELECT variation_id,image_url FROM variation_images WHERE variation_id IN (${marks}) ORDER BY variation_id,sort_order,id`).bind(...chunk).all()).results||[];
+    for(const row of rows)if(row.image_url){if(!variationImageMap.has(String(row.variation_id)))variationImageMap.set(String(row.variation_id),[]);variationImageMap.get(String(row.variation_id)).push(row.image_url)}
+   }catch{}
+  }
+  for(const v of variations){
    v.status=v.status||'Available';
    const legacyOptions=v.options;
-   v.options={};
-
-   // Primary source: normalized variation_options rows.
-   try{
-    const rows=(await e.DB.prepare('SELECT vo.option_id,vo.option_value_id,po.name,ov.value FROM variation_options vo LEFT JOIN product_options po ON po.id=vo.option_id LEFT JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=?').bind(v.id).all()).results||[];
-    for(const x of rows)if(x.name&&x.value)v.options[x.name]=x.value;
-   }catch{}
-
-   // Legacy source: JSON options stored directly on the variation.
+   v.options=variationOptionMap.get(String(v.id))||{};
    if(!Object.keys(v.options).length&&legacyOptions){
     try{
      const parsed=typeof legacyOptions==='string'?JSON.parse(legacyOptions):legacyOptions;
      if(parsed&&typeof parsed==='object')for(const [k,val] of Object.entries(parsed))if(String(k).trim()&&String(val).trim())v.options[String(k).trim()]=String(val).trim();
     }catch{}
    }
-
-   // Last source: the generated options_key.
    if(!Object.keys(v.options).length&&v.options_key){
     for(const pair of String(v.options_key).split('|')){
      const n=pair.indexOf('=');
      if(n>0)v.options[pair.slice(0,n)]=pair.slice(n+1);
     }
    }
-
-   try{
-    v.images=(await e.DB.prepare('SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id').bind(v.id).all()).results?.map(x=>x.image_url).filter(Boolean)||[];
-   }catch{v.images=[]}
-   if(!v.image_url&&v.images?.[0])v.image_url=v.images[0];
-   variations.push(v);
+   v.images=variationImageMap.get(String(v.id))||[];
+   if(!v.image_url&&v.images[0])v.image_url=v.images[0];
   }
 
   return json({product,enabled:options.length>0||variations.length>0,options,variations});
