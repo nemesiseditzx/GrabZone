@@ -37,7 +37,7 @@ function build(){
     <div class="vp-media">
      <div class="vp-preview" id="vpPreview">No images selected</div>
      <label class="vp-file-button">📷 Choose up to 10 product images<input id="vpFiles" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label>
-     <div class="vp-file-note" id="vpFileNote">Maximum 10 images · Maximum 1 MB per image.</div>
+     <div class="vp-file-note" id="vpFileNote">Maximum 30 images · Maximum 1 MB per image.</div>
      <div class="vp-gallery" id="vpGallery"></div>
     </div>
     <section id="vpVariationPanel" class="vp-variation-panel" hidden>
@@ -67,7 +67,7 @@ async function editProduct(id){
  if(p.product_type==='variable'){await loadVariations(p.id)}else{state.variationOptions=[];state.variations=[];renderOptionRows();renderVariationRows()}
  window.scrollTo({top:$('#products').getBoundingClientRect().top+window.scrollY-20,behavior:'smooth'});
 }
-function handleFiles(){const files=[...($('#vpFiles').files||[])];if(files.length>MAX){alert('Maximum 10 images per product.');$('#vpFiles').value='';state.files=[];renderMedia();return}const bad=files.find(f=>f.size>MB||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));if(bad){alert(`${bad.name} is not a supported image or is larger than 1 MB.`);$('#vpFiles').value='';state.files=[];renderMedia();return}state.files=files;state.mainIndex=0;renderMedia()}
+function handleFiles(){const files=[...($('#vpFiles').files||[])];if(files.length>MAX){alert('Maximum 30 images per product.');$('#vpFiles').value='';state.files=[];renderMedia();return}const bad=files.find(f=>f.size>MB||!/^image\/(jpeg|png|webp|gif|avif)$/i.test(f.type));if(bad){alert(`${bad.name} is not a supported image or is larger than 1 MB.`);$('#vpFiles').value='';state.files=[];renderMedia();return}state.files=files;state.mainIndex=0;renderMedia()}
 function removeSelectedImage(index){if(index<0)return;if(state.files.length){state.files.splice(index,1);if(state.mainIndex>=state.files.length)state.mainIndex=Math.max(0,state.files.length-1);if(state.mainIndex>index)state.mainIndex--;$('#vpFiles').value='';renderMedia();return}const imgs=[...(state.editing?.image_urls||[])].filter(Boolean);if(index>=imgs.length)return;imgs.splice(index,1);state.editing.image_urls=imgs;if(!imgs.length){state.editing.image_url='';state.mainIndex=0}else{if(!imgs.includes(state.editing.image_url))state.editing.image_url=imgs[0];state.mainIndex=Math.max(0,imgs.indexOf(state.editing.image_url))}renderMedia()}
 function setSelectedMain(index){if(index<0)return;if(state.files.length){state.mainIndex=index;renderMedia();return}const imgs=[...(state.editing?.image_urls||[])].filter(Boolean);if(!imgs[index])return;const chosen=imgs[index];state.editing.image_url=chosen;state.editing.image_urls=[chosen,...imgs.filter(x=>x!==chosen)];state.mainIndex=0;renderMedia()}
 function renderMedia(){
@@ -100,7 +100,7 @@ function renderMedia(){
      gallery.appendChild(item);
    });
    preview.innerHTML=`<img alt="Main product image" src="${esc(existing[0])}"><span class="vp-main-label">MAIN IMAGE</span>`;
- }else{note.textContent='Maximum 10 images · Maximum 1 MB per image.';preview.textContent='No images selected'}
+ }else{note.textContent='Maximum 30 images · Maximum 1 MB per image.';preview.textContent='No images selected'}
 }
 function addOptionRow(o={name:'',values:[]}){const n=o.name.trim();if(!n)return;vpSet(n,o.values||[])}
 function renderOptionRows(){
@@ -178,7 +178,7 @@ async function saveProduct(e){
  e.preventDefault();const btn=$('#vpSubmit');btn.disabled=true;message('Saving product…',true);
  try{
   const id=$('#vpId').value.trim();let urls=null,mainUrl=null;
-  if(state.files.length){if(state.files.length>MAX)throw Error('Maximum 10 images per product.');const uploaded=[];for(const f of state.files)uploaded.push(await upload(f));urls=uploaded;mainUrl=uploaded[state.mainIndex]||uploaded[0]}
+  if(state.files.length){if(state.files.length>MAX)throw Error('Maximum 30 images per product.');const uploaded=[];for(const f of state.files)uploaded.push(await upload(f));urls=uploaded;mainUrl=uploaded[state.mainIndex]||uploaded[0]}
   else if(state.editing){urls=(state.editing.image_urls||[]).filter(Boolean);mainUrl=urls[0]||state.editing.image_url||''}
   else throw Error('Please choose at least one product image.');
   const selectedProductType=String($('#vpProductType').value||'simple').toLowerCase()==='variable'?'variable':'simple';$('#vpProductType').value=selectedProductType;const body={name:$('#vpName').value.trim(),category:$('#vpCategory option:checked').textContent.trim(),price:Number($('#vpPrice').value),old_price:$('#vpOldPrice').value===''?null:Number($('#vpOldPrice').value),product_type:selectedProductType,category_id:$('#vpCategory').value||'',sku:$('#vpSku').value.trim(),tag:$('#vpTag').value.trim(),description:$('#vpDescription').value,published:$('#vpPublished').checked,image_url:mainUrl,image_urls:urls};
