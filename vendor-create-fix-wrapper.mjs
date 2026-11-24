@@ -123,4 +123,4 @@ export default{fetch:async(request,env,ctx)=>{try{
   const created=await createVendor(request,env,ctx);if(created)return created;
   const vd=await vendorData(request,env,ctx);if(vd)return vd;
   return app.fetch(request,env,ctx);
-}catch(err){return json({error:err?.message||'Marketplace wrapper failed'},500)}}};
+}catch(err){console.error('Marketplace vendor wrapper failed',err);return json({error:'Marketplace wrapper failed'},500)}}};
