@@ -228,3 +228,12 @@ test('switching a product to simple disables legacy variations without deleting 
   assert.match(fn, /await e\.DB\.batch\(\[/);
   assert.doesNotMatch(fn, /DELETE FROM product_variations/);
 });
+
+
+test('all product editor surfaces enforce the same 30-image gallery limit', async () => {
+  for (const file of ['marketplace-admin.js','admin-product-editor-mirror.js','vendor-product-editor.js','vendor-control-product-editor.js','vendor-dashboard.js']) {
+    const source = (await import('node:fs')).readFileSync(new URL('../' + file, import.meta.url), 'utf8');
+    assert.match(source, /30 images|MAX=30|MAX=30,MAX_VARIATIONS|slice\(0,30\)|>30/, file);
+    assert.doesNotMatch(source, /Maximum 10 images|Up to 10 images|MAX=10/, file);
+  }
+});
