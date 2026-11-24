@@ -146,6 +146,8 @@ async function ensureSchema(env){
    const finalStatements=[
     env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('products-stock-mode-backfill',?)").bind(t),
     env.DB.prepare("UPDATE products SET stock_mode='tracked' WHERE stock_mode='untracked' AND COALESCE(stock,0)>0 AND changes()=1"),
+    env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('product-variation-stock-mode-backfill',?)").bind(t),
+    env.DB.prepare("UPDATE product_variations SET stock_mode='tracked' WHERE stock_mode='untracked' AND (COALESCE(stock,0)>0 OR status='Out of Stock') AND changes()=1"),
     env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('delivered-rewards-legacy-mark',?)").bind(t),
     env.DB.prepare("UPDATE orders SET rewards_processed_at=COALESCE(updated_at,created_at,?) WHERE lower(status)='delivered' AND rewards_processed_at IS NULL AND changes()=1").bind(t),
     env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('variation-matrix-duplicate-repair',?)").bind(t),
