@@ -39,6 +39,12 @@ test('checkout reserves order numbers atomically instead of MAX(order_no)+1', ()
   assert.ok(!worker.includes('SELECT COALESCE(MAX(order_no),0)+1 AS n FROM orders'));
 });
 
+test('checkout reuses one guard row per order instead of inserting and deleting a row per item', () => {
+  assert.ok(worker.includes('ON CONFLICT(id) DO UPDATE SET ok=excluded.ok'));
+  assert.ok(worker.includes('DELETE FROM checkout_write_assertions WHERE id=?'));
+  assert.ok(!worker.includes('id+":check:"+guardIndex'));
+});
+
 test('order, items, rewards, coupon claims and variation stock commit in one guarded D1 batch', () => {
   assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS checkout_write_assertions'));
   assert.ok(worker.includes('INSERT INTO checkout_write_assertions(id,ok) VALUES(?,changes())'));
