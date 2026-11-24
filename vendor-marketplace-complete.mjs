@@ -576,6 +576,16 @@ return json({ok:true,id,product:await one(e,'SELECT * FROM products WHERE id=?',
 async function saveVariations(e,productId,rows){
  if(!Array.isArray(rows))return;
  if(rows.length>200)throw new Error('Maximum 200 variations per product.');
+ if(rows.length===0){
+  await ensureVendorVariationSchema(e);
+  await e.DB.batch([
+   e.DB.prepare('DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)').bind(productId),
+   e.DB.prepare('DELETE FROM option_values WHERE option_id IN (SELECT id FROM product_options WHERE product_id=?)').bind(productId),
+   e.DB.prepare('DELETE FROM product_options WHERE product_id=?').bind(productId),
+   e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE product_id=? AND status!='Disabled'").bind(now(),productId)
+  ]);
+  return;
+ }
  const normalized=[];
  const groups=new Map();
  for(const row of rows){
