@@ -19,6 +19,14 @@ test('order, items, rewards, coupon claims and variation stock commit in one gua
   assert.ok(worker.includes("UPDATE product_variations SET stock=stock-?,updated_at=? WHERE id=? AND product_id=? AND status='Available' AND lower(COALESCE(stock_mode,'untracked'))='tracked' AND stock>=?"));
 });
 
+test('checkout enforces simple product sale pricing and quantity limits from D1', () => {
+  assert.ok(worker.includes("ALTER TABLE products ADD COLUMN sale_price REAL"));
+  assert.ok(worker.includes("ALTER TABLE products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'simple'"));
+  assert.ok(worker.includes('productSale>0&&productSale<productRegular?productSale:productRegular'));
+  assert.ok(worker.includes('if(qty<minQty)'));
+  assert.ok(worker.includes('if(maxQty!==null&&qty>maxQty)'));
+});
+
 test('simple product stock is tracked, reserved, and restored with the same movement journal', () => {
   assert.ok(worker.includes("ALTER TABLE products ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'"));
   assert.ok(worker.includes("UPDATE products SET stock=stock-?,updated_at=? WHERE id=? AND published=1 AND stock_mode='tracked' AND stock>=?"));
