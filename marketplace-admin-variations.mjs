@@ -206,7 +206,9 @@ async function handle(req, e) {
       const old = oldBy.get(k);
       const id = old?.id || crypto.randomUUID();
       if (old) {
-        await e.DB.prepare("UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Disabled' ELSE status END,updated_at=? WHERE id=?")
+        // A combination that reappears in the submitted matrix must become active again.
+        // Reuse its existing row so SKU, pricing, stock and images are not discarded.
+        await e.DB.prepare("UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Available' ELSE status END,updated_at=? WHERE id=?")
           .bind(t, id).run();
       } else {
         await e.DB.prepare(
