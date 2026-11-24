@@ -814,8 +814,8 @@ async function handle(req,env){
   }
   return cors(a?asset:utf8AssetResponse(asset),req,env);
  }catch(e){
-  console.error(e);
-  return cors(json({error:e?.message||"Internal server error."},500),req,env);
+  console.error('GrabZone Worker request failed',e);
+  return cors(json({error:"Internal server error."},500),req,env);
  }
 }
 export default { fetch: handle };
