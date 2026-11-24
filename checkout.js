@@ -464,7 +464,7 @@ async function sendOrderEmail(orderNumber,type='order_created',orderData=null,it
 function openOrderConfirm(d){
   return new Promise(resolve=>{
     const modal=$('orderConfirmModal');
-    if(!modal){resolve(window.confirm('Please review your order details carefully before placing the order.'));return}
+    if(!modal){msg('Order confirmation is unavailable. Please reload checkout and try again.',true);resolve(false);return}
     const shipping=shippingForLocation();
     const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100));
     const address=[d.address,d.upazila,d.district,d.division].filter(Boolean).join(', ');
