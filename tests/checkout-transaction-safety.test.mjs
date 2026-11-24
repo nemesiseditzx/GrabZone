@@ -5,6 +5,15 @@ import fs from 'node:fs';
 const worker = fs.readFileSync('worker.mjs', 'utf8');
 const checkout = fs.readFileSync('checkout.js', 'utf8');
 
+test('vendor marketplace schema setup is batched and default vendor backfill is one-time', () => {
+  const vendorSchema = fs.readFileSync('vendor-marketplace-complete.mjs', 'utf8');
+  assert.ok(vendorSchema.includes('await env.DB.batch(base.map('));
+  assert.ok(vendorSchema.includes('await env.DB.batch(tables.map('));
+  assert.ok(vendorSchema.includes('await env.DB.batch(pending)'));
+  assert.ok(vendorSchema.includes("products-default-vendor-backfill"));
+  assert.ok(!vendorSchema.includes('for(const x of s)await env.DB.prepare(x).run()'));
+});
+
 test('D1 cold-start schema work is batched and expensive backfills run once', () => {
   assert.ok(worker.includes('env.DB.batch(D1_SCHEMA.slice(1).map(sql=>env.DB.prepare(sql)))'));
   assert.ok(worker.includes('PRAGMA table_info("+table+")'));
