@@ -54,3 +54,20 @@ test('obsolete second Worker config is removed from the development deployment',
   const workflow = fs.readFileSync('.github/workflows/deploy-marketplace-dev.yml', 'utf8');
   assert.equal((workflow.match(/command: deploy/g) || []).length, 1);
 });
+
+
+test('vendor product create and image replacement use atomic D1 batches with a 30-image cap', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf("if(p==='/api/vendor/products'){");
+  const end = source.indexOf("if(p==='/api/vendor/profile')", start);
+  assert.ok(start >= 0 && end > start, 'vendor product route must exist');
+  const route = source.slice(start, end);
+  assert.match(route, /await e\.DB\.batch\(statements\)/);
+  assert.match(route, /\.slice\(0,30\)/);
+  assert.match(route, /DELETE FROM vendor_product_images/);
+  assert.match(route, /INSERT INTO vendor_product_images/);
+  assert.doesNotMatch(route, /\.slice\(0,10\)/);
+});
