@@ -95,7 +95,6 @@ async function publicVariations(req,e){
   return json({product,enabled:options.length>0||variations.length>0,options,variations});
  }catch(err){
   console.error('Public marketplace variations failed',err);
-  console.error('Public marketplace variations failed',err);
   return json({error:'Variations could not be loaded.'},500);
  }
 }
