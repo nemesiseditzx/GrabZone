@@ -163,3 +163,37 @@ test('legacy vendor dashboard uses paginated search and filter controls', async 
   assert.match(html, /oninput="scheduleProductSearch\(\)"/);
   assert.match(html, /onchange="loadProducts\(1\)"/);
 });
+
+
+test('admin product gallery create and replace operations commit atomically with a 30-image cap', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  const routeStart = source.indexOf("if(p==='/api/vendor/admin/products'");
+  const routeEnd = source.indexOf("if(p==='/api/vendor/admin/order-delete'", routeStart);
+  const route = source.slice(routeStart, routeEnd);
+  assert.match(route, /const imageUrls=\[\.\.\.new Set\(b\.image_urls\.map/);
+  assert.match(route, /\.slice\(0,30\)/);
+  assert.match(route, /if\(statements\.length\)await e\.DB\.batch\(statements\)/);
+  assert.match(route, /await e\.DB\.batch\(productStatements\)/);
+  assert.doesNotMatch(route, /CREATE TABLE IF NOT EXISTS product_images[^\n]*\.catch/);
+});
+
+test('legacy product variation saves preserve matching rows and commit as one batch', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf('async function saveVariations(');
+  const end = source.indexOf("if(p==='/api/vendor/admin/order-delete'", start);
+  const fn = source.slice(start, end);
+  assert.match(fn, /await e\.DB\.batch\(statements\)/);
+  assert.match(fn, /SELECT id,options_key,status,created_at,sku,regular_price/);
+  assert.match(fn, /DELETE FROM variation_options/);
+  assert.match(fn, /DELETE FROM option_values/);
+  assert.match(fn, /DELETE FROM product_options/);
+  assert.match(fn, /UPDATE product_variations SET sku=\?,regular_price/);
+  assert.match(fn, /statements\.length>900/);
+  assert.doesNotMatch(fn, /DELETE FROM product_variations WHERE product_id/);
+});
