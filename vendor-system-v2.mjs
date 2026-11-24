@@ -37,6 +37,13 @@ async function schema(e){if(schemaPromise)return schemaPromise;schemaPromise=(as
 `CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)`,
 `CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)`,
 `CREATE INDEX IF NOT EXISTS product_variations_product_status_idx ON product_variations(product_id,status)`,`CREATE INDEX IF NOT EXISTS product_variations_sku_idx ON product_variations(sku)`,`CREATE INDEX IF NOT EXISTS variation_options_value_idx ON variation_options(option_value_id)`,`CREATE INDEX IF NOT EXISTS vendor_product_images_product_idx ON vendor_product_images(product_id,vendor_id,sort_order)`,`CREATE INDEX IF NOT EXISTS inventory_log_vendor_idx ON inventory_log(vendor_id,created_at DESC)`,
+`ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0`,
+`ALTER TABLE product_variations ADD COLUMN sale_price REAL`,
+`ALTER TABLE product_variations ADD COLUMN old_price REAL`,
+`ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 5`,
+`ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1`,
+`ALTER TABLE product_variations ADD COLUMN max_qty INTEGER`,
+`ALTER TABLE product_variations ADD COLUMN options_key TEXT NOT NULL DEFAULT ''`,
 `ALTER TABLE order_items ADD COLUMN variation_id TEXT`,`ALTER TABLE order_items ADD COLUMN variation_options TEXT`,`ALTER TABLE order_items ADD COLUMN variation_sku TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT`,`ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'`
 ])await applySchemaStatement(e,x);return true})().catch(err=>{schemaPromise=null;console.error('Vendor variation schema initialization failed:',err);throw err});return schemaPromise}
 function normalizeOptions(options){
