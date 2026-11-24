@@ -1,0 +1,29 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { indexExistingVariations } from '../marketplace-admin-variations.mjs';
+
+test('variation matrix keeps one deterministic active row per options key', () => {
+  const rows = [
+    { id: 'older-disabled', options_key: 'Color=Black', status: 'Disabled', created_at: '2026-01-01' },
+    { id: 'active-first', options_key: 'Color=Black', status: 'Available', created_at: '2026-01-02' },
+    { id: 'active-duplicate', options_key: 'Color=Black', status: 'Available', created_at: '2026-01-03' },
+    { id: 'other', options_key: 'Color=White', status: 'Available', created_at: '2026-01-04' },
+  ];
+
+  const { byKey, duplicateIds } = indexExistingVariations(rows);
+  assert.equal(byKey.get('Color=Black').id, 'active-first');
+  assert.equal(byKey.get('Color=White').id, 'other');
+  assert.deepEqual([...duplicateIds].sort(), ['active-duplicate', 'older-disabled']);
+});
+
+test('variation matrix treats missing legacy keys as rows to disable, not reusable combinations', () => {
+  const { byKey, duplicateIds } = indexExistingVariations([
+    { id: 'legacy-null', options_key: null, status: 'Available' },
+    { id: 'legacy-empty', options_key: '', status: 'Available' },
+    { id: 'valid', options_key: 'Size=M', status: 'Available' },
+  ]);
+
+  assert.equal(byKey.size, 1);
+  assert.equal(byKey.get('Size=M').id, 'valid');
+  assert.deepEqual([...duplicateIds].sort(), ['legacy-empty', 'legacy-null']);
+});
