@@ -48,3 +48,9 @@ test('multi-image writes are atomic and product image reads use bounded chunks',
   assert.match(source, /vendor_product_images WHERE product_id IN/);
   assert.doesNotMatch(source, /for\(let i=0;i<clean\.length;i\+\+\)await env\.DB\.prepare/);
 });
+
+test('obsolete second Worker config is removed from the development deployment', () => {
+  assert.equal(fs.existsSync('wrangler.vendor-preview.jsonc'), false);
+  const workflow = fs.readFileSync('.github/workflows/deploy-marketplace-dev.yml', 'utf8');
+  assert.equal((workflow.match(/command: deploy/g) || []).length, 1);
+});
