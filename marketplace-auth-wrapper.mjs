@@ -113,6 +113,7 @@ export default {fetch:async(req,e,ctx)=>{
     const normalized=await normalizeAdminRequest(req,e);
     return app.fetch(normalized,e,ctx);
   }catch(err){
-    return json({error:err?.message||'Internal server error',source:'marketplace-auth-wrapper'},500);
+    console.error('Marketplace authentication wrapper failed',err);
+    return json({error:'Internal server error'},500);
   }
 }};
