@@ -1,29 +1,36 @@
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 const stamp=()=>new Date().toISOString();
 const id=()=>crypto.randomUUID();
+const schemaPromises=new WeakMap();
 async function ensure(db){
- const statements=[
- `CREATE TABLE IF NOT EXISTS rewards_settings(id INTEGER PRIMARY KEY CHECK(id=1),enabled INTEGER NOT NULL DEFAULT 1,gp_value_bdt REAL,updated_at TEXT NOT NULL)`,
- `CREATE TABLE IF NOT EXISTS vendor_rewards_settings(vendor_id TEXT PRIMARY KEY,rewards_enabled INTEGER NOT NULL DEFAULT 0,referral_enabled INTEGER NOT NULL DEFAULT 0,eligible_store_layout INTEGER NOT NULL DEFAULT 0,eligibility_status TEXT NOT NULL DEFAULT 'inactive',updated_by TEXT,updated_at TEXT NOT NULL)`,
- `CREATE TABLE IF NOT EXISTS product_rewards_eligibility(product_id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,rewards_eligible INTEGER NOT NULL DEFAULT 0,referral_eligible INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'not_eligible',updated_by TEXT,updated_at TEXT NOT NULL)`,
- `CREATE TABLE IF NOT EXISTS rewards_audit_logs(id TEXT PRIMARY KEY,admin_id TEXT,vendor_id TEXT,product_id TEXT,action TEXT NOT NULL,old_value TEXT,new_value TEXT,reason TEXT,created_at TEXT NOT NULL)`,
- `CREATE TABLE IF NOT EXISTS referrals(id TEXT PRIMARY KEY,referrer_member_id TEXT NOT NULL,referral_code TEXT NOT NULL UNIQUE,referred_member_id TEXT,status TEXT NOT NULL DEFAULT 'pending',qualifying_order_id TEXT,created_at TEXT NOT NULL,qualified_at TEXT,rewarded_at TEXT)`,
- `CREATE INDEX IF NOT EXISTS referrals_referrer_idx ON referrals(referrer_member_id,created_at DESC)`,
- `CREATE INDEX IF NOT EXISTS referrals_referred_idx ON referrals(referred_member_id)`,
- `CREATE INDEX IF NOT EXISTS referrals_order_idx ON referrals(qualifying_order_id)`,
- `CREATE TABLE IF NOT EXISTS referral_rewards(id TEXT PRIMARY KEY,referral_id TEXT NOT NULL,order_id TEXT NOT NULL,referrer_member_id TEXT NOT NULL,referred_member_id TEXT,discount_amount REAL NOT NULL DEFAULT 0,reward_points INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL,completed_at TEXT,reversed_at TEXT,UNIQUE(referral_id,order_id))`,
- `CREATE INDEX IF NOT EXISTS referral_rewards_referrer_idx ON referral_rewards(referrer_member_id,status,created_at DESC)`,
- `CREATE TABLE IF NOT EXISTS rewards_order_allocations(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,order_item_id TEXT,vendor_id TEXT NOT NULL,product_id TEXT NOT NULL,rewards_eligible INTEGER NOT NULL DEFAULT 0,referral_eligible INTEGER NOT NULL DEFAULT 0,qualifying_subtotal REAL NOT NULL DEFAULT 0,referral_discount REAL NOT NULL DEFAULT 0,cashback_percent REAL NOT NULL DEFAULT 0,cashback_points INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,order_item_id))`,
- `CREATE INDEX IF NOT EXISTS rewards_alloc_order_idx ON rewards_order_allocations(order_id,status)`,
- `CREATE INDEX IF NOT EXISTS rewards_alloc_vendor_idx ON rewards_order_allocations(vendor_id,created_at DESC)`,
- `CREATE INDEX IF NOT EXISTS vendor_rewards_settings_active_idx ON vendor_rewards_settings(eligibility_status,rewards_enabled,referral_enabled)`,
- `CREATE INDEX IF NOT EXISTS product_rewards_vendor_idx ON product_rewards_eligibility(vendor_id,status)`
- ];
- for(const sql of statements) await db.prepare(sql).run();
- // Keep this endpoint safe when it initializes an older rewards_settings table
- // before the main Worker schema migration has added the referral reward column.
- await db.prepare("ALTER TABLE rewards_settings ADD COLUMN referral_reward_points INTEGER NOT NULL DEFAULT 0").run().catch(()=>{});
- await db.prepare("INSERT OR IGNORE INTO rewards_settings(id,enabled,gp_value_bdt,updated_at) VALUES(1,1,NULL,?)").bind(stamp()).run();
+ let pending=schemaPromises.get(db);
+ if(!pending){
+  pending=(async()=>{
+   const statements=[
+    `CREATE TABLE IF NOT EXISTS rewards_settings(id INTEGER PRIMARY KEY CHECK(id=1),enabled INTEGER NOT NULL DEFAULT 1,gp_value_bdt REAL,updated_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS vendor_rewards_settings(vendor_id TEXT PRIMARY KEY,rewards_enabled INTEGER NOT NULL DEFAULT 0,referral_enabled INTEGER NOT NULL DEFAULT 0,eligible_store_layout INTEGER NOT NULL DEFAULT 0,eligibility_status TEXT NOT NULL DEFAULT 'inactive',updated_by TEXT,updated_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS product_rewards_eligibility(product_id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL,rewards_eligible INTEGER NOT NULL DEFAULT 0,referral_eligible INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'not_eligible',updated_by TEXT,updated_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS rewards_audit_logs(id TEXT PRIMARY KEY,admin_id TEXT,vendor_id TEXT,product_id TEXT,action TEXT NOT NULL,old_value TEXT,new_value TEXT,reason TEXT,created_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS referrals(id TEXT PRIMARY KEY,referrer_member_id TEXT NOT NULL,referral_code TEXT NOT NULL UNIQUE,referred_member_id TEXT,status TEXT NOT NULL DEFAULT 'pending',qualifying_order_id TEXT,created_at TEXT NOT NULL,qualified_at TEXT,rewarded_at TEXT)`,
+    `CREATE INDEX IF NOT EXISTS referrals_referrer_idx ON referrals(referrer_member_id,created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS referrals_referred_idx ON referrals(referred_member_id)`,
+    `CREATE INDEX IF NOT EXISTS referrals_order_idx ON referrals(qualifying_order_id)`,
+    `CREATE TABLE IF NOT EXISTS referral_rewards(id TEXT PRIMARY KEY,referral_id TEXT NOT NULL,order_id TEXT NOT NULL,referrer_member_id TEXT NOT NULL,referred_member_id TEXT,discount_amount REAL NOT NULL DEFAULT 0,reward_points INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL,completed_at TEXT,reversed_at TEXT,UNIQUE(referral_id,order_id))`,
+    `CREATE INDEX IF NOT EXISTS referral_rewards_referrer_idx ON referral_rewards(referrer_member_id,status,created_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS rewards_order_allocations(id TEXT PRIMARY KEY,order_id TEXT NOT NULL,order_item_id TEXT,vendor_id TEXT NOT NULL,product_id TEXT NOT NULL,rewards_eligible INTEGER NOT NULL DEFAULT 0,referral_eligible INTEGER NOT NULL DEFAULT 0,qualifying_subtotal REAL NOT NULL DEFAULT 0,referral_discount REAL NOT NULL DEFAULT 0,cashback_percent REAL NOT NULL DEFAULT 0,cashback_points INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(order_id,order_item_id))`,
+    `CREATE INDEX IF NOT EXISTS rewards_alloc_order_idx ON rewards_order_allocations(order_id,status)`,
+    `CREATE INDEX IF NOT EXISTS rewards_alloc_vendor_idx ON rewards_order_allocations(vendor_id,created_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS vendor_rewards_settings_active_idx ON vendor_rewards_settings(eligibility_status,rewards_enabled,referral_enabled)`,
+    `CREATE INDEX IF NOT EXISTS product_rewards_vendor_idx ON product_rewards_eligibility(vendor_id,status)`
+   ];
+   await db.batch(statements.map(sql=>db.prepare(sql)));
+   const columns=(await db.prepare("PRAGMA table_info(rewards_settings)").all()).results||[];
+   if(!columns.some(column=>column.name==="referral_reward_points"))await db.prepare("ALTER TABLE rewards_settings ADD COLUMN referral_reward_points INTEGER NOT NULL DEFAULT 0").run();
+   await db.prepare("INSERT OR IGNORE INTO rewards_settings(id,enabled,gp_value_bdt,updated_at) VALUES(1,1,NULL,?)").bind(stamp()).run();
+  })().catch(err=>{schemaPromises.delete(db);throw err});
+  schemaPromises.set(db,pending);
+ }
+ return pending;
 }
 const one=async(db,sql,...args)=>(await db.prepare(sql).bind(...args).all()).results?.[0]||null;
 const all=async(db,sql,...args)=>(await db.prepare(sql).bind(...args).all()).results||[];
