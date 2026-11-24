@@ -133,7 +133,7 @@ async function ensureSchema(env){
     ["grabpoints_ledger","qualifying_points","ALTER TABLE grabpoints_ledger ADD COLUMN qualifying_points INTEGER NOT NULL DEFAULT 0"]
    ];
    const tableNames=[...new Set(migrations.map(row=>row[0]))];
-   const tableInfo=await env.DB.batch(tableNames.map(table=>env.DB.prepare("PRAGMA table_info("+table+")")));
+   const tableInfo=await Promise.all(tableNames.map(table=>env.DB.prepare("PRAGMA table_info("+table+")").all()));
    const columnsByTable=new Map();
    for(let i=0;i<tableNames.length;i++){
     columnsByTable.set(tableNames[i],new Set((tableInfo[i]?.results||[]).map(column=>String(column.name))));
