@@ -266,9 +266,9 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
    const found=[];
    for(const m of String(product.description||'').matchAll(/(?:^|\n)\s*(S|M|L|XL|XXL|XXXL)\s*=\s*[^\n]+/gi)){const value=m[1].toUpperCase();if(!found.includes(value))found.push(value)}
    if(found.length){
-     const t=new Date().toISOString(),oid=crypto.randomUUID();
-     await e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid,id,'Size',0,t,t).run();
-     for(let i=0;i<found.length;i++)await e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),oid,found[i],i,t,t).run();
+     const t=new Date().toISOString(),oid=crypto.randomUUID(),statements=[e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid,id,'Size',0,t,t)];
+     for(let i=0;i<found.length;i++)statements.push(e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),oid,found[i],i,t,t));
+     await e.DB.batch(statements);
      opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[id])).results||[];
      await hydrateOptionValues(e,opts);
    }
@@ -276,35 +276,43 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
  // Repair products that have saved option definitions but never got variation rows.
  // This keeps the public product page usable without recreating intentionally disabled variations.
  if(!vs.length&&opts.length&&String(product.product_type||'').toLowerCase()==='variable'){
-   // Variable products must have active variation rows. Rebuild them when
-   // an earlier save left the option definitions without active rows.
    let combos=[{}];
    for(const o of opts){
+     if(combos.length*(o.values||[]).length>200){combos=null;break}
      const next=[];
      for(const x of combos)for(const val of(o.values||[]))next.push({...x,[o.name]:val.value});
      combos=next;
    }
-   const t=new Date().toISOString();
-   const rows=(await q(e,'SELECT po.id option_id,po.name,ov.id value_id,ov.value FROM product_options po JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? ORDER BY po.sort_order,ov.sort_order',[id])).results||[];
-   const map=new Map(rows.map(x=>[x.name+'\\u0000'+x.value,{option_id:x.option_id,value_id:x.value_id}]));
-   for(const selected of combos){
-     const key=Object.entries(selected).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>k+'='+v).join('|').slice(0,1000);
-     const existing=await one(e,'SELECT id FROM product_variations WHERE product_id=? AND options_key=?',[id,key]);
-     const vid=existing?.id||crypto.randomUUID();
-     if(existing){
-       await e.DB.prepare("UPDATE product_variations SET status='Available',updated_at=? WHERE id=?").bind(t,vid).run();
-       await e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(vid).run();
-     }else{
-       await e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(vid,id,'',Number(product.price||0),null,null,0,5,'', 'Available',1,null,key,t,t).run();
+   if(combos){
+     const t=new Date().toISOString();
+     const rows=(await q(e,'SELECT po.id option_id,po.name,ov.id value_id,ov.value FROM product_options po JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? ORDER BY po.sort_order,ov.sort_order',[id])).results||[];
+     const map=new Map(rows.map(x=>[x.name+'\\u0000'+x.value,{option_id:x.option_id,value_id:x.value_id}]));
+     const existing=(await q(e,'SELECT id,options_key FROM product_variations WHERE product_id=? ORDER BY created_at,id',[id])).results||[];
+     const byKey=new Map(existing.filter(x=>x.options_key).map(x=>[String(x.options_key),x]));
+     const statements=[];
+     for(const selected of combos){
+       const key=Object.entries(selected).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>k+'='+v).join('|');
+       if(!key||key.length>1000)continue;
+       const old=byKey.get(key),vid=old?.id||crypto.randomUUID();
+       if(old){
+         statements.push(e.DB.prepare("UPDATE product_variations SET status='Available',updated_at=? WHERE id=?").bind(t,vid));
+         statements.push(e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(vid));
+       }else{
+         statements.push(e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(vid,id,'',Number(product.price||0),null,null,0,5,'','Available',1,null,key,t,t));
+       }
+       for(const o of opts){
+         const m=map.get(o.name+'\\u0000'+selected[o.name]);
+         if(m)statements.push(e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(vid,m.option_id,m.value_id));
+       }
      }
-     for(const o of opts){
-       const m=map.get(o.name+'\\u0000'+selected[o.name]);
-       if(m)await e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(vid,m.option_id,m.value_id).run();
+     if(statements.length<=900){
+       await e.DB.batch(statements);
+       vs=(await q(e,"SELECT id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
      }
    }
-   vs=(await q(e,"SELECT id,sku,regular_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at",[id])).results||[];
  }
  await hydrateVariationRows(e,vs);
+ const linkRepairs=[];
  for(const v of vs){
    const links=v._optionLinks||[];
 
@@ -325,7 +333,7 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
        if(!ov) continue;
        const exists=links.some(x=>String(x.option_id)===String(o.id));
        if(exists) continue;
-       await e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(v.id,o.id,ov.id).run();links.push({option_id:o.id,option_value_id:ov.id,name:o.name,value:ov.value});
+       linkRepairs.push(e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(v.id,o.id,ov.id));links.push({option_id:o.id,option_value_id:ov.id,name:o.name,value:ov.value});
      }
    }
 
@@ -333,6 +341,7 @@ async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marke
    for(const x of links)v.options[x.name]=x.value;
    delete v._optionLinks;
  }
+ if(linkRepairs.length&&linkRepairs.length<=900)await e.DB.batch(linkRepairs);
  return json({product,options:opts,variations:vs})}
 async function orderGuard(req,e,next){if(new URL(req.url).pathname!=='/api/d1'||req.method!=='POST')return null;const b=await req.clone().json().catch(()=>null);if(b?.fn!=='create_public_order')return null;const payload=b.args?.payload||b.payload||{},items=Array.isArray(payload.items)?payload.items:[];if(!items.length)return null;await schema(e);const nextItems=[];for(const raw of items){const item={...raw},qty=Math.max(1,Math.floor(Number(item.quantity||1)));if(item.variation_id){const v=await one(e,"SELECT pv.id,pv.product_id,pv.sku,pv.regular_price,pv.sale_price,pv.old_price,pv.image_url,pv.status,p.name,p.sku product_sku,p.published,p.vendor_id,ven.status vendor_status FROM product_variations pv JOIN products p ON p.id=pv.product_id LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE pv.id=?",[clean(item.variation_id,120)]);if(!v||!v.published||v.status!=='Available'||v.vendor_status&&v.vendor_status!=='Active')return json({error:'One selected variation is no longer available.'},409);const regular=Math.max(0,Number(v.regular_price||0)),sale=Math.max(0,Number(v.sale_price||0));const unit=sale>0&&sale<regular?sale:regular;item.product_id=v.product_id;item.unit_price=unit;item.price=unit;item.line_total=unit*qty;item.product_name=v.name;item.image_url=v.image_url||item.image_url;item.sku=v.sku||v.product_sku||item.sku;const optionRows=(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[v.id])).results||[];const resolvedOptions={};for(const x of optionRows)resolvedOptions[x.name]=x.value;item.variation_options=Object.keys(resolvedOptions).length?resolvedOptions:(item.variation_options&&typeof item.variation_options==='object'?item.variation_options:{});}else{const p=await one(e,"SELECT p.*,ven.status vendor_status FROM products p LEFT JOIN vendors ven ON ven.id=p.vendor_id WHERE p.id=?",[clean(item.product_id||item.id,120)]);if(!p||!p.published||p.vendor_status&&p.vendor_status!=='Active')return json({error:'One selected product is no longer available.'},409);if(p.product_type==='variable')return json({error:p.name+' requires a variation selection.'},409);if(!Number.isFinite(Number(p.price))||Number(p.price)<0)return json({error:'Invalid price for '+p.name+'.'},409);const unit=Number(p.price||0);item.product_id=p.id;item.unit_price=unit;item.price=unit;item.line_total=unit*qty;item.product_name=p.name;item.image_url=p.image_url||item.image_url;item.sku=p.sku||item.sku;}nextItems.push(item)}
 const nb={...b,args:{...(b.args||{}),payload:{...payload,items:nextItems}}};const h=new Headers(req.headers);h.delete('content-length');const r=await next(new Request(req.url,{method:'POST',headers:h,body:JSON.stringify(nb)}));return r}
