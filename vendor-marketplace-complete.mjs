@@ -592,7 +592,7 @@ async function saveVariations(e,productId,rows){
  if(keys.some(key=>!key||key.length>1000)||new Set(keys).size!==keys.length)throw new Error('Variation option keys are invalid or duplicated.');
  await ensureVendorVariationSchema(e);
  const existing=(await q(e,'SELECT id,options_key,status,created_at,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,min_qty,max_qty FROM product_variations WHERE product_id=? ORDER BY created_at,id',[productId])).results||[];
- const byKey=new Map(),duplicateIds=new Set();
+ const byKey=new Map(),byId=new Map(existing.map(row=>[String(row.id),row])),duplicateIds=new Set();
  for(const row of existing){
   const key=String(row.options_key||'');
   if(!key){duplicateIds.add(row.id);continue}
@@ -616,10 +616,13 @@ async function saveVariations(e,productId,rows){
    statements.push(e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(valueId,optionId,value,sort++,t,t));
   }
  }
- const keep=new Set();
+ const keep=new Set(),usedVariationIds=new Set();
  for(let index=0;index<normalized.length;index++){
-  const item=normalized[index],source=item.source,key=keys[index],old=byKey.get(key),id=clean(source.id,100)||old?.id||crypto.randomUUID();
-  if(old&&id!==old.id)throw new Error('A variation ID cannot be changed while replacing its option combination.');
+  const item=normalized[index],source=item.source,key=keys[index],requestedId=clean(source.id,100),keyMatch=byKey.get(key),idMatch=requestedId?byId.get(requestedId):null;
+  if(keyMatch&&idMatch&&keyMatch.id!==idMatch.id)throw new Error('Variation ID does not match its existing option combination.');
+  const old=keyMatch||idMatch,id=old?.id||crypto.randomUUID();
+  if(usedVariationIds.has(id))throw new Error('A variation cannot be submitted more than once.');
+  usedVariationIds.add(id);
   const sku=clean(source.sku??source.variation_sku??old?.sku??'',100);
   const regular=Number(source.price??source.regular_price??old?.regular_price??0);
   const saleRaw=source.sale_price===undefined?old?.sale_price:source.sale_price;
