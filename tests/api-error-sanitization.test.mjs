@@ -18,6 +18,9 @@ const files = [
   'marketplace-runtime-fixes.mjs',
   'vendor-create-fix-wrapper.mjs',
   'admin-vendor-capabilities-wrapper.mjs',
+  'marketplace-admin-wrapper.mjs',
+  'vendor-preview-entry.mjs',
+  'vendor-marketplace-enhancements.mjs',
 ];
 
 test('unexpected backend exceptions are not returned to API clients', () => {
