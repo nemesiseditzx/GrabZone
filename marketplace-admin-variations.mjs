@@ -93,11 +93,12 @@ function opts(b) {
     name: clean(o?.name, 80),
     values: [...new Set((Array.isArray(o?.values) ? o.values : []).map(v => clean(v, 120)).filter(Boolean))],
     sort_order: i
-  })).filter(o => o.name && o.values.length && !seen.has(o.name) && seen.add(o.name));
+  })).filter(o => o.name && o.values.length && !/[=|]/.test(o.name) && !o.values.some(v => /[=|]/.test(v)) && !seen.has(o.name) && seen.add(o.name));
 }
 function combos(os) {
   let r = [{}];
   for (const o of os) {
+    if (r.length * o.values.length > 200) return null;
     const n = [];
     for (const x of r) for (const v of o.values) n.push({ ...x, [o.name]: v });
     r = n;
@@ -127,7 +128,7 @@ export function indexExistingVariations(rows) {
 
 function key(x) {
   return Object.entries(x).sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([a, b]) => `${a}=${b}`).join('|').slice(0, 1000);
+    .map(([a, b]) => `${a}=${b}`).join('|');
 }
 async function product(e, id) { return one(e, 'SELECT * FROM products WHERE id=?', [id]); }
 async function hydrateProductOptions(e, options) {
@@ -225,7 +226,9 @@ async function handle(req, e) {
     const os = opts(b.options);
     if (!os.length) return json({ error: 'Add at least one option with values.' }, 400);
     const rows = combos(os);
-    if (rows.length > 200) return json({ error: 'Maximum 200 generated variations per product.' }, 400);
+    if (!rows || rows.length > 200) return json({ error: 'Maximum 200 generated variations per product.' }, 400);
+    const generatedKeys = rows.map(key);
+    if (generatedKeys.some(value => !value || value.length > 1000) || new Set(generatedKeys).size !== generatedKeys.length) return json({ error: 'Generated variation keys are invalid or duplicated.' }, 400);
 
     const existing = (await q(e,
       'SELECT id,options_key,status,created_at FROM product_variations WHERE product_id=? ORDER BY created_at,id', [pid])).results || [];
@@ -298,6 +301,7 @@ async function handle(req, e) {
       }
     }
 
+    if (statements.length > 900) return json({ error: 'This option matrix is too large for one safe database update. Reduce the number of option values.' }, 400);
     await e.DB.batch(statements);
 
     const generated = (await q(e,
