@@ -87,7 +87,7 @@ test('vendor variation matrix replacement is atomic and retains existing variati
     new URL('../vendor-system-v2.mjs', import.meta.url),
     'utf8',
   );
-  const start = source.indexOf("if(req.method==='POST'){const opts=normalizeOptions(b.options);");
+  const start = source.indexOf("if(req.method==='POST')");
   const end = source.indexOf("if(req.method==='PATCH')", start);
   assert.ok(start >= 0 && end > start, 'vendor variation POST handler must exist');
   const post = source.slice(start, end);
