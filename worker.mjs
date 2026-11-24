@@ -670,11 +670,13 @@ if(fn==="rewards_admin_settings"){
    return env.DB.prepare("UPDATE membership_tiers SET min_points=?,discount_percent=?,cashback_percent=?,updated_at=? WHERE tier=?").bind(value.min,value.cashback,value.cashback,t,String(row.tier));
   }));
  }
- const gp=Number(a.p_grabpoints_enabled??1),earn=Number(a.p_earn_rate??10),value=Number(a.p_value??0.1);
- if(![0,1].includes(gp))throw new Error("GrabPoints enabled must be ON or OFF.");
- if(!Number.isFinite(earn)||earn<0)throw new Error("Enter a valid GrabPoints earn rate.");
- if(!Number.isFinite(value)||value<=0)throw new Error("The value of 1 GP must be greater than zero.");
- await env.DB.prepare("UPDATE site_settings SET grabpoints_enabled=?,grabpoints_earn_rate=?,grabpoints_value=?,updated_at=? WHERE id=1").bind(gp,earn,value,now()).run();
+ if(a.p_grabpoints_enabled!==undefined||a.p_earn_rate!==undefined||a.p_value!==undefined){
+  const gp=Number(a.p_grabpoints_enabled??1),earn=Number(a.p_earn_rate??10),value=Number(a.p_value??0.1);
+  if(![0,1].includes(gp))throw new Error("GrabPoints enabled must be ON or OFF.");
+  if(!Number.isFinite(earn)||earn<0)throw new Error("Enter a valid GrabPoints earn rate.");
+  if(!Number.isFinite(value)||value<=0)throw new Error("The value of 1 GP must be greater than zero.");
+  await env.DB.prepare("UPDATE site_settings SET grabpoints_enabled=?,grabpoints_earn_rate=?,grabpoints_value=?,updated_at=? WHERE id=1").bind(gp,earn,value,now()).run();
+ }
  return{data:{ok:true}};
 }
 
