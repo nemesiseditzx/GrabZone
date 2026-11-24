@@ -197,3 +197,19 @@ test('legacy product variation saves preserve matching rows and commit as one ba
   assert.match(fn, /statements\.length>900/);
   assert.doesNotMatch(fn, /DELETE FROM product_variations WHERE product_id/);
 });
+
+
+test('admin vendor list uses aggregated counts instead of per-vendor D1 query loops', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-marketplace-complete.mjs', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf("if(p==='/api/vendor/admin/vendors')");
+  const end = source.indexOf("if(p.startsWith('/api/vendor/admin/vendors/')&&req.method==='DELETE')", start);
+  const route = source.slice(start, end);
+  assert.match(route, /GROUP BY vendor_id\) pc/);
+  assert.match(route, /GROUP BY vendor_id\) oc/);
+  assert.match(route, /LEFT JOIN vendor_users vu/);
+  assert.doesNotMatch(route, /for\(const v of vs\)/);
+  assert.doesNotMatch(route, /SELECT COUNT\(\*\) n FROM products WHERE vendor_id=\?/);
+});
