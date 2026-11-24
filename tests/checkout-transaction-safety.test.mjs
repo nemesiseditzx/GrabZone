@@ -5,6 +5,16 @@ import fs from 'node:fs';
 const worker = fs.readFileSync('worker.mjs', 'utf8');
 const checkout = fs.readFileSync('checkout.js', 'utf8');
 
+test('D1 cold-start schema work is batched and expensive backfills run once', () => {
+  assert.ok(worker.includes('env.DB.batch(D1_SCHEMA.slice(1).map(sql=>env.DB.prepare(sql)))'));
+  assert.ok(worker.includes('PRAGMA table_info('+table+')'));
+  assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS schema_migrations'));
+  assert.ok(worker.includes("VALUES('products-stock-mode-backfill',?)"));
+  assert.ok(worker.includes("AND changes()=1"));
+  assert.ok(!worker.includes('for(const sql of D1_SCHEMA)await env.DB.prepare(sql).run()'));
+  assert.ok(!worker.includes('ALTER TABLE site_settings ADD COLUMN global_shipping_fee REAL NOT NULL DEFAULT 130").run().catch'));
+});
+
 test('checkout bulk-loads cart records and appends simple products outside the variation branch', () => {
   assert.ok(worker.includes('const productMap=new Map()'));
   assert.ok(worker.includes('const variationMap=new Map()'));
