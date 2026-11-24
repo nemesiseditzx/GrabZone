@@ -36,7 +36,7 @@ test('vendor status reads the prior status and prevents reopening a cancelled or
   assert.ok(start >= 0 && end > start, 'vendor status handler must exist');
   const handler = source.slice(start, end);
   assert.match(handler, /SELECT vo\.id,vo\.order_id,vo\.status,o\.order_number/);
-  assert.match(handler, /previous==='Cancelled'&&b\.status!=='Cancelled'/);
+  assert.match(handler, /previous==='cancelled'&&b\.status!=='Cancelled'/);
   assert.match(handler, /restoreVendorOrderInventory\(e,vo\.id,u\.vendor_id\)/);
 });
 
