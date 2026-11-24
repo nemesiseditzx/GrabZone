@@ -29,7 +29,7 @@ async function marketplaceCategories(r,e){
       if(!await exists())return json({categories:[]});
       const rows=(await e.DB.prepare('SELECT id,name,slug FROM marketplace_categories ORDER BY name COLLATE NOCASE').all()).results||[];
       return json({ok:true,categories:rows});
-    }catch(err){return json({error:'Categories could not be loaded.',detail:String(err?.message||err)},500)}
+    }catch(err){console.error('Marketplace categories GET failed',err);return json({error:'Categories could not be loaded.'},500)}
   }
   if(r.method==='POST'){
     let b={};try{b=await r.json()}catch{return json({error:'Invalid JSON'},400)}
@@ -43,7 +43,7 @@ async function marketplaceCategories(r,e){
       const id=crypto.randomUUID(),t=now();
       await e.DB.prepare('INSERT INTO marketplace_categories(id,name,slug,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id,name,slug,t,t).run();
       return json({ok:true,category:{id,name,slug}},201);
-    }catch(err){return json({error:'Category could not be saved.',detail:String(err?.message||err)},500)}
+    }catch(err){console.error('Marketplace category POST failed',err);return json({error:'Category could not be saved.'},500)}
   }
   return json({error:'Method not allowed'},405);
 }
@@ -136,7 +136,7 @@ export default{async fetch(req,env,ctx){try{const rawPath=new URL(req.url).pathn
         return json({ok:true,deleted:{id:category.id,name:category.name},products_moved_to_general:affected});
       }
       return json({error:'Method not allowed'},405);
-    }catch(err){return json({error:'Categories request failed',detail:String(err?.message||err)},500)}
+    }catch(err){console.error('Marketplace categories request failed',err);return json({error:'Categories request failed'},500)}
   }
   const rawP=new URL(a.url).pathname;
   if(rawP==='/api/vendor-auth'){const va=await marketplaceComplete.fetch(a,env,ctx);if(va)return va;}
@@ -149,4 +149,4 @@ export default{async fetch(req,env,ctx){try{const rawPath=new URL(req.url).pathn
   if(p==='/api/vendor/dashboard'||p==='/api/vendor/products'||p==='/api/vendor/orders'||p==='/api/vendor/profile'||p==='/api/vendor/sections'||p==='/api/vendor/shipments'||p==='/api/vendor/order-status'||p==='/api/vendor/variations'){
     const va=await marketplaceComplete.fetch(r,env,ctx);if(va)return va;
   }
-  if(p.startsWith('/api/marketplace/admin/variations')){const av=await adminVariations.fetch(r,env,ctx);if(av)return av;}if(p==='/api/admin-auth')return legacyWorker.fetch(r,env,ctx);if(p==='/api/vendor/admin/overview')return handleVendorAdminApi(r,env);if(p==='/api/vendor/admin/vendors'||p.startsWith('/api/vendor/admin/vendors/')){const mv=await marketplaceComplete.fetch(r,env,ctx);if(mv)return mv;}if(p==='/api/vendor/admin/vendor-data'||p==='/api/vendor/admin/vendor-settings'){const vd=await marketplaceComplete.fetch(r,env,ctx);if(vd)return vd;}const reset=await resetPassword(r,env);if(reset)return reset;if(p.startsWith('/api/vendor/admin/vendors/'))return capabilities.fetch(r,env,ctx);if(p==='/api/vendor/upload'||p==='/api/vendor/admin/upload'||p==='/api/vendor/admin/media'||p==='/api/vendor/media')return capabilities.fetch(r,env,ctx);if(p==='/api/vendor/admin/stats'&&req.method==='GET'){if(!cookie(r,'gz_admin_session'))return json({error:'Unauthorized'},401);const v=await vendor(env,key(r));if(!v)return json({error:'Vendor not found'},404);const [products,orders,sales]=await Promise.all([one(env,'SELECT COUNT(*) n FROM products WHERE vendor_id=?',[v.id]),one(env,'SELECT COUNT(*) n FROM vendor_orders WHERE vendor_id=?',[v.id]),one(env,'SELECT COALESCE(SUM(subtotal),0) n,COALESCE(SUM(commission_amount),0) commission,COALESCE(SUM(vendor_earnings),0) earnings FROM vendor_orders WHERE vendor_id=?',[v.id])]);return json({vendor:v,metrics:{products:Number(products?.n||0),orders:Number(orders?.n||0),sales:Number(sales?.n||0),commission:Number(sales?.commission||0),earnings:Number(sales?.earnings||0)}})}if(p==='/api/vendor/admin/products'||p==='/api/vendor/admin/store-sections'||p==='/api/vendor/admin/sections'||p==='/api/vendor/admin/store/sections'||p==='/api/vendor/admin/order-status'||p==='/api/vendor/admin/shipment'){const x=await handleVendorAdminApi(r,env);if(x)return x}return stable.fetch(r,env,ctx)}catch(err){return json({error:err?.message||'Marketplace API gateway failed'},500)}}};
+  if(p.startsWith('/api/marketplace/admin/variations')){const av=await adminVariations.fetch(r,env,ctx);if(av)return av;}if(p==='/api/admin-auth')return legacyWorker.fetch(r,env,ctx);if(p==='/api/vendor/admin/overview')return handleVendorAdminApi(r,env);if(p==='/api/vendor/admin/vendors'||p.startsWith('/api/vendor/admin/vendors/')){const mv=await marketplaceComplete.fetch(r,env,ctx);if(mv)return mv;}if(p==='/api/vendor/admin/vendor-data'||p==='/api/vendor/admin/vendor-settings'){const vd=await marketplaceComplete.fetch(r,env,ctx);if(vd)return vd;}const reset=await resetPassword(r,env);if(reset)return reset;if(p.startsWith('/api/vendor/admin/vendors/'))return capabilities.fetch(r,env,ctx);if(p==='/api/vendor/upload'||p==='/api/vendor/admin/upload'||p==='/api/vendor/admin/media'||p==='/api/vendor/media')return capabilities.fetch(r,env,ctx);if(p==='/api/vendor/admin/stats'&&req.method==='GET'){if(!cookie(r,'gz_admin_session'))return json({error:'Unauthorized'},401);const v=await vendor(env,key(r));if(!v)return json({error:'Vendor not found'},404);const [products,orders,sales]=await Promise.all([one(env,'SELECT COUNT(*) n FROM products WHERE vendor_id=?',[v.id]),one(env,'SELECT COUNT(*) n FROM vendor_orders WHERE vendor_id=?',[v.id]),one(env,'SELECT COALESCE(SUM(subtotal),0) n,COALESCE(SUM(commission_amount),0) commission,COALESCE(SUM(vendor_earnings),0) earnings FROM vendor_orders WHERE vendor_id=?',[v.id])]);return json({vendor:v,metrics:{products:Number(products?.n||0),orders:Number(orders?.n||0),sales:Number(sales?.n||0),commission:Number(sales?.commission||0),earnings:Number(sales?.earnings||0)}})}if(p==='/api/vendor/admin/products'||p==='/api/vendor/admin/store-sections'||p==='/api/vendor/admin/sections'||p==='/api/vendor/admin/store/sections'||p==='/api/vendor/admin/order-status'||p==='/api/vendor/admin/shipment'){const x=await handleVendorAdminApi(r,env);if(x)return x}return stable.fetch(r,env,ctx)}catch(err){console.error('Marketplace API gateway failed',err);return json({error:'Marketplace API gateway failed'},500)}}};
