@@ -638,6 +638,12 @@ for(let i=0;i<variationIds.length;i+=90){
  const rows=(await q(env,`SELECT id,product_id,regular_price,sale_price,status,sku,image_url,stock,stock_mode,min_qty,max_qty FROM product_variations WHERE id IN (${marks})`,chunk)).results||[];
  for(const row of rows)variationMap.set(String(row.id),row);
 }
+const variationImageMap=new Map();
+for(let i=0;i<variationIds.length;i+=90){
+ const chunk=variationIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
+ const rows=(await q(env,`SELECT variation_id,image_url FROM variation_images WHERE variation_id IN (${marks}) ORDER BY variation_id,sort_order,id`,chunk)).results||[];
+ for(const row of rows)if(!variationImageMap.has(String(row.variation_id))&&row.image_url)variationImageMap.set(String(row.variation_id),String(row.image_url));
+}
 const variationOptionsMap=new Map();
 for(let i=0;i<variationIds.length;i+=90){
  const chunk=variationIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
@@ -686,7 +692,7 @@ for(const x of p.items){
   const regular=Number(vv.regular_price||0),sale=Number(vv.sale_price||0);
   unit=sale>0&&sale<regular?sale:regular;
   variationSku=vv.sku||null;
-  productImage=vv.image_url||pr.image_url;
+  productImage=vv.image_url||variationImageMap.get(variationId)||pr.image_url;
   variationOptions={...(variationOptionsMap.get(variationId)||{})};
  }
  const line=unit*qty;
