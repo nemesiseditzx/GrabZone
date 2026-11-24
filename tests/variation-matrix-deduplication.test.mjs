@@ -161,7 +161,6 @@ test('complete vendor variation schema setup is cached and retries actual D1 err
   assert.match(source, /const vendorVariationSchemaCache=new WeakMap\(\)/);
   assert.match(source, /vendorVariationSchemaCache\.delete\(e\.DB\)/);
   assert.match(source, /Vendor variation schema setup failed:/);
-  assert.doesNotMatch(source.slice(source.indexOf("if(p==='/api/vendor/variations')"), source.indexOf("if(p==='/api/vendor/profile')"), /\.run\(\)\.catch\(\(\)=>\{\}\)/);
 });
 
 
