@@ -375,7 +375,7 @@ async function routeOrderToVendors(env,orderId,items){
   const viCols=new Set((viInfo.results||[]).map(x=>x.name));
   const existingByVendor=new Map();
   for(const row of existingRows.results||[])if(!existingByVendor.has(String(row.vendor_id)))existingByVendor.set(String(row.vendor_id),row);
-  const existingVendorOrderIds=[...existingByVendor.values()].map(row=>String(row.id));
+  const existingVendorOrderIds=(existingRows.results||[]).map(row=>String(row.id));
   const existingItemVendorOrder=new Map();
   for(let i=0;i<existingVendorOrderIds.length;i+=90){
     const chunk=existingVendorOrderIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
@@ -402,7 +402,11 @@ async function routeOrderToVendors(env,orderId,items){
       statements.push(env.DB.prepare("INSERT INTO vendor_orders("+fields.join(",")+") VALUES("+fields.map(()=>"?").join(",")+")").bind(...fields.map(key=>row[key])));
     }
     for(const item of group.items){
-      if(existingItemVendorOrder.get(String(item.id))===String(vendorOrderId))continue;
+      const priorVendorOrderId=existingItemVendorOrder.get(String(item.id));
+      if(priorVendorOrderId){
+        if(priorVendorOrderId!==String(vendorOrderId))statements.push(env.DB.prepare("UPDATE vendor_order_items SET vendor_order_id=? WHERE order_item_id=?").bind(vendorOrderId,String(item.id)));
+        continue;
+      }
       const row={id:crypto.randomUUID(),vendor_order_id:vendorOrderId,order_item_id:item.id,product_id:item.product_id,quantity:Number(item.quantity||1),unit_price:Number(item.unit_price||0),line_total:Number(item.line_total??Number(item.unit_price||0)*Number(item.quantity||1)),variation_id:item.variation_id||null,variation_options:item.variation_options?JSON.stringify(item.variation_options):null,variation_sku:item.variation_sku||null};
       const fields=Object.keys(row).filter(key=>viCols.has(key));
       if(!fields.includes("id")||!fields.includes("vendor_order_id")||!fields.includes("order_item_id"))throw new Error("Vendor order item schema is incomplete.");
