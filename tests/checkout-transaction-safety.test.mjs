@@ -7,7 +7,7 @@ const checkout = fs.readFileSync('checkout.js', 'utf8');
 
 test('D1 cold-start schema work is batched and expensive backfills run once', () => {
   assert.ok(worker.includes('env.DB.batch(D1_SCHEMA.slice(1).map(sql=>env.DB.prepare(sql)))'));
-  assert.ok(worker.includes('PRAGMA table_info('+table+')'));
+  assert.ok(worker.includes('PRAGMA table_info("+table+")'));
   assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS schema_migrations'));
   assert.ok(worker.includes("VALUES('products-stock-mode-backfill',?)"));
   assert.ok(worker.includes("AND changes()=1"));
