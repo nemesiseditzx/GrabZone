@@ -62,9 +62,9 @@ test('variation list hydration uses bounded bulk queries instead of per-row read
     new URL('../marketplace-admin-variations.mjs', import.meta.url),
     'utf8',
   );
-  assert.match(source, /async function hydrateVariations\\(e, variations\\)/);
-  assert.match(source, /i \\+= 90/);
-  assert.match(source, /WHERE vo\\.variation_id IN \\(\\$\\{placeholders\\}\\)/);
-  assert.match(source, /await hydrateVariations\\(e, variations\\)/);
-  assert.match(source, /await hydrateVariations\\(e, generated\\)/);
+  assert.match(source, /async function hydrateVariations\(e, variations\)/);
+  assert.match(source, /i \+= 90/);
+  assert.match(source, /WHERE vo\.variation_id IN \(\$\{placeholders\}\)/);
+  assert.match(source, /await hydrateVariations\(e, variations\)/);
+  assert.match(source, /await hydrateVariations\(e, generated\)/);
 });
