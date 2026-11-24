@@ -14,6 +14,12 @@ test('vendor marketplace schema setup is batched and default vendor backfill is 
   assert.ok(!vendorSchema.includes('for(const x of s)await env.DB.prepare(x).run()'));
 });
 
+test('referral GP rewards are claimed once per referral in the same transaction', () => {
+  assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS referral_reward_claims(referral_id TEXT PRIMARY KEY'));
+  assert.ok(worker.includes('INSERT OR IGNORE INTO referral_reward_claims(referral_id,order_id,points,created_at)'));
+  assert.ok(worker.includes('AND changes()=1'));
+});
+
 test('referral reward reversals respect the original rolling tier window', () => {
   assert.ok(worker.includes('SELECT created_at FROM grabpoints_ledger WHERE order_id=? AND phone=? AND type=?'));
   assert.ok(worker.includes('qualifyingReverse=Number.isFinite(referralEarnTime)&&referralEarnTime>=Date.now()-365*24*60*60*1000?-reward:0'));
