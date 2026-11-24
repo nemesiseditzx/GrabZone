@@ -250,10 +250,10 @@ if(table==="orders"&&previousOrder&&["cancelled","canceled"].includes(String(inp
  const saleRows=(await q(env,"SELECT sale.order_item_id,sale.product_id,sale.variation_id,sale.quantity FROM order_inventory_movements sale WHERE sale.order_id=? AND sale.movement_type='sale' AND NOT EXISTS(SELECT 1 FROM order_inventory_movements restock WHERE restock.order_item_id=sale.order_item_id AND restock.movement_type='restock') ORDER BY sale.order_item_id",[previousOrder.id])).results||[];
  if(saleRows.length){
   const restockStatements=[];
-  for(let index=0;index<saleRows.length;index++){
-   const movement=saleRows[index],guardId=String(previousOrder.id)+":restock:"+index;
+  const guardId=String(previousOrder.id)+":restock";
+  for(const movement of saleRows){
    restockStatements.push(env.DB.prepare("INSERT OR IGNORE INTO order_inventory_movements(id,order_id,order_item_id,product_id,variation_id,quantity,movement_type,created_at) VALUES(?,?,?,?,?,?,?,?)")
-    .bind(crypto.randomUUID(),previousOrder.id,String(movement.order_item_id),String(movement.product_id),String(movement.variation_id),Number(movement.quantity||0),"restock",now()));
+    .bind(crypto.randomUUID(),previousOrder.id,String(movement.order_item_id),String(movement.product_id),movement.variation_id?String(movement.variation_id):null,Number(movement.quantity||0),"restock",now()));
    if(movement.variation_id){
     restockStatements.push(env.DB.prepare("UPDATE product_variations SET stock=stock+?,updated_at=? WHERE id=? AND product_id=? AND changes()=1")
      .bind(Number(movement.quantity||0),now(),String(movement.variation_id),String(movement.product_id)));
@@ -261,9 +261,9 @@ if(table==="orders"&&previousOrder&&["cancelled","canceled"].includes(String(inp
     restockStatements.push(env.DB.prepare("UPDATE products SET stock=stock+?,updated_at=? WHERE id=? AND changes()=1")
      .bind(Number(movement.quantity||0),now(),String(movement.product_id)));
    }
-   restockStatements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) VALUES(?,changes())").bind(guardId));
-   restockStatements.push(env.DB.prepare("DELETE FROM checkout_write_assertions WHERE id=?").bind(guardId));
+   restockStatements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) VALUES(?,changes()) ON CONFLICT(id) DO UPDATE SET ok=excluded.ok").bind(guardId));
   }
+  restockStatements.push(env.DB.prepare("DELETE FROM checkout_write_assertions WHERE id=?").bind(guardId));
   try{await env.DB.batch(restockStatements)}
   catch(restockError){
    const missing=(await q(env,"SELECT COUNT(*) AS n FROM order_inventory_movements sale WHERE sale.order_id=? AND sale.movement_type='sale' AND NOT EXISTS(SELECT 1 FROM order_inventory_movements restock WHERE restock.order_item_id=sale.order_item_id AND restock.movement_type='restock')",[previousOrder.id])).results?.[0];
@@ -751,8 +751,7 @@ for(let index=0;index<allocationRows.length;index++){
  statements.push(env.DB.prepare("INSERT OR IGNORE INTO rewards_order_allocations(id,order_id,order_item_id,vendor_id,product_id,rewards_eligible,referral_eligible,qualifying_subtotal,referral_discount,cashback_percent,cashback_points,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,0,0,'pending',?,?)")
   .bind(crypto.randomUUID(),id,String(item.id),vendorId||"grabzone",String(item.product_id||""),rewardsEligible,referralEligible,rewardsEligible?lineSubtotal:0,lineReferralDiscount,t0,t0));
 }
-let guardIndex=0;
-const addWriteGuard=()=>statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) VALUES(?,changes())").bind(id+":check:"+guardIndex++));
+const addWriteGuard=()=>statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) VALUES(?,changes()) ON CONFLICT(id) DO UPDATE SET ok=excluded.ok").bind(id+":check"));
 if(code){
  statements.push(env.DB.prepare("UPDATE referral_codes SET used_count=used_count+1,updated_at=? WHERE upper(code)=upper(?) AND active=1 AND (usage_limit IS NULL OR used_count<usage_limit) AND (starts_at IS NULL OR starts_at<=?) AND (expires_at IS NULL OR expires_at>=?)").bind(t,code,t,t));
  addWriteGuard();
@@ -776,8 +775,8 @@ for(const item of items){
    statements.push(env.DB.prepare("UPDATE product_variations SET stock=stock-?,updated_at=? WHERE id=? AND product_id=? AND status='Available' AND lower(COALESCE(stock_mode,'untracked'))='tracked' AND stock>=?")
     .bind(item.quantity,t,String(item.variation_id),String(item.product_id),item.quantity));
   }else{
-   statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) SELECT ?,CASE WHEN EXISTS(SELECT 1 FROM product_variations WHERE id=? AND product_id=? AND status='Available' AND lower(COALESCE(stock_mode,'untracked'))!='tracked') THEN 1 ELSE 0 END")
-    .bind(id+":check:"+guardIndex++,String(item.variation_id),String(item.product_id)));
+   statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) SELECT ?,CASE WHEN EXISTS(SELECT 1 FROM product_variations WHERE id=? AND product_id=? AND status='Available' AND lower(COALESCE(stock_mode,'untracked'))!='tracked') THEN 1 ELSE 0 END ON CONFLICT(id) DO UPDATE SET ok=excluded.ok")
+    .bind(id+":check",String(item.variation_id),String(item.product_id)));
   }
   if(tracked)addWriteGuard();
   if(tracked){
@@ -791,14 +790,14 @@ for(const item of items){
   statements.push(env.DB.prepare("INSERT INTO order_inventory_movements(id,order_id,order_item_id,product_id,variation_id,quantity,movement_type,created_at) VALUES(?,?,?,?,?,?,?,?)")
    .bind(crypto.randomUUID(),id,String(item.id),String(item.product_id),null,Number(item.quantity),"sale",t));
  }else{
-  statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) SELECT ?,CASE WHEN EXISTS(SELECT 1 FROM products WHERE id=? AND published=1 AND COALESCE(stock_mode,'untracked')!='tracked') THEN 1 ELSE 0 END")
-   .bind(id+":check:"+guardIndex++,String(item.product_id)));
+  statements.push(env.DB.prepare("INSERT INTO checkout_write_assertions(id,ok) SELECT ?,CASE WHEN EXISTS(SELECT 1 FROM products WHERE id=? AND published=1 AND COALESCE(stock_mode,'untracked')!='tracked') THEN 1 ELSE 0 END ON CONFLICT(id) DO UPDATE SET ok=excluded.ok")
+   .bind(id+":check",String(item.product_id)));
  }
 }
 if(idempotencyKey){
  statements.push(env.DB.prepare("INSERT INTO order_idempotency(idempotency_key,request_hash,order_id,created_at) VALUES(?,?,?,?)").bind(idempotencyKey,idempotencyHash,id,t));
 }
-statements.push(env.DB.prepare("DELETE FROM checkout_write_assertions WHERE id LIKE ?").bind(id+":check:%"));
+statements.push(env.DB.prepare("DELETE FROM checkout_write_assertions WHERE id=?").bind(id+":check"));
 try{
  await env.DB.batch(statements);
 }catch(writeError){
