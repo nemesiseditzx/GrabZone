@@ -7,12 +7,15 @@ const d1=window.grabzoneD1||null;
 const CART_KEY='grabzone_cart_v2';
 const BUY_NOW_KEY='grabzone_buy_now_v2';
 const CHECKOUT_REQUEST_KEY='grabzone_checkout_request_id_v1';
-function checkoutRequestId(){
+function checkoutRequestId(payload){
   try{
-    let key=sessionStorage.getItem(CHECKOUT_REQUEST_KEY)||'';
-    if(!/^[A-Za-z0-9_-]{16,100}$/.test(key)){
+    const fingerprint=JSON.stringify(payload||{});
+    let saved=null;
+    try{saved=JSON.parse(sessionStorage.getItem(CHECKOUT_REQUEST_KEY)||'null')}catch{}
+    let key=String(saved?.key||'');
+    if(!/^[A-Za-z0-9_-]{16,100}$/.test(key)||saved?.fingerprint!==fingerprint){
       key=crypto.randomUUID?crypto.randomUUID():('gz_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2));
-      sessionStorage.setItem(CHECKOUT_REQUEST_KEY,key);
+      sessionStorage.setItem(CHECKOUT_REQUEST_KEY,JSON.stringify({key,fingerprint}));
     }
     return key;
   }catch{
@@ -466,7 +469,7 @@ function openOrderConfirm(d){
     const modal=$('orderConfirmModal');
     if(!modal){msg('Order confirmation is unavailable. Please reload checkout and try again.',true);resolve(false);return}
     const shipping=shippingForLocation();
-    const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100));
+    const total=Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(vendorCouponState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100));
     const address=[d.address,d.upazila,d.district,d.division].filter(Boolean).join(', ');
     $('confirmCustomer').textContent=d.customer_name||'—';
     $('confirmPhone').textContent=d.phone||'—';
@@ -510,7 +513,6 @@ async function submit(e){
   const b=$('placeOrderBtn');b.disabled=true;b.textContent='Placing order…';msg('');
   const shipping=shippingForLocation();
   const payload={
-    idempotency_key:checkoutRequestId(),
     customer_name:d.customer_name,email:d.email,phone:d.phone,division:d.division,
     district:d.district,upazila:d.upazila,address:d.address,
     referral_code:d.referral_code||null,vendor_coupon_code:vendorCouponState.code||null,rewards_voucher_code:d.rewards_voucher_code||null,payment_method:'Cash on Delivery',
@@ -518,6 +520,7 @@ async function submit(e){
     items:checkoutItems.map(i=>({product_id:i.product_id,product_name:i.name,image_url:i.image_url,quantity:Number(i.quantity),unit_price:Number(i.price),variation_id:i.variation_id||null,variation_options:i.variation_options||{} ,variation_sku:i.variation_sku||i.sku||''})),
     subtotal:subtotal(),referral_discount:Number(referralState.discount||0),vendor_coupon_discount:Number(vendorCouponState.discount||0),mystery_token:mysteryState.token,grabpoints_opt_in:1,total:Math.max(0,subtotal()+shipping-Number(referralState.discount||0)-Number(vendorCouponState.discount||0)-Number(rewardsVoucherState.discount||0)-Math.min(subtotal(),subtotal()*Number(mysteryState.discount||0)/100))
   };
+  payload.idempotency_key=checkoutRequestId(payload);
   try{
     if(!d1)throw new Error('Order service is not configured.');
     const{data:order,error}=await d1.rpc('create_public_order',{payload});
