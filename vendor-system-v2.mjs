@@ -21,9 +21,32 @@ async function schema(e){if(schemaPromise)return schemaPromise;schemaPromise=(as
 `CREATE INDEX IF NOT EXISTS product_variations_product_status_idx ON product_variations(product_id,status)`,`CREATE INDEX IF NOT EXISTS product_variations_sku_idx ON product_variations(sku)`,`CREATE INDEX IF NOT EXISTS variation_options_value_idx ON variation_options(option_value_id)`,`CREATE INDEX IF NOT EXISTS inventory_log_vendor_idx ON inventory_log(vendor_id,created_at DESC)`,
 `ALTER TABLE order_items ADD COLUMN variation_id TEXT`,`ALTER TABLE order_items ADD COLUMN variation_options TEXT`,`ALTER TABLE order_items ADD COLUMN variation_sku TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT`,`ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'`
 ])await e.DB.prepare(x).run().catch(()=>{});return true})();return schemaPromise}
-function normalizeOptions(options){const seen=new Set();return(Array.isArray(options)?options:[]).map((o,i)=>({name:clean(o?.name,80),values:[...new Set((Array.isArray(o?.values)?o.values:[]).map(v=>clean(v,120)).filter(Boolean))],sort_order:i})).filter(o=>o.name&&o.values.length&&!seen.has(o.name)&&seen.add(o.name))}
-function comboKey(selected){return Object.entries(selected||{}).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>`${k}=${v}`).join('|').slice(0,1000)}
-function combinations(opts){let rows=[{}];for(const o of opts){const next=[];for(const r of rows)for(const v of o.values)next.push({...r,[o.name]:v});rows=next}return rows}
+function normalizeOptions(options){
+ const seen=new Set();
+ const normalized=(Array.isArray(options)?options:[]).map((o,i)=>({
+  name:clean(o?.name,80),
+  values:[...new Set((Array.isArray(o?.values)?o.values:[]).map(v=>clean(v,120)).filter(Boolean))],
+  sort_order:i
+ })).filter(o=>{
+  const key=o.name.toLocaleLowerCase();
+  if(!o.name||!o.values.length||/[=|]/.test(o.name)||seen.has(key)||o.values.some(v=>/[=|]/.test(v)))return false;
+  seen.add(key);return true;
+ });
+ return normalized;
+}
+function comboKey(selected){
+ return Object.entries(selected||{}).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>`${k}=${v}`).join('|');
+}
+function combinations(opts){
+ let rows=[{}];
+ for(const o of opts){
+  if(rows.length*o.values.length>200)return null;
+  const next=[];
+  for(const r of rows)for(const v of o.values)next.push({...r,[o.name]:v});
+  rows=next;
+ }
+ return rows;
+}
 async function productOwner(e,id,vid){return one(e,'SELECT id,name,price,old_price,image_url,stock,published,vendor_id FROM products WHERE id=? AND vendor_id=?',[id,vid])}
 async function saveOptions(e,pid,options){await e.DB.prepare('DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)').bind(pid).run().catch(()=>{});await e.DB.prepare('DELETE FROM option_values WHERE option_id IN (SELECT id FROM product_options WHERE product_id=?)').bind(pid).run().catch(()=>{});await e.DB.prepare('DELETE FROM product_options WHERE product_id=?').bind(pid).run().catch(()=>{});for(const o of options){const oid=crypto.randomUUID(),t=now();await e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid,pid,o.name,o.sort_order,t,t).run();for(let i=0;i<o.values.length;i++)await e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),oid,o.values[i],i,t,t).run()}}
 async function loadVariation(e,id){const v=await one(e,'SELECT * FROM product_variations WHERE id=?',[id]);if(!v)return null;v.options={};for(const x of(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[id])).results||[])v.options[x.name]=x.value;v.images=(await q(e,'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id',[id])).results?.map(x=>x.image_url)||[];return v}
@@ -36,8 +59,76 @@ async function variations(req,e){
  await schema(e);
  const url=new URL(req.url);if(req.method==='GET'){const pid=clean(url.searchParams.get('product_id'),120);if(!pid)return json({error:'product_id is required.'},400);if(!(await productOwner(e,pid,u.vendor_id)))return json({error:'Product not found.'},404);const opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[pid])).results||[];for(const o of opts)o.values=(await q(e,'SELECT * FROM option_values WHERE option_id=? ORDER BY sort_order,id',[o.id])).results||[];const vs=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at',[pid])).results||[];for(const v of vs){v.options={};for(const x of(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=?',[v.id])).results||[])v.options[x.name]=x.value;v.images=(await q(e,'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id',[v.id])).results?.map(x=>x.image_url)||[]}return json({enabled:vs.length>0||opts.length>0,options:opts,variations:vs})}
 const b=await req.clone().json().catch(()=>null);if(!b||typeof b!=='object')return json({error:'Invalid JSON'},400);const pid=clean(b.product_id||url.searchParams.get('product_id'),120),owner=await productOwner(e,pid,u.vendor_id);if(!owner)return json({error:'Product not found or not owned by this vendor.'},404);if(req.method==='DELETE'){const id=clean(url.pathname.split('/').pop(),120);const v=await one(e,'SELECT * FROM product_variations WHERE id=? AND product_id=?',[id,pid]);if(!v)return json({error:'Variation not found.'},404);await e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?").bind(now(),id).run();return json({ok:true})}
-if(req.method==='POST'){const opts=normalizeOptions(b.options);if(!opts.length)return json({error:'Add at least one option with one value.'},400);const rows=combinations(opts);if(rows.length>200)return json({error:'Maximum 200 generated variations per product.'},400);await saveOptions(e,pid,opts);const existing=(await q(e,'SELECT id,options_key FROM product_variations WHERE product_id=?',[pid])).results||[];const keep=new Set();for(const selected of rows){const key=comboKey(selected);keep.add(key);let old=existing.find(x=>x.options_key===key);let id=old?.id;if(!id){id=crypto.randomUUID();await e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,old_price,stock,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,pid,'',Number(b.default_price??owner.price??0),null,null,0,5,'','Available',1,null,key,now(),now()).run()}else await e.DB.prepare("UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Disabled' ELSE status END,updated_at=? WHERE id=?").bind(now(),id).run();await e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(id).run();for(const o of opts){const op=await one(e,'SELECT po.id,ov.id value_id FROM product_options po JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? AND po.name=? AND ov.value=?',[pid,o.name,selected[o.name]]);if(op)await e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(id,op.id,op.value_id).run()}}
-for(const x of existing)if(!keep.has(x.options_key))await e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?").bind(now(),x.id).run();await audit(e,'vendor',u.id,'VARIATIONS_GENERATED',u.vendor_id,{product_id:pid,count:rows.length});return json({ok:true,count:rows.length})}
+if(req.method==='POST'){
+ const opts=normalizeOptions(b.options);
+ if(!opts.length)return json({error:'Add at least one option with one value. Option names and values cannot contain = or |.'},400);
+ const rows=combinations(opts);
+ if(!rows)return json({error:'Maximum 200 generated variations per product.'},400);
+ const defaultPrice=Number(b.default_price??owner.price??0);
+ if(!Number.isFinite(defaultPrice)||defaultPrice<0)return json({error:'Default variation price must be a valid non-negative number.'},400);
+ const keys=rows.map(comboKey);
+ if(keys.some(k=>k.length>1000)||new Set(keys).size!==keys.length)return json({error:'Generated variation keys are invalid or duplicated.'},400);
+ const existing=(await q(e,'SELECT id,options_key,status,created_at FROM product_variations WHERE product_id=? ORDER BY created_at,id',[pid])).results||[];
+ const byKey=new Map();
+ const duplicateIds=new Set();
+ for(const row of existing){
+  const key=String(row.options_key||'');
+  if(!key){duplicateIds.add(row.id);continue}
+  const prior=byKey.get(key);
+  if(!prior){byKey.set(key,row);continue}
+  const priorActive=prior.status!=='Disabled',rowActive=row.status!=='Disabled';
+  const keep=rowActive&&!priorActive?row:prior;
+  const duplicate=keep===row?prior:row;
+  byKey.set(key,keep);duplicateIds.add(duplicate.id);
+ }
+ const t=now(),statements=[];
+ // D1 batch() commits the option and variation matrix atomically.
+ statements.push(e.DB.prepare('DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)').bind(pid));
+ statements.push(e.DB.prepare('DELETE FROM option_values WHERE option_id IN (SELECT id FROM product_options WHERE product_id=?)').bind(pid));
+ statements.push(e.DB.prepare('DELETE FROM product_options WHERE product_id=?').bind(pid));
+ const optionValueMap=new Map();
+ for(const o of opts){
+  const oid=crypto.randomUUID();
+  statements.push(e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid,pid,o.name,o.sort_order,t,t));
+  for(let i=0;i<o.values.length;i++){
+   const value=o.values[i],valueId=crypto.randomUUID();
+   optionValueMap.set(o.name+'\\u0000'+value,{option_id:oid,value_id:valueId});
+   statements.push(e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(valueId,oid,value,i,t,t));
+  }
+ }
+ const keep=new Set();
+ for(let i=0;i<rows.length;i++){
+  const selected=rows[i],key=keys[i];keep.add(key);
+  const old=byKey.get(key),id=old?.id||crypto.randomUUID();
+  if(old){
+   // Keep the original ID, SKU, stock, price, image and Disabled state.
+   statements.push(e.DB.prepare('UPDATE product_variations SET updated_at=? WHERE id=?').bind(t,id));
+  }else{
+   statements.push(e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,pid,'',defaultPrice,null,null,0,'untracked',5,'','Available',1,null,key,t,t));
+  }
+  for(const o of opts){
+   const link=optionValueMap.get(o.name+'\\u0000'+selected[o.name]);
+   if(!link)throw new Error('Generated variation references an unknown option value.');
+   statements.push(e.DB.prepare('INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(id,link.option_id,link.value_id));
+  }
+ }
+ for(const old of existing){
+  if(duplicateIds.has(old.id)||!keep.has(String(old.options_key||''))){
+   statements.push(e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?").bind(t,old.id));
+  }
+ }
+ // Bound D1 batch size before issuing any write.
+ if(statements.length>900)return json({error:'This option matrix is too large for one safe database update. Reduce the number of option values.'},400);
+ await e.DB.batch(statements);
+ await audit(e,'vendor',u.id,'VARIATIONS_GENERATED',u.vendor_id,{product_id:pid,count:rows.length});
+ const generated=(await q(e,"SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at,id",[pid])).results||[];
+ for(const v of generated){
+  v.options={};
+  for(const x of(await q(e,'SELECT po.name,ov.value FROM variation_options vo JOIN product_options po ON po.id=vo.option_id JOIN option_values ov ON ov.id=vo.option_value_id WHERE vo.variation_id=? ORDER BY po.sort_order,ov.sort_order',[v.id])).results||[])v.options[x.name]=x.value;
+  v.images=(await q(e,'SELECT image_url FROM variation_images WHERE variation_id=? ORDER BY sort_order,id',[v.id])).results?.map(x=>x.image_url)||[];
+ }
+ return json({ok:true,count:rows.length,options:opts,variations:generated});
+}
 if(req.method==='PATCH'){const rawTail=url.pathname.split('/').pop()||'';
 const id=clean(rawTail.startsWith('variation_')?rawTail.slice(10):rawTail,120),v=await one(e,'SELECT * FROM product_variations WHERE id=? AND product_id=?',[id,pid]);if(!v)return json({error:'Variation not found.'},404);const status=['Available','Out of Stock','Disabled'].includes(b.status)?b.status:v.status;await e.DB.prepare('UPDATE product_variations SET sku=?,regular_price=?,old_price=?,image_url=?,status=?,updated_at=? WHERE id=?').bind(clean(b.sku??v.sku,120),Math.max(0,Number(b.regular_price??v.regular_price)),b.old_price===null||b.old_price===''?null:Math.max(0,Number(b.old_price)),clean(b.image_url??v.image_url,2000),status,now(),id).run();if(Array.isArray(b.images)){await e.DB.prepare('DELETE FROM variation_images WHERE variation_id=?').bind(id).run();for(let i=0;i<Math.min(10,b.images.length);i++)await e.DB.prepare('INSERT INTO variation_images(id,variation_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),id,clean(b.images[i],2000),i,now()).run()}await audit(e,'vendor',u.id,'VARIATION_UPDATED',u.vendor_id,{product_id:pid,variation_id:id});return json({ok:true,variation:await loadVariation(e,id)})}return json({error:'Method not allowed'},405)}
 async function profile(req,e){if(new URL(req.url).pathname!=='/api/vendor/profile')return null;const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);if(req.method==='GET')return json({vendor:await one(e,'SELECT * FROM vendors WHERE id=?',[u.vendor_id])});if(req.method==='PATCH'){const b=await req.json().catch(()=>({})),fields=['business_name','brand_name','phone','logo_url','banner_url','description','tagline','accent_color','announcement','social_links','contact_info','business_email','order_notification_email','support_email'],set=[],ps=[];for(const k of fields)if(b[k]!==undefined){set.push(k+'=?');ps.push(['social_links','contact_info'].includes(k)?JSON.stringify(b[k]||{}):clean(b[k],10000))}if(set.length){set.push('updated_at=?');ps.push(now(),u.vendor_id);await e.DB.prepare('UPDATE vendors SET '+set.join(',')+' WHERE id=?').bind(...ps).run()}return json({ok:true,vendor:await one(e,'SELECT * FROM vendors WHERE id=?',[u.vendor_id])})}return json({error:'Method not allowed'},405)}
