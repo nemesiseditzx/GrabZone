@@ -84,16 +84,20 @@ async function loadDashboardAnalytics(){
     const ordersResult=await sb.from("orders")
       .select("id,order_number,customer_name,email,phone,subtotal,total,status,created_at")
       .gte("created_at",cutoff.toISOString())
-      .order("created_at",{ascending:false})
-      .limit(500);
+      .order("created_at",{ascending:false});
     if(ordersResult.error)throw ordersResult.error;
     const orders=Array.isArray(ordersResult.data)?ordersResult.data:[];
     const activeOrderIds=orders.filter(o=>o.status!=="Cancelled").map(o=>o.id).filter(Boolean);
-    const itemsResult=activeOrderIds.length
-      ?await sb.from("order_items").select("order_id,product_name,quantity,unit_price,line_total").in("order_id",activeOrderIds)
-      :{data:[],error:null};
-    if(itemsResult.error)throw itemsResult.error;
-    const allItems=Array.isArray(itemsResult.data)?itemsResult.data:[];
+    // SQLite/D1 has a bounded bind-parameter count. Read recent order lines
+    // in safe chunks so the dashboard remains accurate without scanning history.
+    const itemIdBatches=[];
+    for(let i=0;i<activeOrderIds.length;i+=400)itemIdBatches.push(activeOrderIds.slice(i,i+400));
+    const itemResults=await Promise.all(itemIdBatches.map(ids=>
+      sb.from("order_items").select("order_id,product_name,quantity,unit_price,line_total").in("order_id",ids)
+    ));
+    const itemError=itemResults.find(result=>result.error)?.error;
+    if(itemError)throw itemError;
+    const allItems=itemResults.flatMap(result=>Array.isArray(result.data)?result.data:[]);
 
     const money=n=>"৳"+Number(n||0).toLocaleString("en-BD",{maximumFractionDigits:0});
     const statusList=["New","Contacting","Confirmed","Processing","Shipped","Delivered","Cancelled"];
