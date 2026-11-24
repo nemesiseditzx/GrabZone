@@ -51,7 +51,6 @@ async function reserveInventory(e,items){
 }
 async function restockMovements(e,rows){
  if(!rows.length)return 0;
- await e.DB.prepare("CREATE TABLE IF NOT EXISTS checkout_write_assertions(id TEXT PRIMARY KEY,ok INTEGER NOT NULL CHECK(ok=1))").run();
  const statements=[];
  for(const movement of rows){
   const itemId=String(movement.order_item_id),productId=String(movement.product_id),variationId=movement.variation_id?String(movement.variation_id):null,quantity=Math.max(0,Number(movement.quantity||0));
