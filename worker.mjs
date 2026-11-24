@@ -667,7 +667,7 @@ if(fn==="rewards_admin_settings"){
    if(!name||!Number.isInteger(min)||min<0)throw new Error("Tier thresholds must be non-negative whole GP values.");
    if(!Number.isFinite(cashback)||cashback<0||cashback>100)throw new Error("Tier cashback must be between 0% and 100%.");
    if(submitted.has(name))throw new Error("Duplicate membership tier.");
-   submitted.set(name,{min,cashback});
+   submitted.set(name,{min,cashback,benefits:String(tier.benefits??"").slice(0,2000)});
   }
   const ordered=current.map(row=>submitted.get(String(row.tier)));
   if(ordered.some(row=>!row))throw new Error("One or more membership tiers are invalid.");
@@ -676,7 +676,7 @@ if(fn==="rewards_admin_settings"){
   const t=now();
   await env.DB.batch(current.map(row=>{
    const value=submitted.get(String(row.tier));
-   return env.DB.prepare("UPDATE membership_tiers SET min_points=?,discount_percent=?,cashback_percent=?,updated_at=? WHERE tier=?").bind(value.min,value.cashback,value.cashback,t,String(row.tier));
+   return env.DB.prepare("UPDATE membership_tiers SET min_points=?,discount_percent=?,cashback_percent=?,benefits=?,updated_at=? WHERE tier=?").bind(value.min,value.cashback,value.cashback,value.benefits,t,String(row.tier));
   }));
  }
  const gp=a.p_grabpoints_enabled===undefined?null:Number(a.p_grabpoints_enabled);
