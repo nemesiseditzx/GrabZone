@@ -2106,24 +2106,13 @@ body.gz-gallery-dragging-active{
       <label>GrabPoints system
         <select id="growthGpEnabled"><option value="1">ON — customers can join</option><option value="0">OFF — completely disabled</option></select>
       </label>
-      <div class="field-help"><b>Membership thresholds and cashback rates are editable in the tier rules below.</b> Delivery charges are never included in cashback.</div>
+      <div class="field-help"><b>Tier thresholds, cashback rates and offers are managed in GrabPoints → Points & Membership.</b> Delivery charges are never included in cashback.</div>
       <label>Value of 1 GP (৳)
         <input id="growthGpValue" type="number" min="0" step="0.01" value="0.10">
       </label>
       <div class="field-help"><b>Conversion:</b> 1 GP = ৳0.10, so ৳1 cashback = 10 GP. Tier cashback is calculated from eligible product subtotal only.</div>
     </div>
     <div style="display:flex;gap:9px;align-items:center;margin-top:14px"><button class="primary" type="button" onclick="gzSaveGrowth()">Save GrabPoints Settings</button><span id="growthGpMsg" class="save-message"></span></div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-head">
-      <div><h2>🏅 Membership tier rules</h2><p>Configure qualifying GrabPoints over the rolling 365-day period and cashback for future delivered orders.</p></div>
-    </div>
-    <div id="growthTierEditor" class="form-grid">
-      <div class="field-help">Loading membership tiers…</div>
-    </div>
-    <div class="field-help" style="margin-top:10px">Delivery charges are excluded. Historical orders and previously earned points are not recalculated when these settings change.</div>
-    <div style="display:flex;gap:9px;align-items:center;margin-top:14px"><button class="primary" type="button" onclick="gzSaveGrowthTiers()">Save Membership Tiers</button><span id="growthTierMsg" class="save-message"></span></div>
   </div>
 
   <div class="panel">
