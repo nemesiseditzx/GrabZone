@@ -339,7 +339,7 @@ if(p==='/api/vendor/admin/product-images'&&req.method==='GET'){
  try{const rows=(await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? AND vendor_id=? ORDER BY sort_order,id',[pid,vid])).results||[];urls.push(...rows.map(x=>x.image_url))}catch{}
  const p0=await one(e,'SELECT image_url FROM products WHERE id=?',[pid]);
  let legacy=[];try{legacy=Array.isArray(p0?.image_urls)?p0.image_urls:(typeof p0?.image_urls==='string'?JSON.parse(p0.image_urls||'[]'):[])}catch{}
- return json({images:[...new Set([...urls,...legacy,p0?.image_url||''].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,10)});
+ return json({images:[...new Set([...urls,...legacy,p0?.image_url||''].map(x=>String(x||'').trim()).filter(Boolean))].slice(0,30)});
 }
 if(p==='/api/vendor/admin/reset-password'&&req.method==='GET'){
 const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
