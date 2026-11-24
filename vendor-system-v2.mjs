@@ -9,6 +9,10 @@ async function admin(r,e){const t=cookie(r,'gz_admin_session');if(!t)return null
 async function vendor(r,e){const cookieToken=cookie(r,'gz_vendor_session'),bearer=(r.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'').trim();for(const t of [...new Set([cookieToken,bearer].filter(Boolean))]){const u=await one(e,"SELECT vu.id,vu.vendor_id,vu.email,vu.role,v.slug,v.brand_name,v.status vendor_status FROM vendor_sessions s JOIN vendor_users vu ON vu.id=s.vendor_user_id JOIN vendors v ON v.id=vu.vendor_id WHERE s.token_hash=? AND s.expires_at>? AND vu.status='Active' AND v.status='Active' LIMIT 1",[await sha(t),now()]);if(u)return u}return null}
 async function audit(e,type,id,action,vid,details={}){await e.DB.prepare('INSERT INTO marketplace_audit_log(id,actor_type,actor_id,action,vendor_id,details,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),type,id,action,vid,JSON.stringify(details),now()).run().catch(()=>{})}
 let schemaPromise=null;
+async function applySchemaStatement(e,sql){
+ try{return await e.DB.prepare(sql).run()}
+ catch(err){if(/duplicate column name|already exists/i.test(String(err?.message||err)))return null;throw err}
+}
 async function schema(e){if(schemaPromise)return schemaPromise;schemaPromise=(async()=>{for(const x of[
 `ALTER TABLE vendors ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 130`,
 `ALTER TABLE vendor_orders ADD COLUMN delivery_charge REAL NOT NULL DEFAULT 0`,
@@ -17,10 +21,11 @@ async function schema(e){if(schemaPromise)return schemaPromise;schemaPromise=(as
 `CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT 'untracked',low_stock_threshold INTEGER NOT NULL DEFAULT 5,image_url TEXT,status TEXT NOT NULL DEFAULT 'Available',min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(product_id,options_key))`,
 `CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))`,
 `CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)`,
+`CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)`,
 `CREATE TABLE IF NOT EXISTS inventory_log(id TEXT PRIMARY KEY,product_id TEXT,variation_id TEXT,vendor_id TEXT,change_qty INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT,created_at TEXT NOT NULL)`,
-`CREATE INDEX IF NOT EXISTS product_variations_product_status_idx ON product_variations(product_id,status)`,`CREATE INDEX IF NOT EXISTS product_variations_sku_idx ON product_variations(sku)`,`CREATE INDEX IF NOT EXISTS variation_options_value_idx ON variation_options(option_value_id)`,`CREATE INDEX IF NOT EXISTS inventory_log_vendor_idx ON inventory_log(vendor_id,created_at DESC)`,
+`CREATE INDEX IF NOT EXISTS product_variations_product_status_idx ON product_variations(product_id,status)`,`CREATE INDEX IF NOT EXISTS product_variations_sku_idx ON product_variations(sku)`,`CREATE INDEX IF NOT EXISTS variation_options_value_idx ON variation_options(option_value_id)`,`CREATE INDEX IF NOT EXISTS vendor_product_images_product_idx ON vendor_product_images(product_id,vendor_id,sort_order)`,`CREATE INDEX IF NOT EXISTS inventory_log_vendor_idx ON inventory_log(vendor_id,created_at DESC)`,
 `ALTER TABLE order_items ADD COLUMN variation_id TEXT`,`ALTER TABLE order_items ADD COLUMN variation_options TEXT`,`ALTER TABLE order_items ADD COLUMN variation_sku TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_id TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_options TEXT`,`ALTER TABLE vendor_order_items ADD COLUMN variation_sku TEXT`,`ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT 'untracked'`
-])await e.DB.prepare(x).run().catch(()=>{});return true})();return schemaPromise}
+])await applySchemaStatement(e,x);return true})().catch(err=>{schemaPromise=null;console.error('Vendor variation schema initialization failed:',err);throw err});return schemaPromise}
 function normalizeOptions(options){
  const seen=new Set();
  const normalized=(Array.isArray(options)?options:[]).map((o,i)=>({
@@ -215,7 +220,6 @@ async function coupons(req,e){
  return null;
 }
 async function publicVariation(req,e){if(new URL(req.url).pathname!=='/api/marketplace/variations')return null;await schema(e);const id=clean(new URL(req.url).searchParams.get('product_id'),120);if(!id)return json({error:'product_id is required.'},400);const product=await one(e,'SELECT * FROM products WHERE id=?',[id]);if(!product||!product.published)return json({error:'Product not found.'},404);
- await e.DB.prepare('CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)').run().catch(()=>{});
  product.image_urls=((await q(e,'SELECT image_url FROM vendor_product_images WHERE product_id=? AND vendor_id=? ORDER BY sort_order,id',[id,product.vendor_id])).results||[]).map(x=>x.image_url).filter(Boolean);
  if(!product.image_urls.length&&product.image_url)product.image_urls=[product.image_url];let opts=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[id])).results||[];
  for(const o of opts)o.values=(await q(e,'SELECT id,value,sort_order FROM option_values WHERE option_id=? ORDER BY sort_order,id',[o.id])).results||[];
