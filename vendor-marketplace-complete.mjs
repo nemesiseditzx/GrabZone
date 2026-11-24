@@ -515,8 +515,8 @@ if(req.method==='GET'){
  const page=Math.max(1,Math.floor(Number(u.searchParams.get('page')||1)));
  const limit=Math.max(10,Math.min(100,Math.floor(Number(u.searchParams.get('limit')||50))));
  const search=clean(u.searchParams.get('search')||'',120);
- const like='%'+search.replace(/[\\\\%_]/g,'\\\\$&')+'%';
- const where="(?='' OR p.vendor_id=?) AND (?='' OR p.name LIKE ? ESCAPE '\\\\' OR COALESCE(p.sku,'') LIKE ? ESCAPE '\\\\')";
+ const like='%'+search+'%';
+ const where="(?='' OR p.vendor_id=?) AND (?='' OR p.name LIKE ? OR COALESCE(p.sku,'') LIKE ?)";
  const count=Number((await one(e,'SELECT COUNT(*) n FROM products p WHERE '+where,[vid||'',vid||'',search,like,like]))?.n||0);
  const rows=(await q(e,`SELECT p.*,COALESCE(c.name,c2.name) category_name,COALESCE(c.slug,c2.slug) category_slug,COALESCE(p.category_id,c2.id) resolved_category_id,v.brand_name vendor_name FROM products p LEFT JOIN marketplace_categories c ON c.id=p.category_id LEFT JOIN marketplace_categories c2 ON lower(trim(c2.name))=lower(trim(p.category)) LEFT JOIN vendors v ON v.id=p.vendor_id WHERE ${where} ORDER BY p.created_at DESC,p.id DESC LIMIT ? OFFSET ?`,[vid||'',vid||'',search,like,like,limit,(page-1)*limit])).results||[];
  if(!rows.length)return json({products:[],page,limit,total:count,pages:Math.max(1,Math.ceil(count/limit))});
