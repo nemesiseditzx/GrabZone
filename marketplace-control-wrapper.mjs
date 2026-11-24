@@ -25,4 +25,4 @@ async function vendorData(req,e){
   for(const o of orders)o.shipments=await all(e,'SELECT id,courier,tracking_id,tracking_url,status,note,created_at,updated_at FROM shipments WHERE order_id=? AND vendor_id=? ORDER BY created_at DESC',[o.order_id,v.id]);
   return json({vendor:v,products,orders});
 }
-export default{fetch:async(req,e,ctx)=>{try{const x=await vendorData(req,e);if(x)return x;return app.fetch(req,e,ctx)}catch(err){return json({error:err?.message||'Marketplace control error'},500)}}};
+export default{fetch:async(req,e,ctx)=>{try{const x=await vendorData(req,e);if(x)return x;return app.fetch(req,e,ctx)}catch(err){console.error('Marketplace control wrapper failed',err);return json({error:'Marketplace control error'},500)}}};
