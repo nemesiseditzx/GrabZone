@@ -671,7 +671,7 @@ for(const x of p.items){
   vendorIds.add(vendorId);
  }
  const qty=Math.max(1,parseInt(x.quantity,10)||1);
- const minQty=Math.max(1,Number(pr.min_qty||1)),maxQty=pr.max_qty==null?null:Number(pr.max_qty);
+ const minQty=Math.max(1,Number(pr.min_qty||1)),maxQty=pr.max_qty==null||Number(pr.max_qty)<=0?null:Number(pr.max_qty);
  if(qty<minQty)throw new Error(pr.name+": minimum quantity is "+minQty+".");
  if(maxQty!==null&&qty>maxQty)throw new Error(pr.name+": maximum quantity is "+maxQty+".");
  if(!x.variation_id&&String(pr.stock_mode||"untracked").toLowerCase()==="tracked"&&Number(pr.stock||0)<qty)throw new Error(pr.name+": only "+Math.max(0,Number(pr.stock||0))+" left in stock.");
@@ -685,7 +685,7 @@ for(const x of p.items){
   if(!vv||String(vv.product_id)!==String(pr.id)||String(vv.status)!=="Available")throw new Error("One selected variation is no longer available.");
   const vStockMode=String(vv.stock_mode||"untracked").toLowerCase();
   variationStockMode=vStockMode;
-  const vStock=Number(vv.stock||0),vMin=Math.max(1,Number(vv.min_qty||1)),vMax=vv.max_qty==null?null:Number(vv.max_qty);
+  const vStock=Number(vv.stock||0),vMin=Math.max(1,Number(vv.min_qty||1)),vMax=vv.max_qty==null||Number(vv.max_qty)<=0?null:Number(vv.max_qty);
   if(qty<vMin)throw new Error(`${pr.name}: minimum quantity for this variation is ${vMin}.`);
   if(vMax!==null&&qty>vMax)throw new Error(`${pr.name}: maximum quantity for this variation is ${vMax}.`);
   if(vStockMode==="tracked"&&vStock<qty)throw new Error(`${pr.name}: the selected variation only has ${Math.max(0,vStock)} left in stock.`);
