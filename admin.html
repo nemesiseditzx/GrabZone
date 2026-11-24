@@ -2116,6 +2116,17 @@ body.gz-gallery-dragging-active{
   </div>
 
   <div class="panel">
+    <div class="panel-head">
+      <div><h2>🏅 Membership tier rules</h2><p>Configure qualifying GrabPoints over the rolling 365-day period and cashback for future delivered orders.</p></div>
+    </div>
+    <div id="growthTierEditor" class="form-grid">
+      <div class="field-help">Loading membership tiers…</div>
+    </div>
+    <div class="field-help" style="margin-top:10px">Delivery charges are excluded. Historical orders and previously earned points are not recalculated when these settings change.</div>
+    <div style="display:flex;gap:9px;align-items:center;margin-top:14px"><button class="primary" type="button" onclick="gzSaveGrowthTiers()">Save Membership Tiers</button><span id="growthTierMsg" class="save-message"></span></div>
+  </div>
+
+  <div class="panel">
     <div class="panel-head"><div><h2>🎁 Mystery Deal</h2><p>One-time surprise discount with admin-controlled range.</p></div><span id="growthMysteryStatus" class="status-badge">Loading…</span></div>
     <div class="form-grid">
       <label>Mystery Deal
