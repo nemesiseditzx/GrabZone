@@ -171,8 +171,34 @@ if(req.method==='POST'){
  }
  return json({ok:true,count:rows.length,options:opts,variations:generated});
 }
-if(req.method==='PATCH'){const rawTail=url.pathname.split('/').pop()||'';
-const id=clean(rawTail.startsWith('variation_')?rawTail.slice(10):rawTail,120),v=await one(e,'SELECT * FROM product_variations WHERE id=? AND product_id=?',[id,pid]);if(!v)return json({error:'Variation not found.'},404);const status=['Available','Out of Stock','Disabled'].includes(b.status)?b.status:v.status;if(status==='Available'&&!(await ensureVariationOptionLinks(e,pid,v)))return json({error:'Cannot mark variation Available: its option links do not match the current product options.'},409);const price=Number(b.regular_price??v.regular_price);if(!Number.isFinite(price)||price<0)return json({error:'Variation price must be a valid non-negative number.'},400);await e.DB.prepare('UPDATE product_variations SET sku=?,regular_price=?,old_price=?,image_url=?,status=?,updated_at=? WHERE id=?').bind(clean(b.sku??v.sku,120),Math.max(0,Number(b.regular_price??v.regular_price)),b.old_price===null||b.old_price===''?null:Math.max(0,Number(b.old_price)),clean(b.image_url??v.image_url,2000),status,now(),id).run();if(Array.isArray(b.images)){const images=[...new Set(b.images.map(x=>clean(x,2000)).filter(Boolean))].slice(0,30),t=now(),statements=[e.DB.prepare('DELETE FROM variation_images WHERE variation_id=?').bind(id)];for(let i=0;i<images.length;i++)statements.push(e.DB.prepare('INSERT INTO variation_images(id,variation_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),id,images[i],i,t));await e.DB.batch(statements)}await audit(e,'vendor',u.id,'VARIATION_UPDATED',u.vendor_id,{product_id:pid,variation_id:id});return json({ok:true,variation:await loadVariation(e,id)})}return json({error:'Method not allowed'},405)}
+if(req.method==='PATCH'){
+const rawTail=url.pathname.split('/').pop()||'';
+const id=clean(rawTail.startsWith('variation_')?rawTail.slice(10):rawTail,120),v=await one(e,'SELECT * FROM product_variations WHERE id=? AND product_id=?',[id,pid]);
+if(!v)return json({error:'Variation not found.'},404);
+if(b.status!==undefined&&!['Available','Out of Stock','Disabled'].includes(b.status))return json({error:'Invalid variation status.'},400);
+const status=b.status!==undefined?b.status:v.status;
+if(status==='Available'&&!(await ensureVariationOptionLinks(e,pid,v)))return json({error:'Cannot mark variation Available: its option links do not match the current product options.'},409);
+const price=Number(b.regular_price??v.regular_price);
+const sale=b.sale_price===undefined?v.sale_price:(b.sale_price===null||b.sale_price===''?null:Number(b.sale_price));
+const old=b.old_price===undefined?v.old_price:(b.old_price===null||b.old_price===''?null:Number(b.old_price));
+const hasStock=b.stock!==undefined&&b.stock!==null&&b.stock!=='';
+const stock=hasStock?Number(b.stock):Number(v.stock||0);
+const threshold=Number(b.low_stock_threshold??v.low_stock_threshold??0);
+if(!Number.isFinite(price)||price<0)return json({error:'Variation price must be a valid non-negative number.'},400);
+if(sale!==null&&(!Number.isFinite(sale)||sale<0))return json({error:'Sale price must be empty or a valid non-negative number.'},400);
+if(old!==null&&(!Number.isFinite(old)||old<0))return json({error:'Old price must be empty or a valid non-negative number.'},400);
+if(!Number.isInteger(stock)||stock<0||stock>1000000000)return json({error:'Stock must be a whole number between 0 and 1,000,000,000.'},400);
+if(!Number.isInteger(threshold)||threshold<0)return json({error:'Low-stock threshold must be a non-negative whole number.'},400);
+const stockMode=status==='Out of Stock'||hasStock||String(v.stock_mode||'').toLowerCase()==='tracked'?'tracked':'untracked';
+await e.DB.prepare('UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,stock_mode=?,low_stock_threshold=?,image_url=?,status=?,updated_at=? WHERE id=? AND product_id=?').bind(clean(b.sku??v.sku,120),price,sale,old,stock,stockMode,threshold,clean(b.image_url??v.image_url,2000),status,now(),id,pid).run();
+if(Array.isArray(b.images)){
+const images=[...new Set(b.images.map(x=>clean(x,2000)).filter(Boolean))].slice(0,30),t=now(),statements=[e.DB.prepare('DELETE FROM variation_images WHERE variation_id=?').bind(id)];
+for(let i=0;i<images.length;i++)statements.push(e.DB.prepare('INSERT INTO variation_images(id,variation_id,image_url,sort_order,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),id,images[i],i,t));
+await e.DB.batch(statements);
+}
+await audit(e,'vendor',u.id,'VARIATION_UPDATED',u.vendor_id,{product_id:pid,variation_id:id});
+return json({ok:true,variation:await loadVariation(e,id)});
+}return json({error:'Method not allowed'},405)}
 async function profile(req,e){if(new URL(req.url).pathname!=='/api/vendor/profile')return null;const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);if(req.method==='GET')return json({vendor:await one(e,'SELECT * FROM vendors WHERE id=?',[u.vendor_id])});if(req.method==='PATCH'){const b=await req.json().catch(()=>({})),fields=['business_name','brand_name','phone','logo_url','banner_url','description','tagline','accent_color','announcement','social_links','contact_info','business_email','order_notification_email','support_email'],set=[],ps=[];for(const k of fields)if(b[k]!==undefined){set.push(k+'=?');ps.push(['social_links','contact_info'].includes(k)?JSON.stringify(b[k]||{}):clean(b[k],10000))}if(set.length){set.push('updated_at=?');ps.push(now(),u.vendor_id);await e.DB.prepare('UPDATE vendors SET '+set.join(',')+' WHERE id=?').bind(...ps).run()}return json({ok:true,vendor:await one(e,'SELECT * FROM vendors WHERE id=?',[u.vendor_id])})}return json({error:'Method not allowed'},405)}
 async function sales(req,e){if(new URL(req.url).pathname!=='/api/vendor/sales')return null;const u=await vendor(req,e);if(!u)return json({error:'Unauthorized'},401);const rows=(await q(e,'SELECT substr(vo.created_at,1,10) day,COUNT(DISTINCT vo.order_id) orders,COALESCE(SUM(vo.subtotal),0) gross,COALESCE(SUM(vo.commission_amount),0) commission,COALESCE(SUM(vo.vendor_earnings),0) earnings FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? GROUP BY substr(vo.created_at,1,10) ORDER BY day DESC LIMIT 90',[u.vendor_id])).results||[];const totals=(await one(e,'SELECT COUNT(DISTINCT vo.order_id) orders,COALESCE(SUM(vo.subtotal),0) gross,COALESCE(SUM(vo.commission_amount),0) commission,COALESCE(SUM(vo.vendor_earnings),0) earnings FROM vendor_orders vo JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=?',[u.vendor_id]))||{};const best=(await q(e,'SELECT p.name,voi.product_id,SUM(voi.quantity) units,SUM(voi.line_total) revenue FROM vendor_order_items voi LEFT JOIN products p ON p.id=voi.product_id JOIN vendor_orders vo ON vo.id=voi.vendor_order_id JOIN orders o ON o.id=vo.order_id WHERE vo.vendor_id=? GROUP BY voi.product_id,p.name ORDER BY units DESC LIMIT 10',[u.vendor_id])).results||[];return json({daily:rows,totals,best_sellers:best})}
 async function couponSchema(e){
