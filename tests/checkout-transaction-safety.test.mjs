@@ -8,7 +8,9 @@ const checkout = fs.readFileSync('checkout.js', 'utf8');
 test('vendor marketplace schema setup is batched and default vendor backfill is one-time', () => {
   const vendorSchema = fs.readFileSync('vendor-marketplace-complete.mjs', 'utf8');
   assert.ok(vendorSchema.includes('await env.DB.batch(base.map('));
-  assert.ok(vendorSchema.includes('await env.DB.batch(tables.map('));
+  assert.ok(vendorSchema.includes('await env.DB.batch(base.map('));
+  assert.ok(vendorSchema.includes('Promise.all(tables.map('));
+  assert.ok(vendorSchema.includes('if(pending.length)await env.DB.batch(pending)'));
   assert.ok(vendorSchema.includes('await env.DB.batch(pending)'));
   assert.ok(vendorSchema.includes("products-default-vendor-backfill"));
   assert.ok(!vendorSchema.includes('for(const x of s)await env.DB.prepare(x).run()'));
@@ -116,7 +118,7 @@ test('checkout request key is stored with the order transaction and replay-safe'
   assert.ok(worker.includes('CREATE TABLE IF NOT EXISTS order_idempotency'));
   assert.ok(worker.includes('INSERT INTO order_idempotency(idempotency_key,request_hash,order_id,created_at)'));
   assert.ok(worker.includes('WHERE oi.idempotency_key=? LIMIT 1'));
-  assert.ok(checkout.includes('idempotency_key:checkoutRequestId()'));
+  assert.ok(checkout.includes('payload.idempotency_key=checkoutRequestId(payload)'));
   assert.ok(checkout.includes('sessionStorage.removeItem(CHECKOUT_REQUEST_KEY)'));
 });
 
@@ -167,8 +169,10 @@ test('referral discounts are based only on referral-eligible item subtotal', () 
 });
 
 test('checkout snapshots variation options, SKU and image from D1, not browser payload', () => {
-  assert.ok(worker.includes('SELECT po.name,ov.value FROM variation_options vo'));
+  assert.ok(worker.includes('SELECT vo.variation_id,po.name,ov.value FROM variation_options vo'));
   assert.ok(worker.includes('variation_options:variationOptions,variation_sku:variationSku'));
+  assert.ok(worker.includes('variationOptions={...(variationOptionsMap.get(variationId)||{})}'));
+  assert.ok(worker.includes('productImage=vv.image_url||variationImageMap.get(variationId)||pr.image_url'));
   assert.ok(!worker.includes('variation_options:x.variation_options'));
   assert.ok(!worker.includes('variation_sku:x.variation_sku||x.sku'));
 });
