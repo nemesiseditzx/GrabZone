@@ -37,12 +37,14 @@
 
   function changeCheckoutQty(id,delta){
     const source=checkoutSource();
-    const items=source.items.map(x=>{const same=String(x.product_id)===String(id.product_id||id)&&String(x.variation_id||'')===String(id.variation_id||'');return same?{...x,quantity:Math.max(1,Number(x.quantity||1)+delta)}:x});
+    const productId=String(id?.product_id??id),variationId=String(id?.variation_id||'');
+    const sameItem=x=>String(x.product_id)===productId&&String(x.variation_id||'')===variationId;
+    const items=source.items.map(x=>sameItem(x)?{...x,quantity:Math.max(1,Number(x.quantity||1)+delta)}:x);
     write(source.key,items);
     // Keep the normal cart synchronized when checkout came from the cart drawer.
     if(source.key===BUY_KEY){
       const cart=read(CART_KEY);
-      const updated=cart.map(x=>String(x.product_id)===String(id)?{...x,quantity:items.find(i=>String(i.product_id)===String(id))?.quantity||x.quantity}:x);
+      const updated=cart.map(x=>sameItem(x)?{...x,quantity:items.find(sameItem)?.quantity||x.quantity}:x);
       write(CART_KEY,updated);
     }
     location.reload();
