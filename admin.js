@@ -125,10 +125,10 @@ async function loadDashboardAnalytics(){
     const uniqueCustomers=customers.length;
     const repeatCustomers=customers.filter(c=>c.orders>1).length;
 
-    const activeOrderIds=new Set(allOrders.filter(o=>o.status!=="Cancelled").map(o=>o.id));
+    const activeOrderIdSet=new Set(activeOrderIds);
     const pmap=new Map();
     for(const i of allItems){
-      if(!activeOrderIds.has(i.order_id))continue;
+      if(!activeOrderIdSet.has(i.order_id))continue;
       const name=String(i.product_name||"Unknown product");
       const p=pmap.get(name)||{name,units:0,revenue:0,orders:0};
       p.units+=Number(i.quantity||0);
