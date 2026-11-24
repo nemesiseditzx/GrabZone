@@ -110,11 +110,22 @@ if(req.method==='POST'){
  if(!Number.isFinite(defaultPrice)||defaultPrice<0)return json({error:'Default variation price must be a valid non-negative number.'},400);
  const keys=rows.map(comboKey);
  if(keys.some(k=>k.length>1000)||new Set(keys).size!==keys.length)return json({error:'Generated variation keys are invalid or duplicated.'},400);
- const existing=(await q(e,'SELECT id,options_key,status,created_at FROM product_variations WHERE product_id=? ORDER BY created_at,id',[pid])).results||[];
+ const existing=(await q(e,'SELECT * FROM product_variations WHERE product_id=? ORDER BY created_at,id',[pid])).results||[];
+ for(const row of existing)row._original_options_key=row.options_key;
  const byKey=new Map();
  const duplicateIds=new Set();
  for(const row of existing){
-  const key=String(row.options_key||'');
+  let key=String(row.options_key||'').trim();
+  if(!key&&row.options){
+   try{
+    const legacy=typeof row.options==='string'?JSON.parse(row.options):row.options;
+    if(legacy&&typeof legacy==='object'&&!Array.isArray(legacy)){
+     const pairs=Object.entries(legacy).map(([name,value])=>[clean(name,80),clean(value,120)]).filter(([name,value])=>name&&value);
+     if(pairs.length)key=pairs.sort((a,b)=>a[0].localeCompare(b[0])).map(([name,value])=>name+'='+value).join('|');
+    }
+   }catch{}
+  }
+  row.options_key=key;
   if(!key){duplicateIds.add(row.id);continue}
   const prior=byKey.get(key);
   if(!prior){byKey.set(key,row);continue}
@@ -155,6 +166,9 @@ if(req.method==='POST'){
   }
  }
  for(const old of existing){
+  if(old.options_key&&!String(old._original_options_key||'').trim()){
+   statements.push(e.DB.prepare('UPDATE product_variations SET options_key=? WHERE id=?').bind(old.options_key,old.id));
+  }
   if(duplicateIds.has(old.id)||!keep.has(String(old.options_key||''))){
    statements.push(e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?").bind(t,old.id));
   }
