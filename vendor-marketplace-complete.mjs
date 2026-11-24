@@ -570,30 +570,87 @@ return json({ok:true,id,product:await one(e,'SELECT * FROM products WHERE id=?',
 }
 async function saveVariations(e,productId,rows){
  if(!Array.isArray(rows))return;
- for(const sql of [
-  'CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)',
-  'CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)',
-  'CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))',
-  'CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)',
-  'CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT "untracked",low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT "Available",min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL DEFAULT "",created_at TEXT NOT NULL,updated_at TEXT NOT NULL)'
- ]) await e.DB.prepare(sql).run().catch(()=>{});
- const t=now();
- await e.DB.prepare('DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)').bind(productId).run().catch(()=>{});
- await e.DB.prepare('DELETE FROM variation_images WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)').bind(productId).run().catch(()=>{});
- await e.DB.prepare('DELETE FROM product_variations WHERE product_id=?').bind(productId).run();
- const oldOpts=(await q(e,'SELECT id FROM product_options WHERE product_id=?',[productId])).results||[];
- if(oldOpts.length){const ids=oldOpts.map(x=>x.id),ph=ids.map(()=>'?').join(',');await e.DB.prepare('DELETE FROM option_values WHERE option_id IN ('+ph+')').bind(...ids).run().catch(()=>{});await e.DB.prepare('DELETE FROM product_options WHERE id IN ('+ph+')').bind(...ids).run().catch(()=>{});}
+ if(rows.length>200)throw new Error('Maximum 200 variations per product.');
+ const normalized=[];
  const groups=new Map();
- for(const row of rows){const opts=row.options??row.variation_options??row.attributes??{};for(const [name,value] of Object.entries(opts||{})){const n=clean(name,80),v=clean(value,120);if(!n||!v)continue;if(!groups.has(n))groups.set(n,new Set());groups.get(n).add(v)}}
- const optionMap=new Map();
- let order=0;
- for(const [name,values] of groups){const oid=crypto.randomUUID();optionMap.set(name,{id:oid,values:new Map()});await e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(oid,productId,name,order++,t,t).run();let i=0;for(const value of values){const vid=crypto.randomUUID();optionMap.get(name).values.set(value,vid);await e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(vid,oid,value,i++,t,t).run();}}
- for(const x of rows.slice(0,200)){
-  const opts=x.options??x.variation_options??x.attributes??{},id=clean(x.id,100)||crypto.randomUUID(),sku=clean(x.sku||x.variation_sku,100)||'',regular=Math.max(0,Number(x.price??x.regular_price??0)),sale=x.sale_price===null||x.sale_price===''?null:Number(x.sale_price??null),stock=Math.max(0,Math.floor(Number(x.stock??0))),status=['Available','Out of Stock','Disabled'].includes(x.status)?x.status:'Available';
-  const key=Object.entries(opts||{}).sort((a,b)=>a[0].localeCompare(b[0])).map(([a,v])=>a+'='+v).join('|').slice(0,1000);
-  await e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,productId,sku,regular,sale,x.old_price===null||x.old_price===''?null:Number(x.old_price??null),stock,(status==='Out of Stock'||stock>0)?'tracked':'untracked',Math.max(0,Math.floor(Number(x.low_stock_threshold??0))),clean(x.image_url,2000)||'',status,1,null,key,t,t).run();
-  for(const [name,value] of Object.entries(opts||{})){const m=optionMap.get(name),valueId=m?.values.get(clean(value,120));if(m&&valueId)await e.DB.prepare('INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(id,m.id,valueId).run();}
+ for(const row of rows){
+  const raw=row?.options??row?.variation_options??row?.attributes??{};
+  const options={};
+  for(const [rawName,rawValue] of Object.entries(raw||{})){
+   const name=clean(rawName,80),value=clean(rawValue,120);
+   if(!name||!value||/[=|]/.test(name)||/[=|]/.test(value))throw new Error('Variation option names and values cannot contain = or |.');
+   options[name]=value;
+   if(!groups.has(name))groups.set(name,new Set());
+   groups.get(name).add(value);
+  }
+  normalized.push({source:row,options});
  }
+ if(!groups.size)return;
+ const optionNames=[...groups.keys()];
+ if(normalized.some(x=>optionNames.some(name=>!x.options[name])))throw new Error('Every variation must contain a value for every product option.');
+ const keys=normalized.map(x=>Object.entries(x.options).sort((a,b)=>a[0].localeCompare(b[0])).map(([name,value])=>name+'='+value).join('|'));
+ if(keys.some(key=>!key||key.length>1000)||new Set(keys).size!==keys.length)throw new Error('Variation option keys are invalid or duplicated.');
+ await ensureVendorVariationSchema(e);
+ const existing=(await q(e,'SELECT id,options_key,status,created_at,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,min_qty,max_qty FROM product_variations WHERE product_id=? ORDER BY created_at,id',[productId])).results||[];
+ const byKey=new Map(),duplicateIds=new Set();
+ for(const row of existing){
+  const key=String(row.options_key||'');
+  if(!key){duplicateIds.add(row.id);continue}
+  const prior=byKey.get(key);
+  if(!prior){byKey.set(key,row);continue}
+  const keep=row.status!=='Disabled'&&prior.status==='Disabled'?row:prior;
+  duplicateIds.add(keep===row?prior.id:row.id);byKey.set(key,keep);
+ }
+ const t=now(),statements=[];
+ statements.push(e.DB.prepare('DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)').bind(productId));
+ statements.push(e.DB.prepare('DELETE FROM option_values WHERE option_id IN (SELECT id FROM product_options WHERE product_id=?)').bind(productId));
+ statements.push(e.DB.prepare('DELETE FROM product_options WHERE product_id=?').bind(productId));
+ const optionValueMap=new Map();
+ for(let order=0;order<optionNames.length;order++){
+  const name=optionNames[order],optionId=crypto.randomUUID();
+  statements.push(e.DB.prepare('INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(optionId,productId,name,order,t,t));
+  let sort=0;
+  for(const value of groups.get(name)){
+   const valueId=crypto.randomUUID();
+   optionValueMap.set(name+'\\u0000'+value,{option_id:optionId,value_id:valueId});
+   statements.push(e.DB.prepare('INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)').bind(valueId,optionId,value,sort++,t,t));
+  }
+ }
+ const keep=new Set();
+ for(let index=0;index<normalized.length;index++){
+  const item=normalized[index],source=item.source,key=keys[index],old=byKey.get(key),id=clean(source.id,100)||old?.id||crypto.randomUUID();
+  if(old&&id!==old.id)throw new Error('A variation ID cannot be changed while replacing its option combination.');
+  const sku=clean(source.sku??source.variation_sku??old?.sku??'',100);
+  const regular=Number(source.price??source.regular_price??old?.regular_price??0);
+  const saleRaw=source.sale_price===undefined?old?.sale_price:source.sale_price;
+  const sale=saleRaw===null||saleRaw===''?null:Number(saleRaw);
+  const oldRaw=source.old_price===undefined?old?.old_price:source.old_price;
+  const oldPrice=oldRaw===null||oldRaw===''?null:Number(oldRaw);
+  const stock=Number(source.stock??old?.stock??0);
+  if(!Number.isFinite(regular)||regular<0||sale!==null&&(!Number.isFinite(sale)||sale<0)||oldPrice!==null&&(!Number.isFinite(oldPrice)||oldPrice<0)||!Number.isFinite(stock)||stock<0)throw new Error('Variation price and stock values must be valid non-negative numbers.');
+  const status=['Available','Out of Stock','Disabled'].includes(source.status)?source.status:(old?.status||'Available');
+  const stockMode=String(source.stock_mode??old?.stock_mode??(status==='Out of Stock'||stock>0?'tracked':'untracked')).toLowerCase()==='tracked'?'tracked':'untracked';
+  const threshold=Math.max(0,Math.floor(Number(source.low_stock_threshold??old?.low_stock_threshold??5)));
+  const image=clean(source.image_url??old?.image_url??'',2000);
+  const minQty=Math.max(1,Math.floor(Number(source.min_qty??old?.min_qty??1)));
+  const maxRaw=source.max_qty===undefined?old?.max_qty:source.max_qty;
+  const maxQty=maxRaw===null||maxRaw===''?null:Math.max(1,Math.floor(Number(maxRaw)));
+  if(maxQty!==null&&maxQty<minQty)throw new Error('Variation maximum quantity cannot be below minimum quantity.');
+  if(old){
+   statements.push(e.DB.prepare('UPDATE product_variations SET sku=?,regular_price=?,sale_price=?,old_price=?,stock=?,stock_mode=?,low_stock_threshold=?,image_url=?,status=?,min_qty=?,max_qty=?,options_key=?,updated_at=? WHERE id=?').bind(sku,regular,sale,oldPrice,Math.floor(stock),stockMode,threshold,image,status,minQty,maxQty,key,t,id));
+  }else{
+   statements.push(e.DB.prepare('INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,productId,sku,regular,sale,oldPrice,Math.floor(stock),stockMode,threshold,image,status,minQty,maxQty,key,t,t));
+  }
+  keep.add(key);
+  for(const [name,value] of Object.entries(item.options)){
+   const link=optionValueMap.get(name+'\\u0000'+value);
+   if(!link)throw new Error('Variation references an unknown option value.');
+   statements.push(e.DB.prepare('INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)').bind(id,link.option_id,link.value_id));
+  }
+ }
+ for(const old of existing)if(duplicateIds.has(old.id)||!keep.has(String(old.options_key||'')))statements.push(e.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?").bind(t,old.id));
+ if(statements.length>900)throw new Error('This variation matrix is too large for one safe database update. Reduce the number of option values.');
+ await e.DB.batch(statements);
 }
 if(p==='/api/vendor/admin/order-delete'&&req.method==='POST'){
  const a=await admin(req,e);if(!a)return json({error:'Unauthorized'},401);
