@@ -73,7 +73,7 @@
 </section>
 <section id="products" class="gz-section">
   <div class="gz-head"><div><div style="font-size:11px;font-weight:900;letter-spacing:.14em;color:#777">YOUR CATALOG</div><h1 style="margin:4px 0">Products</h1><p>Add and manage products using the GrabZone product workflow.</p></div><button class="gz-btn primary" onclick="newProduct()">+ Add Product</button></div>
-  <div class="gz-toolbar"><input id="productSearch" placeholder="Search your products…" oninput="renderProducts()"><select id="productFilter" onchange="renderProducts()"><option value="all">All products</option><option value="published">Published</option><option value="hidden">Hidden</option><option value="low">Low stock</option></select><button class="gz-btn light" onclick="loadProducts()">Refresh</button></div>
+  <div class="gz-toolbar"><input id="productSearch" placeholder="Search your products…" oninput="scheduleProductSearch()"><select id="productFilter" onchange="loadProducts(1)"><option value="all">All products</option><option value="published">Published</option><option value="hidden">Hidden</option><option value="low">Low stock</option></select><button class="gz-btn light" onclick="loadProducts()">Refresh</button></div>
   <div id="productList" class="gz-card"></div>
 </section>
 <section id="orders" class="gz-section">
