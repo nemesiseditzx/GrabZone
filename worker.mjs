@@ -699,9 +699,28 @@ for(const x of p.items){
  subtotal+=line;
  items.push({id:crypto.randomUUID(),product_id:pr.id,product_name:pr.name,image_url:productImage,quantity:qty,unit_price:unit,line_total:line,variation_id:x.variation_id||null,variation_options:variationOptions,variation_sku:variationSku,stock_mode:variationStockMode,vendor_id:pr.vendor_id||null,unit_cost:Number(pr.cost_price||0),additional_cost:Number(pr.additional_cost||0)});
 }
+// Snapshot reward eligibility in bulk so checkout does not issue two reads per item.
+const vendorProductIds=[...new Set(items.filter(item=>item.vendor_id).map(item=>String(item.product_id||"")).filter(Boolean))];
+const eligibilityByProduct=new Map();
+let globallyEnabled=true;
+if(vendorProductIds.length){
+ const global=(await q(env,"SELECT enabled FROM rewards_settings WHERE id=1 LIMIT 1")).results?.[0];
+ globallyEnabled=Number(global?.enabled??1)===1;
+ for(let i=0;i<vendorProductIds.length;i+=90){
+  const chunk=vendorProductIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
+  const rows=(await q(env,`SELECT p.id,COALESCE(vrs.rewards_enabled,0) rewards_enabled,COALESCE(vrs.referral_enabled,0) referral_enabled FROM products p LEFT JOIN vendor_rewards_settings vrs ON vrs.vendor_id=p.vendor_id WHERE p.id IN (${marks})`,chunk)).results||[];
+  for(const row of rows)eligibilityByProduct.set(String(row.id),row);
+ }
+}
+const referralEligibleSubtotal=items.reduce((sum,item)=>{
+ const vendorId=String(item.vendor_id||"");
+ const eligibility=eligibilityByProduct.get(String(item.product_id||""));
+ const eligible=!vendorId||(globallyEnabled&&Number(eligibility?.referral_enabled)===1);
+ return sum+(eligible?Number(item.line_total||0):0);
+},0);
 await ensureVendorCouponSchema(env);
 const vendorCoupon=await resolveVendorCoupon(env,p.vendor_coupon_code,items);
-const code=String(p.referral_code||"").trim().toUpperCase()||null;let discount=0,admin=null;if(code){const r=(await q(env,"SELECT * FROM referral_codes WHERE upper(code)=upper(?) AND active=1 LIMIT 1",[code])).results?.[0];if(!r)throw new Error("Invalid or inactive referral code.");if(r.starts_at&&new Date(r.starts_at)>new Date())throw new Error("This referral code is not active yet.");if(r.expires_at&&new Date(r.expires_at)<new Date())throw new Error("This referral code has expired.");if(r.usage_limit!==null&&Number(r.used_count||0)>=Number(r.usage_limit))throw new Error("This referral code has reached its usage limit.");if(subtotal<Number(r.min_order_amount||0))throw new Error("Minimum order amount for this referral code is ৳"+Number(r.min_order_amount||0)+".");discount=r.benefit_type==="percentage"?Math.round(subtotal*Number(r.benefit_value||0)/100*100)/100:Number(r.benefit_value||0);if(r.max_discount_amount!==null)discount=Math.min(discount,Number(r.max_discount_amount));discount=Math.max(0,Math.min(discount,subtotal));admin=r.admin_name||null}const mysteryToken=String(p.mystery_token||"").trim().toUpperCase();let mysteryDiscount=0;if(mysteryToken){const mr=(await q(env,"SELECT discount,expires_at,used FROM mystery_claims WHERE token=? LIMIT 1",[mysteryToken])).results?.[0];if(!mr||Number(mr.used)!==0||new Date(mr.expires_at)<=new Date())throw new Error("Your Mystery Deal has expired or was already used.");mysteryDiscount=Math.min(subtotal,subtotal*Number(mr.discount||0)/100);}const voucherCode=String(p.rewards_voucher_code||"").trim().toUpperCase();let voucherDiscount=0,voucher=null;if(String(p.grabpoints_redeem||"").trim())throw new Error("Direct GrabPoints checkout redemption is no longer supported. Redeem GP on the Rewards page first.");if(voucherCode){const phone=normalizeRewardPhone(p.phone);voucher=(await q(env,"SELECT * FROM rewards_vouchers WHERE code=? LIMIT 1",[voucherCode])).results?.[0];if(!voucher)throw new Error("Reward voucher not found.");if(String(voucher.phone)!==phone)throw new Error("This reward voucher belongs to a different Rewards account.");if(voucher.status!=="UNUSED")throw new Error("This reward voucher has already been used.");if(voucher.expires_at&&new Date(voucher.expires_at)<=new Date())throw new Error("This reward voucher has expired.");voucherDiscount=Math.min(subtotal,Number(voucher.value||0));if(voucherDiscount<=0)throw new Error("This reward voucher has no usable value.");}
+const code=String(p.referral_code||"").trim().toUpperCase()||null;let discount=0,admin=null;if(code){const r=(await q(env,"SELECT * FROM referral_codes WHERE upper(code)=upper(?) AND active=1 LIMIT 1",[code])).results?.[0];if(!r)throw new Error("Invalid or inactive referral code.");if(r.starts_at&&new Date(r.starts_at)>new Date())throw new Error("This referral code is not active yet.");if(r.expires_at&&new Date(r.expires_at)<new Date())throw new Error("This referral code has expired.");if(r.usage_limit!==null&&Number(r.used_count||0)>=Number(r.usage_limit))throw new Error("This referral code has reached its usage limit.");if(subtotal<Number(r.min_order_amount||0))throw new Error("Minimum order amount for this referral code is ৳"+Number(r.min_order_amount||0)+".");discount=r.benefit_type==="percentage"?Math.round(referralEligibleSubtotal*Number(r.benefit_value||0)/100*100)/100:Number(r.benefit_value||0);if(r.max_discount_amount!==null)discount=Math.min(discount,Number(r.max_discount_amount));discount=Math.max(0,Math.min(discount,referralEligibleSubtotal));admin=r.admin_name||null}const mysteryToken=String(p.mystery_token||"").trim().toUpperCase();let mysteryDiscount=0;if(mysteryToken){const mr=(await q(env,"SELECT discount,expires_at,used FROM mystery_claims WHERE token=? LIMIT 1",[mysteryToken])).results?.[0];if(!mr||Number(mr.used)!==0||new Date(mr.expires_at)<=new Date())throw new Error("Your Mystery Deal has expired or was already used.");mysteryDiscount=Math.min(subtotal,subtotal*Number(mr.discount||0)/100);}const voucherCode=String(p.rewards_voucher_code||"").trim().toUpperCase();let voucherDiscount=0,voucher=null;if(String(p.grabpoints_redeem||"").trim())throw new Error("Direct GrabPoints checkout redemption is no longer supported. Redeem GP on the Rewards page first.");if(voucherCode){const phone=normalizeRewardPhone(p.phone);voucher=(await q(env,"SELECT * FROM rewards_vouchers WHERE code=? LIMIT 1",[voucherCode])).results?.[0];if(!voucher)throw new Error("Reward voucher not found.");if(String(voucher.phone)!==phone)throw new Error("This reward voucher belongs to a different Rewards account.");if(voucher.status!=="UNUSED")throw new Error("This reward voucher has already been used.");if(voucher.expires_at&&new Date(voucher.expires_at)<=new Date())throw new Error("This reward voucher has expired.");voucherDiscount=Math.min(subtotal,Number(voucher.value||0));if(voucherDiscount<=0)throw new Error("This reward voucher has no usable value.");}
 let shipping=0;if(vendorIds.size){const ids=[...vendorIds],marks=ids.map(()=>'?').join(',');const vs=(await q(env,`SELECT id,shipping_fee FROM vendors WHERE id IN (${marks})`,ids)).results||[];const feeMap=new Map(vs.map(v=>[String(v.id),v.shipping_fee]));for(const id of ids)shipping+=Number(feeMap.get(String(id))??shippingFallback);}else shipping=shippingFallback;const total=Math.max(0,subtotal+shipping-discount-voucherDiscount-mysteryDiscount-vendorCoupon.discount);// Commit the order, line items, reward allocations, coupon/voucher claims and
 // variation inventory updates together. A failed conditional write must abort the
 // whole batch; the assertion table's CHECK constraint makes zero-row updates fail.
@@ -719,19 +738,6 @@ for(const item of items){
  statements.push(env.DB.prepare("INSERT INTO order_items("+fields.join(",")+") VALUES("+fields.map(()=>"?").join(",")+")").bind(...fields.map(k=>row[k])));
 }
 
-// Snapshot reward eligibility in bulk so checkout does not issue two reads per item.
-const vendorProductIds=[...new Set(items.filter(item=>item.vendor_id).map(item=>String(item.product_id||"")).filter(Boolean))];
-const eligibilityByProduct=new Map();
-let globallyEnabled=true;
-if(vendorProductIds.length){
- const global=(await q(env,"SELECT enabled FROM rewards_settings WHERE id=1 LIMIT 1")).results?.[0];
- globallyEnabled=Number(global?.enabled??1)===1;
- for(let i=0;i<vendorProductIds.length;i+=90){
-  const chunk=vendorProductIds.slice(i,i+90),marks=chunk.map(()=>"?").join(",");
-  const rows=(await q(env,`SELECT p.id,COALESCE(vrs.rewards_enabled,0) rewards_enabled,COALESCE(vrs.referral_enabled,0) referral_enabled FROM products p LEFT JOIN vendor_rewards_settings vrs ON vrs.vendor_id=p.vendor_id WHERE p.id IN (${marks})`,chunk)).results||[];
-  for(const row of rows)eligibilityByProduct.set(String(row.id),row);
- }
-}
 const allocationRows=[];
 for(const item of items){
  const vendorId=String(item.vendor_id||"");
@@ -740,7 +746,7 @@ for(const item of items){
  const referralEligible=vendorId?(globallyEnabled&&Number(eligibility?.referral_enabled)===1?1:0):1;
  allocationRows.push({item,vendorId,rewardsEligible,referralEligible,lineSubtotal:Math.max(0,Number(item.line_total||0))});
 }
-const referralEligibleSubtotal=allocationRows.reduce((sum,row)=>sum+(row.referralEligible?row.lineSubtotal:0),0);
+
 const allocatableReferralDiscount=Math.min(Math.max(0,Number(discount||0)),referralEligibleSubtotal);
 let allocatedReferralDiscount=0;
 const lastReferralIndex=allocationRows.reduce((last,row,index)=>row.referralEligible&&row.lineSubtotal>0?index:last,-1);
