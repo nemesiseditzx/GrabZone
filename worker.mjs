@@ -152,6 +152,7 @@ async function ensureSchema(env){
     env.DB.prepare("UPDATE orders SET rewards_processed_at=COALESCE(updated_at,created_at,?) WHERE lower(status)='delivered' AND rewards_processed_at IS NULL AND changes()=1").bind(t),
     env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('variation-matrix-duplicate-repair',?)").bind(t),
     env.DB.prepare("UPDATE product_variations SET status='Disabled',updated_at=CURRENT_TIMESTAMP WHERE id IN (SELECT id FROM (SELECT id,ROW_NUMBER() OVER (PARTITION BY product_id,options_key ORDER BY created_at,id) AS duplicate_rank FROM product_variations WHERE status!='Disabled' AND options_key IS NOT NULL AND trim(options_key)!='') WHERE duplicate_rank>1) AND changes()=1"),
+    env.DB.prepare("INSERT OR IGNORE INTO site_settings(id,global_shipping_fee,grabpoints_enabled,grabpoints_earn_rate,grabpoints_value,mystery_enabled,mystery_min_percent,mystery_max_percent) VALUES(1,130,1,10,0.1,0,5,15)"),
     env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('membership-cashback-backfill',?)").bind(t),
     env.DB.prepare("UPDATE membership_tiers SET cashback_percent=discount_percent WHERE cashback_percent=0 AND discount_percent>0 AND changes()=1"),
     env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('voucher-status-repair',?)").bind(t),
