@@ -226,3 +226,33 @@ test('admin variation generator validates keys and bounds D1 batch statements', 
   assert.match(post, /statements\.length > 900/);
   assert.match(post, /await e\.DB\.batch\(statements\)/);
 });
+
+test('legacy vendor variation generator forwards to the canonical protected endpoint', async () => {
+  const { default: generator } = await import('../vendor-system-generator.mjs');
+  const payload = { product_id: 'product-1', options: [{ name: 'Size', values: ['S', 'M'] }] };
+  const request = new Request('https://grabzone.test/api/vendor/generate-variations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  let forwarded;
+  const response = await generator.fetch(request, {}, {}, async nextRequest => {
+    forwarded = nextRequest;
+    return new Response(JSON.stringify({ ok: true }));
+  });
+  assert.equal(response.status, 200);
+  assert.equal(new URL(forwarded.url).pathname, '/api/vendor/variations');
+  assert.equal(forwarded.method, 'POST');
+  assert.deepEqual(await forwarded.json(), payload);
+});
+
+test('legacy variation generator no longer performs direct writes or resets parent product stock', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('../vendor-system-generator.mjs', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /url\.pathname = '\/api\/vendor\/variations'/);
+  assert.doesNotMatch(source, /UPDATE products SET stock=0/);
+  assert.doesNotMatch(source, /DELETE FROM product_options/);
+  assert.doesNotMatch(source, /INSERT INTO product_variations/);
+});
