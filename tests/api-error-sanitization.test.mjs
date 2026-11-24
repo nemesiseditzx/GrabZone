@@ -13,6 +13,11 @@ const files = [
   'vendor-marketplace-router.mjs',
   'vendor-admin-api-compat.mjs',
   'worker.mjs',
+  'vendor-product-media-router.mjs',
+  'vendor-product-media-wrapper.mjs',
+  'marketplace-runtime-fixes.mjs',
+  'vendor-create-fix-wrapper.mjs',
+  'admin-vendor-capabilities-wrapper.mjs',
 ];
 
 test('unexpected backend exceptions are not returned to API clients', () => {
