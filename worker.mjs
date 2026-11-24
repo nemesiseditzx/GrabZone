@@ -148,6 +148,9 @@ async function ensureSchema(env){
 
    const t=now();
    const finalStatements=[
+    env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('order-items-vendor-backfill',?)").bind(t),
+    env.DB.prepare("UPDATE order_items SET vendor_id=(SELECT vendor_id FROM products WHERE products.id=order_items.product_id) WHERE vendor_id IS NULL AND product_id IS NOT NULL AND EXISTS(SELECT 1 FROM products WHERE products.id=order_items.product_id AND products.vendor_id IS NOT NULL) AND changes()=1"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS order_items_vendor_order_idx ON order_items(vendor_id,order_id)"),
     env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('products-stock-mode-backfill',?)").bind(t),
     env.DB.prepare("UPDATE products SET stock_mode='tracked' WHERE stock_mode='untracked' AND COALESCE(stock,0)>0 AND changes()=1"),
     env.DB.prepare("INSERT OR IGNORE INTO schema_migrations(name,applied_at) VALUES('product-variation-stock-mode-backfill',?)").bind(t),
