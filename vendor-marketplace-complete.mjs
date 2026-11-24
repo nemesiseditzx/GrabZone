@@ -6,6 +6,43 @@ const clean=(v,n=10000)=>String(v??'').trim().slice(0,n);
 const json=(x,s=200,h={})=>new Response(JSON.stringify(x),{status:s,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...h}});
 async function q(env,sql,p=[]){return env.DB.prepare(sql).bind(...p).all()}
 async function one(env,sql,p=[]){return (await q(env,sql,p)).results?.[0]||null}
+const vendorVariationSchemaCache=new WeakMap();
+async function applyVendorVariationSchemaStatement(e,sql){
+ try{return await e.DB.prepare(sql).run()}
+ catch(err){if(/duplicate column name|already exists/i.test(String(err?.message||err)))return null;throw err}
+}
+async function ensureVendorVariationSchema(e){
+ if(!e?.DB)throw new Error('Cloudflare D1 binding DB is missing.');
+ let pending=vendorVariationSchemaCache.get(e.DB);
+ if(!pending){
+  pending=(async()=>{
+   const statements=[
+    'CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)',
+    'CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)',
+    'CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))',
+    'CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)',
+    'CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT "untracked",low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT "Available",min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL DEFAULT "",created_at TEXT NOT NULL,updated_at TEXT NOT NULL)',
+    'CREATE TABLE IF NOT EXISTS vendor_product_images(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,vendor_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)',
+    'CREATE INDEX IF NOT EXISTS product_variations_product_status_idx ON product_variations(product_id,status)',
+    'CREATE INDEX IF NOT EXISTS option_values_option_sort_idx ON option_values(option_id,sort_order,id)',
+    'CREATE INDEX IF NOT EXISTS variation_options_variation_idx ON variation_options(variation_id)',
+    'CREATE INDEX IF NOT EXISTS variation_images_variation_sort_idx ON variation_images(variation_id,sort_order,id)',
+    'CREATE INDEX IF NOT EXISTS vendor_product_images_product_idx ON vendor_product_images(product_id,vendor_id,sort_order)',
+    'ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0',
+    'ALTER TABLE product_variations ADD COLUMN sale_price REAL',
+    'ALTER TABLE product_variations ADD COLUMN old_price REAL',
+    'ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT "untracked"',
+    'ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0',
+    'ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1',
+    'ALTER TABLE product_variations ADD COLUMN max_qty INTEGER',
+    'ALTER TABLE product_variations ADD COLUMN options_key TEXT NOT NULL DEFAULT ""'
+   ];
+   for(const sql of statements)await applyVendorVariationSchemaStatement(e,sql);
+  })().catch(err=>{vendorVariationSchemaCache.delete(e.DB);console.error('Vendor variation schema setup failed:',err);throw err});
+  vendorVariationSchemaCache.set(e.DB,pending);
+ }
+ return pending;
+}
 async function ensureVariationOptionLinks(e, productId, variation) {
  const parts=String(variation?.options_key||'').split('|').filter(Boolean).map(part=>{const at=part.indexOf('=');return at>0?[part.slice(0,at).trim(),part.slice(at+1).trim()]:null});
  if(!parts.length||parts.some(x=>!x)||new Set(parts.map(x=>x[0])).size!==parts.length)return false;
@@ -337,23 +374,7 @@ if(p==='/api/vendor/variations'){
  if(!pid)return json({error:'product_id is required.'},400);
  const owner=await one(e,'SELECT id,name,price,product_type FROM products WHERE id=? AND vendor_id=?',[pid,u.vendor_id]);
  if(!owner)return json({error:'Product not found.'},404);
- for(const sql of [
-  'CREATE TABLE IF NOT EXISTS product_options(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,name TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)',
-  'CREATE TABLE IF NOT EXISTS option_values(id TEXT PRIMARY KEY,option_id TEXT NOT NULL,value TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)',
-  'CREATE TABLE IF NOT EXISTS variation_options(variation_id TEXT NOT NULL,option_id TEXT NOT NULL,option_value_id TEXT NOT NULL,PRIMARY KEY(variation_id,option_id))',
-  'CREATE TABLE IF NOT EXISTS variation_images(id TEXT PRIMARY KEY,variation_id TEXT NOT NULL,image_url TEXT NOT NULL,sort_order INTEGER DEFAULT 0,created_at TEXT NOT NULL)',
-  'CREATE TABLE IF NOT EXISTS product_variations(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,sku TEXT,regular_price REAL NOT NULL DEFAULT 0,sale_price REAL,old_price REAL,stock INTEGER NOT NULL DEFAULT 0,stock_mode TEXT NOT NULL DEFAULT "untracked",low_stock_threshold INTEGER NOT NULL DEFAULT 0,image_url TEXT,status TEXT NOT NULL DEFAULT "Available",min_qty INTEGER NOT NULL DEFAULT 1,max_qty INTEGER,options_key TEXT NOT NULL DEFAULT "",created_at TEXT NOT NULL,updated_at TEXT NOT NULL)'
- ]) await e.DB.prepare(sql).run().catch(()=>{});
- for(const sql of [
-  'ALTER TABLE product_variations ADD COLUMN regular_price REAL NOT NULL DEFAULT 0',
-  'ALTER TABLE product_variations ADD COLUMN sale_price REAL',
-  'ALTER TABLE product_variations ADD COLUMN old_price REAL',
-  'ALTER TABLE product_variations ADD COLUMN stock_mode TEXT NOT NULL DEFAULT "untracked"',
-  'ALTER TABLE product_variations ADD COLUMN low_stock_threshold INTEGER NOT NULL DEFAULT 0',
-  'ALTER TABLE product_variations ADD COLUMN min_qty INTEGER NOT NULL DEFAULT 1',
-  'ALTER TABLE product_variations ADD COLUMN max_qty INTEGER',
-  'ALTER TABLE product_variations ADD COLUMN options_key TEXT NOT NULL DEFAULT ""'
- ]) await e.DB.prepare(sql).run().catch(()=>{});
+ await ensureVendorVariationSchema(e);
  if(req.method==='GET'){
   const chunks=(arr,size=80)=>{const out=[];for(let i=0;i<arr.length;i+=size)out.push(arr.slice(i,i+size));return out};
   const options=(await q(e,'SELECT * FROM product_options WHERE product_id=? ORDER BY sort_order,id',[pid])).results||[];
