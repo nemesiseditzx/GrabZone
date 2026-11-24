@@ -167,67 +167,74 @@ async function handle(req, e) {
     const { byKey: oldBy, duplicateIds } = indexExistingVariations(existing);
     const t = now();
 
-    // Replace only the option definitions for this product. Variation records are preserved by options_key.
-    const oldOptions = (await q(e, 'SELECT id FROM product_options WHERE product_id=?', [pid])).results || [];
-    const oldOptionIds = oldOptions.map(x => x.id);
-    if (oldOptionIds.length) {
-      const placeholders = oldOptionIds.map(() => '?').join(',');
-      const oldValues = (await q(e, `SELECT id FROM option_values WHERE option_id IN (${placeholders})`, oldOptionIds)).results || [];
-      const oldValueIds = oldValues.map(x => x.id);
-      const variationIds = (await q(e, 'SELECT id FROM product_variations WHERE product_id=?', [pid])).results || [];
-      for (const v of variationIds) await e.DB.prepare('DELETE FROM variation_options WHERE variation_id=?').bind(v.id).run();
-      if (oldValueIds.length) await e.DB.prepare(`DELETE FROM option_values WHERE id IN (${oldValueIds.map(() => '?').join(',')})`).bind(...oldValueIds).run();
-      await e.DB.prepare(`DELETE FROM product_options WHERE id IN (${placeholders})`).bind(...oldOptionIds).run();
-    }
+    // Prepare the complete matrix replacement before writing. D1 batch() is
+    // transactional: a failed statement rolls back the option and variation
+    // changes together, instead of leaving a half-rebuilt matrix.
+    const statements = [];
+    statements.push(e.DB.prepare(
+      'DELETE FROM variation_options WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id=?)'
+    ).bind(pid));
+    statements.push(e.DB.prepare(
+      'DELETE FROM option_values WHERE option_id IN (SELECT id FROM product_options WHERE product_id=?)'
+    ).bind(pid));
+    statements.push(e.DB.prepare('DELETE FROM product_options WHERE product_id=?').bind(pid));
 
-    const newOptionIds = new Map();
+    const optionValueMap = new Map();
     for (const o of os) {
       const oid = crypto.randomUUID();
-      newOptionIds.set(o.name, oid);
-      await e.DB.prepare(
+      statements.push(e.DB.prepare(
         'INSERT INTO product_options(id,product_id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)'
-      ).bind(oid, pid, o.name, o.sort_order, t, t).run();
+      ).bind(oid, pid, o.name, o.sort_order, t, t));
       for (let i = 0; i < o.values.length; i++) {
-        await e.DB.prepare(
+        const value = o.values[i];
+        const valueId = crypto.randomUUID();
+        optionValueMap.set(`${o.name}\\u0000${value}`, {
+          option_id: oid,
+          value_id: valueId
+        });
+        statements.push(e.DB.prepare(
           'INSERT INTO option_values(id,option_id,value,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?)'
-        ).bind(crypto.randomUUID(), oid, o.values[i], i, t, t).run();
+        ).bind(valueId, oid, value, i, t, t));
       }
     }
 
-    const optionRows = (await q(e,
-      'SELECT po.id,po.name,ov.id value_id,ov.value FROM product_options po JOIN option_values ov ON ov.option_id=po.id WHERE po.product_id=? ORDER BY po.sort_order,ov.sort_order',
-      [pid])).results || [];
-    const map = new Map(optionRows.map(x => [`${x.name}\u0000${x.value}`, { option_id: x.id, value_id: x.value_id }]));
     const keep = new Set();
-
     for (const selected of rows) {
       const k = key(selected);
       keep.add(k);
       const old = oldBy.get(k);
       const id = old?.id || crypto.randomUUID();
       if (old) {
-        // A combination that reappears in the submitted matrix must become active again.
-        // Reuse its existing row so SKU, pricing, stock and images are not discarded.
-        await e.DB.prepare("UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Available' ELSE status END,updated_at=? WHERE id=?")
-          .bind(t, id).run();
+        // Reintroduced combinations reactivate their original row, retaining
+        // SKU, pricing, stock, inventory mode and images.
+        statements.push(e.DB.prepare(
+          "UPDATE product_variations SET status=CASE WHEN status='Disabled' THEN 'Available' ELSE status END,updated_at=? WHERE id=?"
+        ).bind(t, id));
       } else {
-        await e.DB.prepare(
+        statements.push(e.DB.prepare(
           'INSERT INTO product_variations(id,product_id,sku,regular_price,sale_price,old_price,stock,stock_mode,low_stock_threshold,image_url,status,min_qty,max_qty,options_key,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
-        ).bind(id, pid, '', Number(b.default_price ?? productRow.price ?? 0), null, null, 0, 'untracked', 5, '', 'Available', 1, null, k, t, t).run();
+        ).bind(id, pid, '', Number(b.default_price ?? productRow.price ?? 0), null, null, 0, 'untracked', 5, '', 'Available', 1, null, k, t, t));
       }
+
       for (const o of os) {
-        const m = map.get(`${o.name}\u0000${selected[o.name]}`);
-        if (m) await e.DB.prepare(
-          'INSERT OR IGNORE INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)'
-        ).bind(id, m.option_id, m.value_id).run();
+        const option = optionValueMap.get(`${o.name}\\u0000${selected[o.name]}`);
+        if (!option) throw new Error('Generated variation references an unknown option value.');
+        statements.push(e.DB.prepare(
+          'INSERT INTO variation_options(variation_id,option_id,option_value_id) VALUES(?,?,?)'
+        ).bind(id, option.option_id, option.value_id));
       }
     }
 
     for (const x of existing) {
-      if (duplicateIds.has(x.id) || !keep.has(x.options_key)) await e.DB.prepare(
-        "UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?"
-      ).bind(t, x.id).run();
+      if (duplicateIds.has(x.id) || !keep.has(x.options_key)) {
+        statements.push(e.DB.prepare(
+          "UPDATE product_variations SET status='Disabled',updated_at=? WHERE id=?"
+        ).bind(t, x.id));
+      }
     }
+
+    await e.DB.batch(statements);
+
     const generated = (await q(e,
       "SELECT * FROM product_variations WHERE product_id=? AND status!='Disabled' ORDER BY created_at,id",
       [pid])).results || [];
