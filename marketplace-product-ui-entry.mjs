@@ -11,7 +11,8 @@ export default {async fetch(req,env,ctx){
   if(!r.ok||!type.toLowerCase().includes('text/html'))return r;
   const path=new URL(req.url).pathname;
   const vendorPanel=/^\/(?:marketplace-vendor-control-v2(?:\.html)?|vendor-admin(?:\.html)?)$/i.test(path);
-  const adminPanel=/^\/(?:admin(?:\.html)?|vendor-admin(?:\.html)?)$/i.test(path);\n  const extra=[FAVICON,(vendorPanel||adminPanel)?MOBILE_PANEL_CSS:'',vendorPanel?UPLOAD_AUTH_FIX:'',vendorPanel?VENDOR_PRODUCT_EDITOR:''].filter(Boolean).join('\n');
+  const adminPanel=/^\/(?:admin(?:\.html)?|vendor-admin(?:\.html)?)$/i.test(path);
+  const extra=[FAVICON,(vendorPanel||adminPanel)?MOBILE_PANEL_CSS:'',vendorPanel?UPLOAD_AUTH_FIX:'',vendorPanel?VENDOR_PRODUCT_EDITOR:''].filter(Boolean).join('\n');
   const body=await r.text();
   const out=/<head[^>]*>/i.test(body)?body.replace(/<head[^>]*>/i,m=>m+'\n'+extra):extra+body;
   const h=new Headers(r.headers);h.delete('Content-Length');h.set('Cache-Control','no-store,must-revalidate');
