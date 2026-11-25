@@ -4,6 +4,7 @@ const UPLOAD_AUTH_FIX=`<script data-gz-vendor-upload-auth-fix>(()=>{if(window.__
 const VENDOR_PRODUCT_EDITOR='<script src="/vendor-control-product-editor.js?v=20261124-single-worker" data-gz-vendor-product-editor></script>';
 const FAVICON='<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20261001-favicon-final"><link rel="apple-touch-icon" href="/favicon.svg?v=20261001">';
 const MOBILE_PANEL_CSS='<link rel="stylesheet" href="/grabzone-mobile-panel-fixes.css?v=20261124-mobile1">';
+const STOREFRONT_MOBILE_CSS='<link rel="stylesheet" href="/grabzone-storefront-mobile.css?v=20261124-store1">';
 
 export default {async fetch(req,env,ctx){
   const r=await base.fetch(req,env,ctx);
@@ -12,7 +13,8 @@ export default {async fetch(req,env,ctx){
   const path=new URL(req.url).pathname;
   const vendorPanel=/^\/(?:marketplace-vendor-control-v2(?:\.html)?|vendor-admin(?:\.html)?)$/i.test(path);
   const adminPanel=/^\/(?:admin(?:\.html)?|vendor-admin(?:\.html)?)$/i.test(path);
-  const extra=[FAVICON,(vendorPanel||adminPanel)?MOBILE_PANEL_CSS:'',vendorPanel?UPLOAD_AUTH_FIX:'',vendorPanel?VENDOR_PRODUCT_EDITOR:''].filter(Boolean).join('\n');
+  const storefrontPage=path==='/'||path==='/index.html';
+  const extra=[FAVICON,(storefrontPage)?STOREFRONT_MOBILE_CSS:'',(vendorPanel||adminPanel)?MOBILE_PANEL_CSS:'',vendorPanel?UPLOAD_AUTH_FIX:'',vendorPanel?VENDOR_PRODUCT_EDITOR:''].filter(Boolean).join('\n');
   const body=await r.text();
   const out=/<head[^>]*>/i.test(body)?body.replace(/<head[^>]*>/i,m=>m+'\n'+extra):extra+body;
   const h=new Headers(r.headers);h.delete('Content-Length');h.set('Cache-Control','no-store,must-revalidate');
