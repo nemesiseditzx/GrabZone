@@ -4,7 +4,7 @@ const UPLOAD_AUTH_FIX=`<script data-gz-vendor-upload-auth-fix>(()=>{if(window.__
 const VENDOR_PRODUCT_EDITOR='<script src="/vendor-control-product-editor.js?v=20261124-single-worker" data-gz-vendor-product-editor></script>';
 const FAVICON='<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20261001-favicon-final"><link rel="apple-touch-icon" href="/favicon.svg?v=20261001">';
 const MOBILE_PANEL_CSS='<link rel="stylesheet" href="/grabzone-mobile-panel-fixes.css?v=20261124-mobile1">';
-const STOREFRONT_MOBILE_CSS='<link rel="stylesheet" href="/grabzone-storefront-mobile.css?v=20261124-store1">';
+const STOREFRONT_MOBILE_CSS='<link rel="stylesheet" href="/grabzone-storefront-mobile.css?v=20261124-store2">';
 
 export default {async fetch(req,env,ctx){
   const r=await base.fetch(req,env,ctx);
