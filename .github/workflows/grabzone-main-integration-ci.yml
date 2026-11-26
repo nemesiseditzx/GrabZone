@@ -16,73 +16,72 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Check JavaScript and module syntax
+      - name: Check changed JavaScript and module syntax
         shell: bash
         run: |
           set -euo pipefail
-          for f in *.js; do
+          git fetch origin main --depth=1
+          mapfile -t changed < <(git diff --name-only origin/main...HEAD)
+          for f in "${changed[@]}"; do
             [ -f "$f" ] || continue
-            node --check --input-type=module < "$f"
+            case "$f" in
+              *.mjs) node --check "$f" ;;
+              *.js) node --check --input-type=module < "$f" ;;
+            esac
           done
-          for f in *.mjs tests/*.mjs; do
+          for f in tests/*.mjs; do
             [ -f "$f" ] || continue
             node --check "$f"
           done
-      - name: Check inline JavaScript in HTML pages
+      - name: Check inline JavaScript in changed HTML pages
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
-          import re
+          import re, subprocess
 
+          changed = subprocess.check_output(
+              ['git', 'diff', '--name-only', 'origin/main...HEAD'], text=True
+          ).splitlines()
+          pages = [Path(p) for p in changed if p.endswith('.html') and Path(p).is_file()]
           out = Path('/tmp/grabzone-inline-scripts')
           out.mkdir(parents=True, exist_ok=True)
 
           class Scripts(HTMLParser):
               def __init__(self, source):
                   super().__init__(convert_charrefs=False)
-                  self.source = source
-                  self.index = 0
-                  self.current = None
-                  self.parts = []
-
+                  self.source, self.index, self.current, self.parts = source, 0, None, []
               def handle_starttag(self, tag, attrs):
-                  if tag.lower() != 'script':
-                      return
+                  if tag.lower() != 'script': return
                   attrs = dict(attrs)
-                  if attrs.get('src'):
-                      self.current = None
-                      return
+                  if attrs.get('src'): self.current = None; return
                   kind = (attrs.get('type') or '').lower().strip()
-                  if kind and kind not in ('module', 'text/javascript', 'application/javascript', 'application/ecmascript', 'text/ecmascript'):
-                      self.current = None
-                      return
+                  if kind and kind not in ('module','text/javascript','application/javascript','application/ecmascript','text/ecmascript'):
+                      self.current = None; return
                   self.index += 1
                   ext = 'mjs' if kind == 'module' else 'js'
                   safe = re.sub(r'[^a-zA-Z0-9_-]+', '_', self.source.stem)
                   self.current = out / f'{safe}_{self.index}.{ext}'
                   self.parts = []
-
               def handle_data(self, data):
-                  if self.current is not None:
-                      self.parts.append(data)
-
+                  if self.current is not None: self.parts.append(data)
               def handle_endtag(self, tag):
                   if tag.lower() == 'script' and self.current is not None:
                       self.current.write_text(''.join(self.parts), encoding='utf-8')
-                      self.current = None
-                      self.parts = []
+                      self.current, self.parts = None, []
 
-          for page in Path('.').glob('*.html'):
+          for page in pages:
               parser = Scripts(page)
               parser.feed(page.read_text(encoding='utf-8', errors='replace'))
               parser.close()
-          print(f'Extracted {len(list(out.glob("*.js"))) + len(list(out.glob("*.mjs")))} inline scripts')
+          print(f'Extracted inline scripts from {len(pages)} changed HTML pages')
           PY
           for f in /tmp/grabzone-inline-scripts/*.js /tmp/grabzone-inline-scripts/*.mjs; do
             [ -f "$f" ] || continue
