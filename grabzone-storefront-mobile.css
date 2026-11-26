@@ -1,0 +1,91 @@
+/* GrabZone storefront — mobile alignment and overflow corrections */
+@media (max-width:760px){
+  html,body{width:100%;max-width:100%;min-width:0;overflow-x:clip}
+  body{margin:0!important}
+  #noticeSection,.notice-wrap{width:100%;max-width:100%;margin:0}
+  .header{width:100%;max-width:100%;min-width:0;height:auto;min-height:62px;padding:9px 14px;gap:10px;flex-wrap:nowrap;box-sizing:border-box}
+  .header .brand{flex:0 1 auto;min-width:0;max-width:42%;gap:6px;overflow:hidden}
+  .header .brand-mark{flex:0 0 42px;width:42px;min-width:42px;height:36px;min-height:36px;max-height:36px;overflow:hidden}
+  .header .brand-mark img{width:42px;height:36px;max-width:42px;object-fit:contain}
+  .header .brand-name,.header #storeName{display:none!important}
+  .header>nav{display:none!important}
+  .header .mobile-menu-btn{order:4;flex:0 0 42px;width:42px;height:42px;margin:0;padding:9px;border-radius:12px}
+  .header .header-actions{order:3;display:flex;align-items:center;justify-content:flex-end;gap:7px;flex:0 0 auto;min-width:0;margin-left:auto}
+  .header .header-actions .language-switch{display:none}
+  .header .header-actions .icon-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 38px;width:38px;height:38px;padding:0;font-size:20px}
+  .header .header-actions #headerDm{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 13px;font-size:11px;white-space:nowrap;border-radius:12px}
+  .header input[type=search],.header input[type=text],.header .header-search,.header .mobile-search,.header [data-mobile-search]{min-width:0;max-width:100%;height:42px}
+  .header input[type=search],.header input[type=text]{width:100%;font-size:14px;padding:9px 10px}
+  main{width:100%;max-width:100%;min-width:0;margin:0}
+  .hero{width:100%;max-width:100%;min-width:0;min-height:0;display:flex;flex-direction:column;align-items:stretch;gap:20px;padding:38px 22px 28px;margin:0;overflow:hidden}
+  .hero-copy{width:100%;max-width:100%;min-width:0}
+  .hero .eyebrow{margin-bottom:12px;font-size:10px;line-height:1.5;letter-spacing:.12em}
+  .hero h1{max-width:100%;margin:0 0 14px;font-size:clamp(34px,8.8vw,44px);line-height:1.02;letter-spacing:-.065em;overflow-wrap:normal}
+  .hero h1 br{display:none}
+  .hero h1 em{font-style:normal}
+  .hero p{max-width:100%;margin:0;font-size:14px;line-height:1.65;overflow-wrap:anywhere}
+  .hero-buttons{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:18px 0 16px}
+  .hero-buttons .btn-lg{min-height:42px;padding:11px 16px;font-size:12px}
+  .hero .trust{display:flex;align-items:center;flex-wrap:wrap;gap:7px 12px;font-size:9px;line-height:1.45}
+  .gz-billboard{width:100%;max-width:100%;height:auto;min-height:0;aspect-ratio:1.3/1;border-radius:18px;overflow:hidden}
+  .gz-billboard-viewport,.gz-billboard-track,.gz-billboard-slide{width:100%;height:100%;min-height:0}
+  .gz-billboard-slide>img{width:100%;height:100%;object-fit:cover;object-position:center}
+  .gz-billboard-dots{bottom:10px}
+  .offer-strip{max-width:calc(100% - 24px);margin:12px auto 0}
+  .shop-section,.how-section{width:100%;max-width:100%;padding:44px 20px}
+  .section-head{gap:14px;margin-bottom:22px}
+  .section-head h2,.how-section h2,.ref-section h2{font-size:clamp(29px,7.5vw,36px);line-height:1.04}
+  .shop-tools{width:100%;max-width:100%;min-width:0;grid-template-columns:minmax(0,1fr)}
+  .shop-tools input{width:100%;min-width:0;font-size:16px}
+  .product-grid{width:100%;min-width:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .product-card{min-width:0;max-width:100%}
+  .product-name{overflow-wrap:anywhere}
+  .gz-points-section{width:calc(100% - 32px);margin:22px auto;padding:18px;grid-template-columns:minmax(0,1fr);gap:16px}
+  .ref-section{max-width:calc(100% - 28px);margin:30px auto;padding:22px 18px}
+  footer{width:100%;max-width:100%;padding:26px 18px}
+}
+@media(max-width:420px){
+  .header{padding:8px 10px;gap:7px}
+  .header .brand{max-width:36%}
+  .header .brand-mark,.header .brand-mark img{width:38px;min-width:38px;height:34px;max-height:34px}
+  .header .header-actions{gap:5px}
+  .header .header-actions #headerDm{padding:0 10px;font-size:10px}
+  .header .mobile-menu-btn{flex-basis:40px;width:40px;height:40px}
+  .hero{padding:32px 18px 24px;gap:18px}
+  .hero h1{font-size:clamp(32px,8.5vw,38px)}
+  .hero p{font-size:13px}
+  .gz-billboard{aspect-ratio:1.18/1}
+  .shop-section,.how-section{padding:38px 16px}
+}
+@media(prefers-reduced-motion:reduce){
+  .gz-billboard-track{transition:none!important}
+}
+/* Final phone header repair: the search field is dynamically mounted into the header. */
+@media(max-width:760px){
+  .header{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:8px!important;min-height:64px!important;height:auto!important;padding:8px 10px!important;overflow:visible!important}
+  .header>.brand{order:1!important;flex:0 0 42px!important;width:42px!important;min-width:42px!important;max-width:42px!important;margin:0!important;padding:0!important;overflow:hidden!important}
+  .header>.brand .brand-mark,.header>.brand .brand-mark img{display:block!important;flex:0 0 42px!important;width:42px!important;min-width:42px!important;max-width:42px!important;height:38px!important;min-height:38px!important;max-height:38px!important;object-fit:contain!important;object-position:center!important}
+  .header>.brand #storeName{display:none!important}
+  .header>.mobile-menu-btn{order:3!important;display:flex!important;flex:0 0 40px!important;width:40px!important;min-width:40px!important;height:40px!important;margin:0!important;padding:9px!important}
+  .header>.header-actions{order:2!important;display:flex!important;flex:1 1 0!important;width:auto!important;min-width:0!important;max-width:none!important;align-items:center!important;justify-content:flex-end!important;gap:7px!important;margin:0!important;padding:0!important;overflow:visible!important}
+  .header>.header-actions .language-switch,.header>.header-actions>.icon-btn{display:none!important}
+  .header .header-actions #search,.header .header-actions input[type=search],.header .header-actions input[type=text],.header #search{
+    display:block!important;position:static!important;float:none!important;transform:none!important;
+    flex:1 1 100px!important;width:100%!important;min-width:0!important;max-width:none!important;
+    height:42px!important;min-height:42px!important;margin:0!important;padding:9px 10px!important;
+    box-sizing:border-box!important;font-size:14px!important;border:1px solid #cfd2d6!important;border-radius:7px!important;
+  }
+  .header .header-actions #headerDm,.header #headerDm,.header .header-actions .cart-button,.header .header-actions [data-cart-button]{
+    display:inline-flex!important;position:static!important;flex:0 0 auto!important;width:auto!important;min-width:max-content!important;
+    height:40px!important;min-height:40px!important;margin:0!important;padding:0 12px!important;border-radius:13px!important;
+    font-size:11px!important;white-space:nowrap!important;order:2!important;
+  }
+  .header .mobile-menu-btn{order:3!important}
+  .header .header-actions>*{min-width:0}
+}
+@media(max-width:390px){
+  .header{gap:6px!important;padding:7px 8px!important}
+  .header>.brand,.header>.brand .brand-mark,.header>.brand .brand-mark img{flex-basis:38px!important;width:38px!important;min-width:38px!important;max-width:38px!important}
+  .header .header-actions #headerDm,.header #headerDm,.header .header-actions .cart-button,.header .header-actions [data-cart-button]{padding:0 9px!important;font-size:10px!important}
+  .header>.mobile-menu-btn{flex-basis:38px!important;width:38px!important;min-width:38px!important;height:38px!important}
+}
